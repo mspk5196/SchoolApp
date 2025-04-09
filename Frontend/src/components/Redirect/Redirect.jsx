@@ -99,6 +99,7 @@ const Redirect = ({ route }) => {
         navigation.navigate('Coordinator', { coordinatorData: data.coordinatorData });
       } else {
         Alert.alert('No Coordinator Found', 'No coordinator is associated with this number');
+        // navigation.navigate('Coordinator', { coordinatorData: data.coordinatorData });
       }
     } catch (error) {
       console.error('Error fetching coordinator data:', error);

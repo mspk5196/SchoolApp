@@ -11,7 +11,9 @@ const Login = () => {
     const [password, setPassword] = useState('');
 
     const handleLogin = async () => {
+        console.log("API URL:", API_URL);
         try {
+            
             const encryptedPassword = encryptPassword(password);
 
             const response = await fetch(`${API_URL}/api/login`, {

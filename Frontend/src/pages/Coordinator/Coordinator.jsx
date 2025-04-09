@@ -49,15 +49,29 @@ const Coordinator = ({ route }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeId }),
       });
-
-      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+  
+      const text = await response.text();
+      let data;
+  
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        console.error("Invalid JSON from server:", text);
+        throw new Error("Failed to parse JSON");
+      }
+  
       console.log('Coordinator Students Data API Response:', data);
-
+  
       if (data.success) {
         setStudents(data.coordinatorStudents);
       } else {
         Alert.alert('No Students found', 'No Students are assigned to this coordinator.');
       }
+  
     } catch (error) {
       console.error("Error fetching coordinator's Students data:", error);
       Alert.alert('Error', "Failed to fetch coordinator's Students data");
@@ -65,67 +79,50 @@ const Coordinator = ({ route }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {coordinatorData ? (
-        <>
-          <View style={styles.section}>
-            <Text style={styles.title}>Coordinator Details</Text>
-            <Text>Name: {coordinatorData.name}</Text>
-            <Text>Roll: {coordinatorData.roll}</Text>
-            <Text>Phone: {coordinatorData.phone}</Text>
-            <Text>Grade: {coordinatorData.grade_name}</Text>
-            <Text>Section: {coordinatorData.section_name}</Text>
-            <Text>Subject: {coordinatorData.subject_name}</Text>
-          </View>
-          
-        </>
-      ) : (
-        <Text>Loading coordinator data...</Text>
+    <View style={styles.container}>
+      {coordinatorData && (
+        <View style={styles.section}>
+          <Text style={styles.title}>Coordinator Details</Text>
+          <Text>Name: {coordinatorData.name}</Text>
+          <Text>Roll: {coordinatorData.roll}</Text>
+          <Text>Phone: {coordinatorData.phone}</Text>
+          <Text>Grade: {coordinatorData.grade_name}</Text>
+          <Text>Section: {coordinatorData.section_name}</Text>
+          <Text>Subject: {coordinatorData.subject_name}</Text>
+        </View>
       )}
-      {mentors ? (
-        <>
-          <View style={styles.section}>
-            <Text style={styles.title}>Mentors</Text>
-            <FlatList
-              data={mentors}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.item}>
-                  <Text>Name: {item.mentor_name}</Text>
-                  <Text>Roll: {item.mentor_roll}</Text>
-                  <Text>Section: {item.section_name}</Text>
-                  <Text>Subject: {item.subject_name}</Text>
-                </View>
-              )}
-            />
-          </View>
-        </>
-      ) : (
-        <Text>Loading mentors data...</Text>
+  
+      {mentors.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.title}>Mentors</Text>
+          {mentors.map((item) => (
+            <View key={item.id} style={styles.item}>
+              <Text>Name: {item.mentor_name}</Text>
+              <Text>Roll: {item.mentor_roll}</Text>
+              <Text>Section: {item.section_name}</Text>
+              <Text>Subject: {item.subject_name}</Text>
+            </View>
+          ))}
+        </View>
       )}
-      {students ? (
-        <>
-          <View style={styles.section}>
-            <Text style={styles.title}>Students</Text>
-            <FlatList
-              data={students}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.item}>
-                  <Text>Name: {item.student_name}</Text>
-                  <Text>Roll: {item.roll}</Text>
-                  <Text>Section: {item.section_name}</Text>
-                  <Text>Grade: {item.grade_name}</Text>
-                  <Text>Mentor: {item.mentor_name}</Text>
-                </View>
-              )}
-            />
-          </View>
-        </>
-      ) : (
-        <Text>Loading students data...</Text>
-      )}
-    </ScrollView>
+  
+      <View style={styles.section}>
+        <Text style={styles.title}>Students</Text>
+        <FlatList
+          data={students}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.item}>
+              <Text>Name: {item.student_name}</Text>
+              <Text>Roll: {item.roll}</Text>
+              <Text>Section: {item.section_name}</Text>
+              <Text>Grade: {item.grade_name}</Text>
+              <Text>Mentor: {item.mentor_name}</Text>
+            </View>
+          )}
+        />
+      </View>
+    </View>
   );
 };
 
