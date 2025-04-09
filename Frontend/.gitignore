@@ -1,0 +1,16 @@
+__tests__/
+.bundle/
+android/
+ios/
+.eslintrc.js
+.prettierrc.js
+.watchmanconfig
+app.json
+Gemfile
+jest.config.js
+package-lock.json
+package.json
+tsconfig.json
+index.js
+node_modules
+.env
