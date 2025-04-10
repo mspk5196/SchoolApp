@@ -7,6 +7,8 @@ const Coordinator = ({ route }) => {
   const [mentors, setMentors] = useState([]);
   const [students, setStudents] = useState([]);
 
+  const [userData, setUser]=useState([]);
+
   useEffect(() => {
     if (route.params?.coordinatorData) {
       setCoordinatorData(route.params.coordinatorData);
@@ -19,6 +21,15 @@ const Coordinator = ({ route }) => {
       fetchCoordinatorStudentsData(coordinatorData.grade_id);
     }
   }, [coordinatorData]);
+
+  const getUserData = async () => {
+    const userData = await AsyncStorage.getItem('user');
+    if (userData) setUser(JSON.parse(userData));
+  };
+
+  useEffect(()=>{
+    getUserData();
+  },[])
 
   const fetchCoordinatorMentorsData = async (gradeId) => {
     try {
@@ -44,6 +55,7 @@ const Coordinator = ({ route }) => {
 
   const fetchCoordinatorStudentsData = async (gradeId) => {
     try {
+      
       const response = await fetch(`${API_URL}/api/coordinatorStudents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -79,7 +91,7 @@ const Coordinator = ({ route }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       {coordinatorData && (
         <View style={styles.section}>
           <Text style={styles.title}>Coordinator Details</Text>
@@ -99,6 +111,7 @@ const Coordinator = ({ route }) => {
             <View key={item.id} style={styles.item}>
               <Text>Name: {item.mentor_name}</Text>
               <Text>Roll: {item.mentor_roll}</Text>
+              <Text>Grade: {item.grade_name}</Text>
               <Text>Section: {item.section_name}</Text>
               <Text>Subject: {item.subject_name}</Text>
             </View>
@@ -122,7 +135,7 @@ const Coordinator = ({ route }) => {
           )}
         />
       </View>
-    </View>
+    </ScrollView>
   );
 };
 

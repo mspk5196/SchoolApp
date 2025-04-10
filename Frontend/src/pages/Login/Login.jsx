@@ -30,7 +30,7 @@ const Login = () => {
             }
 
             await AsyncStorage.setItem('userRoles', JSON.stringify(data.user.roles));
-            await AsyncStorage.setItem('userData', JSON.stringify(data.user));
+            
             navigation.navigate('Redirect', { phoneNumber });
 
         } catch (error) {

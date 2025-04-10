@@ -51,13 +51,16 @@ const Redirect = ({ route }) => {
       }
     };
 
-    const getUserData = async () => {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) setUser(JSON.parse(userData));
-    };
+    // const getUserData = async () => {
+    //   const userData = await AsyncStorage.getItem('user');
+    //   if (userData){ 
+    //     const parsedData = JSON.parse(userData);
+    //     setUser(parsedData)
+    //   }
+    // };
 
     fetchRoles();
-    getUserData();
+    // getUserData();
   }, []);
 
   const fetchStudentData = async () => {

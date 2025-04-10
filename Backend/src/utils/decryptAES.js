@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
-const SECRET_KEY = Buffer.from('12345678901234567890123456789012'); // 32-byte key
-const IV = Buffer.from('1234567890123456'); // 16-byte IV
+const SECRET_KEY = Buffer.from('00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff', 'hex'); // 32 bytes
+const IV = Buffer.from('0102030405060708090a0b0c0d0e0f10', 'hex'); // 16 bytes
 
 function decryptAES(encrypted) {
     const decipher = crypto.createDecipheriv('aes-256-cbc', SECRET_KEY, IV);
