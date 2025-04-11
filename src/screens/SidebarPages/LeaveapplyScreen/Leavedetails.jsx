@@ -1,11 +1,11 @@
 import React from 'react';
-import { 
-  SafeAreaView, 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  Image, 
-  FlatList 
+import {
+  SafeAreaView,
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  FlatList
 } from 'react-native';
 import AddIcon from '../../../assets/LeaveIcon/add.svg';
 import PrevIcon from '../../../assets/LeaveIcon/PrevBtn.svg';
@@ -16,6 +16,7 @@ import LeaveDateIcon from '../../../assets/LeaveIcon/leavedate.svg';
 import LeaveTypeIcon from '../../../assets/LeaveIcon/leavetype.svg';
 import Profile from '../../../assets/LeaveIcon/profile.png';
 import styles from './LeavedetailStyles';
+import GroupIcon from '../../../assets/LeaveIcon/Group.svg'
 
 const Leavedetails = ({ navigation }) => {
   // Sample leave data
@@ -24,7 +25,7 @@ const Leavedetails = ({ navigation }) => {
       id: '1',
       date: '12/08/23',
       name: 'Ram Kumar',
-      phone: '7376232206',
+      regno: '7376232206',
       duration: '20/08/2024 - 23/08/2024',
       type: 'Sick Leave',
       reason: "Due to Heavy fever I'm unable to attend the class fever I'm unable to attend the class Due to Heavy fever I'm unable to attend the class fever",
@@ -34,7 +35,7 @@ const Leavedetails = ({ navigation }) => {
       id: '2',
       date: '10/08/23',
       name: 'Ram Prasath',
-      phone: '7376232206',
+      regno: '7376232206',
       duration: '20/08/2024 - 23/08/2024',
       type: 'Sick Leave',
       reason: "Due to Heavy fever I'm unable to attend the class fever I'm unable to attend the class Due to Heavy fever I'm unable to attend the class fever",
@@ -44,7 +45,7 @@ const Leavedetails = ({ navigation }) => {
       id: '3',
       date: '10/08/23',
       name: 'Ram Kumar',
-      phone: '7376232206',
+      regno: '7376232206',
       duration: '20/08/2024 - 23/08/2024',
       type: 'Sick Leave',
       reason: "Due to Heavy fever I'm unable to attend the class fever I'm unable to attend the class Due to Heavy fever I'm unable to attend the class fever",
@@ -65,7 +66,7 @@ const Leavedetails = ({ navigation }) => {
   };
 
   const renderStatus = (status) => {
-    switch(status) {
+    switch (status) {
       case 'approved':
         return (
           <View style={styles.statusContainer}>
@@ -94,40 +95,50 @@ const Leavedetails = ({ navigation }) => {
 
   const renderLeaveItem = ({ item }) => (
     <View style={styles.leaveCard}>
-      <Text style={styles.dateHeader}>{item.date}</Text>
-      
-      <View style={styles.userInfoContainer}>
-        <Image source={Profile} style={styles.profileImage} />
-        <View style={styles.userTextContainer}>
-          <Text style={styles.userName}>{item.name}</Text>
-          <Text style={styles.userPhone}>{item.phone}</Text>
-        </View>
-        <View style={styles.statusActions}>
-          {renderStatus(item.status)}
-          {item.status === 'pending' && (
-            <TouchableOpacity 
-              style={styles.cancelButton}
-              onPress={() => handleCancelLeave(item.id)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+      <View style={styles.leaveHeader}>
+        <GroupIcon />
+        <Text style={styles.dateHeader}>{item.date}</Text>
       </View>
-      
-      <View style={styles.detailsContainer}>
-        <View style={styles.detailItem}>
-          <LeaveDateIcon width={16} height={16} />
-          <Text style={styles.detailText}>{item.duration}</Text>
+
+      <View style={styles.leaveContainer}>
+        <View style={styles.userInfoContainer}>
+          <Image source={Profile} style={styles.profileImage} />
+          <View style={styles.userTextContainer}>
+            <Text style={styles.userName}>{item.name}</Text>
+            <Text style={styles.userRegno}>{item.regno}</Text>
+          </View>
+          <View style={styles.statusActions}>
+            {renderStatus(item.status)}
+            {item.status === 'pending' && (
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => handleCancelLeave(item.id)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-        <View style={styles.detailItem}>
-          <LeaveTypeIcon width={16} height={16} />
-          <Text style={styles.detailText}>{item.type}</Text>
+
+        <View style={styles.detailsContainer}>
+          <View style={styles.detailItem}>
+            <LeaveDateIcon />
+            <Text style={styles.detailText}>{item.duration}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <LeaveTypeIcon />
+            <Text style={styles.detailText}>{item.type}</Text>
+          </View>
         </View>
-      </View>
-      
-      <View style={styles.reasonContainer}>
-        <Text style={styles.reasonText} numberOfLines={3}>{item.reason}</Text>
+
+        <View style={styles.reasonContainer}>
+  <View style={styles.accentBar} />
+  <View style={styles.contentContainer}>
+    <Text style={styles.reasonText}>
+      Due to Heavy fever I'm unable to attend the class fever I'm unable to attend the class Due to Heavy fever I'm unable to attend the class fever
+    </Text>
+  </View>
+</View>
       </View>
     </View>
   );
@@ -142,7 +153,7 @@ const Leavedetails = ({ navigation }) => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Leave Details</Text>
         </View>
-        
+
       </View>
 
       {/* Leave List */}
@@ -155,7 +166,7 @@ const Leavedetails = ({ navigation }) => {
       />
 
       {/* Floating Add Button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.floatingButton}
         onPress={handleAddLeave}
       >

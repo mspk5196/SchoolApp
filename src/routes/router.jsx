@@ -129,39 +129,24 @@ const TabNavigator = () => {
   );
 };
 
-// App Layout Stack (after login)
-// const AppLayout = () => (
-//   <Stack.Navigator screenOptions={{ headerShown: false }}>
-//     <Stack.Screen name="MainTabs" component={TabNavigator} />
-//     <Stack.Screen name="PerformanceDetailsScreen" component={PerformanceDetailsScreen} />
-//     <Stack.Screen name="Profile" component={ProfileScreen} />
-//     <Stack.Screen name="Calendar" component={CalendarScreen} />
-//     <Stack.Screen name="Events" component={EventsScreen} />
-//     <Stack.Screen name="LeaveApply" component={LeaveStackNavigator} />
-//     <Stack.Screen name="Phonebook" component={PhonebookScreen} />
-//     <Stack.Screen name="Request" component={RequestScreen} />
-//     <Stack.Screen name="Survey" component={Survey} />
-//     <Stack.Screen name="Settings" component={SettingsScreen} />
-//   </Stack.Navigator>
-// );
 
 
 const Router = () => {
   return (
     <SafeAreaProvider style={{ backgroundColor: '#000000' }}>
       <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="MainTabs" component={TabNavigator} />
-    <Stack.Screen name="PerformanceDetailsScreen" component={PerformanceDetailsScreen} />
-    <Stack.Screen name="Profile" component={ProfileScreen} />
-    <Stack.Screen name="Calendar" component={CalendarScreen} />
-    <Stack.Screen name="Events" component={EventsScreen} />
-    <Stack.Screen name="LeaveApply" component={LeaveStackNavigator} />
-    <Stack.Screen name="Phonebook" component={PhonebookScreen} />
-    <Stack.Screen name="Request" component={RequestScreen} />
-    <Stack.Screen name="Survey" component={Survey} />
-    <Stack.Screen name="Settings" component={SettingsScreen} />
-  </Stack.Navigator>
+        <Stack.Navigator initialRouteName='MainTabs' screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="MainTabs" component={TabNavigator} />
+          <Stack.Screen name="PerformanceDetailsScreen" component={PerformanceDetailsScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="Calendar" component={CalendarScreen} />
+          <Stack.Screen name="Events" component={EventsScreen} />
+          <Stack.Screen name="LeaveApply" component={LeaveStackNavigator} />
+          <Stack.Screen name="Phonebook" component={PhonebookScreen} />
+          <Stack.Screen name="Request" component={RequestScreen} />
+          <Stack.Screen name="Survey" component={Survey} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+        </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
   );

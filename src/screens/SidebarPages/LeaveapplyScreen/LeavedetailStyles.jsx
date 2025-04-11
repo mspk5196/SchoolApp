@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#FAFAFA',
   },
   header: {
     flexDirection: 'row',
@@ -30,66 +30,56 @@ const styles = StyleSheet.create({
   addButton: {
     padding: 5,
   },
-  searchContainer: {
-    padding: 16,
-    backgroundColor: '#F5F7FA',
-  },
-  searchInput: {
+  leaveHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    height: 40,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-  },
-  searchIcon: {
-    marginRight: 8,
-    opacity: 0.5,
+    backgroundColor: '#FAFAFA',
   },
   input: {
     flex: 1,
     fontSize: 14,
     color: '#333333',
+    backgroundColor: '#FAFAFA',
   },
   listContainer: {
-    padding: 16,
-    paddingBottom: 80,
+    padding: 10,
   },
   leaveCard: {
+    backgroundColor: '#FAFAFA',
+    marginBottom: 15,
+    padding: 6,
+    paddingBottom: 5,
+    overflow: 'hidden',
+  },
+  leaveContainer: {
+    padding: 12,
+    borderRadius: 10,
     backgroundColor: '#FFFFFF',
-    // borderRadius: 12,
-    marginBottom: 20,
-    // elevation: 2,
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 1 },
-    // shadowOpacity: 0.1,
-    // shadowRadius: 2,
+    elevation: 5,
+    shadowColor: '#7C7C7C26',
+    shadowOffset: { width: 0, height: 2 },
   },
   dateHeader: {
     padding: 12,
-    backgroundColor: '#F5F7FA',
-    color: '#666666',
-    fontSize: 12,
+    backgroundColor: '#fafafa',
+    color: '#323F49',
+    fontSize: 14,
     fontWeight: '500',
   },
   userInfoContainer: {
     flexDirection: 'row',
     padding: 12,
-    borderBottomWidth: 1,
+    paddingBottom: 0,
+    alignItems: 'center',  
     borderBottomColor: '#F0F0F0',
   },
   profileImage: {
-    width: 40,
-    height: 40,
+    width: 45,
+    height: 45,
     borderRadius: 20,
   },
   userTextContainer: {
-    marginLeft: 12,
+    marginLeft: 20,
     flex: 1,
   },
   userName: {
@@ -97,9 +87,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
   },
-  userPhone: {
+  userRegno: {
     fontSize: 12,
-    color: '#666666',
+    color: '#878787',
+    fontWeight: '500',
     marginTop: 2,
   },
   statusActions: {
@@ -141,7 +132,7 @@ const styles = StyleSheet.create({
   },
   detailsContainer: {
     padding: 12,
-    borderBottomWidth: 1,
+    paddingBottom: 0,
     borderBottomColor: '#F0F0F0',
   },
   detailItem: {
@@ -151,16 +142,33 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 12,
+    fontWeight: '500',
     color: '#666666',
     marginLeft: 8,
   },
   reasonContainer: {
-    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginLeft: 12,
+    flexDirection: 'row',
+    marginVertical: 10,
+  },
+  accentBar: {
+    width: 5,
+    backgroundColor: '#4169e1',
+  },
+  contentContainer: {
+    padding: 7,
+    flex: 1,
   },
   reasonText: {
     fontSize: 12,
     color: '#666666',
-    lineHeight: 18,
+    fontWeight: '500',
+    lineHeight: 17,
+   
   },
   floatingButton: {
     position: 'absolute',
@@ -178,6 +186,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  
 });
 
 export default styles;
