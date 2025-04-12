@@ -190,22 +190,21 @@ const Leavedetails = ({ navigation }) => {
 
       {/* Calendar Modal */}
       <Modal
-        visible={modalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={closeModal}
-        style={styles.modalContainer}
-      >
-        <TouchableWithoutFeedback onPress={closeModal}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <Calender onClose={closeModal} />
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+  visible={modalVisible}
+  transparent={true}
+  animationType="fade"
+  onRequestClose={closeModal}
+>
+  <TouchableWithoutFeedback onPress={closeModal}>
+    <View style={styles.modalOverlay}>
+      <TouchableWithoutFeedback>
+        <View style={styles.modalContent}>
+          <Calender onClose={closeModal} />
+        </View>
+      </TouchableWithoutFeedback>
+    </View>
+  </TouchableWithoutFeedback>
+</Modal>
     </SafeAreaView>
   );
 };

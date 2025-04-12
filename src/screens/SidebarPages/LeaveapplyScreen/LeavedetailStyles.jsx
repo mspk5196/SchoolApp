@@ -193,6 +193,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  modalContent: {
+    height: '100%',
+    width: '95%',
+    borderRadius: 10,
+    padding: 20,
+  },
   
 });
 
