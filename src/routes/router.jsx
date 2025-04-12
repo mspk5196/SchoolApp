@@ -9,7 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Welcome from '../screens/Bit-schl-welcome-page/Welcome';
 import Login from '../screens/Bit-schl-loginpage/login';
 import Survey from '../components/Survey/Survey';
-
+import Calendermodel from '../components/Calendermodel/Calendermodel';
 import ParentDashboard from '../screens/ParentDashboard/ParentDashboard';
 import PerformanceDetailsScreen from '../screens/ParentDashboard/PerformanceDetailsScreen';
 import MaterialScreen from '../screens/MaterialScreen/MaterialScreen';
@@ -146,6 +146,7 @@ const Router = () => {
           <Stack.Screen name="Request" component={RequestScreen} />
           <Stack.Screen name="Survey" component={Survey} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="Calender" component={Calendermodel} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

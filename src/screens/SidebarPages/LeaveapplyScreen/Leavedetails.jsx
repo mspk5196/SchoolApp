@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   SafeAreaView,
   View,
   Text,
   TouchableOpacity,
   Image,
-  FlatList
+  FlatList,
+  Modal,
+  TouchableWithoutFeedback
 } from 'react-native';
 import AddIcon from '../../../assets/LeaveIcon/add.svg';
 import PrevIcon from '../../../assets/LeaveIcon/PrevBtn.svg';
@@ -17,8 +19,11 @@ import LeaveTypeIcon from '../../../assets/LeaveIcon/leavetype.svg';
 import Profile from '../../../assets/LeaveIcon/profile.png';
 import styles from './LeavedetailStyles';
 import GroupIcon from '../../../assets/LeaveIcon/Group.svg'
+import Calender from '../../../components/Calendermodel/Calendermodel';
 
 const Leavedetails = ({ navigation }) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  
   // Sample leave data
   const leaveData = [
     {
@@ -65,6 +70,14 @@ const Leavedetails = ({ navigation }) => {
     console.log('Cancelling leave with ID:', id);
   };
 
+  const toggleCalendar = () => {
+    setModalVisible(!modalVisible);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+  };
+
   const renderStatus = (status) => {
     switch (status) {
       case 'approved':
@@ -96,7 +109,10 @@ const Leavedetails = ({ navigation }) => {
   const renderLeaveItem = ({ item }) => (
     <View style={styles.leaveCard}>
       <View style={styles.leaveHeader}>
-        <GroupIcon />
+        <TouchableOpacity onPress={toggleCalendar}>
+          <GroupIcon />
+        </TouchableOpacity>
+
         <Text style={styles.dateHeader}>{item.date}</Text>
       </View>
 
@@ -132,13 +148,13 @@ const Leavedetails = ({ navigation }) => {
         </View>
 
         <View style={styles.reasonContainer}>
-  <View style={styles.accentBar} />
-  <View style={styles.contentContainer}>
-    <Text style={styles.reasonText}>
-      Due to Heavy fever I'm unable to attend the class fever I'm unable to attend the class Due to Heavy fever I'm unable to attend the class fever
-    </Text>
-  </View>
-</View>
+          <View style={styles.accentBar} />
+          <View style={styles.contentContainer}>
+            <Text style={styles.reasonText}>
+              Due to Heavy fever I'm unable to attend the class fever I'm unable to attend the class Due to Heavy fever I'm unable to attend the class fever
+            </Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -153,7 +169,6 @@ const Leavedetails = ({ navigation }) => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Leave Details</Text>
         </View>
-
       </View>
 
       {/* Leave List */}
@@ -172,6 +187,25 @@ const Leavedetails = ({ navigation }) => {
       >
         <AddIcon width={24} height={24} color="#FFFFFF" />
       </TouchableOpacity>
+
+      {/* Calendar Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeModal}
+        style={styles.modalContainer}
+      >
+        <TouchableWithoutFeedback onPress={closeModal}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                <Calender onClose={closeModal} />
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 };
