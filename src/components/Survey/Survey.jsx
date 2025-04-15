@@ -173,11 +173,6 @@ const SurveyScreen = () => {
           </View>
 
           <View style={styles.buttonContainer}>
-            {currentQuestionIndex > 0 && (
-              <Pressable style={styles.backButton} onPress={handleBack}>
-                <Text style={styles.backText}>{'< Back'}</Text>
-              </Pressable>
-            )}
             <Pressable
               style={[styles.nextButton, !responses[currentQuestion.id] && styles.disabledButton]}
               disabled={!responses[currentQuestion.id]}

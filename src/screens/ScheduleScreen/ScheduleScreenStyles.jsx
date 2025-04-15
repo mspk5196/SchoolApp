@@ -3,41 +3,57 @@ import { StyleSheet } from 'react-native';
 const styles = StyleSheet.create({
   container: {
     flex: 1, 
-    backgroundColor: '#f8f9fa'  // Slightly lighter background for better contrast
+    backgroundColor: '#f8f9fa'
   },
   headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 20,
-    marginBottom: 5
+    paddingBottom: 10,
+    paddingTop: 42,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderColor: '#00000080',
+    marginBottom: 15,
   },
   headerText: {
-    fontSize: 28,  // Increased size for more prominence
-    fontWeight: 'bold',
-    letterSpacing: 0.5  // Slight letter spacing for better readability
+    marginLeft: 6,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2E2E2E',
   },
   tabContainer: {
     flexDirection: 'row', 
+    justifyContent: 'center', // Center the tabs horizontally
     paddingHorizontal: 20,
-    marginBottom: 20  // Increased margin for better spacing
+    marginBottom: 20
+  },
+  academicContainer: {
+    flex: 1,
+    // flexDirection: 'row',
+    // justifyContent: 'space-between',
+    // alignItems: 'center',
+    paddingBottom: 15,
+    marginHorizontal: 20,
+    marginBottom: 15,
+    backgroundColor: 'white',
+    borderRadius: 12,
+
   },
   tabButton: {
-    borderRadius: 25,  // More rounded corners
-    paddingVertical: 12,  // Slightly taller buttons
+    borderRadius: 25,
+  
+    paddingVertical: 12,
     paddingHorizontal: 22,
-    marginRight: 12,
-    shadowColor: '#000',  // Light shadow for depth
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2
-  },
+    marginHorizontal: 6, // Equal spacing on both sides
+      },
   activeTabButton: {
-    backgroundColor: '#4361EE',  // Slightly more vibrant blue
+    backgroundColor: '#4361EE',
   },
-  inactiveTabButton: {
-    backgroundColor: '#ffffff',  // White background for inactive tabs
-    borderWidth: 1,
-    borderColor: '#e0e0e0'
-  },
+  
   activeTabText: {
     color: 'white',
     fontWeight: '600',
@@ -48,16 +64,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 15
   },
-  scrollViewContent: {
-    flex: 1, 
-    paddingHorizontal: 20
+  examContainer: {
+    flex: 1,
+    paddingHorizontal:20,
   },
   calendarContainer: {
     backgroundColor: 'white',
-    borderRadius: 16,  // More rounded corners
-    padding: 10,
-    marginBottom: 25,
-    shadowColor: '#000',  // Shadow for elevation
+    borderRadius: 16,
+    paddingHorizontal: 10, // Reduced from 10
+    paddingVertical: 25, // Reduced from 20
+    marginBottom: 15, // Reduced from 25
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -67,11 +84,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    paddingHorizontal: 12,
-    marginBottom: 10
+    marginBottom: 5 
   },
   calendarHeaderText: {
-    fontSize: 18, 
+    fontSize: 16, 
     fontWeight: '600',
     color: '#333333'
   },
@@ -82,11 +98,12 @@ const styles = StyleSheet.create({
     padding: 6
   },
   sectionHeaderText: {
+
     marginBottom: 18, 
     fontSize: 18, 
     fontWeight: '600',
     letterSpacing: 0.3,
-    color: '#333333'
+    color: '#4A5E6D'
   },
   examItemContainer: {
     flexDirection: 'row',
@@ -103,7 +120,6 @@ const styles = StyleSheet.create({
   },
   examDateContainer: {
     width: 60, 
-   
     justifyContent: 'center', 
     alignItems: 'center',
     paddingRight: 12
@@ -130,7 +146,7 @@ const styles = StyleSheet.create({
   examInfoRowMargin: {
     flexDirection: 'row', 
     alignItems: 'center', 
-    marginTop: 8  // Increased for better spacing
+    marginTop: 8
   },
   examInfoIcon: {
     width: 18, 
@@ -141,21 +157,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16
   },
+  daySelectorScrollView: {
+    marginBottom: 15,
+  },
   daySelectorContainer: {
-    flexDirection: 'row', 
-    justifyContent: 'space-around', 
-    marginVertical: 18,  // Increased for better spacing
-    marginHorizontal: 10
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 5,
   },
   dayButton: {
-    width: 36,  // Slightly larger buttons
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    marginHorizontal: 8,
   },
   activeDayButton: {
-    backgroundColor: '#FF9F1C',  // Slightly adjusted orange
+    backgroundColor: '#FF9F1C',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
@@ -180,6 +199,7 @@ const styles = StyleSheet.create({
   academicItemContainer: {
     borderRadius: 12,
     padding: 14,
+    marginHorizontal:6,
     marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -193,10 +213,12 @@ const styles = StyleSheet.create({
     flex: 1
   },
   academicItemSubject: {
+    color: '#000000',
     fontWeight: '600',
     fontSize: 16
   },
   academicItemGrade: {
+    color: '#000000',
     marginTop: 4,
     fontSize: 14,
     color: '#555555'
@@ -209,13 +231,14 @@ const styles = StyleSheet.create({
   },
   academicItemTimeContainer: {
     flexDirection: 'column', 
-    alignItems: 'center'
+    alignItems: 'flex-end',
+    justifyContent: 'center'
   },
   academicItemTime: {
-    marginRight: 12,
+    color: '#000000',
     fontWeight: '500',
-    margin:10,
-    fontSize: 14
+    fontSize: 14,
+    marginBottom: 8,
   },
   academicItemAvatar: {
     width: 36, 
@@ -224,7 +247,132 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: '#f0f0f0'
-  }
+  },
+  // Detail screen styles
+  detailContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  detailHeaderContainer: {
+    padding: 20,
+    marginBottom: 5,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  detailScrollView: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  detailDateText: {
+    fontSize: 16,
+    color: '#555',
+    marginBottom: 20,
+  },
+  detailInfoContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  detailInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  detailInfoInside: {
+    display: 'flex',
+    width: '50%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  levelContainer: {
+    backgroundColor: '#E8F5E9',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginRight: 10,
+  },
+  levelText: {
+    color: '#4CAF50',
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  rankContainer: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginRight: 10,
+  },
+  rankText: {
+    color: '#FF9800',
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  assessmentText: {
+    fontSize: 14,
+    color: '#555',
+  },
+  scoresContainer: {
+    marginBottom: 11,
+    marginHorizontal: 10,
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  scoreincont: {
+    width: '48%',
+    flexDirection: 'column',
+    justifyContent:'flex-start',
+    marginBottom: 10,
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+  },
+  scoreLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#323F49',
+  },
+  scoreValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  pdfButton: {
+    backgroundColor: '#e3f2fd',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  pdfButtonText: {
+    color: '#1976d2',
+    fontWeight: '600',
+  },
+  teacherContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 15,
+    marginBottom: 10,
+  },
+  teacherAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 15,
+  },
+  teacherName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
 });
 
 export default styles;
