@@ -11,7 +11,7 @@ const ClassDetailScreen = ({ selectedClass,
 
   return (
     <SafeAreaView style={styles.detailContainer}>
-      <View style={styles.detailHeaderContainer}>
+      <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => setSelectedClass(null)} style={styles.backButton}>
           <PreviousIcon width={24} height={24} />
           <Text style={styles.headerText}>Schedule</Text>
