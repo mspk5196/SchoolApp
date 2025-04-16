@@ -88,7 +88,64 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-  }
+  },
+
+modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+modalContent: {
+  width: '80%',
+  backgroundColor: 'white',
+  borderRadius: 10,
+  padding: 20,
+  elevation: 5,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+},
+modalTitle: {
+  fontSize: 18,
+  color: '#000',
+  fontWeight: 'bold',
+  marginBottom: 15,
+  textAlign: 'center',
+},
+modalInput: {
+  borderWidth: 1,
+  borderColor: '#ddd',
+  borderRadius: 8,
+  padding: 10,
+  marginBottom: 20,
+  fontSize: 16,
+},
+modalButtonsContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+},
+modalButton: {
+  flex: 1,
+  padding: 10,
+  alignItems: 'center',
+  borderRadius: 5,
+  marginHorizontal: 5,
+},
+cancelButton: {
+  backgroundColor: '#f2f2f2',
+},
+okButton: {
+  backgroundColor: '#3557FF',
+},
+modalButtonText: {
+  fontSize: 16,
+  fontWeight: 'bold',
+},
+okButtonText: {
+  color: 'white',
+},
 });
 
 export default styles;

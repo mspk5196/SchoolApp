@@ -1,5 +1,13 @@
-import React from 'react';
-import { SafeAreaView, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { 
+  SafeAreaView, 
+  View, 
+  Text, 
+  ScrollView, 
+  TouchableOpacity, 
+  Modal, 
+  TextInput
+} from 'react-native';
 import BackIcon from '../../assets/Request/Back.svg';
 import styles from './GeneralActivityStyle';
 
@@ -18,7 +26,7 @@ const Section = ({ title, items, onAddRequest }) => {
       {items.map((item, index) => (
         <SectionItem key={index} title={item} />
       ))}
-      <TouchableOpacity style={styles.addRequestButton} onPress={onAddRequest}>
+      <TouchableOpacity style={styles.addRequestButton} onPress={() => onAddRequest(title)}>
         <Text style={styles.plusIcon}>+</Text>
         <Text style={styles.addRequestText}>Add request</Text>
       </TouchableOpacity>
@@ -27,6 +35,10 @@ const Section = ({ title, items, onAddRequest }) => {
 };
 
 const GeneralActivity = ({navigation}) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentSection, setCurrentSection] = useState('');
+  const [newItemText, setNewItemText] = useState('');
+
   const requestTypes = [
     'Bonafide',
     'Marksheet',
@@ -43,7 +55,19 @@ const GeneralActivity = ({navigation}) => {
   ];
 
   const handleAddRequest = (sectionType) => {
-    console.log(`Add request for ${sectionType}`);
+    setCurrentSection(sectionType);
+    setNewItemText('');
+    setModalVisible(true);
+  };
+
+  const handleConfirmModal = () => {
+    console.log(`Adding new item "${newItemText}" to ${currentSection}`);
+    // Here you would add the new item to your list
+    setModalVisible(false);
+  };
+
+  const handleCancelModal = () => {
+    setModalVisible(false);
   };
 
   const handleConfirmChanges = () => {
@@ -67,13 +91,13 @@ const GeneralActivity = ({navigation}) => {
           <Section 
             title="Request" 
             items={requestTypes} 
-            onAddRequest={() => handleAddRequest('Request')}
+            onAddRequest={handleAddRequest}
           />
           <View style={styles.divider} />
           <Section 
             title="Purpose" 
             items={purposeTypes} 
-            onAddRequest={() => handleAddRequest('Purpose')}
+            onAddRequest={handleAddRequest}
           />
         </View>
       </ScrollView>
@@ -86,6 +110,43 @@ const GeneralActivity = ({navigation}) => {
           <Text style={styles.confirmButtonText}>Confirm changes</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Modal Popup */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={handleCancelModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add New {currentSection}</Text>
+            
+            <TextInput
+              style={styles.modalInput}
+              placeholder={`Enter new ${currentSection} name`}
+              value={newItemText}
+              onChangeText={setNewItemText}
+            />
+            
+            <View style={styles.modalButtonsContainer}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={handleCancelModal}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.okButton]} 
+                onPress={handleConfirmModal}
+              >
+                <Text style={[styles.modalButtonText, styles.okButtonText]}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
