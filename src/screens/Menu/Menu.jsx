@@ -13,6 +13,7 @@ import Schedule from '../../assets/Menu/Schedule.svg';
 import Events from '../../assets/Menu/Events.svg';
 import Calender from '../../assets/Menu/Calender.svg';
 import Request from '../../assets/Menu/Request.svg';
+import Enrollment from '../../assets/Menu/Enrollment.svg';
 
 const Menupage = ({ navigation }) => {
   const [isCoordinator, setIsCoordinator] = useState(false);
@@ -50,6 +51,9 @@ const Menupage = ({ navigation }) => {
       case 'Request':
         navigation.navigate('RequestHome');
         break;
+      case 'Enrollment':
+        navigation.navigate('Enrollment');
+        break;  
       default:
         console.log('No navigation defined for', menuItem);
     }
@@ -181,7 +185,20 @@ const Menupage = ({ navigation }) => {
             <Request width={50} height={50} />
             <Text style={styles.menuText}>Request</Text>
           </Pressable>
-        </View>
+          </View>
+
+          <View style={styles.gridRow}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.menuItem,
+              pressed && styles.menuItemPressed
+            ]}
+            onPress={() => handleMenuPress('Enrollment')}
+          >
+            <Enrollment width={50} height={50} />
+            <Text style={styles.menuText}>Enrollment</Text>
+          </Pressable>
+          </View>
       </ScrollView>
     </SafeAreaView>
   );

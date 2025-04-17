@@ -15,6 +15,9 @@ import BookIcon from '../../../assets/WeeklySchedule/Book.svg';
 import UserIcon from '../../../assets/WeeklySchedule/User.svg';
 import ActivityIcon from '../../../assets/WeeklySchedule/Activity.svg';
 import LocationIcon from '../../../assets/WeeklySchedule/Location.svg';
+import Tick2Icon from '../../../assets/WeeklySchedule/tick2.svg';
+import DeleteIcon from '../../../assets/WeeklySchedule/delete-icon.svg';
+import Add2Icon from '../../../assets/WeeklySchedule/Add.svg';
 import styles from './WeeklyScheduleStyle';
 
 const WeeklySchedule = ({ navigation }) => {
@@ -41,6 +44,10 @@ const WeeklySchedule = ({ navigation }) => {
     venue: 'Venue'
   });
   
+  // Schedule states
+  const [isScheduleCreated, setIsScheduleCreated] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  
   // Time picker states
   const [selectedTimeType, setSelectedTimeType] = useState('start'); // 'start' or 'end'
   const [selectedTime, setSelectedTime] = useState({
@@ -60,27 +67,31 @@ const WeeklySchedule = ({ navigation }) => {
   
   const sections = ['A', 'B', 'C', 'D', 'E'];
   const days = [
-    { day: 'Wed', date: '22' },
-    { day: 'Thu', date: '23' },
-    { day: 'Fri', date: '24' },
-    { day: 'Sat', date: '25' },
-    { day: 'Mon', date: '26' },
-    { day: 'Tue', date: '27' },
-    { day: 'Wed', date: '28' },
-    { day: 'Thu', date: '29' },
-    { day: 'Fri', date: '30' },
-    { day: 'Sat', date: '31' },
+    { day: 'Mon'},
+    { day: 'Tue'},
+    { day: 'Wed'},
+    { day: 'Thu'},
+    { day: 'Fri'},
+    { day: 'Sat'},
   ];
 
-  // Handle day selection - fixed to prevent multiple selections
+  // Handle day selection
   const handleDaySelect = (day, date) => {
+    // Disable day selection if schedule is created
+    if (isScheduleCreated) return;
+    
     setActiveDay({ day, date });
   };
 
   // Handle adding a new activity
   const handleAddActivity = () => {
+    // Don't allow adding if schedule is created
+    if (isScheduleCreated) {
+      return;
+    }
+    
     setNewActivity({
-      id: scheduleItems.length + 1,
+      id: Date.now(), // Unique ID using timestamp
       timeStart: '9:40 AM',
       timeEnd: '10:30 PM',
       subject: 'Subject',
@@ -88,10 +99,72 @@ const WeeklySchedule = ({ navigation }) => {
       activity: 'Activity',
       venue: 'Venue'
     });
+    setIsEditing(false);
     setShowAddModal(true);
   };
 
-  // Save new activity with validation
+  // Handle editing an existing activity
+  const handleEditActivity = (item) => {
+    // Don't allow editing if schedule is created
+    if (isScheduleCreated) {
+      return;
+    }
+    
+    setNewActivity({ ...item });
+    setIsEditing(true);
+    setShowAddModal(true);
+  };
+
+  // Create schedule function
+  const createSchedule = () => {
+    // Perform validation before creating schedule
+    if (scheduleItems.length === 0) {
+      Alert.alert(
+        "No Activities",
+        "Please add at least one activity before creating the schedule.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    
+    // Check if any session has default values
+    const invalidItems = scheduleItems.filter(item => 
+      item.subject === 'Subject' ||
+      item.faculty === 'Faculty' ||
+      item.activity === 'Activity' ||
+      item.venue === 'Venue'
+    );
+
+    if (invalidItems.length > 0) {
+      // Show alert for missing fields
+      Alert.alert(
+        "Missing Information",
+        "Please complete all activity details before creating the schedule.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    
+    // Mark schedule as created
+    setIsScheduleCreated(true);
+  };
+
+  // Function to return to edit mode
+  const returnToEditMode = () => {
+    setIsScheduleCreated(false);
+  };
+
+  // Delete an activity - only allowed when schedule not created
+  const deleteActivity = (id) => {
+    if (isScheduleCreated) {
+      return;
+    }
+    
+    const updatedItems = scheduleItems.filter(item => item.id !== id);
+    setScheduleItems(updatedItems);
+  };
+
+  // Save new or updated activity with validation
   const saveNewActivity = () => {
     // Check if all fields are filled
     if (
@@ -108,8 +181,18 @@ const WeeklySchedule = ({ navigation }) => {
       );
       return;
     }
+
+    if (isEditing) {
+      // Update existing activity
+      const updatedItems = scheduleItems.map(item => 
+        item.id === newActivity.id ? newActivity : item
+      );
+      setScheduleItems(updatedItems);
+    } else {
+      // Add new activity
+      setScheduleItems([...scheduleItems, newActivity]);
+    }
     
-    setScheduleItems([...scheduleItems, newActivity]);
     setShowAddModal(false);
   };
 
@@ -165,13 +248,12 @@ const WeeklySchedule = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      
-        {/* Header */}
-        <View style={styles.header}>
-          <BackIcon width={20} height={20} onPress={() => navigation.goBack()} />
-          <Text style={styles.headerTitle}>Weekly Schedule</Text>
-        </View>
-        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+      {/* Header */}
+      <View style={styles.header}>
+        <BackIcon width={20} height={20} onPress={() => navigation.goBack()} />
+        <Text style={styles.headerTitle}>Weekly Schedule</Text>
+      </View>
+      <ScrollView contentContainerStyle={styles.scrollViewContent}>
         {/* Section Tabs */}
         <ScrollView 
           horizontal
@@ -183,6 +265,7 @@ const WeeklySchedule = ({ navigation }) => {
               key={section}
               style={[styles.sectionTab, activeSection === section && styles.activeSectionTab]}
               onPress={() => setActiveSection(section)}
+              disabled={isScheduleCreated} // Disable when schedule is created
             >
               <Text style={[styles.sectionTabText, activeSection === section && styles.activeSectionTabText]}>
                 Section {section}
@@ -197,72 +280,141 @@ const WeeklySchedule = ({ navigation }) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.daysContainer}
         >
-         {days.map(({ day, date }) => (
-  <TouchableOpacity
-    key={`${day}-${date}`}
-    style={[
-      styles.dayItem, 
-      (activeDay.day === day && activeDay.date === date) && styles.activeDayItem
-    ]}
-    onPress={() => handleDaySelect(day, date)}
-  >
-    <Text style={styles.dateText}>{date}</Text>
-    <Text style={styles.dayText}>{day}</Text>
-  </TouchableOpacity>
-))}
+          {days.map(({ day }) => (
+            <TouchableOpacity
+              key={`${day}`}
+              style={[
+                styles.dayItem, 
+                (activeDay.day === day) && styles.activeDayItem
+              ]}
+              onPress={() => handleDaySelect(day)}
+              disabled={isScheduleCreated} // Disable when schedule is created
+            >
+              <Text style={styles.dayText}>{day}</Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
 
         {/* Schedule Timeline */}
         <View style={styles.scheduleContainer}>
           {scheduleItems.map((item, index) => (
-            <View key={`item-${item.id}`} style={styles.scheduleItem}>
+            <TouchableOpacity
+              key={`item-${item.id}`}
+              style={styles.scheduleItem}
+              onPress={() => handleEditActivity(item)}
+              disabled={isScheduleCreated} // Disable editing when schedule is created
+            >
               {/* Time */}
               <View style={styles.timeContainer}>
                 <Text style={styles.timeText}>{item.timeStart} - {item.timeEnd}</Text>
                 <View style={styles.timeIndicator}>
-                  <View style={styles.timeCircle} />
+                  <View style={[
+                    styles.timeCircle,
+                    isScheduleCreated && styles.editModeTimeCircle
+                  ]} />
                   {index < scheduleItems.length - 1 && <View style={styles.timeLine} />}
                 </View>
               </View>
 
               {/* Schedule Details */}
-              <View style={styles.detailsContainer}>
+              <View style={[
+                styles.detailsContainer,
+                isScheduleCreated && styles.createdModeDetailsContainer
+              ]}>
                 {/* Subject */}
                 <View style={styles.detailRow}>
-                  <BookIcon width={16} height={16} style={styles.detailIcon} />
-                  <Text style={styles.detailText}>{item.subject}</Text>
+                  <BookIcon width={16} height={16} style={[
+                    styles.detailIcon, 
+                    isScheduleCreated && styles.disabledIcon
+                  ]} />
+                  <Text style={[
+                    styles.detailText,
+                    isScheduleCreated && styles.disabledText
+                  ]}>{item.subject}</Text>
                 </View>
 
                 {/* Faculty */}
                 <View style={styles.detailRow}>
-                  <UserIcon width={16} height={16} style={styles.detailIcon} />
-                  <Text style={styles.detailText}>{item.faculty}</Text>
+                  <UserIcon width={16} height={16} style={[
+                    styles.detailIcon,
+                    isScheduleCreated && styles.disabledIcon
+                  ]} />
+                  <Text style={[
+                    styles.detailText,
+                    isScheduleCreated && styles.disabledText
+                  ]}>{item.faculty}</Text>
                 </View>
 
                 {/* Activity */}
                 <View style={styles.detailRow}>
-                  <ActivityIcon width={16} height={16} style={styles.detailIcon} />
-                  <Text style={styles.detailText}>{item.activity}</Text>
+                  <ActivityIcon width={16} height={16} style={[
+                    styles.detailIcon,
+                    isScheduleCreated && styles.disabledIcon
+                  ]} />
+                  <Text style={[
+                    styles.detailText,
+                    isScheduleCreated && styles.disabledText
+                  ]}>{item.activity}</Text>
                 </View>
 
                 {/* Venue */}
                 <View style={styles.detailRow}>
-                  <LocationIcon width={16} height={16} style={styles.detailIcon} />
-                  <Text style={styles.detailText}>{item.venue}</Text>
+                  <LocationIcon width={16} height={16} style={[
+                    styles.detailIcon,
+                    isScheduleCreated && styles.disabledIcon
+                  ]} />
+                  <Text style={[
+                    styles.detailText,
+                    isScheduleCreated && styles.disabledText
+                  ]}>{item.venue}</Text>
                 </View>
+                
+                {/* Delete button - only visible when schedule not created */}
+                {!isScheduleCreated && (
+                  <TouchableOpacity 
+                    style={styles.deleteButton}
+                    onPress={() => deleteActivity(item.id)}
+                  >
+                    <DeleteIcon width={18} height={18} />
+                  </TouchableOpacity>
+                )}
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
+          
+          {/* Add activity button - only show when not in edit mode and schedule not created */}
+          {!isScheduleCreated && (
+            <TouchableOpacity style={styles.addButton} onPress={handleAddActivity}>
+              <Add2Icon width={18} height={18} />
+              <Text style={styles.addButtonText}>  Add activity</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
-      {/* Add Activity Button */}
-      <TouchableOpacity style={styles.addButton} onPress={handleAddActivity}>
-        <Text style={styles.addButtonText}>Add activity</Text>
-        <EditIcon width={16} height={16} style={styles.addButtonIcon} />
-      </TouchableOpacity>
+      {/* Create/Edit Schedule Button */}
+      <View style={styles.createButtonContainer}>
+        {isScheduleCreated ? (
+          // Show Edit button when schedule is created
+          <TouchableOpacity 
+            style={styles.editButton} 
+            onPress={returnToEditMode}
+          >
+            <EditIcon width={20} height={20} />
+          </TouchableOpacity>
+        ) : (
+          // Show Create button when schedule not created
+          <TouchableOpacity 
+            style={styles.createButton} 
+            onPress={createSchedule}
+          >
+            <Text style={styles.createButtonText}>Create Schedule</Text>
+            <Tick2Icon width={20} height={20} />
+          </TouchableOpacity>
+        )}
+      </View>
 
-    
+      {/* Add/Edit Activity Modal */}
       <Modal
         transparent={true}
         visible={showAddModal}
@@ -271,101 +423,104 @@ const WeeklySchedule = ({ navigation }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Add New Activity</Text>
+            <Text style={styles.modalTitle}>
+              {isEditing ? 'Edit Activity' : 'Add New Activity'}
+            </Text>
             <ScrollView>
-            {/* Time Selection */}
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Time</Text>
+              {/* Time Selection */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Time</Text>
+                
+                <View style={styles.timeInputRow}>
+                  <Text style={styles.timeLabel}>From:</Text>
+                  <TouchableOpacity 
+                    style={styles.timeInput}
+                    onPress={() => openTimeModal('start')}
+                  >
+                    <Text style={styles.timeInputText}>{newActivity.timeStart}</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.timeInputRow}>
+                  <Text style={styles.timeLabel}>To:</Text>
+                  <TouchableOpacity 
+                    style={styles.timeInput}
+                    onPress={() => openTimeModal('end')}
+                  >
+                    <Text style={styles.timeInputText}>{newActivity.timeEnd}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
               
-              <View style={styles.timeInputRow}>
-                <Text style={styles.timeLabel}>From:</Text>
+              {/* Subject Selection */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Subject</Text>
                 <TouchableOpacity 
-                  style={styles.timeInput}
-                  onPress={() => openTimeModal('start')}
+                  style={styles.selectionInput}
+                  onPress={() => setShowSubjectModal(true)}
                 >
-                  <Text style={styles.timeInputText}>{newActivity.timeStart}</Text>
+                  <BookIcon width={16} height={16} style={styles.selectionIcon} />
+                  <Text style={styles.selectionText}>{newActivity.subject}</Text>
                 </TouchableOpacity>
               </View>
               
-              <View style={styles.timeInputRow}>
-                <Text style={styles.timeLabel}>To:</Text>
+              {/* Faculty Selection */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Faculty</Text>
                 <TouchableOpacity 
-                  style={styles.timeInput}
-                  onPress={() => openTimeModal('end')}
+                  style={styles.selectionInput}
+                  onPress={() => setShowFacultyModal(true)}
                 >
-                  <Text style={styles.timeInputText}>{newActivity.timeEnd}</Text>
+                  <UserIcon width={16} height={16} style={styles.selectionIcon} />
+                  <Text style={styles.selectionText}>{newActivity.faculty}</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-            
-            {/* Subject Selection */}
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Subject</Text>
-              <TouchableOpacity 
-                style={styles.selectionInput}
-                onPress={() => setShowSubjectModal(true)}
-              >
-                <BookIcon width={16} height={16} style={styles.selectionIcon} />
-                <Text style={styles.selectionText}>{newActivity.subject}</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Faculty Selection */}
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Faculty</Text>
-              <TouchableOpacity 
-                style={styles.selectionInput}
-                onPress={() => setShowFacultyModal(true)}
-              >
-                <UserIcon width={16} height={16} style={styles.selectionIcon} />
-                <Text style={styles.selectionText}>{newActivity.faculty}</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Activity Selection */}
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Activity</Text>
-              <TouchableOpacity 
-                style={styles.selectionInput}
-                onPress={() => setShowActivityModal(true)}
-              >
-                <ActivityIcon width={16} height={16} style={styles.selectionIcon} />
-                <Text style={styles.selectionText}>{newActivity.activity}</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Venue Selection */}
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Venue</Text>
-              <TouchableOpacity 
-                style={styles.selectionInput}
-                onPress={() => setShowVenueModal(true)}
-              >
-                <LocationIcon width={16} height={16} style={styles.selectionIcon} />
-                <Text style={styles.selectionText}>{newActivity.venue}</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Action Buttons */}
-            <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowAddModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={styles.saveButton}
-                onPress={saveNewActivity}
-              >
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
+              {/* Activity Selection */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Activity</Text>
+                <TouchableOpacity 
+                  style={styles.selectionInput}
+                  onPress={() => setShowActivityModal(true)}
+                >
+                  <ActivityIcon width={16} height={16} style={styles.selectionIcon} />
+                  <Text style={styles.selectionText}>{newActivity.activity}</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {/* Venue Selection */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Venue</Text>
+                <TouchableOpacity 
+                  style={styles.selectionInput}
+                  onPress={() => setShowVenueModal(true)}
+                >
+                  <LocationIcon width={16} height={16} style={styles.selectionIcon} />
+                  <Text style={styles.selectionText}>{newActivity.venue}</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {/* Action Buttons */}
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => setShowAddModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.saveButton}
+                  onPress={saveNewActivity}
+                >
+                  <Text style={styles.saveButtonText}>
+                    {isEditing ? 'Update' : 'Save'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
           </View>
         </View>
-     
       </Modal>   
 
       {/* Time Selection Modal */}

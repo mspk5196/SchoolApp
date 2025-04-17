@@ -146,7 +146,7 @@ const AddEventForm = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <BackIcon width={24} height={24} />
         </TouchableOpacity>
-        <Text style={styles.headerText}>Event</Text>
+        <Text style={styles.headerTxt}>Events</Text>
       </View>
 
       <ScrollView style={styles.scrollView}>

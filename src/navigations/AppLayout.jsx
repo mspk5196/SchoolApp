@@ -28,6 +28,8 @@ import RequestUpload from '../screens/Request/RequestUpload';
 
 import Event from '../screens/Event/Event';
 import AddEventForm from '../screens/Event/AddEventForm';
+
+import Logs from '../screens/Logs/Logs';
 // import Calendar from '../screens/Calendar/Calendar';
 // import Mentor from '../screens/Mentor/Mentor';
 // import Student from '../screens/Student/Student';
@@ -173,6 +175,13 @@ const AppLayout = () => {
             <Stack.Screen
               name="AddEventForm"
               component={AddEventForm}
+              options={{ headerShown: false }}
+            />
+
+            {/*Logs*/}
+            <Stack.Screen
+              name="Logs"
+              component={Logs}
               options={{ headerShown: false }}
             />
            

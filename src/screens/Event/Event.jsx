@@ -24,7 +24,7 @@ const EventDetail = ({ event, visible, onClose }) => {
           <TouchableOpacity onPress={onClose}>
             <BackIcon width={24} height={24} />
           </TouchableOpacity>
-          <Text style={styles.headerText}>Events</Text>
+          <Text style={styles.headerTxt}>Events</Text>
         </View>
         
         <ScrollView style={styles.detailScrollView}>
@@ -420,10 +420,10 @@ const Event = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <BackIcon width={24} height={24} />
-        </TouchableOpacity>
-        <Text style={styles.headerText}>Events</Text>
+      <BackIcon width={24} height={24}
+          onPress={() => navigation.goBack()}
+        />
+        <Text style={styles.headerTxt}>Events</Text>
       </View>
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
