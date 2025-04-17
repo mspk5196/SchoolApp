@@ -52,7 +52,7 @@ const Menupage = ({ navigation }) => {
         navigation.navigate('RequestHome');
         break;
       case 'Enrollment':
-        navigation.navigate('Enrollment');
+        navigation.navigate('EnrollmentHome');
         break;  
       default:
         console.log('No navigation defined for', menuItem);

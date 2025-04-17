@@ -13,9 +13,11 @@ import {
   Alert
 } from 'react-native';
 import BackIcon from '../../assets/Event/Back.svg';
+import CalendarIcon from '../../assets/Event/Calender.svg';
 import styles from './AddEventFormStyle';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DocumentPicker from 'react-native-document-picker';
+import { Calendar } from 'react-native-calendars';
 
 const sampleImages = [
   { id: 1, source: require('../../assets/Event/BannerImage1.png') },
@@ -193,7 +195,7 @@ const AddEventForm = ({ navigation }) => {
                 editable={false}
               />
               <TouchableOpacity style={styles.calendarButton} onPress={showDatepicker}>
-                <Text style={styles.calendarIcon}>📅</Text>
+                <CalendarIcon width={24} height={24} />
               </TouchableOpacity>
             </View>
             {showDatePicker && (

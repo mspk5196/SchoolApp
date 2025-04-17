@@ -93,16 +93,16 @@ const styles = StyleSheet.create({
   teacherId: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#000', // text-gray-500
+    color: '#000', 
   },
   subjectText: {
     fontSize: 14,
-    color: '#3B82F6', // text-blue-500
+    color: '#3B82F6', 
   },
   subjectLevel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#000', // text-gray-700
+    color: '#000',
   },
   warningText: {
     fontSize: 14,

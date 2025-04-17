@@ -30,6 +30,10 @@ import Event from '../screens/Event/Event';
 import AddEventForm from '../screens/Event/AddEventForm';
 
 import Logs from '../screens/Logs/Logs';
+
+import EnrollmentHome from '../screens/Enrollment/EnrollmentHome/EnrollmentHome';
+import StudentEnrollment from '../screens/Enrollment/StudentEnrollment/StudentEnrollment';
+import MentorEnrollment from '../screens/Enrollment/MentorEnrollment/MentorEnrollment';
 // import Calendar from '../screens/Calendar/Calendar';
 // import Mentor from '../screens/Mentor/Mentor';
 // import Student from '../screens/Student/Student';
@@ -65,26 +69,6 @@ const AppLayout = () => {
               component={Profile}
               options={{ headerShown: false }}
             /> */}
-            
-            {/* Mentor and Student */}
-            {/* <Stack.Screen
-              name="Mentor"
-              component={Mentor}
-              options={{ headerShown: false }}
-            /> */}
-            {/* <Stack.Screen
-              name="Student"
-              component={Student}
-              options={{ headerShown: false }}
-            /> */}
-            
-            {/* Logs */}
-            {/* <Stack.Screen
-              name="Logs"
-              component={Logs}
-              options={{ headerShown: false }}
-            /> */}
-
             {/* Schedule screens */}
             <Stack.Screen
               name="ScheduleHome"
@@ -184,7 +168,23 @@ const AppLayout = () => {
               component={Logs}
               options={{ headerShown: false }}
             />
-           
+
+            {/* Enrollment */}
+            <Stack.Screen
+              name="EnrollmentHome"
+              component={EnrollmentHome}
+              options={{ headerShown: false }}
+            /> 
+            <Stack.Screen
+              name="StudentEnrollment"
+              component={StudentEnrollment}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="MentorEnrollment"
+              component={MentorEnrollment}
+              options={{ headerShown: false }}
+            />
           </Stack.Navigator>
         </NavigationContainer>
       </ExamProvider>
