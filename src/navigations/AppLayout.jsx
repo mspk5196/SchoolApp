@@ -34,6 +34,9 @@ import Logs from '../screens/Logs/Logs';
 import EnrollmentHome from '../screens/Enrollment/EnrollmentHome/EnrollmentHome';
 import StudentEnrollment from '../screens/Enrollment/StudentEnrollment/StudentEnrollment';
 import MentorEnrollment from '../screens/Enrollment/MentorEnrollment/MentorEnrollment';
+import SubjectAllotment from '../screens/Enrollment/SubjectActivityEnrollment/SubjectAllotment';
+import InfrastructureEnrollment from '../screens/Enrollment/InfrastructureEnrollment/InfrastructureEnrollment';
+import AddInfraEnrollment from '../screens/Enrollment/InfrastructureEnrollment/AddInfraEnrollment';
 // import Calendar from '../screens/Calendar/Calendar';
 // import Mentor from '../screens/Mentor/Mentor';
 // import Student from '../screens/Student/Student';
@@ -185,6 +188,22 @@ const AppLayout = () => {
               component={MentorEnrollment}
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="SubjectAllotment"
+              component={SubjectAllotment}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="InfrastructureEnrollment"
+              component={InfrastructureEnrollment}
+              options={{ headerShown: false }}
+            />  
+            <Stack.Screen
+              name="AddInfraEnrollment"
+              component={AddInfraEnrollment}
+              options={{ headerShown: false }}
+            />
+
           </Stack.Navigator>
         </NavigationContainer>
       </ExamProvider>

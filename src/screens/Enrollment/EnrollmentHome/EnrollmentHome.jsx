@@ -50,10 +50,10 @@ const EnrollmentHome = ({ navigation }) => {
       } else if (item.title === 'Mentor Enrollment') {
         navigation.navigate('MentorEnrollment'); }
         else if (item.title === 'Subject & Activity Enrollment') {
-          navigation.navigate('AcademicSchedule');
+          navigation.navigate('SubjectAllotment');
         } 
         else if (item.title === 'InfraStructure Enrollment') {
-          navigation.navigate('WeeklySchedule');
+          navigation.navigate('InfrastructureEnrollment');
         }
       
     }}

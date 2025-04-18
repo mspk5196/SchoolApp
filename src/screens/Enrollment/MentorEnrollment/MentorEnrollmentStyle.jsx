@@ -8,20 +8,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
+    borderBottomColor: '#E3E3E3',
+    backgroundColor: '#FFFFFF',
+  },
+  headerTxt: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginLeft: 10,
   },
   BackIcon: {
     width: 20,
     height: 20,
-  },
-  headerTxt: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 16,
-    color: '#333',
   },
   formContainer: {
     flex: 1,
