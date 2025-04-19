@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView, Modal } from "react-native";
 import styles from "./MenuStyle";
 import Iconlogo from "../../assets/Menu/IconProfile.svg";
 import LogoutIcon from '../../assets/Menu/LogoutIcon.svg';
@@ -19,6 +19,7 @@ import SwitchOnIcon from '../../assets/Menu/SwitchOn.svg';
 
 const Menupage = ({ navigation }) => {
   const [isCoordinator, setIsCoordinator] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   
   const handleMenuPress = (menuItem) => {
     console.log(`${menuItem} pressed`);
@@ -28,7 +29,7 @@ const Menupage = ({ navigation }) => {
         navigation.navigate('Profile');
         break;
       case 'Logout':
-        navigation.navigate('Login');
+        setShowLogoutModal(true);
         break;
       case 'Mentor':
         navigation.navigate('Mentor');
@@ -60,6 +61,15 @@ const Menupage = ({ navigation }) => {
       default:
         console.log('No navigation defined for', menuItem);
     }
+  };
+
+  const handleLogout = () => {
+    setShowLogoutModal(false);
+    navigation.navigate('Login');
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false);
   };
 
   const toggleSwitch = () => {
@@ -206,6 +216,35 @@ const Menupage = ({ navigation }) => {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Are you sure to log out from this device?</Text>
+            
+            <View style={styles.modalButtonsContainer}>
+              <Pressable 
+                style={styles.cancelButton}
+                onPress={cancelLogout}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              
+              <Pressable 
+                style={styles.confirmButton}
+                onPress={handleLogout}
+              >
+                <Text style={styles.confirmButtonText}>Confirm</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
