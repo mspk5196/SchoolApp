@@ -41,7 +41,8 @@ import AddInfraEnrollment from '../screens/Enrollment/InfrastructureEnrollment/A
 // import Mentor from '../screens/Mentor/Mentor';
 // import Student from '../screens/Student/Student';
 // import Logs from '../screens/Logs/Logs';
-// import Profile from '../screens/Profile/Profile';
+import Profile from '../screens/Profile/Profile';
+import LeaveApply from '../screens/Profile/LeaveApply';
 // import Login from '../screens/Auth/Login';
 
 const Stack = createStackNavigator();
@@ -67,11 +68,18 @@ const AppLayout = () => {
             />
             
             {/* Profile */}
-            {/* <Stack.Screen
+             <Stack.Screen
               name="Profile"
               component={Profile}
               options={{ headerShown: false }}
-            /> */}
+            /> 
+            
+            <Stack.Screen
+              name="LeaveApply"
+              component={LeaveApply}
+              options={{ headerShown: false }}
+             />
+            
             {/* Schedule screens */}
             <Stack.Screen
               name="ScheduleHome"
@@ -165,7 +173,7 @@ const AppLayout = () => {
               options={{ headerShown: false }}
             />
 
-            {/*Logs*/}
+            {/* Logs */}
             <Stack.Screen
               name="Logs"
               component={Logs}
@@ -197,13 +205,12 @@ const AppLayout = () => {
               name="InfrastructureEnrollment"
               component={InfrastructureEnrollment}
               options={{ headerShown: false }}
-            />  
+            />
             <Stack.Screen
               name="AddInfraEnrollment"
               component={AddInfraEnrollment}
               options={{ headerShown: false }}
             />
-
           </Stack.Navigator>
         </NavigationContainer>
       </ExamProvider>

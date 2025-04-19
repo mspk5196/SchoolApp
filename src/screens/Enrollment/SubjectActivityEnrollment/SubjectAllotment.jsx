@@ -311,16 +311,22 @@ const SubjectAllotment = ({ navigation }) => {
           >
             <Text style={styles.modalTitle}>Subject</Text>
             
-            {/* Map through all subject inputs */}
-            {subjectInputs.map((input, index) => (
-              <TextInput
-                key={`subject-${index}`}
-                style={[styles.input, { marginBottom: 10 }]}
-                placeholder={`Enter subject ${index + 1}`}
-                value={input}
-                onChangeText={(text) => updateSubjectInput(text, index)}
-              />
-            ))}
+            {/* ScrollView for subject inputs */}
+            <ScrollView 
+              style={styles.inputScrollView}
+              contentContainerStyle={styles.inputScrollViewContent}
+            >
+              {/* Map through all subject inputs */}
+              {subjectInputs.map((input, index) => (
+                <TextInput
+                  key={`subject-${index}`}
+                  style={[styles.input, { marginBottom: 10 }]}
+                  placeholder={`Enter subject ${index + 1}`}
+                  value={input}
+                  onChangeText={(text) => updateSubjectInput(text, index)}
+                />
+              ))}
+            </ScrollView>
             
             <TouchableOpacity style={styles.addMoreButton} onPress={addSubjectInput}>
               <Text style={styles.addMoreButtonText}>+ Add more Subject</Text>
@@ -354,16 +360,22 @@ const SubjectAllotment = ({ navigation }) => {
           >
             <Text style={styles.modalTitle}>Activity</Text>
             
-            {/* Map through all activity inputs */}
-            {activityInputs.map((input, index) => (
-              <TextInput
-                key={`activity-${index}`}
-                style={[styles.input, { marginBottom: 10 }]}
-                placeholder={`Enter activity ${index + 1}`}
-                value={input}
-                onChangeText={(text) => updateActivityInput(text, index)}
-              />
-            ))}
+            {/* ScrollView for activity inputs */}
+            <ScrollView 
+              style={styles.inputScrollView}
+              contentContainerStyle={styles.inputScrollViewContent}
+            >
+              {/* Map through all activity inputs */}
+              {activityInputs.map((input, index) => (
+                <TextInput
+                  key={`activity-${index}`}
+                  style={[styles.input, { marginBottom: 10 }]}
+                  placeholder={`Enter activity ${index + 1}`}
+                  value={input}
+                  onChangeText={(text) => updateActivityInput(text, index)}
+                />
+              ))}
+            </ScrollView>
             
             <TouchableOpacity style={styles.addMoreButton} onPress={addActivityInput}>
               <Text style={styles.addMoreButtonText}>+ Add more Activity</Text>

@@ -83,12 +83,21 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 20,
     alignItems: 'center',
+    maxHeight: '80%', // Limit the height to ensure it fits on screen
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 15,
     alignSelf: 'flex-start',
+  },
+  // Add these new styles for the ScrollView
+  inputScrollView: {
+    width: '100%',
+    maxHeight: 250, // Set a max height for the scroll area
+  },
+  inputScrollViewContent: {
+    flexGrow: 1,
   },
   input: {
     width: '100%',

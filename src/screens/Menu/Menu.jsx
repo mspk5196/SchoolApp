@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, Switch, Pressable,ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView } from "react-native";
 import styles from "./MenuStyle";
 import Iconlogo from "../../assets/Menu/IconProfile.svg";
 import LogoutIcon from '../../assets/Menu/LogoutIcon.svg';
@@ -14,10 +14,13 @@ import Events from '../../assets/Menu/Events.svg';
 import Calender from '../../assets/Menu/Calender.svg';
 import Request from '../../assets/Menu/Request.svg';
 import Enrollment from '../../assets/Menu/Enrollment.svg';
+import SwitchOffIcon from '../../assets/Menu/SwitchOff.svg';
+import SwitchOnIcon from '../../assets/Menu/SwitchOn.svg';
 
 const Menupage = ({ navigation }) => {
   const [isCoordinator, setIsCoordinator] = useState(false);
-    const handleMenuPress = (menuItem) => {
+  
+  const handleMenuPress = (menuItem) => {
     console.log(`${menuItem} pressed`);
     
     switch(menuItem) {
@@ -59,6 +62,10 @@ const Menupage = ({ navigation }) => {
     }
   };
 
+  const toggleSwitch = () => {
+    setIsCoordinator(prevState => !prevState);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -80,14 +87,13 @@ const Menupage = ({ navigation }) => {
 
       <View style={styles.switchContainer}>
         <Text style={styles.switchLabel}>Coordinator</Text>
-        <Switch
-          trackColor={{ false: "#D9D9D9", true: "#2563EB" }}
-          thumbColor={"#FFFFFF"}
-          ios_backgroundColor="#D9D9D9"
-          style={{ marginRight: 15 }}
-          value={isCoordinator}
-          onValueChange={(value) => setIsCoordinator(value)}
-        />
+        <Pressable onPress={toggleSwitch} style={{ marginRight: 15,marginTop: 7 }}>
+          {isCoordinator ? (
+            <SwitchOnIcon width={55} height={35} />
+          ) : (
+            <SwitchOffIcon width={55} height={35} />
+          )}
+        </Pressable>
       </View>
 
       <ScrollView style={styles.gridContainer}>
@@ -185,9 +191,9 @@ const Menupage = ({ navigation }) => {
             <Request width={50} height={50} />
             <Text style={styles.menuText}>Request</Text>
           </Pressable>
-          </View>
+        </View>
 
-          <View style={styles.gridRow}>
+        <View style={styles.gridRow}>
           <Pressable 
             style={({ pressed }) => [
               styles.menuItem,
@@ -198,7 +204,7 @@ const Menupage = ({ navigation }) => {
             <Enrollment width={50} height={50} />
             <Text style={styles.menuText}>Enrollment</Text>
           </Pressable>
-          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
