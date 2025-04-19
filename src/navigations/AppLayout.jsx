@@ -8,7 +8,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import Menu from '../screens/Menu/Menu';
 // Uncomment these as you implement each screen
 import ExamSchedule from '../screens/Schedule/ExamSchedule/ExamSchedule';
-import ScheduleHome from '../screens/Schedule/ScheduleHomePage/ScheduleHome';
+import ScheduleHome from '../screens/Schedule/ScheduleHome/ScheduleHome';
 import InvigilationDuties from '../screens/Schedule/InvigilationDuties/InvigilationDuties';
 import AcademicSchedule from '../screens/Schedule/AcademicSchedule/AcademicSchedule';
 import WeeklySchedule from '../screens/Schedule/WeeklySchedule/WeeklySchedule';
@@ -39,7 +39,8 @@ import InfrastructureEnrollment from '../screens/Enrollment/InfrastructureEnroll
 import AddInfraEnrollment from '../screens/Enrollment/InfrastructureEnrollment/AddInfraEnrollment';
 // import Calendar from '../screens/Calendar/Calendar';
 // import Mentor from '../screens/Mentor/Mentor';
-// import Student from '../screens/Student/Student';
+import Student from '../screens/Student/StudentHome/StudentHome';
+import BackLogs from '../screens/Student/BackLogs/BackLogs';
 // import Logs from '../screens/Logs/Logs';
 import Profile from '../screens/Profile/Profile';
 import LeaveApply from '../screens/Profile/LeaveApply';
@@ -209,6 +210,18 @@ const AppLayout = () => {
             <Stack.Screen
               name="AddInfraEnrollment"
               component={AddInfraEnrollment}
+              options={{ headerShown: false }}
+            />
+
+            {/* Student */}
+            <Stack.Screen
+              name="Student"
+              component={Student}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="BackLogs"
+              component={BackLogs}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>

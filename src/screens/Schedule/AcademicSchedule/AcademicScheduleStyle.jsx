@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
         paddingVertical: 12,   // Try a smaller value like 8
         marginRight: 10,       // Keep spacing between tabs
         borderRadius: 20,
+        backgroundColor: '#E0E0E0',
         // Add a fixed width if needed
         width: 105,            // Adjust based on your design
       },
