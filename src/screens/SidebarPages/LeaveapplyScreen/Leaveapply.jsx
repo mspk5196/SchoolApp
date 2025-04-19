@@ -193,7 +193,7 @@ const Leaveapply = ({ navigation }) => {
         
         {/* Leave Type Dropdown */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Leave type <Text style={styles.requiredStar}>*</Text></Text>
+          <Text style={styles.label}>Leave type </Text>
           <TouchableOpacity 
             style={[styles.dropdownButton, errors.leaveType && styles.inputError]}
             onPress={() => setShowLeaveTypeDropdown(!showLeaveTypeDropdown)}

@@ -1,41 +1,24 @@
-import React, { useState } from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+// Router.js
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
 
 import Welcome from '../screens/Bit-schl-welcome-page/Welcome';
 import Login from '../screens/Bit-schl-loginpage/login';
 import Survey from '../components/Survey/Survey';
 import Calendermodel from '../components/Calendermodel/Calendermodel';
-import ParentDashboard from '../screens/ParentDashboard/ParentDashboard';
 import PerformanceDetailsScreen from '../screens/ParentDashboard/PerformanceDetailsScreen';
-import MaterialScreen from '../screens/MaterialScreen/MaterialScreen';
-import ScheduleScreen from '../screens/ScheduleScreen/ScheduleScreen';
 import ProfileScreen from '../screens/SidebarPages/ProfileScreen/Profile';
 import CalendarScreen from '../screens/SidebarPages/CalendarScreen/Calendar';
 import EventsScreen from '../screens/SidebarPages/EventScreen/Event';
-import LeaveApplyScreen from '../screens/SidebarPages/LeaveapplyScreen/Leaveapply';
-import LeaveDetailsScreen from '../screens/SidebarPages/LeaveapplyScreen/Leavedetails';
 import PhonebookScreen from '../screens/SidebarPages/PhonebookScreen/Phonebook';
+import Message from '../screens/SidebarPages/PhonebookScreen/Message';
 import RequestScreen from '../screens/SidebarPages/RequestScreen/Request';
 import SettingsScreen from '../screens/SidebarPages/SettingScreen/Setting';
 
-// Components
-import SidebarOverlay from '../components/Sidebar/SidebarOverlay';
+import TabNavigator from '../components/Navbar/TabNavigator';
 
-// Icons
-import HomeIcon from '../assets/NavImg/home.svg';
-import MaterialsIcon from '../assets/NavImg/materials.svg';
-import ScheduleIcon from '../assets/NavImg/shedule.svg';
-import MoreIcon from '../assets/NavImg/more.svg';
-
-const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
-
-// Leave Stack
 const LeaveStackNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="LeaveDetails" component={LeaveDetailsScreen} />
@@ -43,94 +26,8 @@ const LeaveStackNavigator = () => (
   </Stack.Navigator>
 );
 
-// Bottom Tab Navigator
-const TabNavigator = () => {
-  const [sidebarVisible, setSidebarVisible] = useState(false);
 
-  const toggleSidebar = () => {
-    setSidebarVisible(!sidebarVisible);
-  };
-
-  return (
-    <>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarIcon: ({ focused }) => {
-            let Icon;
-            let color = focused ? 'blue' : 'gray';
-
-            switch (route.name) {
-              case 'Home':
-                Icon = HomeIcon;
-                break;
-              case 'Materials':
-                Icon = MaterialsIcon;
-                break;
-              case 'Schedule':
-                Icon = ScheduleIcon;
-                break;
-              case 'MoreTab':
-                Icon = MoreIcon;
-                break;
-              default:
-                return null;
-            }
-            return <Icon width={22} height={22} color={color} />;
-          },
-          tabBarActiveTintColor: 'blue',
-          tabBarInactiveTintColor: 'gray',
-          tabBarLabelStyle: { fontSize: 12, fontWeight: 'bold' },
-          tabBarStyle: {
-            paddingTop: 5,
-            paddingBottom: 15,
-            height: 75,
-            backgroundColor: 'white',
-          },
-        })}
-      >
-        <Tab.Screen name="Home" component={ParentDashboard} />
-        <Tab.Screen name="Schedule" component={ScheduleScreen} />
-        <Tab.Screen name="Materials" component={MaterialScreen} />
-        <Tab.Screen
-          name="MoreTab"
-          component={ParentDashboard}
-          options={{
-            tabBarLabel: 'More',
-            tabBarButton: (props) => (
-              <TouchableOpacity
-                {...props}
-                onPress={toggleSidebar}
-                style={[props.style, { flex: 1, alignItems: 'center', justifyContent: 'center' }]}
-              >
-                <MoreIcon
-                  width={22}
-                  height={22}
-                  color={props.accessibilityState?.selected ? 'blue' : 'gray'}
-                />
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 'bold',
-                    color: props.accessibilityState?.selected ? 'blue' : 'gray',
-                    marginTop: 4,
-                  }}
-                >
-                  More
-                </Text>
-              </TouchableOpacity>
-            ),
-          }}
-        />
-      </Tab.Navigator>
-
-      {/* Sidebar Overlay */}
-      <SidebarOverlay visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
-    </>
-  );
-};
-
-
+const Stack = createStackNavigator();
 
 const Router = () => {
   return (
@@ -148,6 +45,8 @@ const Router = () => {
           <Stack.Screen name="Survey" component={Survey} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="Calender" component={Calendermodel} />
+          <Stack.Screen name="Welcome" component={Welcome} />
+          <Stack.Screen name="Login" component={Login} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
