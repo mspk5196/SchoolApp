@@ -37,11 +37,26 @@ import MentorEnrollment from '../screens/Enrollment/MentorEnrollment/MentorEnrol
 import SubjectAllotment from '../screens/Enrollment/SubjectActivityEnrollment/SubjectAllotment';
 import InfrastructureEnrollment from '../screens/Enrollment/InfrastructureEnrollment/InfrastructureEnrollment';
 import AddInfraEnrollment from '../screens/Enrollment/InfrastructureEnrollment/AddInfraEnrollment';
-// import Calendar from '../screens/Calendar/Calendar';
-// import Mentor from '../screens/Mentor/Mentor';
+
+
+import Calendar from '../screens/Calender/Calendar';
+
+import Mentor from '../screens/Mentor/MentorHome/Mentor';
+import SubjectMentor from '../screens/Mentor/SubjectMentor/SubjectMentor';
+import MentorMapping from '../screens/Mentor/MentorMapping/MentorMapping';
+import MentorDetails from '../screens/Mentor/MentorMapping/MentorDetails';
+import MentorList from '../screens/Mentor/MentorList/MentorList';
+import MentorListDetails from '../screens/Mentor/MentorList/MentorListDetails';
+import DisciplineLog from '../screens/Mentor/DisciplineLog/DisciplineLog';
+import LeaveApproval from '../screens/Mentor/LeaveApproval/LeaveApproval';
+import LeaveDetails from '../screens/Mentor/LeaveApproval/LeaveDetails';
+
+
+
 import Student from '../screens/Student/StudentHome/StudentHome';
 import BackLogs from '../screens/Student/BackLogs/BackLogs';
-// import Logs from '../screens/Logs/Logs';
+
+
 import Profile from '../screens/Profile/Profile';
 import LeaveApply from '../screens/Profile/LeaveApply';
 // import Login from '../screens/Auth/Login';
@@ -222,6 +237,29 @@ const AppLayout = () => {
             <Stack.Screen
               name="BackLogs"
               component={BackLogs}
+              options={{ headerShown: false }}
+            />
+
+            {/* Mentor */}
+            <Stack.Screen
+              name="Mentor"
+              component={Mentor}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="SubjectMentor" component={SubjectMentor}  options={{headerShown:false}}/>
+        <Stack.Screen name="MentorMapping" component={MentorMapping} options={{headerShown:false}}/>
+        <Stack.Screen name="MentorDetails" component={MentorDetails} options={{headerShown:false}} />
+        <Stack.Screen name="MentorList" component={MentorList} options={{headerShown:false}} />
+        <Stack.Screen name="MentorListDetails" component={MentorListDetails} options={{headerShown:false}} />
+        <Stack.Screen name="DisciplineLog" component={DisciplineLog} options={{headerShown:false}} />
+        <Stack.Screen name="LeaveApproval" component={LeaveApproval} options={{headerShown:false}} />
+        <Stack.Screen name="LeaveDetails" component={LeaveDetails} options={{headerShown:false}} />
+
+
+            {/* Calendar */}
+            <Stack.Screen
+              name="Calendar"
+              component={Calendar}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>
