@@ -7,15 +7,21 @@ const styles = StyleSheet.create({
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 15,
       borderBottomWidth: 1,
-      borderBottomColor: '#e0e0e0',
-      backgroundColor: '#fff',
+      borderBottomColor: '#E3E3E3',
+      backgroundColor: '#FFFFFF',
     },
-    headerTitle: {
-      fontSize: 18,
+    headerTxt: {
+      fontSize: 20,
       fontWeight: 'bold',
-      marginLeft: 16,
+      color: '#000000',
+      marginLeft: 10,
+    },
+    BackIcon: {
+      width: 20,
+      height: 20,
     },
     profileSection: {
       flexDirection: 'row',
@@ -23,7 +29,9 @@ const styles = StyleSheet.create({
       padding: 16,
       backgroundColor: '#fff',
       borderBottomWidth:1,
-      borderRadius:10
+      borderBottomEndRadius:10,
+      borderBottomStartRadius:10,
+      marginBottom: 10,
     },
     MentorDayDetails:
     {
@@ -45,11 +53,15 @@ shadowRadius: 7,
     mentorInfo: {
       marginLeft: 16,
       borderLeftWidth:1,
+      borderLeftColor:'#E3E3E3',
       padding:10
+
     },
     infoLabel: {
       fontSize: 14,
       marginBottom: 4,
+      color: '#000',
+      fontWeight:'700'
     },
     statsContainer: {
       borderRadius:10,
@@ -77,7 +89,7 @@ shadowRadius: 7,
     statLabel: {
       fontSize: 12,
       color:'#000',
-      fontWeight:'400'
+      fontWeight:'600'
 
     },
     infoBox:{
@@ -99,7 +111,7 @@ shadowRadius: 7,
         marginTop:3,
       fontSize: 15,
       color: '#666',
-      fontWeight:'400',
+      fontWeight:'600',
       marginLeft:5
       
     },
@@ -107,7 +119,7 @@ shadowRadius: 7,
         marginTop:3,
       fontSize: 15,
       color: '#666',
-      fontWeight:'400',
+      fontWeight:'600',
       marginLeft:30
     },
     infoValue: {
@@ -115,7 +127,7 @@ shadowRadius: 7,
       marginTop: 4,
       marginLeft:6,
       color:'#000',
-      fontWeight:"500"
+      fontWeight:"600"
     },
     
     penicon:{
@@ -132,9 +144,9 @@ shadowRadius: 7,
       marginBottom:-10
     },
     sectionTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      marginBottom: 10,
+      fontSize: 20,
+      fontWeight: '700',
+      marginBottom: 20,
       color:'#000'
     },
     dateSelector: {
@@ -142,15 +154,18 @@ shadowRadius: 7,
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 16,
+      marginLeft: 20,
     },
     todayText: {
       fontSize: 16,
-      fontWeight: 'bold',
+      fontWeight: '600',
       color:'#000'
+
     },
     dateText: {
       fontSize: 14,
-     color:'#000'
+     color:'#000',
+      fontWeight:'600',
     },
     classItem: {
       flexDirection: 'row',
@@ -164,19 +179,25 @@ shadowRadius: 7,
         },
     subjectText: {
       fontSize: 16,
-      fontWeight: 'bold',
+      fontWeight: '600',
+      color:'#000'
     },
     gradeText: {
       fontSize: 14,
       marginTop: 4,
+      color: '#666',
+
     },
     typeText: {
       fontSize: 14,
       color: '#ff9800',
       marginTop: 4,
+      fontWeight:'600'
     },
     timeText: {
       fontSize: 14,
+      fontWeight: '600',
+      color: '#000',
     },
     eyeicon:{
         marginTop:7

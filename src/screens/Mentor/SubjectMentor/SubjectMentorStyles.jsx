@@ -2,47 +2,68 @@ import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
  
-  SubNavbar: {
+  headerContainer: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth:1,
-    borderBlockColor:'#00000040'
-  },
-  Leftarrow: {
-    marginRight: 10,
-  },
-  heading: {
-    fontSize: 22,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    marginLeft: -10,
+    marginRight: -10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E3E3E3',
+    backgroundColor: 'white',
+},
+headerTxt: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-  },
+    color: '#000000',
+    marginLeft: 10,
+},
+BackIcon: {
+    width: 20,
+    height: 20,
+},
   selectedCard: {
     backgroundColor: '#EBEEFF', 
   },
   
-  tabContainer: {
+  scrollWrapper: {
+    marginVertical: 10,
+  },
+  scrollContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 0,
+  },
+classnavsubject:{
     flexDirection: 'row',
-    marginVertical: 8,
-  },
-  tab: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginHorizontal: 5,
-    borderRadius: 20,
-  },
-  activeTab: {
-    backgroundColor: '#1e88e5',
-  },
-  tabText: {
-    fontSize: 16,
-    color: '#000',
-    fontWeight: 'bold',
-  },
-  activeTabText: {
-    color: '#fff',
-  },
+    marginBottom: 20,
+    flexGrow: 0,
+    flexShrink: 0,
+},
+subjectselection: {
+    backgroundColor: '#ffffff',
+    padding: 10,
+    marginLeft: 10,
+    marginTop: 20,
+    width: 90,
+    borderRadius: 30,
+    alignItems: 'center',
+},
+gradeselectiontext: {
+    color: 'black',
+    fontWeight:'500',
+},
+activeButton: {
+    backgroundColor: '#0C36FF',
+},
+activeText: {
+    color: 'white',
+},
   addButton: {
     marginVertical: 10,
     alignItems: 'center',
@@ -50,8 +71,8 @@ const styles = StyleSheet.create({
   addButtonText: 
   {
     fontSize: 15,
-    color: '#1e88e5',
-    fontWeight:'700'
+    color: '#0C36FF',
+    fontWeight:'600'
   },
   mentorList: {
     paddingHorizontal: 10,
@@ -85,8 +106,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   name: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
   },
   specification: {
     fontSize: 14,
@@ -135,7 +157,7 @@ const styles = StyleSheet.create({
   },
   facultyName: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 4,
     color:'#000'
   },
@@ -150,7 +172,7 @@ const styles = StyleSheet.create({
   selectButton: {
     marginTop: 15,
     alignItems: 'center',
-    backgroundColor: '#1e88e5',
+    backgroundColor: '#0C36FF',
     paddingVertical: 12,
     borderRadius: 20,
   },

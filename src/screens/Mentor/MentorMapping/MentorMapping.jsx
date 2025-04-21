@@ -10,7 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import Modal from 'react-native-modal';
-import Leftarrow from '../../../assets/MentorMapping/leftarrow.svg';
+import BackIcon from '../../../assets/MentorMapping/leftarrow.svg';
 import staff from '../../../assets/MentorMapping/staff.png';
 import styles from './MentorMappingStyles';
 import Tickicon from '../../../assets/MentorMapping/tickicon.svg';
@@ -64,14 +64,17 @@ const SubjectMentor = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
         <View style={styles.SubNavbar}>
-          <TouchableOpacity>
-            <Leftarrow width={20} height={20} style={styles.Leftarrow} onPress={() => navigation.goBack()} />
-          </TouchableOpacity>
-          <Text style={styles.heading}>Mentor Mapping</Text>
+        <View style={styles.header}>
+          <BackIcon 
+            width={styles.BackIcon.width} 
+            height={styles.BackIcon.height} 
+            onPress={() => navigation.goBack()}
+          />
+          <Text style={styles.headerTxt}>Mentor Mapping</Text>
         </View>
-
+        </View>
+        <ScrollView>
         
 
         <FlatList

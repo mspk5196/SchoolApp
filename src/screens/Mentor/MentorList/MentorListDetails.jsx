@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Modal, FlatList,ScrollView} from 'react-native';
-import Leftarrow from "../../../assets/MentorList/leftarrow";
+import BackIcon from "../../../assets/MentorList/leftarrow";
 import Numdays from '../../../assets/MentorList/numdays.svg';
 import Clock from '../../../assets/MentorList/clock.svg';
 import Leaveday from '../../../assets/MentorList/leaveday.svg';
@@ -70,11 +70,13 @@ const MentorDetails = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Leftarrow width={20} height={20} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mentor Details</Text>
+       <View style={styles.header}>
+        <BackIcon 
+          width={styles.BackIcon.width} 
+          height={styles.BackIcon.height} 
+          onPress={() => navigation.goBack()}
+        />
+        <Text style={styles.headerTxt}>Mentor List</Text>
       </View>
 
       <View style={styles.MentorDayDetails}>

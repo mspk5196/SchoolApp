@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView, Modal } from 'react-native';
 import styles from './MentorDetailsStyles';
-import Leftarrow from '../../../assets/MentorMapping/leftarrow.svg';
+import BackIcon from '../../../assets/MentorMapping/leftarrow.svg';
 import Person from '../../../assets/MentorMapping/person.svg';
 import Staff from '../../../assets/MentorMapping/staff.png';
 import Mentorimg from '../../../assets/MentorMapping/mentor.svg';
@@ -63,13 +63,17 @@ const MentorDetails = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Navbar */}
-      <View style={styles.SubNavbar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Leftarrow width={20} height={20} style={styles.Leftarrow} />
-        </TouchableOpacity>
-        <Text style={styles.heading}>Mentor Mapping</Text>
-      </View>
+<View style={styles.SubNavbar}>
+  <View style={styles.header}>
+    <BackIcon 
+      width={styles.BackIcon.width} 
+      height={styles.BackIcon.height} 
+      onPress={() => navigation.goBack()}
+      style={styles.BackIcon}
+    />
+    <Text style={styles.headerTxt}>Mentor Mapping</Text>
+  </View>
+</View>
 
       {/* Mentor Info Card */}
       <View style={styles.card}>

@@ -5,6 +5,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E3E3E3',
+    backgroundColor: '#FFFFFF',
+  },
+  headerTxt: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginLeft: 10,
+  },
+  BackIcon: {
+    width: 20,
+    height: 20,
+  },
   scrollContainer: {
     flex: 1,
     padding: 16,
@@ -46,11 +65,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
     width:300,
-    marginRight:15
+    marginRight:15,
+
+  },
+  historyIconContainer:{
+    marginLeft: 20,
   },
   historyIcon:{
     marginTop:10,
-    marginLeft:5
+    marginLeft:12
   },
   historyText:{
     color:'#7991A4'
@@ -61,8 +84,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginBottom: 2,
+    marginTop: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -80,11 +106,13 @@ const styles = StyleSheet.create({
   },
   listName: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#333',
   },
   listId: {
     fontSize: 14,
     color: '#666',
+    fontWeight: '500',
   },
   // Approve buttons container
   approveBtns: {
@@ -126,7 +154,7 @@ approveAllButton: {
   bottom: 16,
   left: 16,
   right: 16,
-  backgroundColor: '#4361EE', // Adjust color to match your design
+  backgroundColor: '#0C36FF', // Adjust color to match your design
   borderRadius: 8,
   padding: 16,
   alignItems: 'center',
@@ -203,7 +231,7 @@ cancelButtonText: {
   fontWeight: '600',
 },
 confirmButton: {
-  backgroundColor: '#4169E1', // Royal blue to match your design
+  backgroundColor: '#0C36FF', // Royal blue to match your design
   paddingVertical: 10,
   paddingHorizontal: 20,
   borderRadius: 5,
@@ -259,7 +287,7 @@ checkboxContainer: {
   alignItems: 'center',
 },
 substituteConfirmButton: {
-  backgroundColor: '#4169E1',
+  backgroundColor: '#0C36FF',
   paddingVertical: 12,
   borderRadius: 5,
   alignItems: 'center',
@@ -320,12 +348,14 @@ historyAvatar: {
 },
 
 historyName: {
-  fontWeight: 'bold',
+  fontWeight: '700',
+  color: '#333',
   fontSize: 16,
 },
 
 historyId: {
   color: '#666',
+  fontWeight: '500',
   fontSize: 12,
 },
 

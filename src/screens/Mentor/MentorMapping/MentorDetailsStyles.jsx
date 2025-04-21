@@ -4,18 +4,28 @@ const styles = StyleSheet.create({
     SubNavbar: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderBottomWidth:1,
-        borderBlockColor:'#00000040'      },
-      Leftarrow: 
-      {
-        marginRight: 10,
-      },
-      heading: {
-        fontSize: 19,
+        paddingVertical: 19,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E3E3E3',
+        backgroundColor: 'white',
+       },
+       headerTxt: {
+        fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
+        color: '#000000',
+        marginLeft: 10,
+        paddingTop: 0,
+        position: 'absolute',
+        left: 40,
+        top: -22,
+
+      },
+      BackIcon: {
+        width: 20,
+        height: 20,
+        position: 'absolute',
+        left: 17,
+        top: -17,
       },
       card: {
         flexDirection: 'row',
@@ -46,8 +56,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
       },
       name: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontWeight: '600',
         color:'#000'
       },
       specification: {
@@ -79,7 +89,7 @@ const styles = StyleSheet.create({
       {
         fontSize:12,
        marginLeft:40,
-       fontWeight:'500'
+       fontWeight:'600'
       },
       subject:{
         fontSize:12,
@@ -103,7 +113,7 @@ const styles = StyleSheet.create({
       tabText: {
         fontSize: 16,
         color: '#000',
-        fontWeight:'500',
+        fontWeight:'600',
       },
       activeTabText: {
         color: '#000',
@@ -112,7 +122,22 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 30,
+
         marginRight: 12,
+      },
+      studentName:{
+        fontSize:16,
+        fontWeight:'600',
+        color:'#000'
+      },
+      listName:{
+        fontSize:14,
+        fontWeight:'600',
+        color:'#000'
+      },
+      listId:{
+        fontSize:14,
+        color:'#000'
       },
       listItem:{
         flexDirection: 'row',
@@ -175,6 +200,7 @@ modalTitle: {
   fontWeight: 'bold',
   marginBottom: 15,
   textAlign: 'center',
+  color: '#000',
 },
 staffList: {
   maxHeight: 300,
@@ -197,7 +223,8 @@ staffInfo: {
 },
 staffName: {
   fontSize: 16,
-  fontWeight: '500',
+  fontWeight: '600',
+  color: '#000',
 },
 staffId: {
   fontSize: 14,

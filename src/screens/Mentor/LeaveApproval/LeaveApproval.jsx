@@ -9,7 +9,7 @@ import {
   TextInput,
   Modal
 } from 'react-native';
-import Leftarrow from '../../../assets/LeaveApproval/leftarrow.svg';
+import BackIcon from '../../../assets/LeaveApproval/leftarrow.svg';
 import Checkmark from '../../../assets/LeaveApproval/checkmark.svg';
 import Close from '../../../assets/LeaveApproval/close.svg';
 import Staff from "../../../assets/LeaveApproval/staff.png";
@@ -220,11 +220,13 @@ const LeaveApproval = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.SubNavbar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Leftarrow width={20} height={20} style={styles.Leftarrow} />
-        </TouchableOpacity>
-        <Text style={styles.heading}>Leave Approval</Text>
+      <View style={styles.header}>
+        <BackIcon 
+          width={styles.BackIcon.width} 
+          height={styles.BackIcon.height} 
+          onPress={() => navigation.goBack()}
+        />
+        <Text style={styles.headerTxt}>Leave Approval</Text>
       </View>
       
       {/* Search Bar */}
@@ -235,11 +237,12 @@ const LeaveApproval = ({ navigation }) => {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-        <View>
+        <View style={styles.historyIconContainer}>
         <TouchableOpacity onPress={toggleHistoryView}>
           <History height={20} style={styles.historyIcon}/>
-        </TouchableOpacity>
+        
              <Text style={styles.historyText}>History</Text>
+             </TouchableOpacity>
              </View>
       </View>
       

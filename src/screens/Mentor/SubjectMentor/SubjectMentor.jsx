@@ -6,11 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
+  Pressable,
   Image,
   TextInput,
 } from 'react-native';
 import Modal from 'react-native-modal';
-import Leftarrow from '../../../assets/SubjectMentor/leftarrow.svg';
+import BackIcon from '../../../assets/SubjectMentor/leftarrow.svg';
 import staff from '../../../assets/SubjectMentor/staff.png';
 import styles from './SubjectMentorStyles';
 import Tickicon from '../../../assets/SubjectMentor/tickicon.svg';
@@ -19,8 +20,8 @@ import Tick from '../../../assets/SubjectMentor/tick.svg';
 import Oneperson from '../../../assets/SubjectMentor/oneperson.svg';
 import Hat from '../../../assets/SubjectMentor/hat.svg';
 
-const SubjectMentor = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('English');
+const SubjectMentor = ({navigation}) => {
+  const [activeSection, setActiveSection] = useState('English');
   const [mentors, setMentors] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedFaculties, setSelectedFaculties] = useState([]);
@@ -64,34 +65,51 @@ const SubjectMentor = ({ navigation }) => {
 
   // Render the top part: navbar and tabs
   const renderHeader = () => (
-    <>
+    <SafeAreaView style={styles.headerContainer}>
       <View style={styles.SubNavbar}>
-        <TouchableOpacity onPress={() => navigation.navigate('Mentor')}>
-          <Leftarrow width={20} height={20} style={styles.Leftarrow} />
-        </TouchableOpacity>
-        <Text style={styles.heading}>Subject Mentor</Text>
+        <View style={styles.header}>
+          <BackIcon
+            width={styles.BackIcon.width}
+            height={styles.BackIcon.height}
+            onPress={() => navigation.goBack()}
+          />
+          <Text style={styles.headerTxt}>Subject Mentor</Text>
+        </View>
       </View>
-      
+
       <ScrollView
-        horizontal
+        horizontal={true}
         showsHorizontalScrollIndicator={false}
-        style={styles.tabContainer}>
-        {tabs.map((tab, index) => (
-          <TouchableOpacity
+        contentContainerStyle={styles.scrollContent}
+        style={styles.classnavsubject}
+        nestedScrollEnabled={true}>
+        {[
+          'Tamil',
+          'English',
+          'Maths',
+          'Science',
+          'Social Science',
+          'Physcics',
+          'Chemistry',
+        ].map((section, index) => (
+          <Pressable
             key={index}
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => setActiveTab(tab)}>
+            style={[
+              styles.subjectselection,
+              activeSection === index && styles.activeButton,
+            ]}
+            onPress={() => setActiveSection(index)}>
             <Text
               style={[
-                styles.tabText,
-                activeTab === tab && styles.activeTabText,
+                styles.gradeselectiontext,
+                activeSection === index && styles.activeText,
               ]}>
-              {tab}
+              {section}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </ScrollView>
-    </>
+    </SafeAreaView>
   );
 
   // Render the footer with Add button
@@ -119,9 +137,7 @@ const SubjectMentor = ({ navigation }) => {
               <Text style={styles.specification}>
                 Specification ({item.specification})
               </Text>
-              <Text style={styles.facultyId}>
-                Faculty ID: {item.facultyId}
-              </Text>
+              <Text style={styles.facultyId}>Faculty ID: {item.facultyId}</Text>
             </View>
             <TouchableOpacity style={styles.moreIcon}>
               <Text style={styles.moreText}>⋮</Text>
@@ -152,21 +168,20 @@ const SubjectMentor = ({ navigation }) => {
               faculty.name.toLowerCase().includes(searchText.toLowerCase()),
             )}
             keyExtractor={item => item.id.toString()}
-            renderItem={({ item }) => (
+            renderItem={({item}) => (
               <TouchableOpacity
                 style={[
                   styles.facultyItem,
                   selectedFaculties.includes(item.id) && styles.selectedCard,
                 ]}
-                onPress={() => toggleSelection(item.id)}
-              >
+                onPress={() => toggleSelection(item.id)}>
                 <View style={styles.facultyDetails}>
-                  <View style={styles.staffName}>     
-                    <Oneperson/>
+                  <View style={styles.staffName}>
+                    <Oneperson />
                     <Text style={styles.facultyName}>{item.name}</Text>
                   </View>
-                  <View style={styles.Hat}>       
-                    <Hat/>
+                  <View style={styles.Hat}>
+                    <Hat />
                     <Text style={styles.facultySpec}>
                       Specification ({item.specification})
                     </Text>

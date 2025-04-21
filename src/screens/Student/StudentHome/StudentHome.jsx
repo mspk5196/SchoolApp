@@ -63,14 +63,14 @@ const StudentHome = ({ navigation }) => {
     <Pressable
     onPress={() => {
       if (item.title === 'Student Profile') {
-        navigation.navigate('');
+        navigation.navigate('StudentProfile');
       } else if (item.title === 'Issues Log') {
-        navigation.navigate(''); }
+        navigation.navigate('IssueLogs'); }
         else if (item.title === 'Backlogs') {
           navigation.navigate('BackLogs');
         } 
         else if (item.title === 'Concept Graph') {
-          navigation.navigate('');
+          navigation.navigate('ConceptGraph');
         }
       
     }}

@@ -1,24 +1,25 @@
 import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
-  
-  SubNavbar: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth:1,
-     borderBlockColor:'#00000040'
-  },
-  Leftarrow: 
-  {
-    marginRight: 10,
-  },
-  heading: {
-    fontSize: 19,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E3E3E3',
+    backgroundColor: 'white',
+},
+headerTxt: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-  },
+    color: '#000000',
+    marginLeft: 10,
+},
+BackIcon: {
+    width: 20,
+    height: 20,
+},
   selectedCard: {
     backgroundColor: '#EBEEFF', 
   },
@@ -52,7 +53,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontWeight:'600',
     fontSize: 16,
-    color: '#1e88e5',
+    color: '#3557FF',
 
   },
   mentorList: {
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color:'#000'
   },
   specification: {
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
   },
   facultyName: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 4,
     color:"#000"
   },
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
   selectButton: {
     marginTop: 15,
     alignItems: 'center',
-    backgroundColor: '#1e88e5',
+    backgroundColor: '#3557FF',
     paddingVertical: 12,
     borderRadius: 20,
   },
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
     display:'flex',
      flexDirection:'row',
      gap:6,
-     color:'#000'
+     color:'#000',
   },
   Hat:{
     display:'flex',

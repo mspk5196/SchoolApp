@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput } from 'react-native';
-import Leftarrow from "../../../assets/MentorList/leftarrow.svg";
+import BackIcon from "../../../assets/MentorList/leftarrow.svg";
 import styles from './MentorListStyles';
 const Staff = require('../../../assets/MentorList/staff.png');
 import Search from '../../../assets/MentorList/search.svg'
@@ -39,12 +39,14 @@ const MentorList = ({ navigation }) => {
   
   return (
    
-    <View style={{ flex: 1 }}>
-      <View style={styles.SubNavbar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Leftarrow width={20} height={20} style={styles.Leftarrow} />
-        </TouchableOpacity>
-        <Text style={styles.heading}>Mentor List</Text>
+    <View style={{ flex: 1 }, styles.container}>
+      <View style={styles.header}>
+        <BackIcon 
+          width={styles.BackIcon.width} 
+          height={styles.BackIcon.height} 
+          onPress={() => navigation.goBack()}
+        />
+        <Text style={styles.headerTxt}>Mentor List</Text>
       </View>
       
       {/* Search Bar */}

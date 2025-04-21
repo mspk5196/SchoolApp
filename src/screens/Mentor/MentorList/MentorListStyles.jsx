@@ -1,16 +1,28 @@
 import { StyleSheet } from "react-native";
 const styles = StyleSheet.create({
-    SubNavbar: {
+    container: {
+        flex: 1,
+        backgroundColor: '#f3f3f3',
+    },
+    header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
+        paddingVertical: 15,
+        paddingHorizontal: 15,
         borderBottomWidth: 1,
-        borderBlockColor: '#00000040',
-    },
-    Leftarrow: {
-        marginRight: 10,
-    },
+        borderBottomColor: '#E3E3E3',
+        backgroundColor: '#FFFFFF',
+      },
+      headerTxt: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#000000',
+        marginLeft: 10,
+      },
+      BackIcon: {
+        width: 20,
+        height: 20,
+      },
     contentContainer: {
         flexDirection: 'row',  // Make items appear in a row
         flexWrap: 'wrap',      // Wrap items to the next line
@@ -33,8 +45,8 @@ const styles = StyleSheet.create({
     removeButton: {
         marginTop: 8,
         backgroundColor: '#2D50FD',
-        paddingVertical: 4,
-        paddingHorizontal: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 13,
         borderRadius: 5,
     },
     removeText: {
@@ -59,21 +71,15 @@ const styles = StyleSheet.create({
     },
     listName:
     {
-        fontWeight:'500'
+        fontWeight:'600',
+        color:'#000',
     },
-    searchContainer: {
-        marginHorizontal: 16,
-        marginVertical: 8,
-        borderRadius: 8,
-        backgroundColor: '#f1f1f1',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-      },
-      searchInput: {
-        height: 40,
-        fontSize: 16,
-        paddingHorizontal: 8,
-      },
+    listId:
+    {
+        fontSize: 14,
+        color: '#666',
+    },
+     
       searchicon:{
      marginTop:10
       },
@@ -83,7 +89,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         marginVertical: 8,
         borderRadius: 8,
-        backgroundColor: '#f1f1f1',
+        backgroundColor: '#e3e3e3',
         paddingHorizontal: 10,
         paddingVertical: 5,
       },
