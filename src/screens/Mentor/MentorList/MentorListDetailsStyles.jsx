@@ -186,6 +186,7 @@ shadowRadius: 7,
       fontSize: 14,
       marginTop: 4,
       color: '#666',
+      fontWeight:'600'
 
     },
     typeText: {
@@ -225,7 +226,8 @@ shadowRadius: 7,
       },
       modalTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '700',
+        color: '#000',
         marginBottom: 15,
         textAlign: 'center',
       },
@@ -240,9 +242,6 @@ shadowRadius: 7,
       },
       selectedSubject: {
         backgroundColor: '#F0F7FF',
-      },
-      subjectText: {
-        fontSize: 16,
       },
       selectedSubjectText: {
         color: '#0066CC',
@@ -309,8 +308,8 @@ dateButton: {
   },
   homeButtonContainer: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
+    bottom: 30,
+    right: 25,
   },
   modalOverlay: {
     flex: 1,
@@ -326,12 +325,6 @@ dateButton: {
     width: '90%',
     maxHeight: '80%',
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
   subjectList: {
     maxHeight: 300,
   },
@@ -342,6 +335,8 @@ dateButton: {
   },
   subjectItemText: {
     fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
   },
   cancelButton: {
     marginTop: 15,
@@ -353,6 +348,7 @@ dateButton: {
   cancelButtonText: {
     fontSize: 16,
     color: '#333',
+    fontWeight: '500',
   },
   });
   export default styles

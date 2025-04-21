@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, Modal, FlatList,ScrollView} from 'react-native';
+import { View, Text, TouchableOpacity, Image, Modal, FlatList,ScrollView, Pressable} from 'react-native';
 import BackIcon from "../../../assets/MentorList/leftarrow";
 import Numdays from '../../../assets/MentorList/numdays.svg';
 import Clock from '../../../assets/MentorList/clock.svg';
@@ -226,9 +226,9 @@ const MentorDetails = ({ route, navigation }) => {
         </View>
       </Modal>
 
-      <View style={styles.homeButtonContainer}>
-        <Roundhome width={50} height={50}/>
-      </View>
+      <TouchableOpacity style={styles.homeButtonContainer}>
+        <Roundhome width={60} height={60}/>
+      </TouchableOpacity>
     </View>
   );
 };

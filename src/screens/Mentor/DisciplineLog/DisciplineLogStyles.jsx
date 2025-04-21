@@ -5,19 +5,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  SubNavbar: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
+    paddingVertical: 15,
+    paddingHorizontal: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#E3E3E3',
+    backgroundColor: '#FFFFFF',
   },
-  heading: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 16,
+  headerTxt: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginLeft: 10,
+  },
+  BackIcon: {
+    width: 20,
+    height: 20,
   },
   searchContainer: {
     paddingHorizontal: 16,
@@ -61,23 +66,27 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#333',
   },
   cardSubtitle: {
     fontSize: 14,
     color: '#666',
+    fontWeight: '500',
   },
   cardDate: {
     fontSize: 14,
     color: '#666',
     marginLeft: 'auto',
+    fontWeight: '500',
   },
   cardContent: {
     padding: 12,
   },
   cardLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     marginBottom: 6,
+    color: '#333',
   },
   cardReason: {
     fontSize: 14,
@@ -91,22 +100,43 @@ const styles = StyleSheet.create({
   },
   registeredBy: {
     fontSize: 14,
-    color: '#666',
+    color: '#000',
+    fontWeight: '500',
     flex: 1,
   },
-  phoneIcon: {
-    marginHorizontal: 8,
+  actionButtonCall: {
+    backgroundColor: '#AEBCFF', 
+    borderRadius: 999,
+    padding: 10,
+    marginLeft: 'auto',
+    marginRight: 10,
   },
-  messageIcon: {
-    marginLeft: 8,
+  actionButtonMsg: {
+    backgroundColor: '#A4F4E7', 
+    borderRadius: 999,
+    padding: 10,
   },
-  fab: {
+  AddButton: {
     position: 'absolute',
-    right: 16,
-    bottom: 16,
-    backgroundColor: '#3366ff',
-    borderRadius: 28,
-  },
+    bottom: 30,
+    right: 20,
+    padding: 20,
+    backgroundColor: '#0C36FF',
+    borderRadius: 50,
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+},
+AddIcon: {
+    width: 20,
+    height: 20,
+},
   
   // Modal styles
   modalOverlay: {
@@ -133,6 +163,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 20,
+    color: '#333',
     textAlign: 'center',
   },
   inputContainer: {
@@ -185,16 +216,19 @@ const styles = StyleSheet.create({
   confirmTitle: {
     fontSize: 18,
     fontWeight: '600',
+    color: '#333',
     marginBottom: 4,
   },
   confirmSubtitle: {
     fontSize: 16,
     color: '#666',
+    fontWeight: '500',
     marginBottom: 4,
   },
   confirmLabel: {
     fontSize: 14,
     color: '#333',
+    fontWeight: '600',
     marginBottom: 24,
   },
   confirmReasonContainer: {
@@ -205,8 +239,9 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   confirmReasonTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
+    color: '#333',
     marginBottom: 8,
   },
   confirmReasonText: {

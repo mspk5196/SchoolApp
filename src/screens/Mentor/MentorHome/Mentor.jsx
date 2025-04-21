@@ -28,10 +28,10 @@ const MentorCard = ({ title, Icon, bgColor, color, onPress }) => (
 const Mentor = ({ navigation }) => {
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.Navbar}>
-                <Home width={27} height={26} style={styles.homelogo}  onPress={() => navigation.goBack()}/>
-                <Text style={styles.text}>Mentors</Text>
-            </View>
+            <View style={styles.Header}>
+        <Home width={styles.HomeIcon.width} height={styles.HomeIcon.height} onPress={() => navigation.goBack()}/>
+        <Text style={styles.HeaderTxt}>Mentor</Text>
+      </View>
             <SectionList
                 sections={data}
                 keyExtractor={(item) => item.id}

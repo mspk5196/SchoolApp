@@ -2,23 +2,27 @@ import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create ({
       
-       Navbar:{
-        marginTop:90,
-        marginLeft:35,
-        flexDirection:'row',
-        alignItems:'center',
-        gap:10,
-       },
-       text: {
-        color:'#323F49',
-        fontSize: 19,
-        fontWeight:'700',
-        marginTop:10,
-       },
+    HomeIcon: {
+        width: 25,
+        height: 25,
+    },
+    Header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 15,
+        paddingHorizontal: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E3E3E3',
+    },
+    HeaderTxt: {
+        fontSize: 27,
+        fontWeight: 'bold',
+        color: '#000000',
+        marginLeft: 10,
+    },
         container: {
-            
             backgroundColor: '#F5F5F5',
-            padding: 10,
+            flex: 1,
         },
         Navbar: {
             flexDirection: 'row',

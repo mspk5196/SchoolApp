@@ -12,10 +12,10 @@ import {
   Platform,
   KeyboardAvoidingView
 } from 'react-native';
-import Leftarrow from '../../../assets/DisciplineLog/leftarrow.svg';
-import Addicon from '../../../assets/DisciplineLog/addicon.svg';
-import PhoneIcon from '../../../assets/DisciplineLog/call.svg';
-import MessageIcon from '../../../assets/DisciplineLog/msg.svg';
+import BackIcon from '../../../assets/DisciplineLog/leftarrow.svg';
+import AddIcon from '../../../assets/DisciplineLog/Add.svg';
+import Phone from '../../../assets/DisciplineLog/Phone.svg';
+import MessageSquare from '../../../assets/DisciplineLog/MessageSquare.svg';
 import styles from './DisciplineLogStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -76,11 +76,13 @@ const DisciplineLog = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.SubNavbar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Leftarrow width={20} height={20} />
-        </TouchableOpacity>
-        <Text style={styles.heading}>Discipline Log</Text>
+      <View style={styles.header}>
+        <BackIcon 
+          width={styles.BackIcon.width} 
+          height={styles.BackIcon.height} 
+          onPress={() => navigation.goBack()}
+        />
+        <Text style={styles.headerTxt}>Leave Approval</Text>
       </View>
       
       <View style={styles.searchContainer}>
@@ -106,16 +108,23 @@ const DisciplineLog = ({ navigation }) => {
               <Text style={styles.cardReason}>{item.reason}</Text>
               <View style={styles.regBar}>
                 <Text style={styles.registeredBy}>Registered by {item.registeredBy}</Text>
-                <PhoneIcon style={styles.phoneIcon}/>
-                <MessageIcon  style={styles.messageIcon} />
+                <TouchableOpacity style={styles.actionButtonCall}>
+                  <Phone width={20} height={20} /> 
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButtonMsg}>
+                <MessageSquare width={20} height={20} /> 
+                </TouchableOpacity>
               </View>
             </View>
           </View>
         ))}
       </ScrollView>
       
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-        <Addicon width={50} height={50} />
+      <TouchableOpacity 
+        style={styles.AddButton} 
+        onPress={() => setModalVisible(true)}
+      >
+        <AddIcon width={styles.AddIcon.width} height={styles.AddIcon.height} />
       </TouchableOpacity>
 
       {/* Add Complaint Modal */}
@@ -191,7 +200,7 @@ const DisciplineLog = ({ navigation }) => {
             <Image source={require('../../../assets/DisciplineLog/staff.png')} style={styles.confirmAvatar} />
             <Text style={styles.confirmTitle}>Prakash Raj</Text>
             <Text style={styles.confirmSubtitle}>2024VI023</Text>
-            <Text style={styles.confirmLabel}>Student Mentor: vishal</Text>
+            <Text style={styles.confirmLabel}>Student Mentor: Vishal</Text>
             
             <View style={styles.confirmReasonContainer}>
               <Text style={styles.confirmReasonTitle}>Reason</Text>
