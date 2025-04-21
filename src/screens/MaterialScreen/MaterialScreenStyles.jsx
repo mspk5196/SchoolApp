@@ -179,6 +179,7 @@ const styles = StyleSheet.create({
   pdfItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 45,
     paddingVertical: 5,
   },
   pdfIconContainer: {
@@ -189,9 +190,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1C1C1E',
   },
-  deleteButton: {
-    padding: 6,
-  },
+  
   emptyStateText: {
     textAlign: 'center',
     color: '#8E8E93',

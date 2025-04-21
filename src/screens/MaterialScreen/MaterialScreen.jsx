@@ -75,9 +75,6 @@ const MaterialsScreen = () => {
           <PDFicon />
         </View>
         <Text style={styles.pdfName}>{item.name}</Text>
-        <TouchableOpacity style={styles.deleteButton}>
-          <Deleteicon />
-        </TouchableOpacity>
       </View>
     );
   };
