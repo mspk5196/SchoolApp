@@ -224,7 +224,7 @@ const LeaveApproval = ({ navigation }) => {
         <BackIcon 
           width={styles.BackIcon.width} 
           height={styles.BackIcon.height} 
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Mentor')}
         />
         <Text style={styles.headerTxt}>Leave Approval</Text>
       </View>

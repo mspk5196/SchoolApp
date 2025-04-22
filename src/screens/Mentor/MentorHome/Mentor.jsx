@@ -29,12 +29,13 @@ const Mentor = ({ navigation }) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.Header}>
-        <Home width={styles.HomeIcon.width} height={styles.HomeIcon.height} onPress={() => navigation.goBack()}/>
+        <Home width={styles.HomeIcon.width} height={styles.HomeIcon.height} onPress={() => navigation.navigate('Menu')}/>
         <Text style={styles.HeaderTxt}>Mentor</Text>
       </View>
             <SectionList
                 sections={data}
                 keyExtractor={(item) => item.id}
+                style={styles.scrollView}
                 renderItem={({ item }) => (
                     <MentorCard
                         title={item.title}

@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
 
 const styles = StyleSheet.create ({
       
@@ -23,6 +24,9 @@ const styles = StyleSheet.create ({
         container: {
             backgroundColor: '#F5F5F5',
             flex: 1,
+        },
+        scrollView: {
+            paddingHorizontal: 10,
         },
         Navbar: {
             flexDirection: 'row',

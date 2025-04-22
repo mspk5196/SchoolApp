@@ -36,7 +36,7 @@ const LeaveDetails = ({ route, navigation }) => {
         <BackIcon 
           width={styles.BackIcon.width} 
           height={styles.BackIcon.height} 
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('LeaveApproval')}
         />
         <Text style={styles.headerTxt}>Leave Approval</Text>
       </View>
