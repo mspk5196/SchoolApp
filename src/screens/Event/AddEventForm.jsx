@@ -10,14 +10,14 @@ import {
   FlatList,
   Platform,
   Image,
-  Alert
+  Alert,
+  StatusBar
 } from 'react-native';
 import BackIcon from '../../assets/Event/Back.svg';
 import CalendarIcon from '../../assets/Event/Calender.svg';
 import styles from './AddEventFormStyle';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DocumentPicker from 'react-native-document-picker';
-import { Calendar } from 'react-native-calendars';
 
 const sampleImages = [
   { id: 1, source: require('../../assets/Event/BannerImage1.png') },
@@ -25,19 +25,25 @@ const sampleImages = [
   { id: 3, source: require('../../assets/Event/BannerImage3.png') },
 ];
 
-const AddEventForm = ({ navigation }) => {
+const AddEvent = ({ navigation }) => {
   const [eventName, setEventName] = useState('');
   const [location, setLocation] = useState('');
   const [participantsLimit, setParticipantsLimit] = useState('');
   const [date, setDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [grade, setGrade] = useState('');
   const [eventType, setEventType] = useState('');
   const [aboutEvent, setAboutEvent] = useState('');
   const [guidelines, setGuidelines] = useState('');
   
-  // For date picker
+  // For date & time pickers
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedStartTime, setSelectedStartTime] = useState(new Date());
+  const [selectedEndTime, setSelectedEndTime] = useState(new Date(Date.now() + 2 * 60 * 60 * 1000)); // Default to current time + 2 hours
   
   // For dropdowns
   const [showGradeDropdown, setShowGradeDropdown] = useState(false);
@@ -53,7 +59,7 @@ const AddEventForm = ({ navigation }) => {
 
   const handleDateChange = (event, selectedDate) => {
     const currentDate = selectedDate || new Date();
-    setShowDatePicker(Platform.OS === 'ios'); // Only hide for Android
+    setShowDatePicker(Platform.OS === 'ios' ? true : false);
     setSelectedDate(currentDate);
     
     // Format date as DD/MM/YY
@@ -63,83 +69,191 @@ const AddEventForm = ({ navigation }) => {
     setDate(`${day}/${month}/${year}`);
   };
 
-  const showDatepicker = () => {
-    setShowDatePicker(true);
+  const formatTimeToAmPm = (date) => {
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    
+    return hours + ':' + minutes + ampm;
   };
 
-  const pickImageFromGallery = async () => {
+  const handleStartTimeChange = (event, selectedTime) => {
+    const currentTime = selectedTime || selectedStartTime;
+    setShowStartTimePicker(Platform.OS === 'ios' ? true : false);
+    setSelectedStartTime(currentTime);
+    setStartTime(formatTimeToAmPm(currentTime));
+  };
+
+  const handleEndTimeChange = (event, selectedTime) => {
+    const currentTime = selectedTime || selectedEndTime;
+    setShowEndTimePicker(Platform.OS === 'ios' ? true : false);
+    setSelectedEndTime(currentTime);
+    setEndTime(formatTimeToAmPm(currentTime));
+  };
+
+  const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.pick({
         type: [DocumentPicker.types.images],
-        allowMultiSelection: false,
       });
       
-      if (result.length > 0) {
-        const selectedImage = result[0];
-        console.log('Selected image:', selectedImage.uri);
-        
-        setBannerImage({
-          uri: selectedImage.uri,
-          type: selectedImage.type || 'image/jpeg',
-          name: selectedImage.name || 'image.jpg',
-          source: { uri: selectedImage.uri }
-        });
-      }
-    } catch (error) {
-      if (DocumentPicker.isCancel(error)) {
-        console.log('User cancelled the picker');
+      setBannerImage({ uri: result[0].uri });
+    } catch (err) {
+      if (DocumentPicker.isCancel(err)) {
+        // User cancelled the picker
       } else {
-        console.log('Error picking document: ', error);
-        Alert.alert('Error', 'Something went wrong while picking the image');
+        Alert.alert('Error', 'There was an issue selecting the image.');
       }
     }
   };
 
-  // Function to select sample image
-  const selectSampleImage = (image) => {
-    setBannerImage({
-      source: image.source,
-      isSampleImage: true,
-      id: image.id
-    });
+  const handleSelectSampleImage = (id) => {
+    setBannerImage(id);
     setShowSampleImageModal(false);
   };
 
-  // Function to remove banner image
-  const removeBannerImage = () => {
-    setBannerImage(null);
-  };
-
-  const handleEnrollEvent = () => {
+  const handleSaveEvent = () => {
     // Validate form
     if (!eventName || !location || !participantsLimit || !date || !grade || !eventType) {
-      Alert.alert('Required Fields', 'Please fill in all required fields');
+      Alert.alert('Missing Information', 'Please fill in all required fields.');
       return;
     }
-  
-    // Create new event object with proper banner image handling
+
+    // Ensure there's a default banner image to prevent null warnings
+    let finalBannerImage = bannerImage;
+    if (!finalBannerImage) {
+      // Default to the first sample image if none selected
+      finalBannerImage = 1;
+    }
+
+    // Create event object with time information
     const newEvent = {
       eventName,
       location,
       participantsLimit,
       date,
+      startTime: startTime || '9:00AM', // Default time if not provided
+      endTime: endTime || '5:00PM',     // Default time if not provided
       grade,
       eventType,
       aboutEvent,
       guidelines,
-      bannerImage: bannerImage ? 
-        (bannerImage.isSampleImage ? bannerImage.id : 
-          (bannerImage.uri ? bannerImage.uri : null)) : null
+      bannerImage: finalBannerImage
     };
-  
-    console.log('Submitting new event:', newEvent);
-  
-    // Navigate back to events page and pass the new event
-    navigation.navigate({
-      name: 'Event',
-      params: { newEvent },
-      merge: true,
-    });
+
+    // Navigate back to Events screen with the new event data
+    navigation.navigate('Event', { newEvent });
+  };
+
+  const renderGradeDropdown = () => {
+    if (!showGradeDropdown) return null;
+    
+    return (
+      <Modal
+        visible={showGradeDropdown}
+        transparent={true}
+        animationType="fade"
+      >
+        <TouchableOpacity 
+          style={styles.dropdownOverlay}
+          onPress={() => setShowGradeDropdown(false)}
+        >
+          <View style={styles.dropdownContainer}>
+            <FlatList
+              data={gradeOptions}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setGrade(item);
+                    setShowGradeDropdown(false);
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>{item}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
+  const renderEventTypeDropdown = () => {
+    if (!showEventTypeDropdown) return null;
+    
+    return (
+      <Modal
+        visible={showEventTypeDropdown}
+        transparent={true}
+        animationType="fade"
+      >
+        <TouchableOpacity 
+          style={styles.dropdownOverlay}
+          onPress={() => setShowEventTypeDropdown(false)}
+        >
+          <View style={styles.dropdownContainer}>
+            <FlatList
+              data={eventTypeOptions}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setEventType(item);
+                    setShowEventTypeDropdown(false);
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>{item}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
+  const renderSampleImageModal = () => {
+    return (
+      <Modal
+        visible={showSampleImageModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.sampleImageModalContainer}>
+          <View style={styles.sampleImageModalContent}>
+            <Text style={styles.sampleImageModalTitle}>Select Banner Image</Text>
+            
+            <FlatList
+              data={sampleImages}
+              keyExtractor={(item) => item.id.toString()}
+              numColumns={2}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.sampleImageItem}
+                  onPress={() => handleSelectSampleImage(item.id)}
+                >
+                  <Image source={item.source} style={styles.sampleImage} />
+                </TouchableOpacity>
+              )}
+            />
+            
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowSampleImageModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
   };
 
   return (
@@ -148,256 +262,215 @@ const AddEventForm = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <BackIcon width={24} height={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTxt}>Events</Text>
+        <Text style={styles.headerText}>Event</Text>
       </View>
-
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.formContainer}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Event name</Text>
+      <ScrollView style={styles.formContainer}>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Event name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex : Chess Competition"
+            value={eventName}
+            onChangeText={setEventName}
+          />
+        </View>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Location</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex : School campus"
+            value={location}
+            onChangeText={setLocation}
+          />
+        </View>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Participants Limit</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex : 100"
+            value={participantsLimit}
+            onChangeText={setParticipantsLimit}
+            keyboardType="numeric"
+          />
+        </View>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Date</Text>
+          <TouchableOpacity 
+            style={styles.datePickerButton}
+            onPress={() => setShowDatePicker(true)}
+          >
             <TextInput
-              style={styles.input}
-              placeholder=""
-              value={eventName}
-              onChangeText={setEventName}
+              style={styles.dateInput}
+              placeholder="Ex : 22/10/23"
+              value={date}
+              editable={false}
             />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Location</Text>
+            <CalendarIcon width={20} height={20} />
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+            />
+          )}
+        </View>
+        
+        {/* Start Time Field */}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Start Time</Text>
+          <TouchableOpacity 
+            style={styles.datePickerButton}
+            onPress={() => setShowStartTimePicker(true)}
+          >
             <TextInput
-              style={styles.input}
-              placeholder=""
-              value={location}
-              onChangeText={setLocation}
+              style={styles.dateInput}
+              placeholder="Ex : 9:00AM"
+              value={startTime}
+              editable={false}
             />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Participants Limit</Text>
+            <Text style={styles.timeIcon}>🕒</Text>
+          </TouchableOpacity>
+          {showStartTimePicker && (
+            <DateTimePicker
+              value={selectedStartTime}
+              mode="time"
+              display="default"
+              onChange={handleStartTimeChange}
+            />
+          )}
+        </View>
+        
+        {/* End Time Field */}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>End Time</Text>
+          <TouchableOpacity 
+            style={styles.datePickerButton}
+            onPress={() => setShowEndTimePicker(true)}
+          >
             <TextInput
-              style={styles.input}
-              placeholder=""
-              keyboardType="numeric"
-              value={participantsLimit}
-              onChangeText={setParticipantsLimit}
+              style={styles.dateInput}
+              placeholder="Ex : 5:00PM"
+              value={endTime}
+              editable={false}
             />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Date</Text>
-            <View style={styles.dateInputContainer}>
-              <TextInput 
-                style={styles.dateInput}
-                placeholder="Enter Date"
-                value={date}
-                onChangeText={setDate}
-                editable={false}
-              />
-              <TouchableOpacity style={styles.calendarButton} onPress={showDatepicker}>
-                <CalendarIcon width={24} height={24} />
-              </TouchableOpacity>
-            </View>
-            {showDatePicker && (
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                is24Hour={true}
-                display="default"
-                onChange={handleDateChange}
-              />
-            )}
-          </View>
-
-          <View style={[styles.inputGroup, { width: '70%' }]}>
-            <Text style={styles.label}>Grade</Text>
+            <Text style={styles.timeIcon}>🕒</Text>
+          </TouchableOpacity>
+          {showEndTimePicker && (
+            <DateTimePicker
+              value={selectedEndTime}
+              mode="time"
+              display="default"
+              onChange={handleEndTimeChange}
+            />
+          )}
+        </View>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Grade</Text>
+          <TouchableOpacity 
+            style={styles.input}
+            onPress={() => setShowGradeDropdown(true)}
+          >
+            <Text style={grade ? styles.dropdownText : styles.placeholderText}>
+              {grade || "Select grade"}
+            </Text>
+          </TouchableOpacity>
+          {renderGradeDropdown()}
+        </View>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Event type</Text>
+          <TouchableOpacity 
+            style={[styles.input, styles.dropdownInput]}
+            onPress={() => setShowEventTypeDropdown(true)}
+          >
+            <Text style={eventType ? styles.dropdownText : styles.placeholderText}>
+              {eventType || "Select Event type"}
+            </Text>
+            <Text style={styles.dropdownArrow}>▼</Text>
+          </TouchableOpacity>
+          {renderEventTypeDropdown()}
+        </View>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>About event</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Enter here"
+            value={aboutEvent}
+            onChangeText={setAboutEvent}
+            multiline
+            numberOfLines={4}
+          />
+        </View>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Guidelines</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Enter here"
+            value={guidelines}
+            onChangeText={setGuidelines}
+            multiline
+            numberOfLines={4}
+          />
+        </View>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Banner</Text>
+          <View style={styles.bannerOptions}>
             <TouchableOpacity 
-              style={[styles.dropdownInput, { height: 45 }]}
-              onPress={() => setShowGradeDropdown(true)}
+              style={styles.bannerOption}
+              onPress={handlePickDocument}
             >
-              <Text style={grade ? styles.inputText : styles.placeholderText}>
-                {grade || "Select grade"}
-              </Text>
-              <Text style={styles.dropdownIcon}>▼</Text>
-            </TouchableOpacity>
-
-            <Modal
-              visible={showGradeDropdown}
-              transparent={true}
-              animationType="slide"
-            >
-              <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Select Grade</Text>
-                  <FlatList
-                    data={gradeOptions}
-                    keyExtractor={(item) => item}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity 
-                        style={styles.optionItem}
-                        onPress={() => {
-                          setGrade(item);
-                          setShowGradeDropdown(false);
-                        }}
-                      >
-                        <Text style={styles.optionText}>{item}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                  <TouchableOpacity 
-                    style={styles.closeButton}
-                    onPress={() => setShowGradeDropdown(false)}
-                  >
-                    <Text style={styles.closeButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-          </View>
-          
-          <View style={[styles.inputGroup, { width: '70%' }]}>
-            <Text style={styles.label}>Event type</Text>
-            <TouchableOpacity 
-              style={[styles.dropdownInput, { height: 45 }]}
-              onPress={() => setShowEventTypeDropdown(true)}
-            >
-              <Text style={eventType ? styles.inputText : styles.placeholderText}>
-                {eventType || "Select Event type"}
-              </Text>
-              <Text style={styles.dropdownIcon}>▼</Text>
+              <Text style={styles.bannerOptionText}>Choose image from <Text style={styles.textLink}>gallery</Text></Text>
             </TouchableOpacity>
             
-            <Modal
-              visible={showEventTypeDropdown}
-              transparent={true}
-              animationType="slide"
+            <Text style={styles.orText}>Or</Text>
+            
+            <TouchableOpacity 
+              style={styles.bannerOption}
+              onPress={() => setShowSampleImageModal(true)}
             >
-              <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Select Event Type</Text>
-                  <FlatList
-                    data={eventTypeOptions}
-                    keyExtractor={(item) => item}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity 
-                        style={styles.optionItem}
-                        onPress={() => {
-                          setEventType(item);
-                          setShowEventTypeDropdown(false);
-                        }}
-                      >
-                        <Text style={styles.optionText}>{item}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                  <TouchableOpacity 
-                    style={styles.closeButton}
-                    onPress={() => setShowEventTypeDropdown(false)}
-                  >
-                    <Text style={styles.closeButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>About event</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Enter here"
-              multiline={true}
-              numberOfLines={4}
-              value={aboutEvent}
-              onChangeText={setAboutEvent}
-            />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Guidelines</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Enter here"
-              multiline={true}
-              numberOfLines={4}
-              value={guidelines}
-              onChangeText={setGuidelines}
-            />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Banner</Text>
-            {bannerImage ? (
+              <Text style={styles.bannerOptionText}>Choose from <Text style={styles.textLink}>sample image</Text></Text>
+            </TouchableOpacity>
+            
+            {bannerImage && (
               <View style={styles.selectedBannerContainer}>
-                <Image 
-                  source={bannerImage.isSampleImage ? bannerImage.source : { uri: bannerImage.uri }}
-                  style={styles.selectedBannerImage}
-                  resizeMode="cover"
-                />
-                <TouchableOpacity 
-                  style={styles.removeBannerButton}
-                  onPress={removeBannerImage}
-                >
-                  <Text style={styles.removeBannerButtonText}>×</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.bannerContainer}>
-                <TouchableOpacity onPress={pickImageFromGallery}>
-                  <Text style={styles.bannerText}>Choose image from <Text style={styles.linkText}>gallery</Text></Text>
-                </TouchableOpacity>
-                <Text style={styles.orText}>Or</Text>
-                <TouchableOpacity onPress={() => setShowSampleImageModal(true)}>
-                  <Text style={styles.bannerText}>Choose from <Text style={styles.linkText}>sample image</Text></Text>
-                </TouchableOpacity>
+                {typeof bannerImage === 'number' ? (
+                  <Image 
+                    source={sampleImages.find(img => img.id === bannerImage).source} 
+                    style={styles.selectedBanner} 
+                  />
+                ) : (
+                  <Image 
+                    source={{ uri: bannerImage.uri }} 
+                    style={styles.selectedBanner} 
+                  />
+                )}
               </View>
             )}
           </View>
         </View>
       </ScrollView>
       
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.enrollButton} onPress={handleEnrollEvent}>
-          <Text style={styles.enrollButtonText}>Enroll event</Text>
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={styles.submitButton}
+          onPress={handleSaveEvent}
+        >
+          <Text style={styles.submitButtonText}>Enroll event</Text>
         </TouchableOpacity>
       </View>
-
-      <Modal
-        visible={showSampleImageModal}
-        transparent={true}
-        animationType="slide"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, styles.sampleImageModalContent]}>
-            <Text style={styles.modalTitle}>Select Sample Image</Text>
-            <FlatList
-              data={sampleImages}
-              keyExtractor={(item) => item.id.toString()}
-              numColumns={2}
-              renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={styles.sampleImageItem}
-                  onPress={() => selectSampleImage(item)}
-                >
-                  <Image 
-                    source={item.source}
-                    style={styles.sampleImage}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              )}
-            />
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={() => setShowSampleImageModal(false)}
-            >
-              <Text style={styles.closeButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      
+      {renderSampleImageModal()}
     </SafeAreaView>
   );
 };
 
-export default AddEventForm;
+export default AddEvent;

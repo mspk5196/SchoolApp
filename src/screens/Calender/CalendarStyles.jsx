@@ -1,181 +1,234 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f8fb',
+    backgroundColor: '#f5f5f5',
   },
-  SubNavbar: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#e1e1e8',
-    backgroundColor: '#fff',
-  },
-  Leftarrow: {
-    marginRight: 16,
-  },
-  heading: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
+    borderBottomColor: '#E3E3E3',
+    backgroundColor: 'white',
+},
+headerTxt: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginLeft: 10,
+},
+BackIcon: {
+    width: 20,
+    height: 20,
+},
   monthSelector: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
   },
   monthYearContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   monthYear: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     marginRight: 8,
   },
-  holidayText: {
-    fontSize: 14,
-    color: '#666',
-    marginRight: 10
+  Button: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
+  holidayText: {
+    color: '#666',
+    marginLeft: 4,
+    fontSize: 14,
+  },
+  activeHolidayText: {
+    color: '#2563eb',
+    fontWeight: '500',
+  },
+  holidayIcon: {
+    marginRight: 4,
+  },
+  // Calendar Grid
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    backgroundColor: '#f8f9ff',
-    padding: 5,
+    backgroundColor: '#f8f8f8',
+    padding: 8,
   },
   calendarCell: {
     width: '14.28%',
-    aspectRatio: 1,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 5,
+    marginVertical: 2,
   },
   headerCell: {
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
   selectedCell: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#dbeafe',
     borderRadius: 20,
   },
   todayCell: {
-    backgroundColor: '#fff',
+    backgroundColor: '#dbeafe',
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#0d6efd',
   },
   calendarCellText: {
     fontSize: 14,
     color: '#333',
   },
   headerCellText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
-    fontWeight: '500',
   },
   selectedCellText: {
-    color: '#0d6efd',
-    fontWeight: '600',
+    color: '#2563eb',
+    fontWeight: '500',
   },
   todayCellText: {
-    color: '#0d6efd',
-    fontWeight: '600',
+    color: '#2563eb',
+    fontWeight: '500',
   },
   eventDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#4caf50',
+    backgroundColor: '#10b981',
+    marginTop: 4,
+  },
+  holidayDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#f87171',
     marginTop: 2,
   },
+  // Month Tabs
   monthTabs: {
     flexDirection: 'row',
-    borderBottomWidth: 0,
-    borderBottomColor: '#e1e1e8',
-    backgroundColor: '#fff',
-    gap: 10,
+    paddingHorizontal: 12,
+    marginTop: 12,
   },
   monthTab: {
-    marginTop:0,
-    paddingVertical: 5,
-    paddingHorizontal:20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    
-    borderWidth:1,
-    borderColor: '#e1e1e8',
-    borderRadius: 10,
-      
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginHorizontal: 4,
+    backgroundColor: 'white',
   },
   activeMonthTab: {
-    borderWidth: 2,
-    borderColor: '#0d6efd',
-    borderRadius: 10,
-    backgroundColor:'#EBEEFF'
+    borderColor: '#2563eb',
+    backgroundColor: '#f0f7ff',
   },
   monthTabText: {
-    fontSize: 14,
     color: '#666',
   },
   activeMonthTabText: {
-    color: '#0d6efd',
-    fontWeight: '600',
+    color: '#2563eb',
+    fontWeight: '500',
   },
+  // Events List
   eventsContainer: {
     flex: 1,
+    marginTop: 16,
+    paddingHorizontal: 12,
     backgroundColor: '#fff',
   },
   eventItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 2,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f5',
+    borderBottomColor: '#f0f0f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   eventDateContainer: {
     alignItems: 'center',
     width: 40,
-    marginRight: 10
+    marginRight: 12,
   },
   eventDay: {
-    fontSize: 25,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#0d6efd',
+    color: '#2563eb',
   },
   eventMonth: {
-    fontSize: 14,
-    color: '#0d6efd',
+    fontSize: 12,
+    color: '#2563eb',
   },
-  eventContainer: {
-    borderLeftWidth: 5,
-    padding: 15,
-    borderLeftColor: '#15B097',
-    borderRadius: 10
+  eventMarker: {
+    width: 6,
+    height: 70,
+    backgroundColor: '#10b981',
+    borderRadius: 2,
+    marginRight: 12,
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+  },
+  eventTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 16,
+    color: '#333',
+  },
+  holidayMarker: {
+    backgroundColor: '#f87171',
   },
   eventDetails: {
     flex: 1,
   },
-  eventTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#15B097',
-    marginBottom: 4,
+  eventContainer: {
+    flex: 1,
   },
   eventTime: {
-    fontSize: 15,
-    color: '#637D92',
-    marginTop: 10
+    fontSize: 12,
+    color: '#666',
   },
   eventArrow: {
     marginLeft: 8,
+    color: '#ccc',
   },
+  noEventsText: {
+    textAlign: 'center',
+    padding: 20,
+    color: '#666',
+    fontSize: 16,
+  },
+  // Holiday styling
+  holidayContainer: {
+    flex: 1,
+  },
+  holidayTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#f87171',
+    marginBottom: 4,
+  },
+  holidayTime: {
+    fontSize: 12,
+    color: '#666',
+  },
+  // FAB
   fab: {
     position: 'absolute',
     bottom: 20,
@@ -183,7 +236,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4285f4',
+    backgroundColor: '#2563eb',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
@@ -195,14 +248,8 @@ const styles = StyleSheet.create({
   fabIcon: {
     fontSize: 24,
     color: '#fff',
-    fontWeight: 'bold',
   },
-  noEventsText: {
-    textAlign: 'center',
-    padding: 20,
-    color: '#666',
-    fontSize: 16,
-  },
+  // Modal
   modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -269,13 +316,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioCircleSelected: {
-    borderColor: '#0d6efd',
+    borderColor: '#2563eb',
   },
   radioDot: {
     height: 10,
     width: 10,
     borderRadius: 5,
-    backgroundColor: '#0d6efd',
+    backgroundColor: '#2563eb',
   },
   radioLabel: {
     fontSize: 16,
@@ -288,7 +335,7 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   confirmButton: {
-    backgroundColor: '#4285f4',
+    backgroundColor: '#2563eb',
     borderRadius: 25,
     height: 50,
     marginTop: 30,
@@ -301,91 +348,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   activeHolidayButton: {
-    color: '#0C36FF',
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    borderRadius: 8,
+    padding: 6,
   },
-  activeHolidayText: {
-    color: '#0C36FF',
-    fontWeight: '500',
-  },
-  holidayIcon: {
-    marginRight: 10,
-  },
-  holidayType: {
-    fontSize: 12,
-    color: '#5F6368',
-    marginTop: 2,
-  },
-  holidayReason: {
-    fontSize: 11,
-    color: '#80868B',
-    fontStyle: 'italic',
-    marginTop: 1,
-  }, 
-  
-  holidayContainer: 
-  {
-    borderLeftWidth: 5,
-    padding: 15,
-    borderLeftColor: '#E4626F',
-    borderRadius: 10
-  },
-  holidayTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#E4626F',
-    marginBottom: 4,
-  },
-  holidayTime: {
-    fontSize: 15,
-    color: '#637D92',
-    marginTop: 10,
-  },
-  holidayTypeContainer: {
-    marginVertical: 10,
-  },
-  holidayTypeLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#202124',
-    marginBottom: 8,
-  },
-  fullDayBadge: {
-    backgroundColor: '#D93025',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  halfDayBadge: {
-    backgroundColor: '#F29900',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  emptyHolidaysContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 40,
-  },
-  emptyHolidaysText: {
-    fontSize: 16,
-    color: '#5F6368',
-    textAlign: 'center',
-  },
-  emptyHolidaysSubtext: {
-    fontSize: 14,
-    color: '#80868B',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  
 });
 
 export default styles;

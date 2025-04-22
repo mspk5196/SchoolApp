@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, Platform, T
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import Leftarrow from '../../assets/Calender/leftarrow.svg';
+import BackIcon from '../../assets/Calender/leftarrow.svg';
 import Holiday from '../../assets/Calender/holiday.svg';
 import ChevronDown from '../../assets/Calender/chevron-down.svg';
 import ChevronRight from '../../assets/Calender/chevron-right.svg';
@@ -380,11 +380,11 @@ const CalendarApp = ({navigation}) => {
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <SafeAreaView style={styles.container}>
         {/* Navigation bar */}
-        <View style={styles.SubNavbar}>
-          <TouchableOpacity>
-            <Leftarrow width={20} height={20} style={styles.Leftarrow}  onPress={() => navigation.goBack()}/>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <BackIcon width={24} height={24} />
           </TouchableOpacity>
-          <Text style={styles.heading}>{screenTitle}</Text>
+          <Text style={styles.headerTxt}>Events</Text>
         </View>
 
         <View style={styles.monthSelector}>
@@ -485,6 +485,7 @@ const CalendarApp = ({navigation}) => {
                   <Text style={styles.eventDay}>{event.day}</Text>
                   <Text style={styles.eventMonth}>{event.month}</Text>
                 </View>
+              
                 <View
                   style={[
                     styles.eventMarker,
@@ -549,7 +550,7 @@ const CalendarApp = ({navigation}) => {
               {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Leftarrow width={20} height={20}  onPress={() => navigation.goBack()}/>
+                  <BackIcon width={20} height={20}  onPress={() => setModalVisible(false)}/>
                 </TouchableOpacity>
                 <Text style={styles.modalTitle}>Calendar</Text>
               </View>

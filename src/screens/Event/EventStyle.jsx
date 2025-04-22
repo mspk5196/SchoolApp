@@ -2,13 +2,13 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 // Get screen width for card sizing
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = 220;
-const CARD_MARGIN = 10;
+const CARD_WIDTH = 240; // Using the width from EventStyles1.jsx
+const CARD_MARGIN = 12;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
   header: {
     flexDirection: 'row',
@@ -26,7 +26,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   scrollView: {
-    flex: 1,
     padding: 16,
   },
   sectionContainer: {
@@ -38,10 +37,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#111827',
   },
-  eventsGrid: {
+  categoryHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    marginRight: 16,
+    position: 'relative',
+  },
+  likedContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   cardWrapper: {
     width: CARD_WIDTH,
@@ -64,7 +70,7 @@ const styles = StyleSheet.create({
   },
   eventImageContainer: {
     width: '100%',
-    height: 120,
+    height: 140,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -91,6 +97,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#6B7280',
   },
+  favoriteButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  favoriteIcon: {
+    fontSize: 20,
+  },
   eventTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -99,6 +118,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   eventRowScroll: {
+    paddingRight: 16,
     paddingBottom: 8,
   },
   participantsContainer: {
@@ -111,9 +131,9 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   avatar: {
-    width: 23,
-    height: 23,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'white',
   },
@@ -122,7 +142,7 @@ const styles = StyleSheet.create({
   },
   participantsText: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#3F38DD',
     marginLeft: 4,
     fontWeight: '500',
   },
@@ -133,7 +153,6 @@ const styles = StyleSheet.create({
   locationText: {
     fontSize: 12,
     color: '#6B7280',
-    marginLeft: 4,
     fontWeight: '500',
   },
   floatingButton: {
@@ -147,6 +166,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
   },
   plusIcon: {
     fontSize: 32,
@@ -165,8 +188,10 @@ const styles = StyleSheet.create({
   },
   detailBannerImage: {
     width: '100%',
-    height: '100%',
-    backgroundColor: '#FEE2E2',
+    height: 280,
+    borderBottomLeftRadius: 50,
+    borderBottomRightRadius: 50,
+    overflow: 'hidden',
   },
   favoriteBtnOverlay: {
     position: 'absolute',
@@ -179,11 +204,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  favoriteIcon: {
-    fontSize: 20,
-  },
   detailContent: {
     padding: 16,
+    marginTop: 60,
   },
   detailTitle: {
     fontSize: 24,
@@ -262,16 +285,7 @@ const styles = StyleSheet.create({
     lineHeight: 120,
   },
   
-  // Additional styles for responsive layout
-  modalBackButton: {
-    padding: 10,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#3557FF',
-  },
-  
-  // Registration button styling for event detail
+  // Register button styling for event detail
   registerButtonContainer: {
     padding: 16,
     borderTopWidth: 1,
