@@ -384,7 +384,7 @@ const CalendarApp = ({navigation}) => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <BackIcon width={24} height={24} />
           </TouchableOpacity>
-          <Text style={styles.headerTxt}>Events</Text>
+          <Text style={styles.headerTxt}>Calendar</Text>
         </View>
 
         <View style={styles.monthSelector}>
