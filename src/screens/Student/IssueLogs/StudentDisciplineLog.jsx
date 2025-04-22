@@ -91,8 +91,12 @@ const DisciplineLog = ({ navigation }) => {
               <Text style={styles.cardReason}>{item.reason}</Text>
               <View style={styles.regBar}>
                 <Text style={styles.registeredBy}>Registered by {item.registeredBy}</Text>
-                <PhoneIcon style={styles.phoneIcon}/>
-                <MessageIcon style={styles.messageIcon} />
+                <TouchableOpacity style={styles.actionButtonCall}>
+                  <PhoneIcon width={20} height={20} /> 
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButtonMsg}>
+                <MessageIcon width={20} height={20} /> 
+                </TouchableOpacity>
               </View>
             </View>
           </View>

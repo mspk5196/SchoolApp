@@ -82,19 +82,19 @@ const StudentProfile = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.contentContainer}>
         {(searchText ? filteredStudents : students).map((student, index) => (
           <TouchableOpacity 
-            key={index} 
-            style={styles.listItem}
-           
-          >
-            <Image source={Staff} style={styles.studentAvatar} />
-            <View style={styles.listContent}>
-              <Text style={styles.listName}>{student.name}</Text>
-              <Text style={styles.listId}>{student.id}</Text>
-            </View>
-            <View style={styles.removeButton}>
-              <Text style={styles.removeText}>View</Text>
-            </View>
-          </TouchableOpacity>
+          key={index} 
+          style={styles.listItem}
+          onPress={() => navigation.navigate('StudentDetails', { student })}
+        >
+          <Image source={Staff} style={styles.studentAvatar} />
+          <View style={styles.listContent}>
+            <Text style={styles.listName}>{student.name}</Text>
+            <Text style={styles.listId}>{student.id}</Text>
+          </View>
+          <View style={styles.removeButton}>
+            <Text style={styles.removeText}>View</Text>
+          </View>
+        </TouchableOpacity>
         ))}
       </ScrollView>
     </View>

@@ -143,11 +143,17 @@ activeText: {
     color: '#666',
     flex: 1,
   },
-  phoneIcon: {
-    marginHorizontal: 8,
+  actionButtonCall: {
+    backgroundColor: '#AEBCFF', 
+    borderRadius: 999,
+    padding: 10,
+    marginLeft: 'auto',
+    marginRight: 10,
   },
-  messageIcon: {
-    marginLeft: 8,
+  actionButtonMsg: {
+    backgroundColor: '#A4F4E7', 
+    borderRadius: 999,
+    padding: 10,
   },
   fab: {
     position: 'absolute',

@@ -56,6 +56,7 @@ import LeaveDetails from '../screens/Mentor/LeaveApproval/LeaveDetails';
 
 import Student from '../screens/Student/StudentHome/StudentHome';
 import StudentProfile from '../screens/Student/StudentProfile/StudentProfile';
+import StudentDetails from '../screens/Student/StudentProfile/StudentProfileDetail';
 import IssueLogs from '../screens/Student/IssueLogs/StudentDisciplineLog';
 import BackLogs from '../screens/Student/BackLogs/BackLogs';
 import ConceptGraph from '../screens/Student/ConceptGraph/ConceptGraph';
@@ -244,6 +245,11 @@ const AppLayout = () => {
               <Stack.Screen
                 name="StudentProfile"
                 component={StudentProfile}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="StudentDetails"
+                component={StudentDetails}
                 options={{ headerShown: false }}
               />
               <Stack.Screen
