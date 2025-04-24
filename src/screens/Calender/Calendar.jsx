@@ -1,5 +1,15 @@
 import React, {useState, useEffect} from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, Platform, TouchableWithoutFeedback, Keyboard,
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  TextInput,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  FlatList,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -17,7 +27,65 @@ const CalendarApp = ({navigation}) => {
   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
   const [calendarDays, setCalendarDays] = useState([]);
 
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState([
+    {
+      id: '1',
+      title: 'Group photo',
+      time: '9:00 AM - 12:00 PM',
+      date: new Date(currentYear, currentMonth, 1),
+      type: 'Event',
+    },
+    {
+      id: '2',
+      title: 'Inter-school sports meet',
+      time: '9:00 AM - 12:00 PM',
+      date: new Date(currentYear, currentMonth, 2),
+      type: 'Event',
+    },
+    {
+      id: '3',
+      title: 'Uniform measurement',
+      time: '9:00 AM - 12:00 PM',
+      date: new Date(currentYear, currentMonth, 13),
+      type: 'Event',
+    },
+    {
+      id: '4',
+      title: 'Football competition',
+      time: '9:00 AM - 12:00 PM',
+      date: new Date(currentYear, currentMonth, 18),
+      type: 'Event',
+    },
+    {
+      id: '5',
+      title: 'Christmas Celebration',
+      time: '9:00 AM - 12:00 PM',
+      date: new Date(currentYear, currentMonth, 25),
+      type: 'Event',
+    },
+    {
+      id: '6',
+      title: 'Diwali',
+      time: 'Full day',
+      date: new Date(currentYear, currentMonth, 1),
+      type: 'Holiday',
+    },
+    {
+      id: '7',
+      title: 'Krishna jayanthi',
+      time: 'Full day',
+      date: new Date(currentYear, currentMonth, 20),
+      type: 'Holiday',
+    },
+    {
+      id: '8',
+      title: 'Christmas',
+      time: 'Full day',
+      date: new Date(currentYear, currentMonth, 25),
+      type: 'Holiday',
+    }
+  ]);
+  
   const [displayedEvents, setDisplayedEvents] = useState([]);
 
   const [viewType, setViewType] = useState('all');
@@ -29,6 +97,7 @@ const CalendarApp = ({navigation}) => {
   const [eventDate, setEventDate] = useState(new Date());
   const [holidayReason, setHolidayReason] = useState('');
   const [holidayDuration, setHolidayDuration] = useState('Full day');
+  const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
 
   // Date picker states
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -52,6 +121,25 @@ const CalendarApp = ({navigation}) => {
   ];
 
   // Short month names for tabs
+  const shortMonths = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  // Days of the week
+  const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  // Get month tabs for the slider
   const getMonthTabs = () => {
     const tabs = [];
     for (let i = -2; i <= 2; i++) {
@@ -67,7 +155,7 @@ const CalendarApp = ({navigation}) => {
       }
 
       tabs.push({
-        name: monthNames[month].substring(0, 3),
+        name: shortMonths[month],
         month: month,
         year: year,
       });
@@ -107,6 +195,7 @@ const CalendarApp = ({navigation}) => {
       // Check if the day has an event
       const hasEvent = events.some(
         event =>
+          event.type === 'Event' &&
           event.date.getDate() === i &&
           event.date.getMonth() === currentMonth &&
           event.date.getFullYear() === currentYear,
@@ -134,7 +223,7 @@ const CalendarApp = ({navigation}) => {
     return days;
   };
 
-  // Filter events for the selected month
+  // Filter events for the selected date and view type
   const filterEvents = () => {
     let filteredEvents = events.filter(
       event =>
@@ -142,6 +231,14 @@ const CalendarApp = ({navigation}) => {
         event.date.getFullYear() === currentYear,
     );
 
+    // Filter by selected date if one is set
+    if (selectedDate) {
+      filteredEvents = filteredEvents.filter(
+        event => event.date.getDate() === selectedDate
+      );
+    }
+
+    // Filter by event type if we're in holidays view
     if (viewType === 'holidays') {
       filteredEvents = filteredEvents.filter(event => event.type === 'Holiday');
     }
@@ -166,7 +263,6 @@ const CalendarApp = ({navigation}) => {
   const changeMonth = (month, year) => {
     setCurrentMonth(month);
     setCurrentYear(year);
-    setSelectedDate(1); // Reset selected date when changing month
   };
 
   // Format date for display
@@ -217,6 +313,11 @@ const CalendarApp = ({navigation}) => {
   // Toggle holiday view
   const toggleHolidayView = () => {
     setViewType(viewType === 'all' ? 'holidays' : 'all');
+  };
+
+  // Toggle month/year picker
+  const toggleMonthYearPicker = () => {
+    setShowMonthYearPicker(!showMonthYearPicker);
   };
 
   // Add new event
@@ -373,8 +474,55 @@ const CalendarApp = ({navigation}) => {
     }
   };
 
-  // Screen title based on current view
-  const screenTitle = viewType === 'holidays' ? 'Holidays' : 'Calendar';
+  // Render event item for FlatList
+  const renderEventItem = ({item}) => (
+    <TouchableOpacity
+      key={item.id}
+      style={[
+        styles.eventItem,
+        item.type === 'Holiday' && styles.holidayItem,
+      ]}>
+      <View style={styles.eventDateContainer}>
+        <Text style={styles.eventDay}>{item.day}</Text>
+        <Text style={styles.eventMonth}>{item.month}</Text>
+      </View>
+    
+      <View
+        style={[
+          styles.eventMarker,
+          item.type === 'Holiday' && styles.holidayMarker,
+        ]}
+      />
+      <View style={styles.eventDetails}>
+        <View
+          style={
+            item.type === 'Holiday'
+              ? styles.holidayContainer
+              : styles.eventContainer
+          }>
+          <Text
+            style={[
+              styles.eventTitle,
+              item.type === 'Holiday' && styles.holidayTitle,
+            ]}>
+            {item.title}
+          </Text>
+          <Text
+            style={[
+              styles.eventTime,
+              item.type === 'Holiday' && styles.holidayTime,
+            ]}>
+            {item.time}
+          </Text>
+        </View>
+      </View>
+      <ChevronRight
+        width={18}
+        height={18}
+        style={styles.eventArrow}
+      />
+    </TouchableOpacity>
+  );
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -387,8 +535,11 @@ const CalendarApp = ({navigation}) => {
           <Text style={styles.headerTxt}>Calendar</Text>
         </View>
 
+        {/* Month selector and holiday toggle */}
         <View style={styles.monthSelector}>
-          <TouchableOpacity style={styles.monthYearContainer}>
+          <TouchableOpacity 
+            style={styles.monthYearContainer}
+            onPress={toggleMonthYearPicker}>
             <Text
               style={
                 styles.monthYear
@@ -413,6 +564,55 @@ const CalendarApp = ({navigation}) => {
             </View>
           </TouchableOpacity>
         </View>
+
+        {/* Month/Year Picker Modal */}
+        <Modal
+          visible={showMonthYearPicker}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowMonthYearPicker(false)}>
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowMonthYearPicker(false)}>
+            <View
+              style={styles.monthYearPickerContent}
+              onStartShouldSetResponder={() => true}
+              onResponderGrant={e => e.stopPropagation()}>
+              <View style={styles.yearSelector}>
+                <TouchableOpacity onPress={() => changeMonth(currentMonth, currentYear - 1)}>
+                  <Text style={styles.yearSelectorArrow}>{'<'}</Text>
+                </TouchableOpacity>
+                <Text style={styles.yearSelectorText}>{currentYear}</Text>
+                <TouchableOpacity onPress={() => changeMonth(currentMonth, currentYear + 1)}>
+                  <Text style={styles.yearSelectorArrow}>{'>'}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.monthGrid}>
+                {monthNames.map((month, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.monthItem,
+                      currentMonth === index && styles.selectedMonthItem,
+                    ]}
+                    onPress={() => {
+                      changeMonth(index, currentYear);
+                      setShowMonthYearPicker(false);
+                    }}>
+                    <Text
+                      style={[
+                        styles.monthItemText,
+                        currentMonth === index && styles.selectedMonthItemText,
+                      ]}>
+                      {month}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         {viewType === 'all' && (
           <>
@@ -471,65 +671,23 @@ const CalendarApp = ({navigation}) => {
           </>
         )}
 
-        {/* Events list */}
-        <ScrollView style={styles.eventsContainer}>
-          {displayedEvents.length > 0 ? (
-            displayedEvents.map(event => (
-              <TouchableOpacity
-                key={event.id}
-                style={[
-                  styles.eventItem,
-                  event.type === 'Holiday',
-                ]}>
-                <View style={styles.eventDateContainer}>
-                  <Text style={styles.eventDay}>{event.day}</Text>
-                  <Text style={styles.eventMonth}>{event.month}</Text>
-                </View>
-              
-                <View
-                  style={[
-                    styles.eventMarker,
-                    event.type === 'Holiday' && styles.holidayMarker,
-                  ]}
-                />
-                <View style={styles.eventDetails}>
-                  <View
-                    style={
-                      event.type === 'Holiday'
-                        ? styles.holidayContainer
-                        : styles.eventContainer
-                    }>
-                    <Text
-                      style={[
-                        styles.eventTitle,
-                        event.type === 'Holiday' && styles.holidayTitle,
-                      ]}>
-                      {event.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.eventTime,
-                        event.type === 'Holiday' && styles.holidayTime,
-                      ]}>
-                      {event.type === 'Holiday' ? event.time : event.time}
-                    </Text>
-                  </View>
-                </View>
-                <ChevronRight
-                  width={18}
-                  height={18}
-                  style={styles.eventArrow}
-                />
-              </TouchableOpacity>
-            ))
-          ) : (
+        {/* Events list using FlatList for better performance */}
+        <FlatList
+          data={displayedEvents}
+          renderItem={renderEventItem}
+          keyExtractor={item => item.id}
+          style={styles.eventsContainer}
+          contentContainerStyle={{ paddingBottom: 80 }}
+          ListEmptyComponent={
             <Text style={styles.noEventsText}>
               {viewType === 'holidays'
                 ? 'No holidays for this month'
-                : 'No events for this month'}
+                : selectedDate
+                  ? `No events for ${selectedDate} ${monthNames[currentMonth]}`
+                  : 'No events for this month'}
             </Text>
-          )}
-        </ScrollView>
+          }
+        />
 
         {/* Floating action button */}
         <TouchableOpacity
@@ -538,6 +696,7 @@ const CalendarApp = ({navigation}) => {
           <Addicon width={35} height={35} style={styles.fabIcon} />
         </TouchableOpacity>
 
+        {/* Add Event/Holiday Modal */}
         <Modal
           animationType="slide"
           transparent={true}
@@ -550,14 +709,14 @@ const CalendarApp = ({navigation}) => {
               {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <BackIcon width={20} height={20}  onPress={() => setModalVisible(false)}/>
+                  <BackIcon width={20} height={20} />
                 </TouchableOpacity>
-                <Text style={styles.modalTitle}>Calendar</Text>
+                <Text style={styles.modalTitle}>Add to Calendar</Text>
               </View>
 
               {/* Event Type Selection */}
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Event</Text>
+                <Text style={styles.formLabel}>Event Type</Text>
                 <View style={styles.radioGroup}>
                   <TouchableOpacity
                     style={styles.radioOption}

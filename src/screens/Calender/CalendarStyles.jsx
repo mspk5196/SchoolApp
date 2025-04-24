@@ -15,17 +15,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E3E3E3',
     backgroundColor: 'white',
-},
-headerTxt: {
+  },
+  headerTxt: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#000000',
     marginLeft: 10,
-},
-BackIcon: {
+  },
+  BackIcon: {
     width: 20,
     height: 20,
-},
+  },
   monthSelector: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -351,6 +351,116 @@ BackIcon: {
     backgroundColor: 'rgba(37, 99, 235, 0.1)',
     borderRadius: 8,
     padding: 6,
+  },
+  // New styles imported from Calendar2
+  dayNumberContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedDayContainer: {
+    backgroundColor: '#2563EB',
+    borderRadius: 20,
+  },
+  selectedDayText: {
+    color: '#FFFFFF',
+  },
+  dayNumber: {
+    color: '#666',
+    fontSize: 14,
+  },
+  // Month Year Picker Modal styles from Calendar2
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  monthYearPickerContent: {
+    width: width * 0.9,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 14,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  yearSelector: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  yearSelectorText: {
+    color: '#000000',
+    fontSize: 18,
+    fontWeight: '600',
+    marginHorizontal: 16,
+  },
+  yearSelectorArrow: {
+    fontSize: 20,
+    color: '#2563eb',
+    paddingHorizontal: 8,
+  },
+  monthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  monthItem: {
+    width: '31%',
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 5,
+    marginHorizontal: '1%',
+    borderRadius: 6,
+  },
+  selectedMonthItem: {
+    backgroundColor: '#2563eb',
+  },
+  monthItemText: {
+    fontSize: 13,
+    color: 'black',
+  },
+  selectedMonthItemText: {
+    color: 'white',
+    fontWeight: '500',
+  },
+  // Event content container styles from Calendar2
+  eventContentContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    overflow: 'hidden',
+    minHeight: 60,
+  },
+  eventBar: {
+    width: 4,
+    backgroundColor: '#10b981',
+  },
+  eventDetailsContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingRight: 12,
+  },
+  holidayeventBar: {
+    width: 4,
+    backgroundColor: '#E4626F',
+  },
+  // No events container
+  noEventsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
 });
 
