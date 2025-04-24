@@ -1,7 +1,7 @@
 import React from "react";
 import { SafeAreaView, StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import Router from "./src/routes/router";
+import Router from "./srcAdmin/routes/router";
 
 const App = () => {
   return (
@@ -16,6 +16,7 @@ const App = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    opacity: 1,
     backgroundColor: "#FAFAFA",
   },
 });

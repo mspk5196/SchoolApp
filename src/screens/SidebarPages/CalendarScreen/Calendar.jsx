@@ -20,6 +20,7 @@ const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [showHolidays, setShowHolidays] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   // Get the current year and month
   const currentYear = currentDate.getFullYear();
@@ -94,24 +95,40 @@ const Calendar = () => {
     return calendarDays;
   };
 
-  // Event data for the current month
-  const events = [
-    {date: 1, title: 'Group photo', time: '9:00 AM - 12:00 PM'},
-    {date: 2, title: 'Inter-school sports meet', time: '9:00 AM - 12:00 PM'},
-    {date: 13, title: 'Uniform measurement', time: '9:00 AM - 12:00 PM'},
-    {date: 18, title: 'Football competition', time: '9:00 AM - 12:00 PM'},
-    {date: 18, title: 'Football competition', time: '9:00 AM - 12:00 PM'},
+  // Combined event data with type field
+  const combinedEvents = [
+    {date: 1, title: 'Group photo', time: '9:00 AM - 12:00 PM', type: 'event'},
+    {date: 1, name: 'Diwali', type: 'holiday'},
+    {
+      date: 2,
+      title: 'Inter-school sports meet',
+      time: '9:00 AM - 12:00 PM',
+      type: 'event',
+    },
+    {
+      date: 13,
+      title: 'Uniform measurement',
+      time: '9:00 AM - 12:00 PM',
+      type: 'event',
+    },
+    {
+      date: 18,
+      title: 'Football competition',
+      time: '9:00 AM - 12:00 PM',
+      type: 'event',
+    },
+    {date: 20, name: 'Krishna jayanthi', type: 'holiday'},
+    {date: 25, name: 'Christmas', type: 'holiday'},
+    {
+      date: 25,
+      title: 'Christmas Celebration',
+      time: '9:00 AM - 12:00 PM',
+      type: 'event',
+    },
   ];
 
-  // Holiday data
-  const holidays = [
-    {date: 1, name: 'Diwali'},
-    {date: 20, name: 'Krishna jayanthi'},
-    {date: 25, name: 'Christmas'},
-  ];
-
-  // Days with events
-  const eventDays = [6, 8, 12, 19, 25, 29, 31];
+  // Days with events (for dot indicators)
+  const eventDays = [1, 2, 13, 18, 20, 25];
 
   // Handle month change
   const changeMonth = offset => {
@@ -141,6 +158,22 @@ const Calendar = () => {
     setShowHolidays(!showHolidays);
   };
 
+  // Handle day press
+  const handleDayPress = day => {
+    setSelectedDate(day);
+  };
+
+  const getEventsForSelectedDate = () => {
+    if (!selectedDate) return filteredEvents;
+
+    return filteredEvents.filter(
+      event =>
+        event.date === selectedDate &&
+        (event.month === undefined || event.month === currentMonth) &&
+        (event.year === undefined || event.year === currentYear),
+    );
+  };
+
   // Render individual event item
   const renderEventItem = ({item, index}) => (
     <View key={index} style={styles.eventItem}>
@@ -151,15 +184,15 @@ const Calendar = () => {
         <Text style={styles.eventDateMonth}>{shortMonths[currentMonth]}</Text>
       </View>
       <View style={styles.eventContentContainer}>
-      <View style={styles.eventBar} />
-      <View style={styles.eventDetailsContainer}>
-        <View style={styles.eventDetails}>
-          <Text style={styles.eventTitle}>{item.title}</Text>
-          <Text style={styles.eventTime}>{item.time}</Text>
+        <View style={styles.eventBar} />
+        <View style={styles.eventDetailsContainer}>
+          <View style={styles.eventDetails}>
+            <Text style={styles.eventTitle}>{item.title}</Text>
+            <Text style={styles.eventTime}>{item.time}</Text>
+          </View>
+          <ChevronRight width={20} height={20} style={styles.eventArrow} />
         </View>
-        <ChevronRight width={20} height={20} style={styles.eventArrow} />
       </View>
-    </View>
     </View>
   );
 
@@ -172,12 +205,32 @@ const Calendar = () => {
         </Text>
         <Text style={styles.holidayDateMonth}>{shortMonths[currentMonth]}</Text>
       </View>
-      <View style={styles.holidayContentContainer}>
-        <View style={styles.holidayBar} />
-        <Text style={styles.holidayName}>{item.name}</Text>
+      <View style={styles.eventContentContainer}>
+        <View style={styles.holidayeventBar} />
+        <View style={styles.eventDetailsContainer}>
+          <View style={styles.eventDetails}>
+            <Text style={styles.holidayName}>{item.name}</Text>
+            {/* <Text style={styles.eventTime}>{item.time}</Text> */}
+          </View>
+          <ChevronRight width={20} height={20} style={styles.eventArrow} />
+        </View>
       </View>
     </View>
   );
+
+  // Combined render function that checks the type
+  const renderItem = ({item, index}) => {
+    if (item.type === 'holiday') {
+      return renderHolidayItem({item, index});
+    } else {
+      return renderEventItem({item, index});
+    }
+  };
+
+  // Filter events based on showHolidays toggle
+  const filteredEvents = showHolidays
+    ? combinedEvents.filter(item => item.type === 'holiday')
+    : combinedEvents;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -269,7 +322,8 @@ const Calendar = () => {
         </TouchableOpacity>
       </Modal>
 
-      {!showHolidays ? (
+      {/* Only show calendar and month slider when showHolidays is false */}
+      {!showHolidays && (
         <>
           {/* Calendar grid */}
           <View style={styles.calendarContainer}>
@@ -284,30 +338,45 @@ const Calendar = () => {
 
             {/* Calendar days */}
             <View style={styles.calendarGrid}>
-              {generateCalendarDays().map((day, index) => (
-                <View key={index} style={styles.dayCell}>
-                  {day && (
-                    <>
-                      <View
-                        style={[
-                          styles.dayNumberContainer,
-                          day === 1 && styles.todayCell,
-                        ]}>
-                        <Text
+              {generateCalendarDays().map((day, index) => {
+                const isSelected = day === selectedDate;
+                const hasEvent = eventDays.includes(day);
+
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.dayCell}
+                    onPress={() => day && handleDayPress(day)}
+                    activeOpacity={0.7}>
+                    {day && (
+                      <>
+                        <View
                           style={[
-                            styles.dayNumber,
-                            day === 1 && styles.todayNumber,
+                            styles.dayNumberContainer,
+                            isSelected && styles.selectedDayContainer,
+                            day === new Date().getDate() &&
+                              currentMonth === new Date().getMonth() &&
+                              styles.todayCell,
                           ]}>
-                          {day}
-                        </Text>
-                      </View>
-                      {eventDays.includes(day) && (
-                        <View style={styles.eventDot} />
-                      )}
-                    </>
-                  )}
-                </View>
-              ))}
+                          <Text
+                            style={[
+                              styles.dayNumber,
+                              isSelected && styles.selectedDayText,
+                              day === new Date().getDate() &&
+                                currentMonth === new Date().getMonth() &&
+                                styles.todayNumber,
+                            ]}>
+                            {day}
+                          </Text>
+                        </View>
+                        {hasEvent && !isSelected && (
+                          <View style={styles.eventDot} />
+                        )}
+                      </>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -334,26 +403,26 @@ const Calendar = () => {
               </TouchableOpacity>
             ))}
           </ScrollView>
-
-          {/* Events list (scrollable) */}
-          <FlatList
-            data={events}
-            renderItem={renderEventItem}
-            keyExtractor={(item, index) => `event-${index}`}
-            style={styles.eventsContainer}
-            showsVerticalScrollIndicator={false}
-          />
         </>
-      ) : (
-        // Holidays view (scrollable)
-        <FlatList
-          data={holidays}
-          renderItem={renderHolidayItem}
-          keyExtractor={(item, index) => `holiday-${index}`}
-          style={styles.holidaysContainer}
-          showsVerticalScrollIndicator={false}
-        />
       )}
+
+      {/* Events/Holidays list (scrollable) */}
+      <FlatList
+        data={selectedDate ? getEventsForSelectedDate() : filteredEvents}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => `event-${index}`}
+        style={styles.eventsContainer}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          selectedDate ? (
+            <View style={styles.noEventsContainer}>
+              <Text style={styles.noEventsText}>
+                No {showHolidays ? 'holidays' : 'events'} for this date
+              </Text>
+            </View>
+          ) : null
+        }
+      />
     </SafeAreaView>
   );
 };

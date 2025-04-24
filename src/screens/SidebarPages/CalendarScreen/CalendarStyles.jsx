@@ -168,6 +168,7 @@ const styles = StyleSheet.create({
   monthSlider: {
     marginTop: 12,
     flexShrink: 0,
+    flexGrow: 0,
     paddingHorizontal: 12,
   },
   monthTab: {
@@ -266,8 +267,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   holidayDateContainer: {
     alignItems: 'center',
@@ -287,17 +286,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  holidayBar: {
-    width: 4,
-    height: 36,
-    backgroundColor: '#f87171',
-    borderRadius: 2,
-    marginRight: 12,
-  },
+
   holidayName: {
     fontSize: 16,
-    color: '#f87171',
+    fontWeight: '500',
+    marginBottom: 4,
+    color: '#E4626F', 
   },
+  holidayeventBar: {
+    width: 4,
+    backgroundColor: '#E4626F',
+  },
+  selectedDayContainer: {
+    backgroundColor: '#2563EB',
+    borderRadius: 20,
+  },
+  selectedDayText: {
+    color: '#FFFFFF',
+  },
+  noEventsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  noEventsText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  
 });
 
 export default styles;
