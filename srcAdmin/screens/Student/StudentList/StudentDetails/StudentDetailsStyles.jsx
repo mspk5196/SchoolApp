@@ -452,5 +452,13 @@ achievementHeader: {
       refreshIcon: {
         fontSize: 16,
       },
+      footer: {
+        position: 'absolute',
+        bottom: 25,
+        right: 23,
+        backgroundColor: '#AEBCFF',
+        padding: 12,
+        borderRadius: 100,
+      },
 })
 export default styles;

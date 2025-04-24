@@ -17,8 +17,7 @@ import Exchange from '../../../../assets/StudentHome/StudentProfileDetails/excha
 import BackIcon from '../../../../assets/StudentHome/StudentProfileDetails/leftarrow.svg';
 import styles from './StudentDetailsStyles';
 import PerformanceGraph from '../../../../components/performancegraph/Performancegraph';
-import Svg, {Path, Circle, Defs, LinearGradient, Stop} from 'react-native-svg';
-import {useState} from 'react';
+import Homeicon from '../../../../assets/Basicimg/Home.svg';
 
 const StudentProfileDetail = ({navigation, route}) => {
   const {student} = route.params || {};
@@ -258,6 +257,10 @@ const subjectsData = [
           ))}
         </View>
       </ScrollView>
+      <TouchableOpacity style={styles.footer}
+      onPress={() => navigation.navigate('menu')}>
+        <Homeicon/>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

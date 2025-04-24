@@ -1,9 +1,10 @@
-import { StyleSheet } from 'react-native';
+import {StyleSheet} from 'react-native';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAFAFA',
+    paddingBottom: 20,
   },
   header: {
     flexDirection: 'row',
@@ -13,7 +14,7 @@ const styles = StyleSheet.create({
     paddingTop: 42,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
     flexDirection: 'row',
     alignItems: 'flex-end',
     borderColor: '#00000080',
@@ -30,29 +31,29 @@ const styles = StyleSheet.create({
   selectedCard: {
     backgroundColor: '#EBEEFF',
   },
-  
+
   scrollWrapper: {
     marginVertical: 10,
   },
   scrollContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10, 
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
   },
-classnavgrade: {
+  classnavgrade: {
     flexDirection: 'row',
     marginTop: 10,
     marginBottom: 10,
     flexGrow: 0,
     flexShrink: 0,
-},
-classnavsection:{
+  },
+  classnavsection: {
     flexDirection: 'row',
     marginBottom: 20,
     flexGrow: 0,
     flexShrink: 0,
-},
-gradeselection: {
+  },
+  gradeselection: {
     backgroundColor: '#ffffff',
     padding: 10,
     marginLeft: 10,
@@ -60,17 +61,17 @@ gradeselection: {
     width: 90,
     borderRadius: 30,
     alignItems: 'center',
-},
-gradeselectiontext: {
+  },
+  gradeselectiontext: {
     color: 'black',
-    fontWeight:'500',
-},
-activeButton: {
+    fontWeight: '500',
+  },
+  activeButton: {
     backgroundColor: '#0C36FF',
-},
-activeText: {
+  },
+  activeText: {
     color: 'white',
-},
+  },
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -92,7 +93,7 @@ activeText: {
     borderRadius: 8,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 1,
@@ -116,7 +117,7 @@ activeText: {
   },
   cardSubtitle: {
     fontSize: 12,
-    fontWeight  : '500',
+    fontWeight: '500',
     color: '#777777',
   },
   cardDate: {
@@ -159,14 +160,14 @@ activeText: {
     flex: 1,
   },
   actionButtonCall: {
-    backgroundColor: '#AEBCFF', 
+    backgroundColor: '#AEBCFF',
     borderRadius: 999,
     padding: 10,
     marginLeft: 'auto',
     marginRight: 10,
   },
   actionButtonMsg: {
-    backgroundColor: '#A4F4E7', 
+    backgroundColor: '#A4F4E7',
     borderRadius: 999,
     padding: 10,
   },
@@ -177,7 +178,7 @@ activeText: {
     backgroundColor: '#3366ff',
     borderRadius: 28,
   },
-  
+
   // Modal styles
   modalOverlay: {
     flex: 1,
@@ -194,7 +195,7 @@ activeText: {
     borderRadius: 12,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
@@ -235,7 +236,7 @@ activeText: {
     fontSize: 16,
     fontWeight: '600',
   },
-  
+
   // Confirmation modal styles
   confirmModalOverlay: {
     flex: 1,
@@ -312,12 +313,19 @@ activeText: {
     paddingVertical: 5,
   },
   searchInput: {
-    color:"#000",
+    color: '#000',
     height: 40,
     flex: 1,
     fontSize: 16,
     paddingHorizontal: 8,
-    
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 25,
+    right: 23,
+    backgroundColor: '#AEBCFF',
+    padding: 12,
+    borderRadius: 100,
   },
 });
 

@@ -7,6 +7,7 @@ import IssueIcon from '../../../assets/StudentHome/IssueIcon.svg';
 import BacklogsIcon from '../../../assets/StudentHome/BacklogsIcon.svg';
 import Progressicon from '../../../assets/StudentHome/Progressicon.svg';
 import Gradcap from '../../../assets/StudentHome/Gradcap.svg';
+import Homeicon from '../../../assets/Basicimg/Home.svg';
 
 import styles from './StudentHomeStyles';
 
@@ -87,7 +88,10 @@ const StudentHome = ({ navigation }) => {
     </Pressable>
   )}
 />
-
+<TouchableOpacity style={styles.footer}
+      onPress={() => navigation.navigate('menu')}>
+        <Homeicon/>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

@@ -14,6 +14,7 @@ import MessageIcon from '../../../assets/StudentHome/Issuelog/MessageSquare.svg'
 import styles from './IssuelogStyls';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Search from '../../../assets/StudentHome/studentprofile/search.svg';
+import Homeicon from '../../../assets/Basicimg/Home.svg';
 
 const DisciplineLog = ({navigation}) => {
   const [activeSection, setActiveSection] = useState(null);
@@ -76,7 +77,7 @@ const DisciplineLog = ({navigation}) => {
           onPress={() => navigation && navigation.goBack()}>
           <PreviousIcon color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Student List</Text>
+        <Text style={styles.headerTitle}>Student Discipline Log</Text>
       </View>
       
       <ScrollView
@@ -155,6 +156,10 @@ const DisciplineLog = ({navigation}) => {
           </View>
         )}
       </ScrollView>
+      <TouchableOpacity style={styles.footer}
+      onPress={() => navigation.navigate('menu')}>
+        <Homeicon/>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

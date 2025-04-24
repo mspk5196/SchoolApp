@@ -131,7 +131,33 @@ activeText: {
     fontWeight: '500',
     color: '#323F49',
   },
-   
+  searchContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 35,
+    backgroundColor: '#EEEFF9',
+    paddingHorizontal: 20,
+    paddingVertical: 5,
+  },
+  searchInput: {
+    color:"#000",
+    height: 40,
+    flex: 1,
+    fontSize: 16,
+    paddingHorizontal: 8,
+    
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 25,
+    right: 23,
+    backgroundColor: '#AEBCFF',
+    padding: 12,
+    borderRadius: 100,
+  },
  
 });
 

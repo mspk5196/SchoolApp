@@ -4,6 +4,7 @@ import PreviousIcon from '../../../assets/StudentHome/studentprofile/PrevBtn.svg
 import styles from './StudentListStyles';
 const Staff = require('../../../assets/StudentHome/studentprofile/staff.png');
 import Search from '../../../assets/StudentHome/studentprofile/search.svg';
+import Homeicon from '../../../assets/Basicimg/Home.svg';
 
 const StudentProfile = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
@@ -99,6 +100,10 @@ const StudentProfile = ({ navigation }) => {
         </TouchableOpacity>
         ))}
       </ScrollView>
+      <TouchableOpacity style={styles.footer}
+      onPress={() => navigation.navigate('menu')}>
+        <Homeicon/>
+      </TouchableOpacity>
     </View>
     
   );

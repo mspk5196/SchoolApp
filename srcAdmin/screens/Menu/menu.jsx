@@ -16,7 +16,7 @@ import {Switch} from 'react-native-switch';
 import Graph from '../../assets/Menu/Graph.svg';
 
 const Menupage = ({navigation}) => {
-  const [isCoordinator, setIsCoordinator] = useState(false);
+  // const [isCoordinator, setIsCoordinator] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleMenuPress = menuItem => {

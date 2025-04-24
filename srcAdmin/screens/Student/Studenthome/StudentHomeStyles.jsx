@@ -79,6 +79,14 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         marginLeft: 20,
       },
+      footer: {
+        position: 'absolute',
+        bottom: 25,
+        right: 23,
+        backgroundColor: '#AEBCFF',
+        padding: 12,
+        borderRadius: 100,
+      },
     
 });
 
