@@ -229,7 +229,7 @@ const ExamSchedule = ({navigation}) => {
 
   return (
     <MenuProvider>
-      <SafeAreaView style={{flex: 1}}>
+      <SafeAreaView style={{flex: 1}, styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <BackIcon

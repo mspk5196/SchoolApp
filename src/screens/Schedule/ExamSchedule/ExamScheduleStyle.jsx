@@ -1,6 +1,11 @@
 import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#FAFAFA',
+    },
+
  header:{
     flexDirection: 'row',
     alignItems: 'center',
@@ -44,7 +49,7 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: "white",
         padding: 15,
-        borderRadius: 10,
+        borderRadius: 5,
         flexDirection: "row",
         alignItems: "center",
         marginHorizontal: 20,
@@ -109,8 +114,8 @@ const styles = StyleSheet.create({
         },
         date: {
             fontSize: 20,
-            fontWeight: 'bold',
-            color: 'black',
+            fontWeight: '600',
+            color: '#0027E3',
         },
         subject: {
             fontSize: 15,

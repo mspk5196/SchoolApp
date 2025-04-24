@@ -36,20 +36,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 10, 
   },
-classnavgrade: {
+  classnavgrade: {
     flexDirection: 'row',
     marginTop: 10,
     marginBottom: 10,
     flexGrow: 0,
     flexShrink: 0,
-},
-classnavsection:{
+  },
+  classnavsection:{
     flexDirection: 'row',
     marginBottom: 20,
     flexGrow: 0,
     flexShrink: 0,
-},
-gradeselection: {
+  },
+  gradeselection: {
     backgroundColor: '#ffffff',
     padding: 10,
     marginLeft: 10,
@@ -57,17 +57,17 @@ gradeselection: {
     width: 90,
     borderRadius: 30,
     alignItems: 'center',
-},
-gradeselectiontext: {
+  },
+  gradeselectiontext: {
     color: 'black',
     fontWeight:'500',
-},
-activeButton: {
+  },
+  activeButton: {
     backgroundColor: '#0C36FF',
-},
-activeText: {
+  },
+  activeText: {
     color: 'white',
-},
+  },
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -115,6 +115,14 @@ activeText: {
     fontSize: 14,
     color: '#666',
   },
+  cardInfo: {
+    borderWidth: 1,
+    borderColor: '#E7E7E7',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#F7F8FA',
+    marginBottom: 12,
+  },
   cardDate: {
     fontSize: 14,
     color: '#666',
@@ -161,6 +169,19 @@ activeText: {
     bottom: 16,
     backgroundColor: '#3366ff',
     borderRadius: 28,
+  },
+  
+  // No Results styling
+  noResultsContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 40,
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
   
   // Modal styles

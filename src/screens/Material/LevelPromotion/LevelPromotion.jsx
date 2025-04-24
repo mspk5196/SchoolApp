@@ -92,7 +92,7 @@ const LevelPromotion = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 } , styles.container}>
       <View style={styles.header}>
         <BackIcon 
           width={styles.BackIcon.width} 

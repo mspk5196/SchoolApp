@@ -234,7 +234,7 @@ const LeaveApply = ({ navigation }) => {
         </View>
       </View>
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.cancelButton}>
+        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
 

@@ -66,7 +66,7 @@ const InvigilationDuties = ({navigation}) => {
   }, {});
 
   return (
-    <SafeAreaView flexgrow={1}  flex={1}>
+    <SafeAreaView flexgrow={1}  flex={1} style={styles.container}>
     
         <View style={styles.header}>
           <BackIcon

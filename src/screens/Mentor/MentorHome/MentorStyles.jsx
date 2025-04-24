@@ -2,7 +2,10 @@ import { StyleSheet } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 
 const styles = StyleSheet.create ({
-      
+      container: {
+        backgroundColor: '#FAFAFA',
+        flex: 1,
+    },
     HomeIcon: {
         width: 25,
         height: 25,

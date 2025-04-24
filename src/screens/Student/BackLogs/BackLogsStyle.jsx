@@ -1,6 +1,11 @@
 import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#FaFaFa',
+    },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -34,7 +39,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginRight: 10,
     borderRadius: 20,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#ffffff',
     width: 105,
     alignItems: 'center',
   },
@@ -43,7 +48,8 @@ const styles = StyleSheet.create({
   },
   sectionTabText: {
     fontSize: 14,
-    color: '#333333',
+    color: '#000000',
+    fontWeight: '500',
     textAlign: 'center',
   },
   activeTabText: {

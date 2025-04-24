@@ -1,7 +1,12 @@
 import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
- 
+    container: {
+        flex: 1,
+        backgroundColor: '#FAFAFA',
+    },
+
+
   headerContainer: {
     flex: 1,
     backgroundColor: '#F5F5F5',
@@ -28,7 +33,7 @@ BackIcon: {
     height: 20,
 },
   selectedCard: {
-    backgroundColor: '#EBEEFF', 
+    backgroundColor: '#fafafa', 
   },
   
   scrollWrapper: {

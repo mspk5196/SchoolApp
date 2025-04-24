@@ -32,7 +32,7 @@ const ScheduleHome = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView flexgrow={1} flex={1}>    
+    <SafeAreaView flexgrow={1} flex={1} style={styles.container}>    
       <View style={styles.Header}>
         <HomeIcon width={styles.HomeIcon.width} height={styles.HomeIcon.height} onPress={() => navigation.goBack()}/>
         <Text style={styles.HeaderTxt}>Schedule</Text>
