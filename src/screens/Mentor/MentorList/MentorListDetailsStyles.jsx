@@ -35,14 +35,14 @@ const styles = StyleSheet.create({
     },
     MentorDayDetails:
     {
-width:'95%',
-margin:10,
-borderRadius:10,
-shadowColor: '#000',
-shadowOffset: { width: 0, height: 6 },
-shadowOpacity: 1,
-shadowRadius: 7,
-       marginBottom:-4
+      width:'95%',
+      margin:10,
+      borderRadius:10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 1,
+      shadowRadius: 7,
+      marginBottom:-4
     },
     avatar: {
       width: 50,
@@ -176,7 +176,7 @@ shadowRadius: 7,
       marginBottom: 7,
       width:'95%',
       margin:10
-        },
+    },
     subjectText: {
       fontSize: 16,
       fontWeight: '600',
@@ -205,150 +205,242 @@ shadowRadius: 7,
     },
     shedulesContainer:{
       flex:1,
-        backgroundColor:'#fff',
-        width:'95%',
-        margin:10,
-        borderRadius:10
+      backgroundColor:'#fff',
+      width:'95%',
+      margin:10,
+      borderRadius:10
     },
     modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-      },
-      modalContent: {
-        backgroundColor: 'white',
-        borderRadius: 10,
-        padding: 20,
-        width: '90%',
-        maxHeight: '70%',
-      },
-      modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#000',
-        marginBottom: 15,
-        textAlign: 'center',
-      },
-      subjectItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEEEEE',
-      },
-      selectedSubject: {
-        backgroundColor: '#F0F7FF',
-      },
-      selectedSubjectText: {
-        color: '#0066CC',
-        fontWeight: '500',
-      },
-      checkmark: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: '#0066CC',
-        justifyContent: 'center',
-        alignItems: 'center',
-      },
-      checkmarkText: {
-        color: 'white',
-        fontSize: 12,
-        fontWeight: 'bold',
-      },
-      buttonContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 20,
-      },
-      cancelButton: {
-        flex: 1,
-        paddingVertical: 12,
-        marginRight: 10,
-        borderRadius: 5,
-        borderWidth: 1,
-        borderColor: '#CCCCCC',
-        alignItems: 'center',
-      },
-      cancelButtonText: {
-        color: '#666666',
-        fontWeight: '500',
-      },
-      applyButton: {
-        flex: 1,
-        paddingVertical: 12,
-        marginLeft: 10,
-        borderRadius: 5,
-        backgroundColor: '#0066CC',
-        alignItems: 'center',
-      },
-      applyButtonText: {
-        color: 'white',
-        fontWeight: '500',
-      },
-      // Add these new styles for the calendar
-dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 5,
-    borderRadius: 5,
-    backgroundColor: '#f5f5f5',
-    marginRight:190
-  },
-  calendarModalContent: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
-    width: '90%',
-    maxHeight: '80%',
-  },
-  homeButtonContainer: {
-    position: 'absolute',
-    bottom: 30,
-    right: 25,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 20,
-    width: '90%',
-    maxHeight: '80%',
-  },
-  subjectList: {
-    maxHeight: 300,
-  },
-  subjectItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  subjectItemText: {
-    fontSize: 16,
-    color: '#000',
-    fontWeight: '500',
-  },
-  cancelButton: {
-    marginTop: 15,
-    padding: 12,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContent: {
+      backgroundColor: 'white',
+      borderRadius: 10,
+      padding: 20,
+      width: '90%',
+      maxHeight: '70%',
+    },
+    calendarModalContent: {
+      backgroundColor: 'white',
+      borderRadius: 10,
+      padding: 15,
+      width: '90%',
+      maxHeight: '80%',
+    },
+    subjectList: {
+      maxHeight: 300,
+    },
+    subjectItem: {
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E0E0E0',
+    },
+    subjectItemText: {
+      fontSize: 16,
+      color: '#000',
+      fontWeight: '500',
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#000',
+      marginBottom: 15,
+      textAlign: 'center',
+    },
+    subjectItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: '#EEEEEE',
+    },
+    selectedSubject: {
+      backgroundColor: '#F0F7FF',
+    },
+    selectedSubjectText: {
+      color: '#0066CC',
+      fontWeight: '500',
+    },
+    checkmark: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: '#0066CC',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkmarkText: {
+      color: 'white',
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
+    buttonContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 20,
+    },
+    cancelButton: {
+      marginTop: 15,
+      padding: 12,
+      backgroundColor: '#F0F0F0',
+      borderRadius: 5,
+      alignItems: 'center',
+    },
+    cancelButtonText: {
+      fontSize: 16,
+      color: '#333',
+      fontWeight: '500',
+    },
+    applyButton: {
+      flex: 1,
+      paddingVertical: 12,
+      marginLeft: 10,
+      borderRadius: 5,
+      backgroundColor: '#0066CC',
+      alignItems: 'center',
+    },
+    applyButtonText: {
+      color: 'white',
+      fontWeight: '500',
+    },
+    dateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 5,
+      borderRadius: 5,
+      backgroundColor: '#f5f5f5',
+      marginRight:190,
+      marginLeft:10,
+    },
+    homeButtonContainer: {
+      position: 'absolute',
+      bottom: 30,
+      right: 25,
+    },
+    // Add new styles for session modal
+    sessionModalContent: {
+      backgroundColor: 'white',
+      borderRadius: 10,
+      padding: 20,
+      width: '90%',
+      maxHeight: '80%',
+    },
+    sessionModalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    sessionModalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#000',
+      marginLeft: 10,
+    },
+    sessionList: {
+      maxHeight: 350,
+    },
+    sessionItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E0E0E0',
+    },
+    checkboxContainer: {
+      marginRight: 10,
+    },
+    sessionText: {
+      fontSize: 16,
+      color: '#000',
+      fontWeight: '500',
+    },
+    allotButton: {
+      marginTop: 20,
+      backgroundColor: '#0C36FF',
+      paddingVertical: 12,
+      borderRadius: 5,
+      alignItems: 'center',
+    },
+    allotButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    // Add new styles for faculty modal
+    facultyModalContent: {
+      backgroundColor: 'white',
+      borderRadius: 10,
+      padding: 20,
+      width: '90%',
+      maxHeight: '80%',
+    },
+    searchContainer: {
+      marginBottom: 15,
+    },
+    searchBox: {
+      backgroundColor: '#e8e8e8',
+      padding: 12,
+      borderRadius: 10,
+    },
+    facultyList: {
+      maxHeight: 350,
+    },
+    facultyItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E0E0E0',
+    },
+    selectedFacultyItem: {
+      backgroundColor: '#F0F7FF',
+    },
+    facultyDetails: {
+      flex: 1,
+    },
+    staffName: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 5,
+      gap: 6,
+    },
+    facultyName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#000',
+    },
+    hatContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    facultySpec: {
+      fontSize: 14,
+      color: '#666',
+    },
+    selectButton: {
+      marginTop: 15,
+      backgroundColor: '#0C36FF',
+      paddingVertical: 12,
+      borderRadius: 5,
+      alignItems: 'center',
+    },
+    penicon:{
+      marginTop:5,
+      marginLeft:5
+ },
+    selectButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+
   });
-  export default styles
+  export default styles;

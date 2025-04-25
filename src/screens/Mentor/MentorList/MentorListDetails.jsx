@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, Modal, FlatList,ScrollView, Pressable} from 'react-native';
-import BackIcon from "../../../assets/MentorList/leftarrow";
+import { View, Text, TouchableOpacity, Image, Modal, FlatList, ScrollView, Pressable, TextInput } from 'react-native';
+import BackIcon from "../../../assets/MentorList/leftarrow.svg";
 import Numdays from '../../../assets/MentorList/numdays.svg';
 import Clock from '../../../assets/MentorList/clock.svg';
 import Leaveday from '../../../assets/MentorList/leaveday.svg';
-import Pen from '../../../assets/MentorList/pen.svg';
 import Eye from '../../../assets/MentorList/Group.svg';
+import Pen from '../../../assets/MentorList/pen.svg';
 import Roundhome from '../../../assets/MentorList/roundhome.svg';
+import Assign from '../../../assets/MentorList/assign.svg';
+import Tickicon from '../../../assets/MentorList/tickicon.svg';
+import Tickbox from '../../../assets/MentorList/tickbox.svg';
+import Tick from '../../../assets/MentorList/tick.svg';
+import Oneperson from '../../../assets/MentorList/oneperson.svg';
+import Hat from '../../../assets/MentorList/hat.svg';
 // Import the calendar component
 import { Calendar } from 'react-native-calendars';
 import styles from './MentorListDetailsStyles';
@@ -18,7 +24,14 @@ const MentorDetails = ({ route, navigation }) => {
   const [selectedSubject, setSelectedSubject] = useState(mentor.subject || '');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState('23/12/24');
-  const [formattedDate, setFormattedDate] = useState('2024-12-23'); // YYYY-MM-DD format for calendar
+  const [formattedDate, setFormattedDate] = useState('2024-12-23');
+  
+  // New state variables for session and faculty modals
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [showFacultyModal, setShowFacultyModal] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [selectedFaculties, setSelectedFaculties] = useState([]);
+  const [searchText, setSearchText] = useState('');
   
   // Available subjects to choose from
   const subjects = [
@@ -34,6 +47,25 @@ const MentorDetails = ({ route, navigation }) => {
     "Hindi, Science"
   ];
 
+  // Sessions for the day
+  const sessions = [
+    { id: 1, time: "09:00-10:00", label: "Session 1 (09.00-10.00)" },
+    { id: 2, time: "10:00-10:40", label: "Session 2 (10.00-10.40)" },
+    { id: 3, time: "11:00-11:40", label: "Session 3 (11.00-11.40)" },
+    { id: 4, time: "11:40-12:30", label: "Session 4 (11.40-12.30)" },
+    { id: 5, time: "01:30-02:10", label: "Session 5 (01.30-02.10)" },
+    { id: 6, time: "02:10-03:00", label: "Session 6 (02.10-03.00)" },
+    { id: 7, time: "03:20-04:00", label: "Session 7 (03.20-04.00)" },
+  ];
+
+  // Sample faculty data
+  const faculties = Array.from({length: 10}, (_, index) => ({
+    id: index + 1,
+    name: `Mr. SasiKumar ${index + 1}`,
+    specification: `M.E Tamil literature`,
+    facultyId: `20338${index + 1}`,
+  }));
+
   // For demo purposes, hardcoding today's classes
   const todayClasses = [
     { subject: 'Mathematics', grade: 'Grade VI - A', type: 'Academic class', time: '09:30 - 10:30' },
@@ -41,12 +73,6 @@ const MentorDetails = ({ route, navigation }) => {
     { subject: 'Social', grade: 'Grade VI - A', type: 'Academic class', time: '11:45 - 12:30' },
     { subject: 'Social', grade: 'Grade VI - A', type: 'Academic class', time: '11:45 - 12:30' },
   ];
-
-  // Handle subject selection
-  const handleSubjectSelect = (subject) => {
-    setSelectedSubject(subject);
-    setShowSubjectModal(false);
-  };
 
   // Handle date selection
   const handleDateSelect = (date) => {
@@ -58,8 +84,38 @@ const MentorDetails = ({ route, navigation }) => {
     setShowCalendarModal(false);
   };
 
-  // Render item for subject list
-  const renderSubjectItem = ({ item }) => (
+  // Handle session selection
+  const handleSessionSelect = (session) => {
+    setSelectedSession(session);
+    setShowSessionModal(false);
+    setShowFacultyModal(true);
+  };
+
+  // Handle faculty selection
+  const toggleFacultySelection = id => {
+    if (selectedFaculties.includes(id)) {
+      setSelectedFaculties(selectedFaculties.filter(item => item !== id));
+    } else {
+      setSelectedFaculties([...selectedFaculties, id]);
+    }
+  };
+
+  // Handle substitute allocation
+  const handleAllotSubstitute = () => {
+    // Add your implementation for allocating substitutes
+    setShowFacultyModal(false);
+    // You can add logic to update the schedule with the selected faculty
+    alert('Substitute allocated successfully!');
+  };
+
+  // Handle subject selection
+  const handleSubjectSelect = (subject) => {
+    setSelectedSubject(subject);
+    setShowSubjectModal(false);
+  };
+
+   // Render item for subject list
+   const renderSubjectItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.subjectItem}
       onPress={() => handleSubjectSelect(item)}
@@ -68,9 +124,12 @@ const MentorDetails = ({ route, navigation }) => {
     </TouchableOpacity>
   );
 
+
+
+
   return (
     <View style={styles.container}>
-       <View style={styles.header}>
+      <View style={styles.header}>
         <BackIcon 
           width={styles.BackIcon.width} 
           height={styles.BackIcon.height} 
@@ -156,11 +215,16 @@ const MentorDetails = ({ route, navigation }) => {
             >
               <Text style={styles.dateText}> {selectedDate} </Text>
             </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.assignButton}
+              onPress={() => setShowSessionModal(true)}
+            >
+              <Assign width={20} height={20} />
+            </TouchableOpacity>
           </View>
         </View>
         <ScrollView>
         {todayClasses.map((cls, index) => (
-       
           <View key={index} style={styles.classItem}>
             <View>
               <Text style={styles.subjectText}>{cls.subject}</Text>
@@ -169,11 +233,10 @@ const MentorDetails = ({ route, navigation }) => {
             </View>
             <Text style={styles.timeText}>{cls.time}</Text>
           </View>
-          
         ))}
-         </ScrollView>
+        </ScrollView>
       </View>
-
+      
       {/* Subject Selection Modal */}
       <Modal
         visible={showSubjectModal}
@@ -200,6 +263,8 @@ const MentorDetails = ({ route, navigation }) => {
         </View>
       </Modal>
 
+
+
       {/* Calendar Modal */}
       <Modal
         visible={showCalendarModal}
@@ -222,6 +287,125 @@ const MentorDetails = ({ route, navigation }) => {
                 arrowColor: '#0066CC',
               }}
             />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Session Modal */}
+      <Modal
+        visible={showSessionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSessionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.sessionModalContent}>
+            <View style={styles.sessionModalHeader}>
+              <BackIcon 
+                width={20} 
+                height={20} 
+                onPress={() => setShowSessionModal(false)}
+              />
+              <Text style={styles.sessionModalTitle}>Substitute allocation</Text>
+            </View>
+            
+            <ScrollView style={styles.sessionList}>
+              {sessions.map((session) => (
+                <TouchableOpacity 
+                  key={session.id}
+                  style={styles.sessionItem}
+                  onPress={() => handleSessionSelect(session)}
+                >
+                  <View style={styles.checkboxContainer}>
+                    {selectedSession?.id === session.id ? (
+                      <Tickbox width={20} height={20} />
+                    ) : (
+                      <Tick width={20} height={20} />
+                    )}
+                  </View>
+                  <Text style={styles.sessionText}>{session.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.allotButton}
+              onPress={() => {
+                if (selectedSession) {
+                  setShowSessionModal(false);
+                  setShowFacultyModal(true);
+                }
+              }}
+            >
+              <Text style={styles.allotButtonText}>Allot substitute</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Faculty Selection Modal */}
+      <Modal
+        visible={showFacultyModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFacultyModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.facultyModalContent}>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchBox}
+                placeholder="Search faculty"
+                value={searchText}
+                onChangeText={text => setSearchText(text)}
+              />
+            </View>
+            
+            <FlatList
+              data={faculties.filter(faculty =>
+                faculty.name.toLowerCase().includes(searchText.toLowerCase())
+              )}
+              keyExtractor={item => item.id.toString()}
+              renderItem={({item}) => (
+                <TouchableOpacity
+                  style={[
+                    styles.facultyItem,
+                    selectedFaculties.includes(item.id) && styles.selectedFacultyItem,
+                  ]}
+                  onPress={() => toggleFacultySelection(item.id)}
+                >
+                  <View style={styles.facultyDetails}>
+                    <View style={styles.staffName}>
+                      <Oneperson width={20} height={20} />
+                      <Text style={styles.facultyName}>{item.name}</Text>
+                    </View>
+                    <View style={styles.hatContainer}>
+                      <Hat width={20} height={20} />
+                      <Text style={styles.facultySpec}>
+                        Specification ({item.specification})
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.checkboxContainer}>
+                    {selectedFaculties.includes(item.id) ? (
+                      <Tickbox width={20} height={20} />
+                    ) : (
+                      <Tick width={20} height={20} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
+              style={styles.facultyList}
+            />
+            
+            <TouchableOpacity
+              style={styles.selectButton}
+              onPress={handleAllotSubstitute}
+            >
+              <Text style={styles.selectButtonText}>
+                Select Faculties <Tickicon width={16} height={16} />
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

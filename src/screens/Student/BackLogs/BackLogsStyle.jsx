@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   },
   cardsContainer: {
     padding: 15,
-    paddingBottom: 30, // Add extra padding at the bottom for scrolling
+    paddingBottom: 30, 
   },
   card: {
     backgroundColor: '#FCF0E4',

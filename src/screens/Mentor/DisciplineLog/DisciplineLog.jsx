@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -24,10 +24,15 @@ const DisciplineLog = ({ navigation }) => {
   const [reason, setReason] = useState('');
   const [registeredBy, setRegisteredBy] = useState('');
   const [complaintModalVisible, setComplaintModalVisible] = useState(false);
+  
+  // Add search state
+  const [searchText, setSearchText] = useState('');
+  const [filteredData, setFilteredData] = useState([]);
+  
   const [disciplineData, setDisciplineData] = useState([
     {
       id: 1,
-      name: 'Faculty',
+      name: 'Admin',
       regNo: '2024VI023',
       reason: 'Student is saying that he came along with parents to school, and he is late to school because of traffic.',
       date: '29/10/23',
@@ -42,6 +47,27 @@ const DisciplineLog = ({ navigation }) => {
       registeredBy: 'SasiKumar',
     },
   ]);
+
+  // Filter data when search text changes
+  useEffect(() => {
+    if (searchText.trim() === '') {
+      setFilteredData(disciplineData);
+    } else {
+      const filtered = disciplineData.filter(item => {
+        const searchLower = searchText.toLowerCase();
+        return (
+          item.name.toLowerCase().includes(searchLower) ||
+          item.regNo.toLowerCase().includes(searchLower)
+        );
+      });
+      setFilteredData(filtered);
+    }
+  }, [searchText, disciplineData]);
+
+  // Initialize filtered data with all data
+  useEffect(() => {
+    setFilteredData(disciplineData);
+  }, []);
 
   const formatDate = () => {
     const today = new Date();
@@ -82,42 +108,53 @@ const DisciplineLog = ({ navigation }) => {
           height={styles.BackIcon.height} 
           onPress={() => navigation.navigate('Mentor')}
         />
-        <Text style={styles.headerTxt}>Leave Approval</Text>
+        <Text style={styles.headerTxt}>Discipline Log</Text>
       </View>
       
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search..."
+          placeholder="Search by name or registration number..."
+          value={searchText}
+          onChangeText={setSearchText}
+          clearButtonMode="while-editing"
         />
       </View>
       
       <ScrollView style={styles.cardContainer}>
-        {disciplineData.map((item) => (
-          <View key={item.id} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Image source={require('../../../assets/DisciplineLog/staff.png')} style={styles.avatar} />
-              <View>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <Text style={styles.cardSubtitle}>{item.regNo}</Text>
+        {filteredData.length > 0 ? (
+          filteredData.map((item) => (
+            <View key={item.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Image source={require('../../../assets/DisciplineLog/staff.png')} style={styles.avatar} />
+                <View>
+                  <Text style={styles.cardTitle}>{item.name}</Text>
+                  <Text style={styles.cardSubtitle}>{item.regNo}</Text>
+                </View>
+                <Text style={styles.cardDate}>{item.date}</Text>
               </View>
-              <Text style={styles.cardDate}>{item.date}</Text>
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardLabel}>Reason</Text>
-              <Text style={styles.cardReason}>{item.reason}</Text>
-              <View style={styles.regBar}>
-                <Text style={styles.registeredBy}>Registered by {item.registeredBy}</Text>
-                <TouchableOpacity style={styles.actionButtonCall}>
-                  <Phone width={20} height={20} /> 
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButtonMsg}>
-                <MessageSquare width={20} height={20} /> 
-                </TouchableOpacity>
+              <View style={styles.cardContent}>
+                <Text style={styles.cardLabel}>Reason</Text>
+                <View style={styles.cardReasonContainer}>
+                  <Text style={styles.cardReason}>{item.reason}</Text>
+                </View>
+                <View style={styles.regBar}>
+                  <Text style={styles.registeredBy}>Registered by {item.registeredBy}</Text>
+                  <TouchableOpacity style={styles.actionButtonCall}>
+                    <Phone width={20} height={20} /> 
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionButtonMsg}>
+                    <MessageSquare width={20} height={20} /> 
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
+          ))
+        ) : (
+          <View style={styles.noResultsContainer}>
+            <Text style={styles.noResultsText}>No records found</Text>
           </View>
-        ))}
+        )}
       </ScrollView>
       
       <TouchableOpacity 

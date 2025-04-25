@@ -132,11 +132,23 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-},
-AddIcon: {
+  },
+  AddIcon: {
     width: 20,
     height: 20,
-},
+  },
+  
+  // No results styles
+  noResultsContainer: {
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
   
   // Modal styles
   modalOverlay: {
@@ -224,6 +236,14 @@ AddIcon: {
     color: '#666',
     fontWeight: '500',
     marginBottom: 4,
+  },
+  cardReasonContainer:{
+    borderWidth: 1,
+    borderColor: '#E7E7E7',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#F7F8FA',
+    marginBottom: 12,
   },
   confirmLabel: {
     fontSize: 14,
