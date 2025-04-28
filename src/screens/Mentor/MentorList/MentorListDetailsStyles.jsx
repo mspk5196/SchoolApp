@@ -151,16 +151,19 @@ const styles = StyleSheet.create({
     },
     dateSelector: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 16,
       marginLeft: 20,
+      gap: 10,
     },
     todayText: {
       fontSize: 16,
       fontWeight: '600',
       color:'#000'
 
+    },
+    assignButton:{
+       marginLeft:142,
     },
     dateText: {
       fontSize: 14,
@@ -314,10 +317,7 @@ const styles = StyleSheet.create({
       alignItems: 'center',
       padding: 5,
       borderRadius: 5,
-      backgroundColor: '#f5f5f5',
-      marginRight:190,
-      marginLeft:10,
-    },
+      backgroundColor: '#f5f5f5', },
     homeButtonContainer: {
       position: 'absolute',
       bottom: 30,
@@ -388,6 +388,26 @@ const styles = StyleSheet.create({
       padding: 12,
       borderRadius: 10,
     },
+    // Add these styles to your existing styles object in MentorListDetailsStyles.jsx
+
+dateNavigationControls: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+dateNavArrow: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: '#333',
+  marginHorizontal: 3,
+},
+
+todayIndicator: {
+  width: 8,
+  height: 8,
+  borderRadius: 4,
+  backgroundColor: '#0C36FF',
+},
     facultyList: {
       maxHeight: 350,
     },

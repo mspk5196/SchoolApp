@@ -74,6 +74,47 @@ const MentorDetails = ({ route, navigation }) => {
     { subject: 'Social', grade: 'Grade VI - A', type: 'Academic class', time: '11:45 - 12:30' },
   ];
 
+  // Function to parse date in dd/mm/yy format to a Date object
+  const parseDate = (dateString) => {
+    const [day, month, yearShort] = dateString.split('/');
+    const year = '20' + yearShort; // Assuming 20xx for the year
+    return new Date(year, month - 1, day); // month is 0-indexed in JS Date
+  };
+
+  // Function to format Date object to dd/mm/yy
+  const formatDisplayDate = (date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // month is 0-indexed
+    const year = String(date.getFullYear()).slice(2);
+    return `${day}/${month}/${year}`;
+  };
+
+  // Function to format Date object to yyyy-mm-dd for internal use
+  const formatISODate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Function to navigate to previous day
+  const goToPreviousDay = () => {
+    const currentDate = parseDate(selectedDate);
+    currentDate.setDate(currentDate.getDate() - 1);
+    
+    setSelectedDate(formatDisplayDate(currentDate));
+    setFormattedDate(formatISODate(currentDate));
+  };
+
+  // Function to navigate to next day
+  const goToNextDay = () => {
+    const currentDate = parseDate(selectedDate);
+    currentDate.setDate(currentDate.getDate() + 1);
+    
+    setSelectedDate(formatDisplayDate(currentDate));
+    setFormattedDate(formatISODate(currentDate));
+  };
+
   // Handle date selection
   const handleDateSelect = (date) => {
     const dateParts = date.dateString.split('-');
@@ -123,9 +164,6 @@ const MentorDetails = ({ route, navigation }) => {
       <Text style={styles.subjectItemText}>{item}</Text>
     </TouchableOpacity>
   );
-
-
-
 
   return (
     <View style={styles.container}>
@@ -209,12 +247,22 @@ const MentorDetails = ({ route, navigation }) => {
           <Text style={styles.sectionTitle}>Schedules</Text>
           <View style={styles.dateSelector}>
             <Text style={styles.todayText}>Today</Text>
-            <TouchableOpacity 
-              style={styles.dateButton}
-              onPress={() => setShowCalendarModal(true)}
-            >
-              <Text style={styles.dateText}> {selectedDate} </Text>
-            </TouchableOpacity>
+            <View style={styles.dateNavigationControls}>
+              <TouchableOpacity onPress={goToPreviousDay}>
+                <Text style={styles.dateNavArrow}>{"<"}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.dateButton}
+                onPress={() => setShowCalendarModal(true)}
+              >
+                <Text style={styles.dateText}>{selectedDate}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={goToNextDay}>
+                <Text style={styles.dateNavArrow}>{">"}</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity 
               style={styles.assignButton}
               onPress={() => setShowSessionModal(true)}
@@ -262,8 +310,6 @@ const MentorDetails = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
-
-
 
       {/* Calendar Modal */}
       <Modal

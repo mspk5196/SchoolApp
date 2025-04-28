@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9',
   },
   registerButton: {
-    backgroundColor: '#3366ff',
+    backgroundColor: '#0C36FF',
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   confirmButton: {
-    backgroundColor: '#3366ff',
+    backgroundColor: '#0C36FF',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 24,
