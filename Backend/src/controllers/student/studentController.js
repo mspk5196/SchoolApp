@@ -41,7 +41,7 @@ exports.applyStudentLeave = (req, res) => {
     leaveType, fromDate, toDate, fromTime, toTime, reason
   } = req.body;
 
-  if (!roll || !name || !sectionId || !totalLeaveDays || !leaveType || !fromDate || !toDate || !reason) {
+  if (!roll || !name || !sectionId || !leaveType || !fromDate || !toDate || !reason) {
     return res.status(400).json({ success: false, message: 'Missing required fields' });
   }
 
@@ -49,7 +49,7 @@ exports.applyStudentLeave = (req, res) => {
 
   const insertLeaveSql = `
     INSERT INTO StudentLeaveRequests (
-      student_roll, student_name, section_id, total_leave_days,
+      student_roll, student_name, section_id, no_of_days,
       leave_type, start_date, end_date, start_time, end_time, reason
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;

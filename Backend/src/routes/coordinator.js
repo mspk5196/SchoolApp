@@ -73,6 +73,14 @@ router.post('/coordinator/getCoordinatorData', coordinatorController.getCoordina
 router.post('/coordinator/coordinatorMentors', coordinatorController.coordinatorMentors);
 router.post('/coordinator/coordinatorStudents', coordinatorController.coordinatorStudents);
 
+//Profile
+router.post('/coordinator/getAttendance', coordinatorController.getAttendance);
+router.post('/coordinator/submitLeaveRequest', coordinatorController.submitLeaveRequest);
+router.post('/coordinator/getLeaveHistory', coordinatorController.getLeaveHistory);
+router.post('/coordinator/getMentorAssignments', coordinatorController.getCoordinatorAssignments);
+router.post('/coordinator/getMentorSection', coordinatorController.getCoordinatorSection);
+router.post('/coordinator/getMentorIssues', coordinatorController.getCoordinatorIssues);
+
 //StudentRequests
 router.get('/coordinator/fetchDocumentPurpose', coordinatorController.fetchDocumentPurpose);
 router.post('/coordinator/insertDocPurpose', coordinatorController.insertDocPurpose);
@@ -179,6 +187,10 @@ router.post('/coordinator/events/create', uploadEventBanner.single('bannerPhoto'
 router.get('/coordinator/events/get', coordinatorController.getEvents);
 router.delete('/coordinator/events/delete', coordinatorController.deleteEvent);
 
+//Calendar Page
+router.get('/coordinator/calendar/events', coordinatorController.getCalendarEvents);
+router.post('/coordinator/calendar/events', coordinatorController.addCalendarEvent);
+router.delete('/coordinator/calendar/events', coordinatorController.deleteCalendarEvent);
 
 
 module.exports = router;

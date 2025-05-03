@@ -1,13 +1,16 @@
-import {View, Text, TextInput, TouchableOpacity, Modal, FlatList} from 'react-native';
+import {View, Text, TextInput, TouchableOpacity, Modal, FlatList, Alert, ActivityIndicator} from 'react-native';
 import BackIcon from '../../../assets/CoordinatorPage/Profile/Back.svg';
 import DropdownIcon from '../../../assets/CoordinatorPage/Profile/DropDown.svg';
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import styles from './LeaveApplyStyle';
+import { API_URL } from '@env';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const CoordinatorLeaveApply = ({ navigation }) => {
-  const [name, setName] = useState('');
-  const [leave, setLeave] = useState('');
+const CoordinatorLeaveApply = ({ navigation, route }) => {
+  const { coordinatorData } = route.params;
+  const [name, setName] = useState(coordinatorData.name);
+  const [leaveType, setLeaveType] = useState('');
   const [leaveLabel, setLeaveLabel] = useState('');
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([
@@ -15,58 +18,234 @@ const CoordinatorLeaveApply = ({ navigation }) => {
     {label: 'Sick Leave', value: 'sick'},
     {label: 'Paid Leave', value: 'paid'},
   ]);
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [fromTime, setFromTime] = useState('');
-  const [toTime, setToTime] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [startTime, setStartTime] = useState('09:00:00');
+  const [endTime, setEndTime] = useState('17:00:00');
+  const [fromTimeDisplay, setFromTimeDisplay] = useState('09:00 AM');
+  const [toTimeDisplay, setToTimeDisplay] = useState('05:00 PM');
   const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [totalLeaveDays, setTotalLeaveDays] = useState('');
+  
+  // Error state
+  const [errors, setErrors] = useState({
+    name: false,
+    leaveType: false,
+    startDate: false,
+    endDate: false,
+  });
 
-  const [isFromDatePickerVisible, setFromDatePickerVisible] = useState(false);
-  const [isToDatePickerVisible, setToDatePickerVisible] = useState(false);
-  const [isFromTimePickerVisible, setFromTimePickerVisible] = useState(false);
-  const [isToTimePickerVisible, setToTimePickerVisible] = useState(false);
+  const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
+  const [isEndDatePickerVisible, setEndDatePickerVisible] = useState(false);
+  const [isStartTimePickerVisible, setStartTimePickerVisible] = useState(false);
+  const [isEndTimePickerVisible, setEndTimePickerVisible] = useState(false);
 
-  const handleFromConfirm = date => {
-    setFromDate(date.toLocaleDateString());
-    setFromDatePickerVisible(false);
+  // Format date as YYYY-MM-DD
+  const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = (`0${date.getMonth() + 1}`).slice(-2);
+    const day = (`0${date.getDate()}`).slice(-2);
+    return `${year}-${month}-${day}`;
   };
 
-  const handleToConfirm = date => {
-    setToDate(date.toLocaleDateString());
-    setToDatePickerVisible(false);
+  // Format time as hh:mm AM/PM
+  const formatTime = (time) => {
+    let hours = time.getHours();
+    const minutes = String(time.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${hours}:${minutes} ${ampm}`;
   };
 
-  const handleFromTimeConfirm = time => {
-    setFromTime(
-      time.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      }),
-    );
-    setFromTimePickerVisible(false);
+  const formatTimeForMySQL = (time) => {
+    const hours = String(time.getHours()).padStart(2, '0');
+    const minutes = String(time.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}:00`;
   };
 
-  const handleToTimeConfirm = time => {
-    setToTime(
-      time.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      }),
-    );
-    setToTimePickerVisible(false);
+  const isPastDate = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  };
+
+  const isSunday = (date) => {
+    return date.getDay() === 0;
+  };
+
+  const handleStartDateConfirm = date => {
+    setStartDatePickerVisible(false);
+    if (date) {
+      if (isPastDate(date)) {
+        Alert.alert("Invalid Date", "You cannot apply leave for a past date.");
+        return;
+      }
+
+      if (isSunday(date)) {
+        Alert.alert("Invalid Date", "You cannot apply leave on Sundays.");
+        return;
+      }
+
+      const formattedDate = formatDate(date);
+      setStartDate(formattedDate);
+      setErrors({ ...errors, startDate: false });
+
+      if (endDate) {
+        const totalDays = calculateDays(formattedDate, endDate);
+        setTotalLeaveDays(totalDays);
+      }
+    }
+  };
+
+  const handleEndDateConfirm = date => {
+    setEndDatePickerVisible(false);
+    if (date) {
+      if (isPastDate(date)) {
+        Alert.alert("Invalid Date", "You cannot apply leave for a past date.");
+        return;
+      }
+
+      if (isSunday(date)) {
+        Alert.alert("Invalid Date", "You cannot apply leave on Sundays.");
+        return;
+      }
+
+      if (startDate && date < new Date(startDate)) {
+        Alert.alert("Invalid Range", "End date cannot be before start date.");
+        return;
+      }
+
+      const formattedDate = formatDate(date);
+      setEndDate(formattedDate);
+      setErrors({ ...errors, endDate: false });
+
+      if (startDate) {
+        const totalDays = calculateDays(startDate, formattedDate);
+        setTotalLeaveDays(totalDays);
+      }
+    }
+  };
+
+  const handleStartTimeConfirm = time => {
+    if (time) {
+      setFromTimeDisplay(formatTime(time));
+      setStartTime(formatTimeForMySQL(time));
+    }
+    setStartTimePickerVisible(false);
+  };
+
+  const handleEndTimeConfirm = time => {
+    if (time) {
+      setToTimeDisplay(formatTime(time));
+      setEndTime(formatTimeForMySQL(time));
+    }
+    setEndTimePickerVisible(false);
+  };
+
+  const calculateDays = (startDate, endDate) => {
+    if (!startDate || !endDate) return 0;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    if (start.getTime() === end.getTime()) {
+      return start.getDay() === 0 ? 0 : 1;
+    }
+
+    let totalDays = 0;
+    const currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      if (currentDate.getDay() !== 0) {
+        totalDays++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return totalDays;
+  };
+
+  const validateForm = () => {
+    const newErrors = {
+      name: !name,
+      leaveType: !leaveType,
+      startDate: !startDate,
+      endDate: !endDate,
+    };
+
+    setErrors(newErrors);
+    return !Object.values(newErrors).some(error => error);
+  };
+
+  const submitLeaveRequest = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}/api/coordinator/submitLeaveRequest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: coordinatorData.phone,
+          name,
+          leaveType,
+          startDate,
+          endDate,
+          startTime,
+          endTime,
+          description,
+          totalLeaveDays
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        Alert.alert(
+          "Success",
+          "Your leave application has been submitted.",
+          [{ text: "OK", onPress: () => navigation.goBack() }]
+        );
+      } else {
+        Alert.alert("Error", "Failed to submit leave request");
+      }
+    } catch (error) {
+      console.error("Error submitting leave request:", error);
+      Alert.alert("Error", "Failed to submit leave request");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!validateForm()) {
+      Alert.alert("Error", "Please fill all required fields");
+      return;
+    }
+
+    submitLeaveRequest();
   };
 
   const handleSelectItem = (item) => {
-    setLeave(item.value);
+    setLeaveType(item.value);
     setLeaveLabel(item.label);
     setOpen(false);
   };
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-     <View style={styles.header}>
+      <View style={styles.header}>
         <BackIcon 
           width={styles.BackIcon.width} 
           height={styles.BackIcon.height} 
@@ -84,11 +263,12 @@ const CoordinatorLeaveApply = ({ navigation }) => {
             placeholderTextColor="#999"
             value={name}
             onChangeText={setName}
+            editable={false}
           />
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Leave Type</Text>
+          <Text style={styles.label}>Leave Type *</Text>
           <View style={styles.dropdownWrapper}>
             <TouchableOpacity 
               style={styles.dropdownField} 
@@ -132,88 +312,89 @@ const CoordinatorLeaveApply = ({ navigation }) => {
               </View>
             </TouchableOpacity>
           </Modal>
+          {errors.leaveType && <Text style={styles.errorText}>Leave type is required</Text>}
         </View>
 
         <View style={styles.rowContainer}>
           <View style={styles.halfInputContainer}>
-            <Text style={styles.label}>From Date</Text>
-            <TouchableOpacity onPress={() => setFromDatePickerVisible(true)}>
+            <Text style={styles.label}>From Date *</Text>
+            <TouchableOpacity onPress={() => setStartDatePickerVisible(true)}>
               <TextInput
-                style={styles.input}
-                placeholder="DD/MM/YYYY"
+                style={[styles.input, errors.startDate && styles.inputError]}
+                placeholder="YYYY-MM-DD"
                 placeholderTextColor="#999"
-                value={fromDate}
+                value={startDate}
                 editable={false}
               />
             </TouchableOpacity>
+            {errors.startDate && <Text style={styles.errorText}>From date is required</Text>}
             <DateTimePickerModal
-              isVisible={isFromDatePickerVisible}
+              isVisible={isStartDatePickerVisible}
               mode="date"
-              onConfirm={handleFromConfirm}
-              onCancel={() => setFromDatePickerVisible(false)}
-              display="spinner"
+              onConfirm={handleStartDateConfirm}
+              onCancel={() => setStartDatePickerVisible(false)}
+              minimumDate={new Date()}
             />
           </View>
 
           <View style={styles.halfInputContainerTime}>
             <Text style={styles.label}>From Time</Text>
-            <TouchableOpacity onPress={() => setFromTimePickerVisible(true)}>
+            <TouchableOpacity onPress={() => setStartTimePickerVisible(true)}>
               <TextInput
                 style={styles.timeInput}
                 placeholder="HH:MM"
                 placeholderTextColor="#999"
-                value={fromTime}
+                value={fromTimeDisplay}
                 editable={false}
               />
             </TouchableOpacity>
             <DateTimePickerModal
-              isVisible={isFromTimePickerVisible}
+              isVisible={isStartTimePickerVisible}
               mode="time"
-              onConfirm={handleFromTimeConfirm}
-              onCancel={() => setFromTimePickerVisible(false)}
-              display="spinner"
+              onConfirm={handleStartTimeConfirm}
+              onCancel={() => setStartTimePickerVisible(false)}
             />
           </View>
         </View>
 
         <View style={styles.rowContainer}>
           <View style={styles.halfInputContainer}>
-            <Text style={styles.label}>To Date</Text>
-            <TouchableOpacity onPress={() => setToDatePickerVisible(true)}>
+            <Text style={styles.label}>To Date *</Text>
+            <TouchableOpacity onPress={() => setEndDatePickerVisible(true)}>
               <TextInput
-                style={styles.input}
-                placeholder="DD/MM/YYYY"
+                style={[styles.input, errors.endDate && styles.inputError]}
+                placeholder="YYYY-MM-DD"
                 placeholderTextColor="#999"
-                value={toDate}
+                value={endDate}
                 editable={false}
               />
             </TouchableOpacity>
+            {errors.endDate && <Text style={styles.errorText}>To date is required</Text>}
             <DateTimePickerModal
-              isVisible={isToDatePickerVisible}
+              isVisible={isEndDatePickerVisible}
               mode="date"
-              onConfirm={handleToConfirm}
-              onCancel={() => setToDatePickerVisible(false)}
-              display="spinner"
+              onConfirm={handleEndDateConfirm}
+              onCancel={() => setEndDatePickerVisible(false)}
+              minimumDate={startDate ? new Date(startDate) : new Date()}
             />
           </View>
 
           <View style={styles.halfInputContainerTime}>
             <Text style={styles.label}>To Time</Text>
-            <TouchableOpacity onPress={() => setToTimePickerVisible(true)}>
+            <TouchableOpacity onPress={() => setEndTimePickerVisible(true)}>
               <TextInput
                 style={styles.timeInput}
                 placeholder="HH:MM"
                 placeholderTextColor="#999"
-                value={toTime}
+                value={toTimeDisplay}
                 editable={false}
               />
             </TouchableOpacity>
             <DateTimePickerModal
-              isVisible={isToTimePickerVisible}
+              isVisible={isEndTimePickerVisible}
               mode="time"
-              onConfirm={handleToTimeConfirm}
-              onCancel={() => setToTimePickerVisible(false)}
-              display="spinner"
+              onConfirm={handleEndTimeConfirm}
+              onCancel={() => setEndTimePickerVisible(false)}
             />
           </View>
         </View>
@@ -233,13 +414,21 @@ const CoordinatorLeaveApply = ({ navigation }) => {
           />
         </View>
       </View>
+
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.cancelButton}>
+        <TouchableOpacity 
+          style={styles.cancelButton}
+          onPress={() => navigation.goBack()}
+        >
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.confirmButton}>
-          <Text style={styles.confirmText}>Confirm</Text>
+        <TouchableOpacity 
+          style={styles.confirmButton}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          <Text style={styles.confirmText}>Submit</Text>
         </TouchableOpacity>
       </View>
     </View>

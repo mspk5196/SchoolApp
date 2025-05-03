@@ -136,6 +136,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent:'space-between',
     marginTop: 8,
   },
   dateText: {
@@ -144,7 +145,6 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   leaveType: {
-    marginLeft: 90,
     fontSize: 14,
     color: "#4B4B4B",
     gap:10,

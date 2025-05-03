@@ -221,6 +221,7 @@ const StudentEnrollment = ({ navigation, route }) => {
       
       // Add student data
       formData.append('name', student.name);
+      formData.append('fatherName', student.fatherName);
       formData.append('dob', student.dob);
       formData.append('gender', student.gender);
       formData.append('grade', student.grade);
@@ -306,6 +307,18 @@ const StudentEnrollment = ({ navigation, route }) => {
             value={student.name}
             placeholderTextColor='grey'
             onChangeText={(text) => handleChange('name', text)}
+          />
+          {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Father Name<Text style={styles.requiredAsterisk}>*</Text></Text>
+          <TextInput
+            style={[styles.input, errors.name ? styles.inputError : null]}
+            placeholder="Enter Father name"
+            value={student.fatherName}
+            placeholderTextColor='grey'
+            onChangeText={(text) => handleChange('fatherName', text)}
           />
           {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
         </View>

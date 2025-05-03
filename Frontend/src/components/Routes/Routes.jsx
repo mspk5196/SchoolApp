@@ -9,10 +9,11 @@ import Login from '../../pages/Login/Bit-schl-loginpage/Login';
 import Welcome from '../../pages/Login/Bit-schl-welcome-page/Welcome'
 
 import Redirect from '../Login/Redirect/Redirect';
-import Admin from '../../pages/Admin/Admin';
+// import Admin from '../../pages/Admin/Admin';
+
+//AdminPages
 
 //CoordinatorPages
-
 import CoordinatorMenu from '../../pages/Coordinator/Menu/CoordinatorMenu';
 import { ExamProvider } from '../../pages/Coordinator/Schedule/ExamSchedule/ExamContext';
 import CoordinatorProfile from '../../pages/Coordinator/Profile/CoordinatorProfile';
@@ -109,7 +110,8 @@ import StudentPageMessage from '../../pages/Parent/SidebarPages/PhonebookScreen/
 import StudentPageLikedEvents from '../../pages/Parent/SidebarPages/EventScreen/LikedEvents/StudentPageLikedEvents';
 import CoordinatorStudentProfileDetails from '../../pages/Coordinator/Student/StudentProfile/CoordinatorStudentProfileDetails';
 
-
+//AdminPages
+import AdminMenu from '../../pages/Admin/Menu/AdminHomePage';
 
 const Stack = createStackNavigator();
 
@@ -125,7 +127,7 @@ const Routes = () => {
                         <Stack.Screen name="Login" component={Login} options={{ headerLeft: () => null, headerShown: false }} />
                         <Stack.Screen name="Welcome" component={Welcome} options={{ headerLeft: () => null, headerShown: false }} />
                         <Stack.Screen name="Redirect" component={Redirect} options={{ headerLeft: () => null }} />
-                        <Stack.Screen name="AdminMain" component={Admin} />
+                        <Stack.Screen name="AdminMain" component={AdminMenu} />
                         <Stack.Screen name="CoordinatorMain" component={CoordinatorMenu} />
                         <Stack.Screen name="MentorMain" component={MentorHomepage} />
                         <Stack.Screen name="ParentRoute" component={ParentRoute} />

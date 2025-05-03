@@ -29,6 +29,7 @@ const styles = StyleSheet.create({
     padding: 16,
     margin: 16,
     borderRadius: 12,
+    // height:650,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.1,
@@ -95,10 +96,11 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginHorizontal:25,
-    marginVertical:30,
-    // marginTop: 90,
+    alignSelf:'center',
+    marginBottom: 20,
+    gap:50,
+    bottom:0,
+    position:'absolute'
   },
   cancelButton: {
     backgroundColor: '#EBEEFF',
@@ -159,6 +161,14 @@ const styles = StyleSheet.create({
   dropdownItemText: {
     fontSize: 16,
     color: '#333',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 5,
+  },
+  inputError: {
+    borderColor: 'red',
   },
 });
 

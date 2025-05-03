@@ -11,6 +11,35 @@ const connection = mysql.createPool({
   queueLimit: 20,
 });
 
+connection.beginTransaction = (callback) => {
+  connection.getConnection((err, conn) => {
+    if (err) return callback(err);
+    conn.beginTransaction(err => {
+      if (err) {
+        conn.release();
+        return callback(err);
+      }
+      callback(null, {
+        commit: (cb) => {
+          conn.commit(err => {
+            conn.release();
+            cb(err);
+          });
+        },
+        rollback: (cb) => {
+          conn.rollback(err => {
+            conn.release();
+            cb(err);
+          });
+        },
+        query: (sql, params, cb) => {
+          conn.query(sql, params, cb);
+        }
+      });
+    });
+  });
+};
+
 // Add promise wrapper
 connection.promise = () => ({
   execute: (...args) => new Promise((resolve, reject) => {

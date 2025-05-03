@@ -47,6 +47,7 @@ const styles = StyleSheet.create({
     height: hp('6%'),
     borderWidth: 1,
     borderColor: '#ddd',
+    color:'black',
     borderRadius: wp('2%'),
     paddingHorizontal: wp('3%'),
     backgroundColor: '#F8F9FA',
@@ -96,7 +97,11 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignSelf:'center',
+    marginBottom: 20,
+    gap:50,
+    bottom:0,
+    position:'absolute'
   },
   cancelButton: {
     backgroundColor: '#EBEEFF',
@@ -123,6 +128,29 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: wp('4%'),
     fontWeight: 'bold',
+  },
+  messageContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  messageText: {
+    fontSize: wp('4.5%'),
+    textAlign: 'center',
+    color: '#333',
+  },
+  timeValue:{
+    textAlign: 'left',
+    marginVertical:'auto',
+    color: '#333',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 5,
+  },
+  inputError: {
+    borderColor: 'red',
   },
 });
 

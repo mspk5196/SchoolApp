@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from "@env"; 
 
 const StudentLeaveapply = ({ navigation }) => {
+
   // Form state
   const [name, setName] = useState(null);
   const [leaveType, setLeaveType] = useState('');
@@ -74,6 +75,34 @@ const StudentLeaveapply = ({ navigation }) => {
     'Others'
   ];
 
+  const calculateTotalLeaveDays = (startDate, endDate) => {
+    if (!startDate || !endDate) return 0;
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Set both dates to start of day for accurate comparison
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    
+    // If same day, check if it's a Sunday
+    if (start.getTime() === end.getTime()) {
+      return start.getDay() === 0 ? 0 : 1;
+    }
+    
+    let totalDays = 0;
+    const currentDate = new Date(start);
+    
+    while (currentDate <= end) {
+      if (currentDate.getDay() !== 0) { // Skip Sundays
+        totalDays++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return totalDays;
+  };
+
   const handleLeaveTypeSelect = (type) => {
     setLeaveType(type);
     setShowLeaveTypeDropdown(false);
@@ -82,47 +111,59 @@ const StudentLeaveapply = ({ navigation }) => {
 
   // Date handlers
   const handleFromDateChange = (event, selectedDate) => {
-  setShowFromDatePicker(false);
-  if (selectedDate) {
-    if (isPastDate(selectedDate)) {
-      Alert.alert("Invalid Date", "You cannot apply leave for a past date.");
-      return;
+    setShowFromDatePicker(false);
+    if (selectedDate) {
+      if (isPastDate(selectedDate)) {
+        Alert.alert("Invalid Date", "You cannot apply leave for a past date.");
+        return;
+      }
+  
+      if (isSunday(selectedDate)) {
+        Alert.alert("Invalid Date", "You cannot apply leave on Sundays.");
+        return;
+      }
+  
+      const formattedDate = formatDate(selectedDate);
+      setFromDate(formattedDate);
+      setErrors({ ...errors, fromDate: false });
+      
+      // Calculate total leave days when from date changes
+      if (toDate) {
+        const totalDays = calculateTotalLeaveDays(formattedDate, toDate);
+        setTotalLeave(totalDays);
+      }
     }
-
-    if (isSunday(selectedDate)) {
-      Alert.alert("Invalid Date", "You cannot apply leave on Sundays.");
-      return;
+  };
+  
+  const handleToDateChange = (event, selectedDate) => {
+    setShowToDatePicker(false);
+    if (selectedDate) {
+      if (isPastDate(selectedDate)) {
+        Alert.alert("Invalid Date", "You cannot apply leave for a past date.");
+        return;
+      }
+  
+      if (isSunday(selectedDate)) {
+        Alert.alert("Invalid Date", "You cannot apply leave on Sundays.");
+        return;
+      }
+  
+      if (fromDate && selectedDate < new Date(fromDate)) {
+        Alert.alert("Invalid Range", "To date cannot be before from date.");
+        return;
+      }
+  
+      const formattedDate = formatDate(selectedDate);
+      setToDate(formattedDate);
+      setErrors({ ...errors, toDate: false });
+      
+      // Calculate total leave days when to date changes
+      if (fromDate) {
+        const totalDays = calculateTotalLeaveDays(fromDate, formattedDate);
+        setTotalLeave(totalDays);
+      }
     }
-
-    const formattedDate = formatDate(selectedDate);
-    setFromDate(formattedDate);
-    setErrors({ ...errors, fromDate: false });
-  }
-};
-
-const handleToDateChange = (event, selectedDate) => {
-  setShowToDatePicker(false);
-  if (selectedDate) {
-    if (isPastDate(selectedDate)) {
-      Alert.alert("Invalid Date", "You cannot apply leave for a past date.");
-      return;
-    }
-
-    if (isSunday(selectedDate)) {
-      Alert.alert("Invalid Date", "You cannot apply leave on Sundays.");
-      return;
-    }
-
-    if (fromDate && selectedDate < new Date(fromDate)) {
-      Alert.alert("Invalid Range", "To date cannot be before from date.");
-      return;
-    }
-
-    const formattedDate = formatDate(selectedDate);
-    setToDate(formattedDate);
-    setErrors({ ...errors, toDate: false });
-  }
-};
+  };
 
   // Time handlers
   const handleFromTimeChange = (event, selectedTime) => {

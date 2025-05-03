@@ -58,6 +58,183 @@ exports.coordinatorStudents = (req, res) => {
   });
 };
 
+//Profile
+// For getting coordinator attendance data
+exports.getAttendance = async (req, res) => {
+  const { phone } = req.body;
+    
+    const query = `
+      SELECT total_days, present_days, leave_days, on_duty_days, attendance_percentage
+      FROM facultyattendance
+      WHERE phone = ?
+    `;
+    
+    db.query(query, [phone], (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (results.length === 0) return res.status(404).json({ error: 'Attendance data not found' });
+      
+      res.json({  
+        success: true, 
+        attendanceData: results[0] 
+      });
+    });
+};
+
+// Get mentor's subject and grade assignments
+exports.getCoordinatorAssignments = (req, res) => {
+  const { coordinatorId } = req.body;
+  
+  const query = `
+    SELECT DISTINCT 
+      sub.id AS subject_id, 
+      sub.subject_name,
+      msa.grade_id
+    FROM mentor_section_assignments msa
+    JOIN subjects sub ON msa.subject_id = sub.id
+    WHERE msa.mentor_id = ?
+  `;
+  
+  db.query(query, [coordinatorId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    // Extract unique subjects and grades
+    const subjects = [];
+    const grades = [];
+    const seenSubjects = new Set();
+    const seenGrades = new Set();
+    
+    results.forEach(row => {
+      if (!seenSubjects.has(row.subject_id)) {
+        subjects.push({
+          subject_id: row.subject_id,
+          subject_name: row.subject_name
+        });
+        seenSubjects.add(row.subject_id);
+      }
+      
+      if (row.grade_id && !seenGrades.has(row.grade_id)) {
+        grades.push({
+          grade_id: row.grade_id
+        });
+        seenGrades.add(row.grade_id);
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      subjects,
+      grades
+    });
+  });
+};
+
+// Get mentor's section information
+exports.getCoordinatorSection = (req, res) => {
+  const { coordinatorId } = req.body;
+  
+  const query = `
+    SELECT s.section_name
+    FROM mentors m
+    JOIN sections s ON m.section_id = s.id
+    WHERE m.id = ?
+  `;
+  
+  db.query(query, [coordinatorId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    res.json({ 
+      success: true, 
+      section: results[0]?.section_name || 'Not assigned'
+    });
+  });
+};
+
+// Get mentor's issues count
+exports.getCoordinatorIssues = (req, res) => {
+  const { coordinatorId } = req.body;
+  
+  const query = `
+    SELECT COUNT(*) AS count
+    FROM issue_log
+    WHERE student_id IN (
+      SELECT id FROM students WHERE section_id = (
+        SELECT section_id FROM mentors WHERE id = ?
+      )
+    )
+  `;
+  
+  db.query(query, [coordinatorId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    res.json({ 
+      success: true, 
+      count: results[0]?.count || 0
+    });
+  });
+};
+
+// Submit leave request
+exports.submitLeaveRequest = (req, res) => {
+  const {
+    phone, name, totalLeaveDays,
+    leaveType, startDate, endDate, startTime, endTime, description
+  } = req.body;
+
+  if (!phone || !name || !leaveType || !startDate || !endDate || !description) {
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
+  }
+
+  const values = [phone, name, totalLeaveDays, leaveType, startDate, endDate, startTime, endTime, description];
+
+  const insertLeaveSql = `
+    INSERT INTO facultyleaverequests (
+      phone, name, total_leave_days,
+      leave_type, start_date, end_date, start_time, end_time, description
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(insertLeaveSql, values, (err, result) => {
+    if (err) {
+      console.error('Error applying leave for mentor:', phone, err);
+      return res.status(500).json({ success: false, message: 'Database error while submitting leave request' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Leave request submitted successfully',
+      leaveId: result.insertId
+    });
+
+  });
+};
+
+// Get leave history
+exports.getLeaveHistory = (req, res) => {
+  const { phone } = req.body;
+  
+  const query = `
+    SELECT flr.id, flr.name, flr.phone, flr.leave_type, flr.start_date, flr.end_date, 
+           flr.start_time, flr.end_time, flr.description, flr.status,
+           flr.requested_at, flr.approved_at, flr.rejected_at, flr.total_leave_days,
+           up.file_path
+    FROM facultyleaverequests flr
+    LEFT JOIN user_photos up ON flr.phone = up.phone
+    WHERE flr.phone = ?
+    ORDER BY requested_at DESC
+  `;
+  
+  db.query(query, [phone], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    res.json({ 
+      success: true, 
+      leaveRequests: results 
+    });
+    
+    console.log(results);
+  });
+};
+
 exports.fetchDocumentTypes = (req, res) => {
 
   const sql = `
@@ -605,7 +782,7 @@ const bcrypt = require('bcrypt');
 
 exports.enrollStudent = async (req, res) => {
   try {
-    const { name, dob, gender, grade, section, mobileNumber } = req.body;
+    const { name, fatherName, dob, gender, grade, section, mobileNumber } = req.body;
     const profilePhoto = req.file;
 
     if (!name || !dob || !gender || !grade || !section || !mobileNumber || !profilePhoto) {
@@ -631,12 +808,60 @@ exports.enrollStudent = async (req, res) => {
     const trx = await con.beginTransaction();
 
     try {
-      await trx.query(
-        `INSERT INTO Students (name, dob, gender, section_id, father_mob, profile_photo, roll)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber]
+
+      // Check if user already exists
+      const existingUser = await trx.query(
+        `SELECT * FROM Users WHERE phone = ?`,
+        [mobileNumber]
       );
 
+      if (existingUser.length > 0) {
+        // User exists - update roles if needed
+        let roles = existingUser[0].roles;
+        if (!roles.includes('Student')) {
+          roles = roles + ',Student';
+        }
+
+        await trx.query(
+          `UPDATE Users SET roles = ? WHERE phone = ?`,
+          [roles, mobileNumber]
+        );
+
+        await trx.query(
+          `INSERT INTO Students (name, dob, gender, section_id, father_mob, profile_photo, roll)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber]
+        );
+  
+        await trx.query(
+          `INSERT INTO studentattendance (roll, total_days, on_duty_days, leave_days)
+           VALUES (?, '1', '0', '0')`,
+          [rollNumber]
+        );
+      }
+      else{
+
+        const hashedPassword = await bcrypt.hash(dob, 12);
+
+        await trx.query(
+          `INSERT INTO Users (name, email, phone, password_hash, roles)
+           VALUES (?, ?, ?, ?, ?)`,
+          [fatherName, `${rollNumber}.student@school.com`, mobileNumber, hashedPassword, 'Student']
+        );
+
+        await trx.query(
+          `INSERT INTO Students (name, dob, gender, section_id, father_mob, profile_photo, roll)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber]
+        );
+  
+        await trx.query(
+          `INSERT INTO studentattendance (roll, total_days, on_duty_days, leave_days)
+           VALUES (?, '1', '0', '0')`,
+          [rollNumber]
+        );
+      }
+      
       await trx.commit();
       res.json({ success: true, message: "Student enrolled successfully", rollNumber });
     } catch (err) {
@@ -656,7 +881,9 @@ exports.enrollMentor = async (req, res) => {
   try {
     const { name, dob, section, subject, mobileNumber, specification, email, grade } = req.body;
     const profilePhoto = req.file;
+
     const con = db.promise();
+
     if (!profilePhoto) {
       return res.status(400).json({ success: false, message: "Profile photo is required" });
     }
@@ -707,6 +934,11 @@ exports.enrollMentor = async (req, res) => {
            VALUES (?, ?, ?, ?, ?)`,
           [name, email, mobileNumber, hashedPassword, 'Mentor']
         );
+        await connection.query(
+          `INSERT INTO facultyattendance (phone, total_days, on_duty_days, leave_days)
+           VALUES (?, '1', '0', '0')`,
+          [mobileNumber]
+        )
         // `${newRoll}@school.com`
       }
 
@@ -1720,5 +1952,100 @@ exports.deleteEvent = (req, res) => {
       }
       res.json({ success: true, message: 'Event deleted successfully' });
     });
+  });
+};
+
+
+//Calendar Page
+// Get calendar events for a month
+exports.getCalendarEvents = (req, res) => {
+  const { year, month } = req.query;
+  
+  // Validate inputs
+  if (!year || !month) {
+    return res.status(400).json({ success: false, message: 'Year and month are required' });
+  }
+
+  const startDate = `${year}-${month.padStart(2, '0')}-01`;
+  const endDate = `${year}-${month.padStart(2, '0')}-31`;
+
+  const sql = `
+    SELECT * FROM calendar_events 
+    WHERE date BETWEEN ? AND LAST_DAY(?)
+    ORDER BY date, start_time
+  `;
+
+  db.query(sql, [startDate, startDate], (err, results) => {
+    if (err) {
+      console.error("Error fetching calendar events:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    // Format dates for frontend
+    const formattedEvents = results.map(event => ({
+      ...event,
+      date: new Date(event.date),
+      start_time: event.start_time ? event.start_time.substring(0, 5) : null,
+      end_time: event.end_time ? event.end_time.substring(0, 5) : null
+    }));
+
+    res.json({ success: true, events: formattedEvents });
+  });
+};
+
+// Add new calendar event
+exports.addCalendarEvent = (req, res) => {
+  const { type, name, start_time, end_time, date } = req.body;
+
+  // Basic validation
+  if (!type || !name || !date) {
+    return res.status(400).json({ success: false, message: 'Type, name and date are required' });
+  }
+
+  if (type === 'event' && (!start_time || !end_time)) {
+    return res.status(400).json({ success: false, message: 'Start and end time are required for events' });
+  }
+
+  const sql = `
+    INSERT INTO calendar_events 
+    (type, name, start_time, end_time, date)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [type, name, start_time, end_time, date], (err, result) => {
+    if (err) {
+      console.error("Error adding calendar event:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Event added successfully',
+      eventId: result.insertId
+    });
+  });
+};
+
+// Delete calendar event
+exports.deleteCalendarEvent = (req, res) => {
+  const { id } = req.body;
+
+  if (!id) {
+    return res.status(400).json({ success: false, message: 'Event ID is required' });
+  }
+
+  const sql = 'DELETE FROM calendar_events WHERE id = ?';
+
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error("Error deleting calendar event:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    res.json({ success: true, message: 'Event deleted successfully' });
   });
 };

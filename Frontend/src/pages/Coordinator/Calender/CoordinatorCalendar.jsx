@@ -1,92 +1,98 @@
-import React, {useState, useEffect} from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, Platform, TouchableWithoutFeedback, Keyboard,
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  TextInput,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  SafeAreaView,
+  Alert
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import Leftarrow from '../../../assets/CoordinatorPage/Calender/leftarrow.svg';
 import Holiday from '../../../assets/CoordinatorPage/Calender/holiday.svg';
 import ChevronDown from '../../../assets/CoordinatorPage/Calender/chevron-down.svg';
 import ChevronRight from '../../../assets/CoordinatorPage/Calender/chevron-right.svg';
-// import BackIcon from '../../../assets/StudentProfileDetails/leftarrow.svg';
 import BackIcon from '../../../assets/CoordinatorPage/Calender/leftarrow.svg';
 import Calendar from '../../../assets/CoordinatorPage/Calender/calendar.svg';
 import Addicon from '../../../assets/CoordinatorPage/Calender/addicon.svg';
 import styles from './CalendarStyles';
+import { API_URL } from '@env'
+import DateTimePicker from '@react-native-community/datetimepicker';
 
-const CoordinatorCalendar = ({navigation}) => {
+const CoordinatorCalendar = ({ navigation }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
   const [calendarDays, setCalendarDays] = useState([]);
-
   const [events, setEvents] = useState([]);
   const [displayedEvents, setDisplayedEvents] = useState([]);
-
   const [viewType, setViewType] = useState('all');
   const [modalVisible, setModalVisible] = useState(false);
-  const [eventType, setEventType] = useState('Event');
+  const [eventType, setEventType] = useState('event');
   const [eventName, setEventName] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [eventDate, setEventDate] = useState(new Date());
   const [holidayReason, setHolidayReason] = useState('');
   const [holidayDuration, setHolidayDuration] = useState('Full day');
-
-  // Date picker states
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState('date');
   const [currentDateTimeField, setCurrentDateTimeField] = useState(null);
 
-  // Month names
   const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // Short month names for tabs
-  const getMonthTabs = () => {
-    const tabs = [];
-    for (let i = -2; i <= 2; i++) {
-      let month = currentMonth + i;
-      let year = currentYear;
 
-      if (month < 0) {
-        month += 12;
-        year -= 1;
-      } else if (month > 11) {
-        month -= 12;
-        year += 1;
-      }
+  const convertTo24HourFormat = (time) => {
+    const [timePart, modifier] = time.split(' ');
+    let [hours, minutes] = timePart.split(':');
+    hours = parseInt(hours, 10);
 
-      tabs.push({
-        name: monthNames[month].substring(0, 3),
-        month: month,
-        year: year,
-      });
+    if (modifier === 'PM' && hours !== 12) {
+      hours += 12;
     }
-    return tabs;
+    if (modifier === 'AM' && hours === 12) {
+      hours = 0;
+    }
+
+    return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+  };
+
+  // Fetch events from backend
+  const fetchEvents = () => {
+    const month = (currentMonth + 1).toString().padStart(2, '0');
+    const year = currentYear;
+
+    fetch(`${API_URL}/api/coordinator/calendar/events?year=${year}&month=${month}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Convert date strings to Date objects
+          const formattedEvents = data.events.map(event => ({
+            ...event,
+            date: new Date(event.date)
+          }));
+          setEvents(formattedEvents);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching events:', error);
+      });
   };
 
   // Generate calendar days for the current month
   const generateCalendarDays = () => {
     const days = [
-      {day: 'S', isHeader: true},
-      {day: 'M', isHeader: true},
-      {day: 'T', isHeader: true},
-      {day: 'W', isHeader: true},
-      {day: 'T', isHeader: true},
-      {day: 'F', isHeader: true},
-      {day: 'S', isHeader: true},
+      { day: 'S', isHeader: true }, { day: 'M', isHeader: true },
+      { day: 'T', isHeader: true }, { day: 'W', isHeader: true },
+      { day: 'T', isHeader: true }, { day: 'F', isHeader: true },
+      { day: 'S', isHeader: true }
     ];
 
     const firstDay = new Date(currentYear, currentMonth, 1).getDay();
@@ -95,32 +101,29 @@ const CoordinatorCalendar = ({navigation}) => {
 
     // Add empty cells for days before the first of the month
     for (let i = 0; i < firstDay; i++) {
-      days.push({day: '', date: null});
+      days.push({ day: '', date: null });
     }
 
     // Add cells for each day of the month
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(currentYear, currentMonth, i);
-      const isToday =
-        today.getDate() === i &&
+      const isToday = today.getDate() === i &&
         today.getMonth() === currentMonth &&
         today.getFullYear() === currentYear;
 
-      // Check if the day has an event
+      // Check if the day has an event or holiday
       const hasEvent = events.some(
-        event =>
-          event.date.getDate() === i &&
+        event => event.date.getDate() === i &&
           event.date.getMonth() === currentMonth &&
-          event.date.getFullYear() === currentYear,
+          event.date.getFullYear() === currentYear &&
+          event.type === 'event'
       );
 
-      // Check if the day has a holiday
       const hasHoliday = events.some(
-        event =>
-          event.type === 'Holiday' &&
-          event.date.getDate() === i &&
+        event => event.date.getDate() === i &&
           event.date.getMonth() === currentMonth &&
-          event.date.getFullYear() === currentYear,
+          event.date.getFullYear() === currentYear &&
+          event.type === 'holiday'
       );
 
       days.push({
@@ -139,13 +142,12 @@ const CoordinatorCalendar = ({navigation}) => {
   // Filter events for the selected month
   const filterEvents = () => {
     let filteredEvents = events.filter(
-      event =>
-        event.date.getMonth() === currentMonth &&
-        event.date.getFullYear() === currentYear,
+      event => event.date.getMonth() === currentMonth &&
+        event.date.getFullYear() === currentYear
     );
 
     if (viewType === 'holidays') {
-      filteredEvents = filteredEvents.filter(event => event.type === 'Holiday');
+      filteredEvents = filteredEvents.filter(event => event.type === 'holiday');
     }
 
     return filteredEvents
@@ -157,18 +159,19 @@ const CoordinatorCalendar = ({navigation}) => {
       }));
   };
 
-  // Function to handle date selection
+  // Handle date selection
   const handleDateSelect = date => {
     if (date) {
       setSelectedDate(date);
     }
   };
 
-  // Function to change month
+  // Change month
   const changeMonth = (month, year) => {
     setCurrentMonth(month);
     setCurrentYear(year);
-    setSelectedDate(1); // Reset selected date when changing month
+    setSelectedDate(1);
+    fetchEvents();
   };
 
   // Format date for display
@@ -185,13 +188,12 @@ const CoordinatorCalendar = ({navigation}) => {
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
-    hours = hours ? hours : 12; // the hour '0' should be '12'
+    hours = hours ? hours : 12;
     return `${hours}:${minutes} ${ampm}`;
   };
 
-  // Handle date change in date picker
+  // Handle date/time change in picker
   const onDateChange = (event, selectedDate) => {
-    // Always hide the picker after selection on Android
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
     }
@@ -223,41 +225,72 @@ const CoordinatorCalendar = ({navigation}) => {
 
   // Add new event
   const addEvent = () => {
-    if (eventType === 'Event') {
+    if (eventType === 'event') {
       if (!eventName || !startTime || !endTime) {
         alert('Please fill in all fields');
         return;
       }
-
-      const newEvent = {
-        id: Date.now().toString(),
-        title: eventName,
-        time: `${startTime} - ${endTime}`,
-        date: eventDate,
-        type: 'Event',
-      };
-
-      setEvents([...events, newEvent]);
     } else {
-      // For holidays
       if (!holidayReason) {
         alert('Please enter holiday reason');
         return;
       }
-
-      const newHoliday = {
-        id: Date.now().toString(),
-        title: holidayReason,
-        time: holidayDuration,
-        date: eventDate,
-        type: 'Holiday',
-      };
-
-      setEvents([...events, newHoliday]);
     }
 
-    resetForm();
-    setModalVisible(false);
+    const eventData = {
+      type: eventType,
+      name: eventType === 'event' ? eventName : holidayReason,
+      start_time: eventType === 'event' ? convertTo24HourFormat(startTime) : null,
+      end_time: eventType === 'event' ? convertTo24HourFormat(endTime) : null,
+      date: eventDate.toISOString().split('T')[0]
+    };
+
+    fetch(`${API_URL}/api/coordinator/calendar/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventData)
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Refresh events
+          fetchEvents();
+          resetForm();
+          setModalVisible(false);
+        } else {
+          alert('Failed to add event');
+        }
+      })
+      .catch(error => {
+        console.error('Error adding event:', error);
+        alert('Failed to add event');
+      });
+  };
+
+  // Delete event
+  const deleteEvent = (eventId) => {
+    fetch(`${API_URL}/api/coordinator/calendar/events`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: eventId })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Refresh events
+          fetchEvents();
+        } else {
+          alert('Failed to delete event');
+        }
+      })
+      .catch(error => {
+        console.error('Error deleting event:', error);
+        alert('Failed to delete event');
+      });
   };
 
   // Reset form fields
@@ -266,23 +299,40 @@ const CoordinatorCalendar = ({navigation}) => {
     setStartTime('');
     setEndTime('');
     setEventDate(new Date());
-    setEventType('Event');
+    setEventType('event');
     setHolidayReason('');
     setHolidayDuration('Full day');
   };
 
-  // Update calendar days when month/year or events change
-  useEffect(() => {
-    setCalendarDays(generateCalendarDays());
-    setDisplayedEvents(filterEvents());
-  }, [currentMonth, currentYear, selectedDate, events, viewType]);
+  // Get month tabs for navigation
+  const getMonthTabs = () => {
+    const tabs = [];
+    for (let i = -2; i <= 2; i++) {
+      let month = currentMonth + i;
+      let year = currentYear;
+
+      if (month < 0) {
+        month += 12;
+        year -= 1;
+      } else if (month > 11) {
+        month -= 12;
+        year += 1;
+      }
+
+      tabs.push({
+        name: monthNames[month].substring(0, 3),
+        month: month,
+        year: year,
+      });
+    }
+    return tabs;
+  };
 
   // Render the appropriate form based on event type
   const renderEventForm = () => {
-    if (eventType === 'Event') {
+    if (eventType === 'event') {
       return (
         <>
-          {/* Event Name */}
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Event name</Text>
             <TextInput
@@ -293,20 +343,17 @@ const CoordinatorCalendar = ({navigation}) => {
             />
           </View>
 
-          {/* Start Time */}
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Start time</Text>
             <TouchableOpacity
               style={styles.textInput}
               onPress={() => openDatePicker('time', 'startTime')}>
-              <Text
-                style={startTime ? styles.inputText : styles.placeholderText}>
+              <Text style={startTime ? styles.inputText : styles.placeholderText}>
                 {startTime || 'Select start time'}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* End Time */}
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>End time</Text>
             <TouchableOpacity
@@ -322,7 +369,6 @@ const CoordinatorCalendar = ({navigation}) => {
     } else {
       return (
         <>
-          {/* Event Type (Full day/Half day) */}
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Event</Text>
             <View style={styles.radioGroup}>
@@ -332,12 +378,9 @@ const CoordinatorCalendar = ({navigation}) => {
                 <View
                   style={[
                     styles.radioCircle,
-                    holidayDuration === 'Full day' &&
-                      styles.radioCircleSelected,
+                    holidayDuration === 'Full day' && styles.radioCircleSelected,
                   ]}>
-                  {holidayDuration === 'Full day' && (
-                    <View style={styles.radioDot} />
-                  )}
+                  {holidayDuration === 'Full day' && <View style={styles.radioDot} />}
                 </View>
                 <Text style={styles.radioLabel}>Full day</Text>
               </TouchableOpacity>
@@ -348,19 +391,15 @@ const CoordinatorCalendar = ({navigation}) => {
                 <View
                   style={[
                     styles.radioCircle,
-                    holidayDuration === 'Half day' &&
-                      styles.radioCircleSelected,
+                    holidayDuration === 'Half day' && styles.radioCircleSelected,
                   ]}>
-                  {holidayDuration === 'Half day' && (
-                    <View style={styles.radioDot} />
-                  )}
+                  {holidayDuration === 'Half day' && <View style={styles.radioDot} />}
                 </View>
                 <Text style={styles.radioLabel}>Half day</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Holiday Reason */}
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Holiday reason</Text>
             <TextInput
@@ -375,8 +414,16 @@ const CoordinatorCalendar = ({navigation}) => {
     }
   };
 
-  // Screen title based on current view
-  const screenTitle = viewType === 'holidays' ? 'Holidays' : 'Calendar';
+  // Update calendar when month/year changes or events update
+  useEffect(() => {
+    setCalendarDays(generateCalendarDays());
+    setDisplayedEvents(filterEvents());
+  }, [currentMonth, currentYear, selectedDate, events, viewType]);
+
+  // Fetch events when component mounts
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -391,10 +438,9 @@ const CoordinatorCalendar = ({navigation}) => {
 
         <View style={styles.monthSelector}>
           <TouchableOpacity style={styles.monthYearContainer}>
-            <Text
-              style={
-                styles.monthYear
-              }>{`${monthNames[currentMonth]} ${currentYear}`}</Text>
+            <Text style={styles.monthYear}>
+              {`${monthNames[currentMonth]} ${currentYear}`}
+            </Text>
             <ChevronDown width={18} height={18} />
           </TouchableOpacity>
           <TouchableOpacity
@@ -418,7 +464,7 @@ const CoordinatorCalendar = ({navigation}) => {
 
         {viewType === 'all' && (
           <>
-            {/* Calendar grid - only shown in 'all' view */}
+            {/* Calendar grid */}
             <View style={styles.calendarGrid}>
               {calendarDays.map((item, index) => (
                 <TouchableOpacity
@@ -446,7 +492,7 @@ const CoordinatorCalendar = ({navigation}) => {
               ))}
             </View>
 
-            {/* Month navigation - only shown in 'all' view */}
+            {/* Month navigation */}
             <View style={styles.monthTabs}>
               {getMonthTabs().map((tab, index) => (
                 <TouchableOpacity
@@ -454,16 +500,16 @@ const CoordinatorCalendar = ({navigation}) => {
                   style={[
                     styles.monthTab,
                     tab.month === currentMonth &&
-                      tab.year === currentYear &&
-                      styles.activeMonthTab,
+                    tab.year === currentYear &&
+                    styles.activeMonthTab,
                   ]}
                   onPress={() => changeMonth(tab.month, tab.year)}>
                   <Text
                     style={[
                       styles.monthTabText,
                       tab.month === currentMonth &&
-                        tab.year === currentYear &&
-                        styles.activeMonthTabText,
+                      tab.year === currentYear &&
+                      styles.activeMonthTabText,
                     ]}>
                     {tab.name}
                   </Text>
@@ -481,39 +527,52 @@ const CoordinatorCalendar = ({navigation}) => {
                 key={event.id}
                 style={[
                   styles.eventItem,
-                  event.type === 'Holiday',
-                ]}>
+                  event.type === 'holiday' && styles.holidayItem,
+                ]}
+                onLongPress={() => {
+                  // Show delete option on long press
+                  Alert.alert(
+                    'Delete Event',
+                    'Are you sure you want to delete this event?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', onPress: () => deleteEvent(event.id) }
+                    ]
+                  );
+                }}>
                 <View style={styles.eventDateContainer}>
                   <Text style={styles.eventDay}>{event.day}</Text>
                   <Text style={styles.eventMonth}>{event.month}</Text>
                 </View>
-              
+
                 <View
                   style={[
                     styles.eventMarker,
-                    event.type === 'Holiday' && styles.holidayMarker,
+                    event.type === 'holiday' && styles.holidayMarker,
                   ]}
                 />
                 <View style={styles.eventDetails}>
                   <View
                     style={
-                      event.type === 'Holiday'
+                      event.type === 'holiday'
                         ? styles.holidayContainer
                         : styles.eventContainer
                     }>
                     <Text
                       style={[
                         styles.eventTitle,
-                        event.type === 'Holiday' && styles.holidayTitle,
+                        event.type === 'holiday' && styles.holidayTitle,
                       ]}>
-                      {event.title}
+                      {event.name}
                     </Text>
                     <Text
                       style={[
                         styles.eventTime,
-                        event.type === 'Holiday' && styles.holidayTime,
+                        event.type === 'holiday' && styles.holidayTime,
                       ]}>
-                      {event.type === 'Holiday' ? event.time : event.time}
+                      {event.type === 'holiday'
+                        ? holidayDuration
+                        : `${event.start_time} - ${event.end_time}`}
                     </Text>
                   </View>
                 </View>
@@ -540,63 +599,54 @@ const CoordinatorCalendar = ({navigation}) => {
           <Addicon width={35} height={35} style={styles.fabIcon} />
         </TouchableOpacity>
 
+        {/* Add Event Modal */}
         <Modal
           animationType="slide"
           transparent={true}
           visible={modalVisible}
-          onRequestClose={() => {
-            setModalVisible(!modalVisible);
-          }}>
+          onRequestClose={() => setModalVisible(!modalVisible)}>
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
-              {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <BackIcon width={20} height={20}  onPress={() => setModalVisible(false)}/>
+                  <BackIcon width={20} height={20} />
                 </TouchableOpacity>
-                <Text style={styles.modalTitle}>Calendar</Text>
+                <Text style={styles.modalTitle}>Add Event</Text>
               </View>
 
-              {/* Event Type Selection */}
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Event</Text>
+                <Text style={styles.formLabel}>Event Type</Text>
                 <View style={styles.radioGroup}>
                   <TouchableOpacity
                     style={styles.radioOption}
-                    onPress={() => setEventType('Event')}>
+                    onPress={() => setEventType('event')}>
                     <View
                       style={[
                         styles.radioCircle,
-                        eventType === 'Event' && styles.radioCircleSelected,
+                        eventType === 'event' && styles.radioCircleSelected,
                       ]}>
-                      {eventType === 'Event' && (
-                        <View style={styles.radioDot} />
-                      )}
+                      {eventType === 'event' && <View style={styles.radioDot} />}
                     </View>
                     <Text style={styles.radioLabel}>Event</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     style={styles.radioOption}
-                    onPress={() => setEventType('Holiday')}>
+                    onPress={() => setEventType('holiday')}>
                     <View
                       style={[
                         styles.radioCircle,
-                        eventType === 'Holiday' && styles.radioCircleSelected,
+                        eventType === 'holiday' && styles.radioCircleSelected,
                       ]}>
-                      {eventType === 'Holiday' && (
-                        <View style={styles.radioDot} />
-                      )}
+                      {eventType === 'holiday' && <View style={styles.radioDot} />}
                     </View>
                     <Text style={styles.radioLabel}>Holiday</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* Conditional Form based on event type */}
               {renderEventForm()}
 
-              {/* Date - common for both types */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Date</Text>
                 <TouchableOpacity
@@ -609,7 +659,6 @@ const CoordinatorCalendar = ({navigation}) => {
                 </TouchableOpacity>
               </View>
 
-              {/* Confirm Button */}
               <TouchableOpacity style={styles.confirmButton} onPress={addEvent}>
                 <Text style={styles.confirmButtonText}>Confirm</Text>
               </TouchableOpacity>
@@ -617,7 +666,7 @@ const CoordinatorCalendar = ({navigation}) => {
           </View>
         </Modal>
 
-        {/* Date Time Picker */}
+        {/* Date/Time Picker */}
         {showDatePicker && (
           <DateTimePicker
             testID="dateTimePicker"
