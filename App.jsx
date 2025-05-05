@@ -1,7 +1,7 @@
 import React from "react";
 import { SafeAreaView, StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import Router from "./srcAdmin/routes/router";
+import Router from "./src/routes/router";
 
 const App = () => {
   return (
