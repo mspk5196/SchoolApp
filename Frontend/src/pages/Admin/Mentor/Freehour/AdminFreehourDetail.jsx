@@ -13,7 +13,7 @@ import HomeIcon from '../../../assets/FreeHour/home.svg';
 import styles from './FreehourDetailStyle';
 import staff from '../../../assets/SubjectMentor/staff.png';
 
-const FreehourDetail = ({navigation, route}) => {
+const AdminFreehourDetail = ({navigation, route}) => {
   // Extract faculty data from route params
   const { faculty } = route.params || {
     name: 'Mr.SasiKumar',
@@ -72,4 +72,4 @@ const FreehourDetail = ({navigation, route}) => {
   );
 };
 
-export default FreehourDetail;
+export default AdminFreehourDetail;

@@ -16,7 +16,7 @@ import Hat from '../../../assets/MentorList/hat.svg';
 import { Calendar } from 'react-native-calendars';
 import styles from './MentorlistDetailStyle';
 
-const MentorDetails = ({ route, navigation }) => {
+const AdminMentorlistDetail = ({ route, navigation }) => {
   const { mentor = {} } = route.params || {};
 
   const [showSubjectModal, setShowSubjectModal] = useState(false);
@@ -415,4 +415,4 @@ const MentorDetails = ({ route, navigation }) => {
   );
 };
 
-export default MentorDetails;
+export default AdminMentorlistDetail;

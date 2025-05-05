@@ -7,7 +7,7 @@ import Date from '../../../assets/LeaveApproval/date.svg';
 import Home from '../../../assets/LeaveApproval/Back.svg';
 import Approved from '../../../assets/LeaveApproval/greentick.svg';
 
-const LeaveApprovals = ({navigation}) => {
+const AdminLeaveApprovalHistory = ({navigation}) => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const leaveData = [
@@ -110,4 +110,4 @@ const LeaveApprovals = ({navigation}) => {
   );
 };
 
-export default LeaveApprovals;
+export default AdminLeaveApprovalHistory;

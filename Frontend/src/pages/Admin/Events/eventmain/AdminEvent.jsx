@@ -4,7 +4,7 @@ import EventList from '../../../components/Event/EventList';
 import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg';
 import styles from './EventStyle';
 
-const EventsScreen = ({navigation}) => {
+const AdminEvent = ({navigation}) => {
   const [favorites, setFavorites] = useState({});
 
   const toggleFavorite = id => {
@@ -113,4 +113,4 @@ const EventsScreen = ({navigation}) => {
   );
 };
 
-export default EventsScreen;
+export default AdminEvent;

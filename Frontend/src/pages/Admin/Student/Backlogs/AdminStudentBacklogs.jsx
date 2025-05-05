@@ -10,7 +10,7 @@ import {
 import styles from './BacklogsStyles';
 import PreviousIcon from '../../../assets/Basicimg/PrevBtn';
 
-const BackLogs = ({ navigation }) => {
+const AdminStudentBacklogs = ({ navigation }) => {
   const [activeSection, setActiveSection] = useState('A');
 
   const sections = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
@@ -90,4 +90,4 @@ const BackLogs = ({ navigation }) => {
   );
 };
 
-export default BackLogs;
+export default AdminStudentBacklogs;

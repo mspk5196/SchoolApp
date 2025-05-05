@@ -8,7 +8,7 @@ import PlusIcon from '../../../assets/CoordinatorEnrollment/Plus.svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import styles from './CoordinatorEnrollmentStyle';
 
-const CoordinatorEnrollment = ({ navigation }) => {
+const AdminCoordinatorEnrollment = ({ navigation }) => {
   const [mentor, setMentor] = useState({
     name: '',
     dob: '',
@@ -376,4 +376,4 @@ const CoordinatorEnrollment = ({ navigation }) => {
   );
 };
 
-export default CoordinatorEnrollment;
+export default AdminCoordinatorEnrollment;

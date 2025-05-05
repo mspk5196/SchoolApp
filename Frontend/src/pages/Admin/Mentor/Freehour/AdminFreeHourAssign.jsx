@@ -16,7 +16,7 @@ import styles from './FreeHourAssignStyle';
 import staff from '../../../assets/SubjectMentor/staff.png';
 import HomeIcon from '../../../assets/FreeHour/home.svg';
 
-const FreeHourAssign = ({ navigation, route }) => {
+const AdminFreeHourAssign = ({ navigation, route }) => {
   const { faculty } = route.params;
   const [description, setDescription] = useState('');
   const [activity, setActivity] = useState('');
@@ -318,4 +318,4 @@ const FreeHourAssign = ({ navigation, route }) => {
   );
 };
 
-export default FreeHourAssign;
+export default AdminFreeHourAssign;

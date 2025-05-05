@@ -16,7 +16,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import Search from '../../../assets/StudentHome/studentprofile/search.svg';
 import Homeicon from '../../../assets/Basicimg/Home.svg';
 
-const DisciplineLog = ({navigation}) => {
+const AdminStudentIssuelog = ({navigation}) => {
   const [activeSection, setActiveSection] = useState(null);
   const [searchText, setSearchText] = useState('');
   
@@ -164,4 +164,4 @@ const DisciplineLog = ({navigation}) => {
   );
 };
 
-export default DisciplineLog;
+export default AdminStudentIssuelog;

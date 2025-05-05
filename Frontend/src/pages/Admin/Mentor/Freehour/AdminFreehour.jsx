@@ -19,7 +19,7 @@ import HomeIcon from '../../../assets/FreeHour/home.svg';
 import styles from './FreehourStyle';
 import staff from '../../../assets/SubjectMentor/staff.png';
 
-const Freehour = ({navigation, route}) => {
+const AdminFreehour = ({navigation, route}) => {
   const [searchText, setSearchText] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [tasks, setTasks] = useState([
@@ -191,4 +191,4 @@ const Freehour = ({navigation, route}) => {
   );
 };
 
-export default Freehour;
+export default AdminFreehour;

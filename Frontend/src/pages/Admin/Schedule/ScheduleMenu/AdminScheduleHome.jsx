@@ -8,7 +8,7 @@ import HomeIcon from '../../../assets/ScheduleMenu/Home.svg'
 import DeleteIcon from '../../../assets/ScheduleMenu/Delete.svg' 
 import RoundHomeIcon from '../../../assets/MentorList/roundhome.svg' 
 
-const ScheduleHome = ({ navigation }) => {
+const AdminScheduleHome = ({ navigation }) => {
   const [activeGrade, setActiveGrade] = useState(1); // Default to Grade 2 as in image
   const [selectedDate, setSelectedDate] = useState('23/12/24');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
@@ -217,4 +217,4 @@ const ScheduleHome = ({ navigation }) => {
   )
 }
 
-export default ScheduleHome;
+export default AdminScheduleHome;

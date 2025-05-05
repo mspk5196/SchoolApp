@@ -20,7 +20,7 @@ import Tick from '../../../assets/SubjectMentor/tick.svg';
 import Oneperson from '../../../assets/SubjectMentor/oneperson.svg';
 import Hat from '../../../assets/SubjectMentor/hat.svg';
 
-const SubjectMentor = ({navigation}) => {
+const AdminSubjectMentor = ({navigation}) => {
   const [activeSection, setActiveSection] = useState('English');
   const [mentors, setMentors] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -211,4 +211,4 @@ const SubjectMentor = ({navigation}) => {
   );
 };
 
-export default SubjectMentor;
+export default AdminSubjectMentor;

@@ -19,7 +19,7 @@ import styles from './StudentDetailsStyles';
 import PerformanceGraph from '../../../../components/performancegraph/Performancegraph';
 import Homeicon from '../../../../assets/Basicimg/Home.svg';
 
-const StudentProfileDetail = ({navigation, route}) => {
+const AdminStudentDetails = ({navigation, route}) => {
   const {student} = route.params || {};
 
   // Achievement data
@@ -265,4 +265,4 @@ const subjectsData = [
   );
 };
 
-export default StudentProfileDetail;
+export default AdminStudentDetails;

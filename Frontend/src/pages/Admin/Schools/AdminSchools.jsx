@@ -16,7 +16,7 @@ import Schimg3 from '../../assets/School/schoolimg3.svg';
 import styles from './SchoolSty';
 import {useState} from 'react';
 
-const Schools = ({ navigation }) => {
+const AdminSchools = ({ navigation }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [schoolName, setSchoolName] = useState('');
   
@@ -145,4 +145,4 @@ const Schools = ({ navigation }) => {
     );
   };
 
-export default Schools;
+export default AdminSchools;

@@ -15,7 +15,7 @@ import LeaveType from '../../../assets/LeaveApproval/leavetype.svg';
 import Date from '../../../assets/LeaveApproval/date.svg';
 import Pending from '../../../assets/LeaveApproval/pending.svg';
 
-const LeaveApproval = ({navigation}) => {
+const AdminLeaveApproval = ({navigation}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -180,4 +180,4 @@ const LeaveApproval = ({navigation}) => {
   );
 };
 
-export default LeaveApproval;
+export default AdminLeaveApproval;

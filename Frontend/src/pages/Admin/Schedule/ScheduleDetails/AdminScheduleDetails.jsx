@@ -20,7 +20,7 @@ import DeleteIcon from '../../../assets/ScheduleDetails/delete-icon.svg';
 import Add2Icon from '../../../assets/ScheduleDetails/Add.svg';
 import styles from './ScheduleDetailsStyle';
 
-const ScheduleDetails = ({ navigation }) => {
+const AdminScheduleDetails = ({ navigation }) => {
   const [activeSection, setActiveSection] = useState('1');
   const [activeDay, setActiveDay] = useState({ day: 'Thu', date: '23' });
   const [scheduleItems, setScheduleItems] = useState([]);
@@ -754,4 +754,4 @@ const ScheduleDetails = ({ navigation }) => {
   );
 };
 
-export default ScheduleDetails;
+export default AdminScheduleDetails;

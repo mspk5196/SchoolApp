@@ -10,7 +10,7 @@ import Tick from '../../../assets/MentorHome/tick.svg';
 import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg';
 
 
-const MentorList = ({ navigation }) => {
+const AdminMentorlist = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [showFilterSidebar, setShowFilterSidebar] = useState(false);
@@ -281,4 +281,4 @@ const FilterSidebar = ({ isVisible, onClose, filters, setFilters }) => {
   );
 };
 
-export default MentorList;
+export default AdminMentorlist;

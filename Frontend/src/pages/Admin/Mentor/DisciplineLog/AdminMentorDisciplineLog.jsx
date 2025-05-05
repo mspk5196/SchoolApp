@@ -19,7 +19,7 @@ import MessageSquare from '../../../assets/DisciplineLog/MessageSquare.svg';
 import styles from './DisciplineLogStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const DisciplineLog = ({ navigation }) => {
+const AdminMentorDisciplineLog = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [reason, setReason] = useState('');
   const [registeredBy, setRegisteredBy] = useState('');
@@ -260,4 +260,4 @@ const DisciplineLog = ({ navigation }) => {
   );
 };
 
-export default DisciplineLog;
+export default AdminMentorDisciplineLog;

@@ -15,7 +15,7 @@ import ChevronDown from '../../assets/Calendar/chevron-down.svg';
 import ChevronRight from '../../assets/Calendar/chevron-right.svg';
 import styles from './CalendarStyles';
 
-const Calendar = () => {
+const AdminCalendar = () => {
   const navigation = useNavigation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
@@ -427,4 +427,4 @@ const Calendar = () => {
   );
 };
 
-export default Calendar;
+export default AdminCalendar;

@@ -9,7 +9,7 @@ import Tickbox from '../../../assets/MentorHome/tickbox.svg';
 import Tick from '../../../assets/MentorHome/tick.svg';
 
 
-const CoordinatorList = ({ navigation }) => {
+const AdminCoordinatorList = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [showFilterSidebar, setShowFilterSidebar] = useState(false);
@@ -276,4 +276,4 @@ const FilterSidebar = ({ isVisible, onClose, filters, setFilters }) => {
   );
 };
 
-export default CoordinatorList;
+export default AdminCoordinatorList;

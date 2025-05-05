@@ -11,7 +11,7 @@ import Homeicon from '../../../assets/Basicimg/Home.svg';
 
 import styles from './StudentHomeStyles';
 
-const StudentHome = ({ navigation }) => {
+const AdminStudentHome = ({ navigation }) => {
   const [activeSection, setActiveSection] = useState(null);
 
   const data = [
@@ -96,4 +96,4 @@ const StudentHome = ({ navigation }) => {
   );
 };
 
-export default StudentHome;
+export default AdminStudentHome;

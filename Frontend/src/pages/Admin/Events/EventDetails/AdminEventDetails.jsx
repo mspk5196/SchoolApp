@@ -16,7 +16,7 @@ import Unliked from '../../../assets/Event/unliked.svg';
 import Location from '../../../assets/Event/Detailslocation.svg';
 import Calendericon from '../../../assets/Event/Date.svg';
 
-const EventDetailsScreen = ({navigation}) => {
+const AdminEventDetails = ({navigation}) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showFullText, setShowFullText] = useState(false);
 
@@ -219,4 +219,4 @@ const EventDetailsScreen = ({navigation}) => {
   );
 };
 
-export default EventDetailsScreen;
+export default AdminEventDetails;

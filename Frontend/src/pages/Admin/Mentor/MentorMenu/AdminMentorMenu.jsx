@@ -55,7 +55,7 @@ const MentorCard = ({title, Icon, bgColor, color, onPress}) => (
   </TouchableOpacity>
 );
 
-const Mentor = ({navigation}) => {
+const AdminMentorMenu = ({navigation}) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -95,4 +95,4 @@ const Mentor = ({navigation}) => {
   );
 };
 
-export default Mentor;
+export default AdminMentorMenu;

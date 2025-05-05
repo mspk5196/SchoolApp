@@ -48,7 +48,7 @@ const CoordinatorCard = ({title, Icon, bgColor, color, onPress}) => (
   </TouchableOpacity>
 );
 
-const CoordinatorHome = ({navigation}) => {
+const AdminCoordinatorHome = ({navigation}) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -92,4 +92,4 @@ const CoordinatorHome = ({navigation}) => {
   );
 };
 
-export default CoordinatorHome;
+export default AdminCoordinatorHome;

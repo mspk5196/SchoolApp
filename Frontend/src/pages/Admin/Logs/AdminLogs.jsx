@@ -16,7 +16,8 @@ import Bell from '../../assets/Logs/bell.svg';
 import Call from '../../assets/Logs/callicon.svg';
 import Message from '../../assets/Logs/msgicon.svg';
 import Home from '../../assets/Logs/home.svg';
-const Logs = () => {
+
+const AdminLogs = () => {
   return (
     <SafeAreaView style={styles.container}>
       
@@ -234,4 +235,4 @@ const Logs = () => {
   );
 };
 
-export default Logs;
+export default AdminLogs;

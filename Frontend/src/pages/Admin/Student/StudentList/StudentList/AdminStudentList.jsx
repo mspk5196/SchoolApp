@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Pressable } from 'react-native';
 import PreviousIcon from '../../../assets/StudentHome/studentprofile/PrevBtn.svg';
-import styles from './StudentListStyles';
+import styles from '../StudentListStyles';
 const Staff = require('../../../assets/StudentHome/studentprofile/staff.png');
 import Search from '../../../assets/StudentHome/studentprofile/search.svg';
 import Homeicon from '../../../assets/Basicimg/Home.svg';
 
-const StudentProfile = ({ navigation }) => {
+const AdminStudentList = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [activeSection, setActiveSection] = useState(null);
@@ -109,4 +109,4 @@ const StudentProfile = ({ navigation }) => {
   );
 };
 
-export default StudentProfile;
+export default AdminStudentList;
