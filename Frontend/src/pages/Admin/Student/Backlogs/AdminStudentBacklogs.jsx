@@ -8,7 +8,7 @@ import {
   Image,
 } from 'react-native';
 import styles from './BacklogsStyles';
-import PreviousIcon from '../../../assets/Basicimg/PrevBtn';
+import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg';
 
 const AdminStudentBacklogs = ({ navigation }) => {
   const [activeSection, setActiveSection] = useState('A');
@@ -47,7 +47,7 @@ const AdminStudentBacklogs = ({ navigation }) => {
         <View style={styles.cardLeftContent}>
           <View style={styles.profileSection}>
             <Image 
-              source={require('../../../assets/StudentHome/Issuelog/staff.png')} 
+              source={require('../../../../assets/AdminPage/StudentHome/Issuelog/staff.png')} 
               style={styles.profileImage} 
             />
             <View style={styles.profileInfo}>

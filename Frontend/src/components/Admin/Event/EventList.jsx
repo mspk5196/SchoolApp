@@ -1,9 +1,9 @@
 import React from 'react';
 import {View, Text, TouchableOpacity, FlatList, Image} from 'react-native';
-import Liked from '../../assets/Event/liked.svg';
-import Unliked from '../../assets/Event/unliked.svg';
-import Location from '../../assets/Event/location.svg';
-import styles from '../../screens/Events/eventmain/EventStyle';
+import Liked from    '../../../assets/AdminPage/Event/liked.svg';
+import Unliked from  '../../../assets/AdminPage/Event/unliked.svg';
+import Location from '../../../assets/AdminPage/Event/location.svg';
+import styles from   '../../../pages/Admin/Events/eventmain/EventStyle';
 import { useNavigation } from '@react-navigation/native';
 
 const EventList = ({

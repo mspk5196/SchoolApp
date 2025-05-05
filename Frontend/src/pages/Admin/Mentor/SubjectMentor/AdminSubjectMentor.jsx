@@ -11,14 +11,14 @@ import {
   TextInput,
 } from 'react-native';
 import Modal from 'react-native-modal';
-import BackIcon from '../../../assets/SubjectMentor/leftarrow.svg';
-import staff from '../../../assets/SubjectMentor/staff.png';
+import BackIcon from '../../../../assets/AdminPage/SubjectMentor/leftarrow.svg';
+import staff from    '../../../../assets/AdminPage/SubjectMentor/staff.png';
 import styles from './SubjectMentorStyles';
-import Tickicon from '../../../assets/SubjectMentor/tickicon.svg';
-import Tickbox from '../../../assets/SubjectMentor/tickbox.svg';
-import Tick from '../../../assets/SubjectMentor/tick.svg';
-import Oneperson from '../../../assets/SubjectMentor/oneperson.svg';
-import Hat from '../../../assets/SubjectMentor/hat.svg';
+import Tickicon from  '../../../../assets/AdminPage/SubjectMentor/tickicon.svg';
+import Tickbox from   '../../../../assets/AdminPage/SubjectMentor/tickbox.svg';
+import Tick from      '../../../../assets/AdminPage/SubjectMentor/tick.svg';
+import Oneperson from '../../../../assets/AdminPage/SubjectMentor/oneperson.svg';
+import Hat from       '../../../../assets/AdminPage/SubjectMentor/hat.svg';
 
 const AdminSubjectMentor = ({navigation}) => {
   const [activeSection, setActiveSection] = useState('English');

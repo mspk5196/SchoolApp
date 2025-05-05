@@ -7,11 +7,11 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
-import BackIcon from '../../../assets/FreeHour/leftarrow.svg';
-import TimeIcon from '../../../assets/FreeHour/time.svg';
-import HomeIcon from '../../../assets/FreeHour/home.svg';
+import BackIcon from '../../../../assets/AdminPage/FreeHour/leftarrow.svg';
+import TimeIcon from '../../../../assets/AdminPage/FreeHour/time.svg';
+import HomeIcon from '../../../../assets/AdminPage/FreeHour/home.svg';
 import styles from './FreehourDetailStyle';
-import staff from '../../../assets/SubjectMentor/staff.png';
+import staff from    '../../../../assets/AdminPage/SubjectMentor/staff.png';
 
 const AdminFreehourDetail = ({navigation, route}) => {
   // Extract faculty data from route params

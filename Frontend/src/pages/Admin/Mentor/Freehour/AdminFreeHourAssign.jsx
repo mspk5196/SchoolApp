@@ -11,10 +11,10 @@ import {
   Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import BackIcon from '../../../assets/SubjectMentor/leftarrow.svg';
+import BackIcon from '../../../../assets/AdminPage/SubjectMentor/leftarrow.svg';
 import styles from './FreeHourAssignStyle';
-import staff from '../../../assets/SubjectMentor/staff.png';
-import HomeIcon from '../../../assets/FreeHour/home.svg';
+import staff from    '../../../../assets/AdminPage/SubjectMentor/staff.png';
+import HomeIcon from '../../../../assets/AdminPage/FreeHour/home.svg';
 
 const AdminFreeHourAssign = ({ navigation, route }) => {
   const { faculty } = route.params;
@@ -195,7 +195,7 @@ const AdminFreeHourAssign = ({ navigation, route }) => {
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.homeButton}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('AdminPage')}
         >
           <HomeIcon width={22} height={22} />
         </TouchableOpacity>

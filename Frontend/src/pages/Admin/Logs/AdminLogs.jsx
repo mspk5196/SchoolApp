@@ -10,12 +10,12 @@ import {
   StatusBar
 } from 'react-native';
 import styles from './LogsStyles'; // Assuming you have a separate file for styles
-import Clock from '../../assets/Logs/clock2.svg';
-import BackIcon from '../../assets/Logs/Back.svg';
-import Bell from '../../assets/Logs/bell.svg';
-import Call from '../../assets/Logs/callicon.svg';
-import Message from '../../assets/Logs/msgicon.svg';
-import Home from '../../assets/Logs/home.svg';
+import Clock from    '../../../assets/AdminPage//Logs/clock2.svg';
+import BackIcon from '../../../assets/AdminPage//Logs/Back.svg';
+import Bell from     '../../../assets/AdminPage//Logs/bell.svg';
+import Call from     '../../../assets/AdminPage//Logs/callicon.svg';
+import Message from  '../../../assets/AdminPage//Logs/msgicon.svg';
+import Home from     '../../../assets/AdminPage//Logs/home.svg';
 
 const AdminLogs = () => {
   return (
@@ -87,7 +87,7 @@ const AdminLogs = () => {
           <View style={styles.userInfoContainer}>
             <View style={styles.avatarContainer}>
               <Image 
-                source={require('../../assets/Logs/staff.png')} 
+                source={require('../../../assets/AdminPage/Logs/staff.png')} 
                 style={styles.avatar} 
               />
               <View>
@@ -118,7 +118,7 @@ const AdminLogs = () => {
           <View style={styles.leaveCardHeader}>
             <View style={styles.avatarContainer}>
               <Image 
-                source={require('../../assets/Logs/staff.png')} 
+                source={require('../../../assets/AdminPage/Logs/staff.png')} 
                 style={styles.avatar} 
               />
               <View>
@@ -159,7 +159,7 @@ const AdminLogs = () => {
           <View style={styles.assessmentHeader}>
             <View style={styles.avatarContainer}>
               <Image 
-                source={require('../../assets/Logs/staff.png')} 
+                source={require('../../../assets/AdminPage/Logs/staff.png')} 
                 style={styles.avatar} 
               />
               <View>
@@ -207,7 +207,7 @@ const AdminLogs = () => {
           <View style={styles.academicHeader}>
             <View style={styles.avatarContainer}>
               <Image 
-                source={require('../../assets/Logs/staff.png')} 
+                source={require('../../../assets/AdminPage/Logs/staff.png')} 
                 style={styles.avatar} 
               />
               <View>

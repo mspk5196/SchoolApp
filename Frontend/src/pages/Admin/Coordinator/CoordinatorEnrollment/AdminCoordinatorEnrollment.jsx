@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Alert, Modal } from 'react-native';
 import DocumentPicker from 'react-native-document-picker';
 import ImagePicker from 'react-native-image-picker';
-import CalenderIcon from '../../../assets/CoordinatorEnrollment/Calender.svg';
-import BackIcon from '../../../assets/CoordinatorEnrollment/Back.svg';
-import PlusIcon from '../../../assets/CoordinatorEnrollment/Plus.svg';
+import CalenderIcon from '../../../../assets/AdminPage/CoordinatorEnrollment/Calender.svg';
+import BackIcon from     '../../../../assets/AdminPage/CoordinatorEnrollment/Back.svg';
+import PlusIcon from     '../../../../assets/AdminPage/CoordinatorEnrollment/Plus.svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import styles from './CoordinatorEnrollmentStyle';
 

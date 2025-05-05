@@ -3,15 +3,9 @@ import { NavigationContainer, useNavigationState } from '@react-navigation/nativ
 import { createStackNavigator } from '@react-navigation/stack';
 
 // LoginPages
-// import Login from '../../pages/Login/Login';
-import Login from '../../pages/Login/Bit-schl-loginpage/Login';
-
 import Welcome from '../../pages/Login/Bit-schl-welcome-page/Welcome'
-
+import Login from '../../pages/Login/Bit-schl-loginpage/Login';
 import Redirect from '../Login/Redirect/Redirect';
-// import Admin from '../../pages/Admin/Admin';
-
-//AdminPages
 
 //CoordinatorPages
 import CoordinatorMenu from '../../pages/Coordinator/Menu/CoordinatorMenu';
@@ -112,6 +106,31 @@ import CoordinatorStudentProfileDetails from '../../pages/Coordinator/Student/St
 
 //AdminPages
 import AdminMenu from '../../pages/Admin/Menu/AdminHomePage';
+import AdminSchools from '../../pages/Admin/Schools/AdminSchools';
+import AdminMentorMenu from '../../pages/Admin/Mentor/MentorMenu/AdminMentorMenu';
+import AdminStudentHome from '../../pages/Admin/Student/Studenthome/AdminStudentHome';
+import AdminLogs from '../../pages/Admin/Logs/AdminLogs';
+import AdminScheduleHome from '../../pages/Admin/Schedule/ScheduleMenu/AdminScheduleHome';
+import AdminEvent from '../../pages/Admin/Events/eventmain/AdminEvent';
+import AdminCalendar from '../../pages/Admin/Calendar/AdminCalendar';
+import AdminCoordinatorHome from '../../pages/Admin/Coordinator/CoordinatorHome/AdminCoordinatorHome';
+import AdminSubjectMentor from '../../pages/Admin/Mentor/SubjectMentor/AdminSubjectMentor';
+import AdminFreehour from '../../pages/Admin/Mentor/Freehour/AdminFreehour';
+import AdminFreeHourAssign from '../../pages/Admin/Mentor/Freehour/AdminFreeHourAssign';
+import AdminMentorlist from '../../pages/Admin/Mentor/Mentorlist/AdminMentorlist';
+import AdminMentorlistDetail from '../../pages/Admin/Mentor/Mentorlist/AdminMentorlistDetail';
+import AdminMentorDisciplineLog from '../../pages/Admin/Mentor/DisciplineLog/AdminMentorDisciplineLog';
+import AdminFreehourDetail from '../../pages/Admin/Mentor/Freehour/AdminFreehourDetail';
+import AdminStudentList from '../../pages/Admin/Student/StudentList/StudentList/AdminStudentList';
+import AdminStudentDetails from '../../pages/Admin/Student/StudentList/StudentDetails/AdminStudentDetails';
+import AdminStudentBacklogs from '../../pages/Admin/Student/Backlogs/AdminStudentBacklogs';
+import AdminStudentIssuelog from '../../pages/Admin/Student/IssueLog/AdminStudentIssuelog';
+import AdminScheduleDetails from '../../pages/Admin/Schedule/ScheduleDetails/AdminScheduleDetails';
+import AdminCoordinatorList from '../../pages/Admin/Coordinator/CoordinatorList/AdminCoordinatorList';
+import AdminCoordinatorlistDetails from '../../pages/Admin/Coordinator/CoordinatorList/AdminCoordinatorlistDetails';
+import AdminCoordinatorEnrollment from '../../pages/Admin/Coordinator/CoordinatorEnrollment/AdminCoordinatorEnrollment';
+import AdminLeaveApproval from '../../pages/Admin/Coordinator/CoordinatorLeaveApproval/AdminLeaveApproval';
+import AdminLeaveApprovalHistory from '../../pages/Admin/Coordinator/CoordinatorLeaveApproval/AdminLeaveApprovalHistory';
 
 const Stack = createStackNavigator();
 
@@ -264,7 +283,38 @@ const Routes = () => {
                         <Stack.Screen name="StudentPageReport" component={Setting} />
                         <Stack.Screen name="StudentPageAddAccount" component={Setting} />
                         
-                        
+
+                        {/* AdminPages */}
+                        <Stack.Screen name="AdminSchools" component={AdminSchools} />
+                        <Stack.Screen name="AdminMentorHome" component={AdminMentorMenu} />
+                        <Stack.Screen name="AdminStudentHome" component={AdminStudentHome} />
+                        <Stack.Screen name="AdminLogs" component={AdminLogs} />
+                        <Stack.Screen name="AdminScheduleHome" component={AdminScheduleHome} />
+                        <Stack.Screen name="AdminEvent" component={AdminEvent} />
+                        <Stack.Screen name="AdminCalendar" component={AdminCalendar} />
+                        <Stack.Screen name="AdminCoordinatorHome" component={AdminCoordinatorHome} />
+
+                        {/* Admin - Mentor */}
+                        <Stack.Screen name="AdminSubjectMentor" component={AdminSubjectMentor} />
+                        <Stack.Screen name="AdminFreeHour" component={AdminFreehour} />
+                        <Stack.Screen name="AdminFreeHourAssign" component={AdminFreeHourAssign} />
+                        <Stack.Screen name="AdminFreeHourDetail" component={AdminFreehourDetail} />
+                        <Stack.Screen name="AdminMentorList" component={AdminMentorlist} />
+                        <Stack.Screen name="AdminMentorListDetails" component={AdminMentorlistDetail} />
+                        <Stack.Screen name="AdminMentorDisciplineLog" component={AdminMentorDisciplineLog} />
+                        {/* Admin - Student */}
+                        <Stack.Screen name="AdminStudentList" component={AdminStudentList} />
+                        <Stack.Screen name="AdminStudentDetails" component={AdminStudentDetails} />
+                        <Stack.Screen name="AdminStudentBacklogs" component={AdminStudentBacklogs} />
+                        <Stack.Screen name="AdminStudentIssuelogs" component={AdminStudentIssuelog} />
+                        {/* Admin - Schedule */}
+                        <Stack.Screen name="AdminScheduleDetails" component={AdminScheduleDetails} />
+                        {/* Admin - Coordinator */}
+                        <Stack.Screen name="AdminCoordinatorList" component={AdminCoordinatorList} />
+                        <Stack.Screen name="AdminCoordinatorlistDetails" component={AdminCoordinatorlistDetails} />
+                        <Stack.Screen name="AdminCoordinatorEnrollment" component={AdminCoordinatorEnrollment} />
+                        <Stack.Screen name="AdminLeaveApproval" component={AdminLeaveApproval} />
+                        <Stack.Screen name="AdminLeaveApprovalHistory" component={AdminLeaveApprovalHistory} />
 
                     </Stack.Navigator>
                 </NavigationContainer>

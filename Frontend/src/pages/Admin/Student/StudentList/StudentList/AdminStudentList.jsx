@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Pressable } from 'react-native';
-import PreviousIcon from '../../../assets/StudentHome/studentprofile/PrevBtn.svg';
-import styles from '../StudentListStyles';
-const Staff = require('../../../assets/StudentHome/studentprofile/staff.png');
-import Search from '../../../assets/StudentHome/studentprofile/search.svg';
-import Homeicon from '../../../assets/Basicimg/Home.svg';
+import PreviousIcon from '../../../../../assets/AdminPage/StudentHome/studentprofile/PrevBtn.svg';
+import styles from './StudentListStyles';
+const Staff = require('../../../../../assets/AdminPage/StudentHome/studentprofile/staff.png');
+import Search from    '../../../../../assets/AdminPage/StudentHome/studentprofile/search.svg';
+import Homeicon from  '../../../../../assets/AdminPage/Basicimg/Home.svg';
 
 const AdminStudentList = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
@@ -87,7 +87,7 @@ const AdminStudentList = ({ navigation }) => {
           <TouchableOpacity 
           key={index} 
           style={styles.listItem}
-          onPress={() => navigation.navigate('StudentDetails', { student })}
+          onPress={() => navigation.navigate('AdminStudentDetails', { student })}
         >
           <Image source={Staff} style={styles.studentAvatar} />
           <View style={styles.listContent}>
@@ -101,7 +101,7 @@ const AdminStudentList = ({ navigation }) => {
         ))}
       </ScrollView>
       <TouchableOpacity style={styles.footer}
-      onPress={() => navigation.navigate('menu')}>
+      onPress={() => navigation.navigate('AdminMain')}>
         <Homeicon/>
       </TouchableOpacity>
     </View>

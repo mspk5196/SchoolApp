@@ -10,14 +10,14 @@ import {
   Image,
   Modal,
 } from 'react-native';
-import BackIcon from '../../../assets/FreeHour/leftarrow.svg';
-import SearchIcon from '../../../assets/FreeHour/search.svg';
-import HistoryIcon from '../../../assets/FreeHour/history.svg';
-import PendingIcon from '../../../assets/FreeHour/pending.svg';
-import CompletedIcon from '../../../assets/FreeHour/completed.svg';
-import HomeIcon from '../../../assets/FreeHour/home.svg';
+import BackIcon from      '../../../../assets/AdminPage/FreeHour/leftarrow.svg';
+import SearchIcon from    '../../../../assets/AdminPage/FreeHour/search.svg';
+import HistoryIcon from   '../../../../assets/AdminPage/FreeHour/history.svg';
+import PendingIcon from   '../../../../assets/AdminPage/FreeHour/pending.svg';
+import CompletedIcon from '../../../../assets/AdminPage/FreeHour/completed.svg';
+import HomeIcon from      '../../../../assets/AdminPage/FreeHour/home.svg';
 import styles from './FreehourStyle';
-import staff from '../../../assets/SubjectMentor/staff.png';
+import staff from '../../../../assets/AdminPage/SubjectMentor/staff.png';
 
 const AdminFreehour = ({navigation, route}) => {
   const [searchText, setSearchText] = useState('');
@@ -74,12 +74,12 @@ const AdminFreehour = ({navigation, route}) => {
 
   // Handle card press to navigate to details
   const handleCardPress = (faculty) => {
-    navigation.navigate('FreeHourDetail', { faculty });
+    navigation.navigate('AdminFreeHourDetail', { faculty });
   };
 
   // Handle assign task button press
   const handleAssignTask = (faculty) => {
-    navigation.navigate('FreeHourAssign', { faculty });
+    navigation.navigate('AdminFreeHourAssign', { faculty });
   };
 
   // Handle mark as completed
@@ -183,7 +183,7 @@ const AdminFreehour = ({navigation, route}) => {
 
       <TouchableOpacity 
         style={styles.homeButton}
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate('AdminMain')}
       >
         <HomeIcon width={26} height={26} />
       </TouchableOpacity>

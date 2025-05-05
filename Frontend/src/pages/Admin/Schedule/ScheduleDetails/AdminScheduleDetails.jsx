@@ -9,15 +9,15 @@ import {
   FlatList,
   Alert
 } from 'react-native';
-import BackIcon from '../../../assets/ScheduleDetails/Back.svg';
-import EditIcon from '../../../assets/ScheduleDetails/Edit.svg';
-import BookIcon from '../../../assets/ScheduleDetails/Book.svg';
-import UserIcon from '../../../assets/ScheduleDetails/User.svg';
-import ActivityIcon from '../../../assets/ScheduleDetails/Activity.svg';
-import LocationIcon from '../../../assets/ScheduleDetails/Location.svg';
-import Tick2Icon from '../../../assets/ScheduleDetails/tick2.svg';
-import DeleteIcon from '../../../assets/ScheduleDetails/delete-icon.svg';
-import Add2Icon from '../../../assets/ScheduleDetails/Add.svg';
+import BackIcon from     '../../../../assets/AdminPage/ScheduleDetails/Back.svg';
+import EditIcon from     '../../../../assets/AdminPage/ScheduleDetails/Edit.svg';
+import BookIcon from     '../../../../assets/AdminPage/ScheduleDetails/Book.svg';
+import UserIcon from     '../../../../assets/AdminPage/ScheduleDetails/User.svg';
+import ActivityIcon from '../../../../assets/AdminPage/ScheduleDetails/Activity.svg';
+import LocationIcon from '../../../../assets/AdminPage/ScheduleDetails/Location.svg';
+import Tick2Icon from    '../../../../assets/AdminPage/ScheduleDetails/tick2.svg';
+import DeleteIcon from   '../../../../assets/AdminPage/ScheduleDetails/delete-icon.svg';
+import Add2Icon from     '../../../../assets/AdminPage/ScheduleDetails/Add.svg';
 import styles from './ScheduleDetailsStyle';
 
 const AdminScheduleDetails = ({ navigation }) => {

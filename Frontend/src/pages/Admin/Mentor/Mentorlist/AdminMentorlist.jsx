@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Animated } from 'react-native';
-import Leftarrow from "../../../assets/Basicimg/PrevBtn.svg";
+import Leftarrow from "../../../../assets/AdminPage/Basicimg/PrevBtn.svg";
 import styles from './MentorlistStyles';
-const Staff = require('../../../assets/Basicimg/staff.png');
-import Search from '../../../assets/MentorHome/search.svg';
-import Filter from '../../../assets/MentorHome/filter.svg';
-import Tickbox from '../../../assets/MentorHome/tickbox.svg';
-import Tick from '../../../assets/MentorHome/tick.svg';
-import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg';
+const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
+import Search from       '../../../../assets/AdminPage/MentorHome/search.svg';
+import Filter from       '../../../../assets/AdminPage/MentorHome/filter.svg';
+import Tickbox from      '../../../../assets/AdminPage/MentorHome/tickbox.svg';
+import Tick from         '../../../../assets/AdminPage/MentorHome/tick.svg';
+import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg';
 
 
 const AdminMentorlist = ({ navigation }) => {
@@ -45,7 +45,7 @@ const AdminMentorlist = ({ navigation }) => {
 
   // Navigate to mentor details when a card is clicked
   const handleMentorPress = (mentor) => {
-    navigation.navigate('MentorlistDetails', { mentor });
+    navigation.navigate('AdminMentorListDetails', { mentor });
   };
 
   // Toggle filter sidebar

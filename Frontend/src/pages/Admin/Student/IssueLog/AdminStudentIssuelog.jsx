@@ -8,13 +8,13 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import PreviousIcon from '../../../assets/Basicimg/PrevBtn';
-import PhoneIcon from '../../../assets/StudentHome/Issuelog/Phone.svg';
-import MessageIcon from '../../../assets/StudentHome/Issuelog/MessageSquare.svg';
+import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg';
+import PhoneIcon from    '../../../../assets/AdminPage/StudentHome/Issuelog/Phone.svg';
+import MessageIcon from  '../../../../assets/AdminPage/StudentHome/Issuelog/MessageSquare.svg';
 import styles from './IssuelogStyls';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import Search from '../../../assets/StudentHome/studentprofile/search.svg';
-import Homeicon from '../../../assets/Basicimg/Home.svg';
+import Search from   '../../../../assets/AdminPage/StudentHome/studentprofile/search.svg';
+import Homeicon from '../../../../assets/AdminPage/Basicimg/Home.svg';
 
 const AdminStudentIssuelog = ({navigation}) => {
   const [activeSection, setActiveSection] = useState(null);
@@ -122,7 +122,7 @@ const AdminStudentIssuelog = ({navigation}) => {
             <View key={item.id} style={styles.card}>
               <View style={styles.cardHeader}>
                 <Image
-                  source={require('../../../assets/StudentHome/Issuelog/staff.png')}
+                  source={require('../../../../assets/AdminPage/StudentHome/Issuelog/staff.png')}
                   style={styles.avatar}
                 />
                 <View>
@@ -157,7 +157,7 @@ const AdminStudentIssuelog = ({navigation}) => {
         )}
       </ScrollView>
       <TouchableOpacity style={styles.footer}
-      onPress={() => navigation.navigate('menu')}>
+      onPress={() => navigation.navigate('AdminMain')}>
         <Homeicon/>
       </TouchableOpacity>
     </SafeAreaView>

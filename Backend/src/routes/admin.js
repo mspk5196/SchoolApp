@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { adminCoordinators } = require('../controllers/admin/adminController');
+const adminController = require('../controllers/admin/adminController');
 
-router.get('/adminCoordinators', adminCoordinators);
+router.get('/admin/adminCoordinators', adminController.adminCoordinators);
+router.post('/admin/getAdminData', adminController.getAdminData);
 
 module.exports = router;

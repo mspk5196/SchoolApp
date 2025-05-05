@@ -8,16 +8,16 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
-import Grade from '../../../../assets/StudentHome/StudentProfileDetails/grade.svg';
-import Mentorimg from '../../../../assets/StudentHome/StudentProfileDetails/mentor2.svg';
-import Numdays from '../../../../assets/StudentHome/StudentProfileDetails/numdays.svg';
-import Clock from '../../../../assets/StudentHome/StudentProfileDetails/clock.svg';
-import Leaveday from '../../../../assets/StudentHome/StudentProfileDetails/leaveday.svg';
-import Exchange from '../../../../assets/StudentHome/StudentProfileDetails/exchange.svg';
-import BackIcon from '../../../../assets/StudentHome/StudentProfileDetails/leftarrow.svg';
+import Grade from     '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/grade.svg';
+import Mentorimg from '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/mentor2.svg';
+import Numdays from   '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/numdays.svg';
+import Clock from     '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/clock.svg';
+import Leaveday from  '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/leaveday.svg';
+import Exchange from  '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/exchange.svg';
+import BackIcon from  '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/leftarrow.svg';
 import styles from './StudentDetailsStyles';
-import PerformanceGraph from '../../../../components/performancegraph/Performancegraph';
-import Homeicon from '../../../../assets/Basicimg/Home.svg';
+import PerformanceGraph from '../../../../../components/Admin/performancegraph/Performancegraph';
+import Homeicon from         '../../../../../assets/AdminPage/Basicimg/Home.svg';
 
 const AdminStudentDetails = ({navigation, route}) => {
   const {student} = route.params || {};
@@ -115,7 +115,7 @@ const subjectsData = [
             <View style={styles.profileHeader}>
               <View style={styles.profileInfo}>
                 <Image
-                  source={require('../../../../assets/StudentHome/StudentProfileDetails/staff.png')}
+                  source={require('../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/staff.png')}
                   style={styles.profileImage}
                 />
                 <View style={styles.nameSection}>
@@ -242,7 +242,7 @@ const subjectsData = [
               <View style={styles.mentorBar} />
               <View style={styles.mentorContent}>
                 <Image
-                  source={require('../../../../assets/StudentHome/StudentProfileDetails/staff.png')}
+                  source={require('../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/staff.png')}
                   style={styles.mentorImage}
                 />
                 <View style={styles.mentorInfo}>
@@ -258,7 +258,7 @@ const subjectsData = [
         </View>
       </ScrollView>
       <TouchableOpacity style={styles.footer}
-      onPress={() => navigation.navigate('menu')}>
+      onPress={() => navigation.navigate('AdminMain')}>
         <Homeicon/>
       </TouchableOpacity>
     </SafeAreaView>

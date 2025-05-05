@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {View, FlatList, SafeAreaView, StatusBar, TouchableOpacity, Text} from 'react-native';
-import EventList from '../../../components/Event/EventList';
-import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg';
+import EventList from    '../../../../components/Admin/Event/EventList';
+import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg';
 import styles from './EventStyle';
 
 const AdminEvent = ({navigation}) => {

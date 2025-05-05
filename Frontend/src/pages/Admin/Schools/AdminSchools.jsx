@@ -9,10 +9,10 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import HomeIcon from '../../assets/School/Home.svg';
-import Schimg1 from '../../assets/School/schoolimg1.svg';
-import Schimg2 from '../../assets/School/schoolimg2.svg';
-import Schimg3 from '../../assets/School/schoolimg3.svg';
+import HomeIcon from '../../../assets/AdminPage/School/Home.svg';
+import Schimg1 from  '../../../assets/AdminPage/School/schoolimg1.svg';
+import Schimg2 from  '../../../assets/AdminPage/School/schoolimg2.svg';
+import Schimg3 from  '../../../assets/AdminPage/School/schoolimg3.svg';
 import styles from './SchoolSty';
 import {useState} from 'react';
 

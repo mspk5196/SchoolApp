@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList } from "react-native";
 import styles from "./LeaveApprovalHistorysty";
-import SearchIcon from "../../../assets/LeaveApproval/search.svg";
-import LeaveType from '../../../assets/LeaveApproval/leavetype.svg';
-import Date from '../../../assets/LeaveApproval/date.svg';
-import Home from '../../../assets/LeaveApproval/Back.svg';
-import Approved from '../../../assets/LeaveApproval/greentick.svg';
+import SearchIcon from "../../../../assets/AdminPage/LeaveApproval/search.svg";
+import LeaveType from  '../../../../assets/AdminPage/LeaveApproval/leavetype.svg';
+import Date from       '../../../../assets/AdminPage/LeaveApproval/date.svg';
+import Home from       '../../../../assets/AdminPage/LeaveApproval/Back.svg';
+import Approved from   '../../../../assets/AdminPage/LeaveApproval/greentick.svg';
 
 const AdminLeaveApprovalHistory = ({navigation}) => {
   const [searchQuery, setSearchQuery] = useState("");

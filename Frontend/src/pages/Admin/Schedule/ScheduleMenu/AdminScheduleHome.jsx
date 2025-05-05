@@ -4,9 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Text, View, ScrollView, Pressable, SectionList, Modal, TouchableOpacity } from 'react-native'
 import styles from './ScheduleHomeStyle'
 import { Calendar } from 'react-native-calendars' 
-import HomeIcon from '../../../assets/ScheduleMenu/Home.svg'
-import DeleteIcon from '../../../assets/ScheduleMenu/Delete.svg' 
-import RoundHomeIcon from '../../../assets/MentorList/roundhome.svg' 
+import HomeIcon from      '../../../../assets/AdminPage/ScheduleMenu/Home.svg'
+import DeleteIcon from    '../../../../assets/AdminPage/ScheduleMenu/Delete.svg' 
+import RoundHomeIcon from '../../../../assets/AdminPage/MentorList/roundhome.svg' 
 
 const AdminScheduleHome = ({ navigation }) => {
   const [activeGrade, setActiveGrade] = useState(1); // Default to Grade 2 as in image
@@ -144,7 +144,7 @@ const AdminScheduleHome = ({ navigation }) => {
         sections={data}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <Pressable onPress={() => navigation.navigate('ScheduleDetails', { section: item.title })}>
+          <Pressable onPress={() => navigation.navigate('AdminScheduleDetails', { section: item.title })}>
             <ScrollView nestedScrollEnabled={true}>
               <Cards title={item.title} bgColor={item.bgColor} color={item.color} />
             </ScrollView>
@@ -153,7 +153,7 @@ const AdminScheduleHome = ({ navigation }) => {
       />
 
       {/* Bottom Home Button */}
-      <TouchableOpacity style={styles.homeButtonContainer} onPress={() => navigation.navigate('Home')}>
+      <TouchableOpacity style={styles.homeButtonContainer} onPress={() => navigation.navigate('AdminMain')}>
         <RoundHomeIcon width={60} height={60}/>
       </TouchableOpacity>
 

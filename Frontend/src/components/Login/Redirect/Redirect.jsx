@@ -107,7 +107,6 @@ const Redirect = ({ route }) => {
         navigation.navigate('CoordinatorMain', { coordinatorData: data.coordinatorData });
       } else {
         Alert.alert('No Coordinator Found', 'No coordinator is associated with this number');
-        // navigation.navigate('Coordinator', { coordinatorData: data.coordinatorData });
       }
     } catch (error) {
       console.error('Error fetching coordinator data:', error);
@@ -131,7 +130,6 @@ const Redirect = ({ route }) => {
         navigation.navigate('MentorMain', { mentorData: data.mentorData });
       } else {
         Alert.alert('No Mentor Found', 'No Mentor is associated with this number');
-        // navigation.navigate('Coordinator', { coordinatorData: data.coordinatorData });
       }
     } catch (error) {
       console.error('Error fetching coordinator data:', error);
@@ -139,11 +137,34 @@ const Redirect = ({ route }) => {
     }
   };
 
+  const fetchAdminData = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/getAdminData`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber }), 
+      });
+  
+      const data = await response.json();
+      console.log('Admin Data API Response:', data);
+
+      if (data.success && data.adminData) {
+        await AsyncStorage.setItem('adminData', JSON.stringify(data.adminData));
+        navigation.navigate('AdminMain', { adminData: data.adminData });
+      } else {
+        Alert.alert('No Admin Found', 'No Admin is associated with this number');
+      }
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+      Alert.alert('Error', 'Failed to fetch admin data');
+    }
+  };
+
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
     switch (role) {
       case 'Admin':
-        navigation.navigate('AdminMain');
+        fetchAdminData();
         break;
       case 'Coordinator':
         fetchCoordinatorData();

@@ -12,10 +12,10 @@ import {
   Platform,
   KeyboardAvoidingView
 } from 'react-native';
-import BackIcon from '../../../assets/DisciplineLog/leftarrow.svg';
-import AddIcon from '../../../assets/DisciplineLog/Add.svg';
-import Phone from '../../../assets/DisciplineLog/Phone.svg';
-import MessageSquare from '../../../assets/DisciplineLog/MessageSquare.svg';
+import BackIcon from      '../../../../assets/AdminPage/DisciplineLog/leftarrow.svg';
+import AddIcon from       '../../../../assets/AdminPage/DisciplineLog/Add.svg';
+import Phone from         '../../../../assets/AdminPage/DisciplineLog/Phone.svg';
+import MessageSquare from '../../../../assets/AdminPage/DisciplineLog/MessageSquare.svg';
 import styles from './DisciplineLogStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -106,7 +106,7 @@ const AdminMentorDisciplineLog = ({ navigation }) => {
         <BackIcon 
           width={styles.BackIcon.width} 
           height={styles.BackIcon.height} 
-          onPress={() => navigation.navigate('Mentor')}
+          onPress={() => navigation.navigate('AdminMentorHome')}
         />
         <Text style={styles.headerTxt}>Discipline Log</Text>
       </View>
@@ -126,7 +126,7 @@ const AdminMentorDisciplineLog = ({ navigation }) => {
           filteredData.map((item) => (
             <View key={item.id} style={styles.card}>
               <View style={styles.cardHeader}>
-                <Image source={require('../../../assets/DisciplineLog/staff.png')} style={styles.avatar} />
+                <Image source={require('../../../../assets/AdminPage/DisciplineLog/staff.png')} style={styles.avatar} />
                 <View>
                   <Text style={styles.cardTitle}>{item.name}</Text>
                   <Text style={styles.cardSubtitle}>{item.regNo}</Text>
@@ -234,7 +234,7 @@ const AdminMentorDisciplineLog = ({ navigation }) => {
       >
         <View style={styles.confirmModalOverlay}>
           <View style={styles.confirmModalContent}>
-            <Image source={require('../../../assets/DisciplineLog/staff.png')} style={styles.confirmAvatar} />
+            <Image source={require('../../../../assets/AdminPage/DisciplineLog/staff.png')} style={styles.confirmAvatar} />
             <Text style={styles.confirmTitle}>Prakash Raj</Text>
             <Text style={styles.confirmSubtitle}>2024VI023</Text>
             <Text style={styles.confirmLabel}>Student Mentor: Vishal</Text>

@@ -2,11 +2,11 @@ import React from 'react';
 import {Text, View, SectionList, TouchableOpacity} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import styles from './CoordinatorHomeStyle';
-import HomeIcon from '../../../assets/CoordinatorHome/home.svg'; // Reusing existing icon
-import CoordinatorListIcon from '../../../assets/CoordinatorHome/coordinatorlist.svg'; // You'll need to create this icon
-import EnrollmentIcon from '../../../assets/CoordinatorHome/enrollment.svg'; // You'll need to create this icon
-import LeaveApprovalIcon from '../../../assets/CoordinatorHome/leaveapproval.svg'; // You'll need to create this icon
-import BackIcon from '../../../assets/CoordinatorHome/Back.svg'; // You'll need to create this icon
+import HomeIcon from            '../../../../assets/AdminPage/CoordinatorHome/home.svg'; // Reusing existing icon
+import CoordinatorListIcon from '../../../../assets/AdminPage/CoordinatorHome/coordinatorlist.svg'; // You'll need to create this icon
+import EnrollmentIcon from      '../../../../assets/AdminPage/CoordinatorHome/enrollment.svg'; // You'll need to create this icon
+import LeaveApprovalIcon from   '../../../../assets/AdminPage/CoordinatorHome/leaveapproval.svg'; // You'll need to create this icon
+import BackIcon from            '../../../../assets/AdminPage/CoordinatorHome/Back.svg'; // You'll need to create this icon
 
 const data = [
   {
@@ -72,11 +72,11 @@ const AdminCoordinatorHome = ({navigation}) => {
             color={item.color}
             onPress={() => {
               if (item.title === 'Coordinator List') {
-                navigation.navigate('CoordinatorList');
+                navigation.navigate('AdminCoordinatorList');
               } else if (item.title === 'Coordinator Enrollment') {
-                navigation.navigate('CoordinatorEnrollment');
+                navigation.navigate('AdminCoordinatorEnrollment');
               } else if (item.title === 'Leave Approval') {
-                navigation.navigate('CoordinatorLeaveApproval');
+                navigation.navigate('AdminLeaveApproval');
               }
             }}
           />
@@ -84,7 +84,7 @@ const AdminCoordinatorHome = ({navigation}) => {
       />
       <TouchableOpacity 
         style={styles.homeButton}
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate('AdminMain')}
       >
         <HomeIcon height={25} width={25} fill="#FFFFFF"/>
       </TouchableOpacity>

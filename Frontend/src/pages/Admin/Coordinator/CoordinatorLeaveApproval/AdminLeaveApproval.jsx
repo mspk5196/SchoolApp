@@ -8,12 +8,12 @@ import {
   Modal,
 } from 'react-native';
 import styles from './LeaveApprovalsty';
-import Back from '../../../assets/LeaveApproval/Back.svg';
-import SearchIcon from '../../../assets/LeaveApproval/search.svg';
-import History2 from '../../../assets/LeaveApproval/history.svg';
-import LeaveType from '../../../assets/LeaveApproval/leavetype.svg';
-import Date from '../../../assets/LeaveApproval/date.svg';
-import Pending from '../../../assets/LeaveApproval/pending.svg';
+import Back from       '../../../../assets/AdminPage/LeaveApproval/Back.svg';
+import SearchIcon from '../../../../assets/AdminPage/LeaveApproval/search.svg';
+import History2 from   '../../../../assets/AdminPage/LeaveApproval/history.svg';
+import LeaveType from  '../../../../assets/AdminPage/LeaveApproval/leavetype.svg';
+import Date from       '../../../../assets/AdminPage/LeaveApproval/date.svg';
+import Pending from    '../../../../assets/AdminPage/LeaveApproval/pending.svg';
 
 const AdminLeaveApproval = ({navigation}) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,7 +86,7 @@ const AdminLeaveApproval = ({navigation}) => {
         </View>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate('LeaveApprovalHistory')}>
+          onPress={() => navigation.navigate('AdminLeaveApprovalHistory')}>
           <History2 style={styles.historyIcon} />
           <Text style={styles.historyText}>History</Text>
         </TouchableOpacity>

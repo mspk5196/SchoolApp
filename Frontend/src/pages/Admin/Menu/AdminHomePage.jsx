@@ -1,71 +1,86 @@
-import React, {useState} from 'react';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {View, Text, Pressable, ScrollView, Modal} from 'react-native';
+import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, Pressable, ScrollView, Modal } from 'react-native';
 import styles from './menustyles';
-import Iconlogo from    "../../../assets/AdminPage/Menu/Schlimg.svg";
-import LogoutIcon from  '../../../assets/AdminPage/Menu/LogoutIcon.svg';
-import BackIcon from    '../../../assets/AdminPage/Menu/BackIcon.svg';
-import Mentor from      '../../../assets/AdminPage/Menu/Mentor.svg';
-import Student from     '../../../assets/AdminPage/Menu/Student.svg';
-import Logs from        '../../../assets/AdminPage/Menu/Logs.svg';
+import Iconlogo from "../../../assets/AdminPage/Menu/Schlimg.svg";
+import LogoutIcon from '../../../assets/AdminPage/Menu/LogoutIcon.svg';
+import BackIcon from '../../../assets/AdminPage/Menu/BackIcon.svg';
+import Mentor from '../../../assets/AdminPage/Menu/Mentor.svg';
+import Student from '../../../assets/AdminPage/Menu/Student.svg';
+import Logs from '../../../assets/AdminPage/Menu/Logs.svg';
 import Coordinator from '../../../assets/AdminPage/Menu/coordinator.svg';
-import Schedule from    '../../../assets/AdminPage/Menu/Schedule.svg';
-import Events from      '../../../assets/AdminPage/Menu/Events.svg';
-import Calender from    '../../../assets/AdminPage/Menu/Calender.svg';
-import {Switch} from    'react-native-switch';
+import Schedule from '../../../assets/AdminPage/Menu/Schedule.svg';
+import Events from '../../../assets/AdminPage/Menu/Events.svg';
+import Calender from '../../../assets/AdminPage/Menu/Calender.svg';
+import { Switch } from 'react-native-switch';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CommonActions } from '@react-navigation/native';
 // import Graph from '../../assets/Menu/Graph.svg';
 
-const AdminHomePage = ({navigation}) => {
-  // const [isCoordinator, setIsCoordinator] = useState(false);
+const AdminHomePage = ({ navigation, route }) => {
+  const {adminData} = route.params;
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(true)
 
   const handleMenuPress = menuItem => {
     console.log(`${menuItem} pressed`);
 
     switch (menuItem) {
       case 'Profile':
-        navigation.navigate('Schools');
+        navigation.navigate('AdminSchools');
         break;
       case 'Logout':
         setShowLogoutModal(true);
         break;
       case 'Mentor':
-        navigation.navigate('Mentor');
+        navigation.navigate('AdminMentorHome');
         break;
       case 'Student':
-        navigation.navigate('Student');
+        navigation.navigate('AdminStudentHome');
         break;
       case 'Logs':
-        navigation.navigate('Logs');
+        navigation.navigate('AdminLogs');
         break;
       case 'Schedule':
-        navigation.navigate('Schedule');
+        navigation.navigate('AdminScheduleHome');
         break;
       case 'Events':
-        navigation.navigate('Event');
+        navigation.navigate('AdminEvent');
         break;
       case 'Calendar':
-        navigation.navigate('Calendar');
+        navigation.navigate('AdminCalendar');
         break;
       case 'Coordinator':
-        navigation.navigate('Coordinator');
+        navigation.navigate('AdminCoordinatorHome');
         break;
       default:
         console.log('No navigation defined for', menuItem);
     }
   };
 
-  const handleLogout = () => {
-    setShowLogoutModal(false);
-    navigation.navigate('Login');
+  const AdminSwitch = () => {
+    if (isAdmin) {
+      setIsAdmin(false);
+      navigation.navigate('Redirect', { phoneNumber: adminData.phone });
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('user'); // Clear user data
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Login' }], // Redirect to Login screen
+        })
+      );
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const cancelLogout = () => {
     setShowLogoutModal(false);
-  };
-
-  const toggleSwitch = () => {
-    setIsCoordinator(prevState => !prevState);
   };
 
   return (
@@ -90,34 +105,34 @@ const AdminHomePage = ({navigation}) => {
       <View style={styles.switchContainer}>
         <Text style={styles.switchLabel}>Admin</Text>
         <Switch
-                  // value={selectedRole === role}
-                  // onValueChange={(asdfg) => handleRoleSelect(asdfg)}
-            
-                  // Track Colors
-                  backgroundActive="#2962ff"
-                  backgroundInactive="#dcdcdc"
-            
-                  // Thumb (circle)
-                  circleActiveColor="#ffffff"
-                  circleInActiveColor="#ffffff"
-            
-                  // Sizes
-                  barHeight={30}
-                  circleSize={24}
-                  switchWidthMultiplier={2.3}
-            
-                  // Style tweaks
-                  renderActiveText={false}
-                  renderInActiveText={false}
-                  changeValueImmediately={true}
-                  innerCircleStyle={{ elevation: 4, borderColor: 'white' }}
-                />
+          value={isAdmin}
+          onValueChange={(value) => AdminSwitch(value)}
+
+          // Track Colors
+          backgroundActive="#2962ff"
+          backgroundInactive="#dcdcdc"
+
+          // Thumb (circle)
+          circleActiveColor="#ffffff"
+          circleInActiveColor="#ffffff"
+
+          // Sizes
+          barHeight={30}
+          circleSize={24}
+          switchWidthMultiplier={2.3}
+
+          // Style tweaks
+          renderActiveText={false}
+          renderInActiveText={false}
+          changeValueImmediately={true}
+          innerCircleStyle={{ elevation: 4, borderColor: 'white' }}
+        />
       </View>
 
       <ScrollView style={styles.gridContainer}>
         <View style={styles.gridRow}>
           <Pressable
-            style={({pressed}) => [
+            style={({ pressed }) => [
               styles.menuItem,
               pressed && styles.menuItemPressed,
             ]}
@@ -127,7 +142,7 @@ const AdminHomePage = ({navigation}) => {
           </Pressable>
 
           <Pressable
-            style={({pressed}) => [
+            style={({ pressed }) => [
               styles.menuItem,
               pressed && styles.menuItemPressed,
             ]}
@@ -138,8 +153,8 @@ const AdminHomePage = ({navigation}) => {
         </View>
 
         <View style={styles.gridRow}>
-        <Pressable
-            style={({pressed}) => [
+          <Pressable
+            style={({ pressed }) => [
               styles.menuItem,
               pressed && styles.menuItemPressed,
             ]}
@@ -149,7 +164,7 @@ const AdminHomePage = ({navigation}) => {
           </Pressable>
 
           <Pressable
-            style={({pressed}) => [
+            style={({ pressed }) => [
               styles.menuItem,
               pressed && styles.menuItemPressed,
             ]}
@@ -162,7 +177,7 @@ const AdminHomePage = ({navigation}) => {
 
         <View style={styles.gridRow}>
           <Pressable
-            style={({pressed}) => [
+            style={({ pressed }) => [
               styles.menuItem,
               pressed && styles.menuItemPressed,
             ]}
@@ -172,7 +187,7 @@ const AdminHomePage = ({navigation}) => {
           </Pressable>
 
           <Pressable
-            style={({pressed}) => [
+            style={({ pressed }) => [
               styles.menuItem,
               pressed && styles.menuItemPressed,
             ]}
@@ -183,9 +198,9 @@ const AdminHomePage = ({navigation}) => {
         </View>
 
         <View style={styles.gridRow}>
-          
-        <Pressable
-            style={({pressed}) => [
+
+          <Pressable
+            style={({ pressed }) => [
               styles.menuItem,
               pressed && styles.menuItemPressed,
             ]}
@@ -194,7 +209,7 @@ const AdminHomePage = ({navigation}) => {
             <Text style={styles.menuText}>Events</Text>
           </Pressable>
 
-        {/* <Pressable
+          {/* <Pressable
             style={({pressed}) => [
               styles.menuItem,
               pressed && styles.menuItemPressed,
@@ -203,10 +218,10 @@ const AdminHomePage = ({navigation}) => {
             <Graph width={60} height={60} />
             <Text style={styles.menuText}>Pictorial graph</Text>
           </Pressable> */}
-          
+
         </View>
 
-        
+
       </ScrollView>
 
       {/* Logout Confirmation Modal */}

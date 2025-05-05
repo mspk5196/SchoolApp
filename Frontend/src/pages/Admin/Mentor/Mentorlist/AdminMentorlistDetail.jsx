@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Modal, FlatList, ScrollView, Pressable, TextInput } from 'react-native';
-import BackIcon from "../../../assets/MentorList/leftarrow.svg";
-import Numdays from '../../../assets/MentorList/numdays.svg';
-import Clock from '../../../assets/MentorList/clock.svg';
-import Leaveday from '../../../assets/MentorList/leaveday.svg';
-import Eye from '../../../assets/MentorList/Group.svg';
-import Roundhome from '../../../assets/MentorList/roundhome.svg';
-import Assign from '../../../assets/MentorList/assign.svg';
-import Tickicon from '../../../assets/MentorList/tickicon.svg';
-import Tickbox from '../../../assets/MentorList/tickbox.svg';
-import Tick from '../../../assets/MentorList/tick.svg';
-import Oneperson from '../../../assets/MentorList/oneperson.svg';
-import Hat from '../../../assets/MentorList/hat.svg';
+import BackIcon from  "../../../../assets/AdminPage/MentorList/leftarrow.svg";
+import Numdays from   '../../../../assets/AdminPage/MentorList/numdays.svg';
+import Clock from     '../../../../assets/AdminPage/MentorList/clock.svg';
+import Leaveday from  '../../../../assets/AdminPage/MentorList/leaveday.svg';
+import Eye from       '../../../../assets/AdminPage/MentorList/Group.svg';
+import Roundhome from '../../../../assets/AdminPage/MentorList/roundhome.svg';
+import Assign from    '../../../../assets/AdminPage/MentorList/assign.svg';
+import Tickicon from  '../../../../assets/AdminPage/MentorList/tickicon.svg';
+import Tickbox from   '../../../../assets/AdminPage/MentorList/tickbox.svg';
+import Tick from      '../../../../assets/AdminPage/MentorList/tick.svg';
+import Oneperson from '../../../../assets/AdminPage/MentorList/oneperson.svg';
+import Hat from       '../../../../assets/AdminPage/MentorList/hat.svg';
 // Import the calendar component
 import { Calendar } from 'react-native-calendars';
 import styles from './MentorlistDetailStyle';
@@ -161,7 +161,7 @@ const AdminMentorlistDetail = ({ route, navigation }) => {
 
       <View style={styles.MentorDayDetails}>
         <View style={styles.profileSection}>
-          <Image source={require('../../../assets/MentorList/staff.png')} style={styles.avatar} />
+          <Image source={require('../../../../assets/AdminPage/MentorList/staff.png')} style={styles.avatar} />
           <View style={styles.mentorInfo}>
             <Text style={styles.infoLabel}>Name : {mentor.name || 'N/A'}</Text>
             <Text style={styles.infoLabel}>Mentor ID : {mentor.mentorId || 'N/A'}</Text>

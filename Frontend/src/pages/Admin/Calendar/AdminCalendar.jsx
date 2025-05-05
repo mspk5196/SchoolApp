@@ -9,10 +9,10 @@ import {
   FlatList,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import PreviousIcon from '../../assets/Basicimg/PrevBtn.svg';
-import Holiday from '../../assets/Calendar/holiday.svg';
-import ChevronDown from '../../assets/Calendar/chevron-down.svg';
-import ChevronRight from '../../assets/Calendar/chevron-right.svg';
+import PreviousIcon from '../../../assets/AdminPage/Basicimg/PrevBtn.svg';
+import Holiday from      '../../../assets/AdminPage/Calendar/holiday.svg';
+import ChevronDown from  '../../../assets/AdminPage/Calendar/chevron-down.svg';
+import ChevronRight from '../../../assets/AdminPage/Calendar/chevron-right.svg';
 import styles from './CalendarStyles';
 
 const AdminCalendar = () => {
