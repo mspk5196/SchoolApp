@@ -1,78 +1,116 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Pressable } from 'react-native';
 import PreviousIcon from '../../../../../assets/AdminPage/StudentHome/studentprofile/PrevBtn.svg';
 import styles from './StudentListStyles';
 const Staff = require('../../../../../assets/AdminPage/StudentHome/studentprofile/staff.png');
-import Search from    '../../../../../assets/AdminPage/StudentHome/studentprofile/search.svg';
-import Homeicon from  '../../../../../assets/AdminPage/Basicimg/Home.svg';
+import Search from '../../../../../assets/AdminPage/StudentHome/studentprofile/search.svg';
+import Homeicon from '../../../../../assets/AdminPage/Basicimg/Home.svg';
+import { API_URL } from '@env'
 
-const AdminStudentList = ({ navigation }) => {
+const AdminStudentList = ({ navigation, route }) => {
+  const { gradeId } = route.params || {};
   const [searchText, setSearchText] = useState('');
+  const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [activeSection, setActiveSection] = useState(null);
-    const tabs = [
-        'Section A',
-        'Section B',
-        'Section C',
-        'Section D',
-        'Section E',
-        'Section F',
-        'Section G',
-        'Section H',
-        'Section I',
-      ];
-  const students = [
-    { name: 'Prakash Raj 1', id: '2024V1023', mentorId: 'MA10101',  },
-    { name: 'Prakash Raj 2', id: '2024V1024', mentorId: 'MA10102',  },
-    { name: 'Prakash Raj 3', id: '2024V1025', mentorId: 'MA10103',  },
-    { name: 'Prakash Raj 4', id: '2024V1026', mentorId: 'MA10104',  },
-    { name: 'Prakash Raj 5', id: '2024V1027', mentorId: 'MA10105',  },
-    { name: 'Prakash Raj 6', id: '2024V1028', mentorId: 'MA10106',  },
-    { name: 'Prakash Raj 7', id: '2024V1029', mentorId: 'MA10107',  },
-    { name: 'Prakash Raj 8', id: '2024V1030', mentorId: 'MA10108',  },
-    { name: 'Prakash Raj 9', id: '2024V1031', mentorId: 'MA10109',  },
-    { name: 'Prakash Raj 10', id: '2024V1032', mentorId: 'MA10110', },
-  ];
-  
-  // Filter students based on the search text
-  const handleSearch = (text) => {
-    setSearchText(text);
+  const [sections, setSections] = useState([]);
+  const [selectedSection, setSelectedSection] = useState(null);
+
+  useEffect(() => {
+    if (gradeId) {
+      fetchSections(gradeId);
+    }
+  }, [gradeId]);
+
+  useEffect(() => {
+    if (selectedSection) {
+      fetchStudents(selectedSection);
+    }
+  }, [selectedSection]);
+
+  useEffect(() => {
     const filtered = students.filter((student) =>
-      student.name.toLowerCase().includes(text.toLowerCase()) ||
-      student.id.toLowerCase().includes(text.toLowerCase())
+      student.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      student.roll.toLowerCase().includes(searchText.toLowerCase())
     );
     setFilteredStudents(filtered);
+  }, [searchText, students]);
+
+  const fetchSections = async (gradeId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/grades/${gradeId}/sections`);
+      const data = await response.json();
+      if (data.success) {
+        setSections(data.gradeSections);
+        if (data.gradeSections) {
+          setSelectedSection(data.gradeSections[0].id);
+          setActiveSection(0);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+    }
   };
 
-  
-  
+  const fetchStudents = async (sectionId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/section/${sectionId}/students`);
+      const data = await response.json();
+      if (data.success) {
+        setStudents(data.students);
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    }
+  };
+
+  const handleSearch = (text) => {
+    setSearchText(text);
+  };
+
+  const handleSectionSelect = (index, sectionId) => {
+    setActiveSection(index);
+    setSelectedSection(sectionId);
+  };
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Staff;
+    }
+  };
+
   return (
-   
     <View style={[{ flex: 1 }, styles.container]}>
-       <View style={styles.header}>
-        <TouchableOpacity 
+      <View style={styles.header}>
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation && navigation.goBack()}
         >
-          <PreviousIcon  color="black" />
+          <PreviousIcon color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Student List</Text>
       </View>
-        <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent} style={styles.classnavsection} nestedScrollEnabled={true}>
-        {["Section A", "Section B", "Section C", "Section D", "Section E", "Section F", "Section G"].map((section, index) => (
+
+      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent} style={styles.classnavsection} nestedScrollEnabled={true}>
+        {sections.map((section, index) => (
           <Pressable
-            key={index}
+            key={section.id}
             style={[styles.gradeselection, activeSection === index && styles.activeButton]}
-            onPress={() => setActiveSection(index)}
+            onPress={() => handleSectionSelect(index, section.id)}
           >
-            <Text style={[styles.gradeselectiontext, activeSection === index && styles.activeText]}>{section}</Text>
+            <Text style={[styles.gradeselectiontext, activeSection === index && styles.activeText]}>Section {section.section_name}</Text>
           </Pressable>
         ))}
       </ScrollView>
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <Search style={styles.searchicon}/>
+        <Search style={styles.searchicon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name or ID"
@@ -81,31 +119,30 @@ const AdminStudentList = ({ navigation }) => {
           onChangeText={handleSearch}
         />
       </View>
-      
+
       <ScrollView contentContainerStyle={styles.contentContainer}>
         {(searchText ? filteredStudents : students).map((student, index) => (
-          <TouchableOpacity 
-          key={index} 
-          style={styles.listItem}
-          onPress={() => navigation.navigate('AdminStudentDetails', { student })}
-        >
-          <Image source={Staff} style={styles.studentAvatar} />
-          <View style={styles.listContent}>
-            <Text style={styles.listName}>{student.name}</Text>
-            <Text style={styles.listId}>{student.id}</Text>
-          </View>
-          <View style={styles.removeButton}>
-            <Text style={styles.removeText}>View</Text>
-          </View>
-        </TouchableOpacity>
+          <TouchableOpacity
+            key={index}
+            style={styles.listItem}
+            onPress={() => navigation.navigate('AdminStudentDetails', { student })}
+          >
+            <Image source={getProfileImageSource(student.profile_photo)} style={styles.studentAvatar} />
+            <View style={styles.listContent}>
+              <Text style={styles.listName}>{student.name}</Text>
+              <Text style={styles.listId}>{student.roll}</Text>
+            </View>
+            <View style={styles.removeButton}>
+              <Text style={styles.removeText}>View</Text>
+            </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
       <TouchableOpacity style={styles.footer}
-      onPress={() => navigation.navigate('AdminMain')}>
-        <Homeicon/>
+        onPress={() => navigation.navigate('AdminMain')}>
+        <Homeicon />
       </TouchableOpacity>
     </View>
-    
   );
 };
 

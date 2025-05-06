@@ -13,7 +13,8 @@ const Redirect = ({ route }) => {
   const [exitApp, setExitApp] = useState(false); 
  
   const routeParams = route.params;
-  const [phoneNumber, setPhone]=useState(routeParams?.phoneNumber)
+  const [phoneNumber, setPhone] = useState(routeParams?.phoneNumber);
+  const [skipAutoNavigate, setSkipAutoNavigate] = useState(!!routeParams?.skipAutoNavigate);
 
   useEffect(() => {
     const backAction = () => {
@@ -42,8 +43,8 @@ const Redirect = ({ route }) => {
           const parsedRoles = JSON.parse(storedRoles);
           setRoles(parsedRoles);
 
-          // Auto navigate if only one role
-          if (parsedRoles.length === 1) {
+          // Auto navigate if only one role and not skipping auto-navigation
+          if (parsedRoles.length === 1 && !skipAutoNavigate) {
             handleRoleSelect(parsedRoles[0]);
           }
         }
@@ -182,15 +183,29 @@ const Redirect = ({ route }) => {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('user'); // Clear user data
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Login' }], // Redirect to Login screen
-        })
-      );
+      // Remove the user data from AsyncStorage
+      await AsyncStorage.removeItem('userPhone');
+      await AsyncStorage.removeItem('userRoles');
+      
+      // You can clear any other data if needed, like admin or coordinator data
+      await AsyncStorage.removeItem('adminData');
+      await AsyncStorage.removeItem('coordinatorData');
+      await AsyncStorage.removeItem('studentData');
+      await AsyncStorage.removeItem('mentorData');
+  
+      // Show a logout confirmation (optional)
+      Alert.alert('Logged Out', 'You have successfully logged out.');
+  
+      // Redirect to the Welcome or Login screen
+      
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
+      });
+  
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Error during logout:', error);
+      Alert.alert('Error', 'There was an issue logging out. Please try again.');
     }
   };
 
@@ -207,11 +222,6 @@ const Redirect = ({ route }) => {
         return (
           <View key={role} style={styles.roleItem}>
             <Text style={styles.roleText}>{displayRole}</Text>
-            {/* <Switch
-              value={selectedRole === role}
-              trackColor={{ false: '#ccc', true: 'rgb(190, 226, 226)' }}
-              onValueChange={() => handleRoleSelect(role)}
-            /> */}
             <Switch
                   value={selectedRole === role}
                   onValueChange={() => handleRoleSelect(role)}

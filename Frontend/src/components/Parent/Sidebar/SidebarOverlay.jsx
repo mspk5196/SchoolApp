@@ -8,7 +8,8 @@ import {
   Animated,
   TouchableWithoutFeedback,
   Platform,
-  FlatList  
+  FlatList,
+  Alert  
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import ProfileIcon from '../../../assets/ParentPage/SidebarSvg/profile.svg';
@@ -71,9 +72,8 @@ const SidebarOverlay = ({ visible, onClose }) => {
   const [shouldRender, setShouldRender] = useState(visible);
   const [activeUser, setActiveUser] = useState(null);
 
-  const [studentData, setStudent] = useState([])
-
-
+  const [studentData, setStudent] = useState([]);
+  const [activeUsers, setActiveUsers] = useState({});
 
   useEffect(() => {
     if (visible) {
@@ -113,7 +113,15 @@ const SidebarOverlay = ({ visible, onClose }) => {
         if (storedStudents) {
           const parsedStudents = JSON.parse(storedStudents);
           setStudent(parsedStudents);
-          setActiveUser(parsedStudents[0].name)
+          
+          // Initialize active users state
+          const initialActiveUsers = {};
+          parsedStudents.forEach(student => {
+            initialActiveUsers[student.name] = student.name === parsedStudents[0].name;
+          });
+          
+          setActiveUsers(initialActiveUsers);
+          setActiveUser(parsedStudents[0].name);
         }
       } catch (error) {
         console.error("Error fetching students:", error);
@@ -124,8 +132,6 @@ const SidebarOverlay = ({ visible, onClose }) => {
   }, []);
 
   const handleMenuItemPress = (menuItem) => {
-    // console.log(`${menuItem} pressed`);
-
     // Navigate to the corresponding screen based on the menu item
     switch (menuItem) { 
       case 'Profile':
@@ -150,7 +156,6 @@ const SidebarOverlay = ({ visible, onClose }) => {
         navigation.navigate('StudentPageSettings');
         break;
       default:
-        // Default case if needed
         break;
     }
 
@@ -159,9 +164,39 @@ const SidebarOverlay = ({ visible, onClose }) => {
   };
 
   const toggleUser = async (userName) => {
-    setActiveUser(userName);
-    await AsyncStorage.setItem("activeUser", userName);
-    EventBus.emit("userToggled");
+    // Update the active users state
+    const updatedActiveUsers = {
+      ...activeUsers,
+      [userName]: !activeUsers[userName]
+    };
+    
+    setActiveUsers(updatedActiveUsers);
+    
+    // Check if any user is active
+    const anyActive = Object.values(updatedActiveUsers).some(isActive => isActive);
+    
+    if (!anyActive) {
+      // If no users are active, navigate to Redirect page
+      await AsyncStorage.removeItem("activeUser");
+      setActiveUser(null);
+      onClose(); // Close the sidebar
+      navigation.navigate('Redirect',{skipAutoNavigate: true}); // Navigate to Redirect page
+      EventBus.emit("noActiveUser");
+    } else {
+      // If the current active user is being toggled off, find another active user
+      if (activeUser === userName && !updatedActiveUsers[userName]) {
+        const newActiveUser = Object.keys(updatedActiveUsers).find(user => updatedActiveUsers[user]);
+        setActiveUser(newActiveUser);
+        await AsyncStorage.setItem("activeUser", newActiveUser);
+      } 
+      // If an inactive user is being toggled on, make it the active user
+      else if (!activeUsers[userName] && updatedActiveUsers[userName]) {
+        setActiveUser(userName);
+        await AsyncStorage.setItem("activeUser", userName);
+      }
+      
+      EventBus.emit("userToggled");
+    }
   };
 
   if (!shouldRender) return null;
@@ -193,9 +228,13 @@ const SidebarOverlay = ({ visible, onClose }) => {
               keyExtractor={(item) => item.id}
               showsHorizontalScrollIndicator={false}
               renderItem={({ item }) => (
-                <UserToggle name={item.name} isActive={activeUser === `${item.name}`} onToggle={() => toggleUser(item.name)} />
-              )} />
-
+                <UserToggle 
+                  name={item.name} 
+                  isActive={activeUsers[item.name] || false} 
+                  onToggle={() => toggleUser(item.name)} 
+                />
+              )} 
+            />
           </View>
         </View>
       </Animated.View>
@@ -267,7 +306,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 16,
-    width:100,
+    width: 100,
     color: '#000',
   },
 });

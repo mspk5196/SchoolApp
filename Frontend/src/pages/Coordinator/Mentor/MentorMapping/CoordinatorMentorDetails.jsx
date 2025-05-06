@@ -14,19 +14,14 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSubjectIndex, setSelectedSubjectIndex] = useState(null);
 
-  // Dummy data for students and subjects
-  const [students, setStudents] = useState([])
-
-  // Staff data for popup
-  const [staffMembers, setStaffMembers] = useState([])
-
-  // Modified subject data to handle selected faculty
+  const [students, setStudents] = useState([]);
+  const [staffMembers, setStaffMembers] = useState([]);
   const [subjects, setSubjects] = useState([]);
 
   useEffect(() => {
     fetchSectionStudents();
     fetchMentorSubjects();
-  }, [mentor])
+  }, [mentor]);
 
   const fetchSectionStudents = async () => {
     try {
@@ -59,14 +54,15 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
       });
 
       const data = await response.json();
-      console.log('Section students subjects Data API Response:', data);
+      console.log('Section subjects Data API Response:', data);
 
       if (data.success) {
-        // Initialize subjects with empty faculty data
         const initializedSubjects = data.mentorSubjects.map(subject => ({
-          ...subject,
-          facultyName: '',
-          facultyId: '',
+          subject_id: subject.subject_id,
+          subject_name: subject.subject_name,
+          facultyName: subject.sectionMentorName || 'Faculty name +',
+          facultyId: subject.sectionMentorRoll || 'Faculty ID +',
+          sectionMentorPhoto: subject.sectionMentorPhoto,
           selectedStaff: null
         }));
         setSubjects(initializedSubjects);
@@ -79,13 +75,15 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
     }
   };
 
-  //For Adding subject mentor in subject mentor tab
-  const fetchMentor = async () => {
+  const fetchAddedSubjectMentor = async (subjectID) => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getEnroledGradeSubjectMentor`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: mentor.grade_id, subjectID: selectedSubjectIndex }),
+        body: JSON.stringify({
+          gradeID: mentor.grade_id,
+          subjectID
+        }),
       });
 
       const data = await response.json();
@@ -93,8 +91,9 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
 
       if (data.success) {
         setStaffMembers(data.enroledGradeSubjectMentor);
+        setModalVisible(true);
       } else {
-        Alert.alert('No Mentor Found', 'No mentor is associated with this section');
+        Alert.alert('No Mentor Found', 'No mentor is associated with this subject');
       }
     } catch (error) {
       console.error('Error fetching mentor data:', error);
@@ -102,14 +101,11 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
     }
   };
 
-  // Handle opening the staff selection popup
   const handleOpenStaffModal = async (subjectID) => {
     setSelectedSubjectIndex(subjectID);
-    await fetchMentor();
-    setModalVisible(true);
+    await fetchAddedSubjectMentor(subjectID);
   };
 
-  // Handle selecting a staff member
   const handleSelectStaff = (staff) => {
     if (selectedSubjectIndex !== null) {
       const updatedSubjects = subjects.map(subject => {
@@ -125,20 +121,20 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
       });
       setSubjects(updatedSubjects);
       setModalVisible(false);
-      assignSubjectToMentorSection(staff.mentor_id, selectedSubjectIndex, mentor.grade_id)
+      assignSubjectToMentorSection(staff.mentor_id, selectedSubjectIndex, mentor.grade_id, mentor.section_id);
     }
   };
 
-  const assignSubjectToMentorSection = async (mentorId, subjectId, gradeId) => {
+  const assignSubjectToMentorSection = async (mentorId, subjectId, gradeId, sectionId) => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/assignSubjectToMentorSection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           mentor_id: mentorId,
-          subject_id: subjectId, 
+          subject_id: subjectId,
           grade_id: gradeId,
-          section_id:mentor.section_id
+          section_id: sectionId
         }),
       });
 
@@ -156,9 +152,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
 
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
-      // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
-      // 2. Construct the full URL
       const fullImageUrl = `${API_URL}/${normalizedPath}`;
       return { uri: fullImageUrl };
     } else {
@@ -217,48 +211,66 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
         contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
       >
         {activeTab === 'Student' ? (
-          <View>
-            {students.map((student, index) => (
-              <View key={index} style={styles.listItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {student.profile_photo ? (
-                    <Image source={getProfileImageSource(student.profile_photo)} style={styles.studentAvatar} />
-                  ) : (
-                    <Image source={Staff} style={styles.studentAvatar} />
-                  )}
+          students.length > 0 ? (
+            <View>
+              {students.map((student, index) => (
+                <View key={index} style={styles.listItem}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {student.profile_photo ? (
+                      <Image source={getProfileImageSource(student.profile_photo)} style={styles.studentAvatar} />
+                    ) : (
+                      <Image source={Staff} style={styles.studentAvatar} />
+                    )}
+                    <View style={styles.listContent}>
+                      <Text style={styles.listName}>{student.name}</Text>
+                      <Text style={styles.listId}>{student.roll}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity style={styles.removeButton}>
+                    <Text style={styles.removeText}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.listItem}>
+              <Text style={{ alignSelf: 'center', fontSize: 15, marginHorizontal: 'auto' }}>No students</Text>
+            </View>
+          )
+
+        ) : (
+          subjects.length > 0 ? (
+            <View>
+              {subjects.map((subject, index) => (
+                <View key={index} style={styles.listItemSub}>
+                  <View style={styles.subjectIcon} />
+                  <View style={{ marginVertical: 'auto' }}>
+                    {subject.sectionMentorPhoto ? (
+                      <Image source={getProfileImageSource(subject.sectionMentorPhoto)} style={styles.avatar} />
+                    ) : (
+                      <Mentorimg width={50} height={50} style={styles.avatar} />
+                    )}
+                  </View>
                   <View style={styles.listContent}>
-                    <Text style={styles.listName}>{student.name}</Text>
-                    <Text style={styles.listId}>{student.roll}</Text>
+                    <Text style={styles.listName}>{subject.subject_name}</Text>
+                    <TouchableOpacity onPress={() => handleOpenStaffModal(subject.subject_id)}>
+                      <Text style={[styles.listId, { color: subject.selectedStaff ? 'rgb(45, 45, 45)' : 'rgb(45, 45, 45)', fontSize: 14 }]}>
+                        {subject.facultyName}
+                      </Text>
+                    </TouchableOpacity>
+                    <Text style={[styles.listId, { color: subject.selectedStaff ? 'rgb(45, 45, 45)' : 'rgb(45, 45, 45)', fontSize: 14 }]}>
+                      {subject.facultyId}
+                    </Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.removeButton}>
-                  <Text style={styles.removeText}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View>
-            {subjects.map((subject, index) => (
-              <View key={index} style={styles.listItemSub}>
-                <View style={styles.subjectIcon} />
-                <View style={{ marginVertical: 'auto' }}>
-                  <Mentorimg width={50} height={50} style={styles.mentorAvatar} />
-                </View>
-                <View style={styles.listContent}>
-                  <Text style={styles.listName}>{subject.subject_name}</Text>
-                  <TouchableOpacity onPress={() => {handleOpenStaffModal(subject.subject_id);}}>
-                    <Text style={[styles.listId, { color: subject.selectedStaff ? 'rgb(45, 45, 45)' : 'rgb(45, 45, 45)', fontSize: 14 }]}>
-                      {subject.selectedStaff ? subject.facultyName : 'Faculty name +'}
-                    </Text>
-                  </TouchableOpacity>
-                  <Text style={[styles.listId, { color: subject.selectedStaff ? 'rgb(45, 45, 45)' : 'rgb(45, 45, 45)', fontSize: 14 }]}>
-                    {subject.selectedStaff ? subject.facultyId : 'Faculty ID +'}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.listItem}>
+              <Text style={{ alignSelf: 'center', fontSize: 15, marginHorizontal: 'auto' }}>No subjects</Text>
+            </View>
+          )
+
         )}
       </ScrollView>
 
@@ -278,7 +290,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
                 <TouchableOpacity
                   key={index}
                   style={styles.staffItem}
-                  onPress={() => {handleSelectStaff(staff)}}
+                  onPress={() => handleSelectStaff(staff)}
                 >
                   {staff.file_path ? (
                     <Image source={getProfileImageSource(staff.file_path)} style={styles.avatar} />
@@ -288,6 +300,11 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
                   <View style={styles.staffInfo}>
                     <Text style={styles.staffName}>{staff.name}</Text>
                     <Text style={styles.staffId}>{staff.roll}</Text>
+                    {staff.assigned_section_id && (
+                      <Text style={[styles.staffId, { color: 'gray' }]}>
+                        Already assigned to section {staff.assigned_section_id}
+                      </Text>
+                    )}
                   </View>
                 </TouchableOpacity>
               ))}

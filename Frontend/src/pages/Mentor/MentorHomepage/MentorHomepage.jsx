@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, TouchableOpacity } from "react-native";
+import { View, Text, Pressable, TouchableOpacity, Alert } from "react-native";
 import styles from "./MentorHomepagesty";
 import { Switch } from 'react-native-switch';
 import Iconlogo from "../../../assets/MentorPage/Group.svg";
@@ -45,15 +45,29 @@ const MentorHomepage = ({ navigation, route }) => {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('user'); // Clear user data
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Login' }], // Redirect to Login screen
-        })
-      );
+      // Remove the user data from AsyncStorage
+      await AsyncStorage.removeItem('userPhone');
+      await AsyncStorage.removeItem('userRoles');
+      
+      // You can clear any other data if needed, like admin or coordinator data
+      await AsyncStorage.removeItem('adminData');
+      await AsyncStorage.removeItem('coordinatorData');
+      await AsyncStorage.removeItem('studentData');
+      await AsyncStorage.removeItem('mentorData');
+  
+      // Show a logout confirmation (optional)
+      Alert.alert('Logged Out', 'You have successfully logged out.');
+  
+      // Redirect to the Welcome or Login screen
+      
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
+      });
+  
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Error during logout:', error);
+      Alert.alert('Error', 'There was an issue logging out. Please try again.');
     }
   };
 

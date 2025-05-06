@@ -48,8 +48,8 @@ const styles = StyleSheet.create({
     borderLeftColor: '#1857C0'
   },
   avatar: {
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     borderRadius: 30,
     marginRight: 12,
     borderWidth: 2,

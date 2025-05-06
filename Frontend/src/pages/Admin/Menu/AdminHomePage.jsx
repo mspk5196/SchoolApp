@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, Pressable, ScrollView, Modal } from 'react-native';
+import { View, Text, Pressable, ScrollView, Modal, Alert } from 'react-native';
 import styles from './menustyles';
 import Iconlogo from "../../../assets/AdminPage/Menu/Schlimg.svg";
 import LogoutIcon from '../../../assets/AdminPage/Menu/LogoutIcon.svg';
@@ -14,13 +14,12 @@ import Events from '../../../assets/AdminPage/Menu/Events.svg';
 import Calender from '../../../assets/AdminPage/Menu/Calender.svg';
 import { Switch } from 'react-native-switch';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CommonActions } from '@react-navigation/native';
-// import Graph from '../../assets/Menu/Graph.svg';
+import { CommonActions, useNavigation } from '@react-navigation/native';
 
 const AdminHomePage = ({ navigation, route }) => {
   const {adminData} = route.params;
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(true);
 
   const handleMenuPress = menuItem => {
     console.log(`${menuItem} pressed`);
@@ -61,21 +60,39 @@ const AdminHomePage = ({ navigation, route }) => {
   const AdminSwitch = () => {
     if (isAdmin) {
       setIsAdmin(false);
-      navigation.navigate('Redirect', { phoneNumber: adminData.phone });
+      // Add skipAutoNavigate flag to prevent auto redirection
+      navigation.navigate('Redirect', { 
+        phoneNumber: adminData.phone,
+        skipAutoNavigate: true 
+      });
     }
   }
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('user'); // Clear user data
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Login' }], // Redirect to Login screen
-        })
-      );
+      // Remove the user data from AsyncStorage
+      await AsyncStorage.removeItem('userPhone');
+      await AsyncStorage.removeItem('userRoles');
+      
+      // You can clear any other data if needed, like admin or coordinator data
+      await AsyncStorage.removeItem('adminData');
+      await AsyncStorage.removeItem('coordinatorData');
+      await AsyncStorage.removeItem('studentData');
+      await AsyncStorage.removeItem('mentorData');
+  
+      // Show a logout confirmation (optional)
+      Alert.alert('Logged Out', 'You have successfully logged out.');
+  
+      // Redirect to the Welcome or Login screen
+      
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
+      });
+  
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Error during logout:', error);
+      Alert.alert('Error', 'There was an issue logging out. Please try again.');
     }
   };
 
@@ -208,16 +225,6 @@ const AdminHomePage = ({ navigation, route }) => {
             <Events width={60} height={60} />
             <Text style={styles.menuText}>Events</Text>
           </Pressable>
-
-          {/* <Pressable
-            style={({pressed}) => [
-              styles.menuItem,
-              pressed && styles.menuItemPressed,
-            ]}
-            onPress={() => handleMenuPress('Pictorial graph')}>
-            <Graph width={60} height={60} />
-            <Text style={styles.menuText}>Pictorial graph</Text>
-          </Pressable> */}
 
         </View>
 

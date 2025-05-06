@@ -62,28 +62,28 @@ exports.coordinatorStudents = (req, res) => {
 // For getting coordinator attendance data
 exports.getAttendance = async (req, res) => {
   const { phone } = req.body;
-    
-    const query = `
+
+  const query = `
       SELECT total_days, present_days, leave_days, on_duty_days, attendance_percentage
       FROM facultyattendance
       WHERE phone = ?
     `;
-    
-    db.query(query, [phone], (err, results) => {
-      if (err) return res.status(500).json({ error: err.message });
-      if (results.length === 0) return res.status(404).json({ error: 'Attendance data not found' });
-      
-      res.json({  
-        success: true, 
-        attendanceData: results[0] 
-      });
+
+  db.query(query, [phone], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (results.length === 0) return res.status(404).json({ error: 'Attendance data not found' });
+
+    res.json({
+      success: true,
+      attendanceData: results[0]
     });
+  });
 };
 
 // Get mentor's subject and grade assignments
 exports.getCoordinatorAssignments = (req, res) => {
   const { coordinatorId } = req.body;
-  
+
   const query = `
     SELECT DISTINCT 
       sub.id AS subject_id, 
@@ -93,16 +93,16 @@ exports.getCoordinatorAssignments = (req, res) => {
     JOIN subjects sub ON msa.subject_id = sub.id
     WHERE msa.mentor_id = ?
   `;
-  
+
   db.query(query, [coordinatorId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    
+
     // Extract unique subjects and grades
     const subjects = [];
     const grades = [];
     const seenSubjects = new Set();
     const seenGrades = new Set();
-    
+
     results.forEach(row => {
       if (!seenSubjects.has(row.subject_id)) {
         subjects.push({
@@ -111,7 +111,7 @@ exports.getCoordinatorAssignments = (req, res) => {
         });
         seenSubjects.add(row.subject_id);
       }
-      
+
       if (row.grade_id && !seenGrades.has(row.grade_id)) {
         grades.push({
           grade_id: row.grade_id
@@ -119,9 +119,9 @@ exports.getCoordinatorAssignments = (req, res) => {
         seenGrades.add(row.grade_id);
       }
     });
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       subjects,
       grades
     });
@@ -131,19 +131,19 @@ exports.getCoordinatorAssignments = (req, res) => {
 // Get mentor's section information
 exports.getCoordinatorSection = (req, res) => {
   const { coordinatorId } = req.body;
-  
+
   const query = `
     SELECT s.section_name
     FROM mentors m
     JOIN sections s ON m.section_id = s.id
     WHERE m.id = ?
   `;
-  
+
   db.query(query, [coordinatorId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       section: results[0]?.section_name || 'Not assigned'
     });
   });
@@ -152,7 +152,7 @@ exports.getCoordinatorSection = (req, res) => {
 // Get mentor's issues count
 exports.getCoordinatorIssues = (req, res) => {
   const { coordinatorId } = req.body;
-  
+
   const query = `
     SELECT COUNT(*) AS count
     FROM issue_log
@@ -162,12 +162,12 @@ exports.getCoordinatorIssues = (req, res) => {
       )
     )
   `;
-  
+
   db.query(query, [coordinatorId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       count: results[0]?.count || 0
     });
   });
@@ -211,7 +211,7 @@ exports.submitLeaveRequest = (req, res) => {
 // Get leave history
 exports.getLeaveHistory = (req, res) => {
   const { phone } = req.body;
-  
+
   const query = `
     SELECT flr.id, flr.name, flr.phone, flr.leave_type, flr.start_date, flr.end_date, 
            flr.start_time, flr.end_time, flr.description, flr.status,
@@ -222,15 +222,15 @@ exports.getLeaveHistory = (req, res) => {
     WHERE flr.phone = ?
     ORDER BY requested_at DESC
   `;
-  
+
   db.query(query, [phone], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    
-    res.json({ 
-      success: true, 
-      leaveRequests: results 
+
+    res.json({
+      success: true,
+      leaveRequests: results
     });
-    
+
     console.log(results);
   });
 };
@@ -832,14 +832,14 @@ exports.enrollStudent = async (req, res) => {
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber]
         );
-  
+
         await trx.query(
           `INSERT INTO studentattendance (roll, total_days, on_duty_days, leave_days)
            VALUES (?, '1', '0', '0')`,
           [rollNumber]
         );
       }
-      else{
+      else {
 
         const hashedPassword = await bcrypt.hash(dob, 12);
 
@@ -854,14 +854,14 @@ exports.enrollStudent = async (req, res) => {
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber]
         );
-  
+
         await trx.query(
           `INSERT INTO studentattendance (roll, total_days, on_duty_days, leave_days)
            VALUES (?, '1', '0', '0')`,
           [rollNumber]
         );
       }
-      
+
       await trx.commit();
       res.json({ success: true, message: "Student enrolled successfully", rollNumber });
     } catch (err) {
@@ -1694,6 +1694,19 @@ exports.assignMentorToSection = async (req, res) => {
     });
   }
 };
+exports.createSection = async (req, res) => {
+  const { name, grade_id } = req.body;
+  try {
+    const result = await db.promise().query(
+      'INSERT INTO Sections (section_name, grade_id) VALUES (?, ?)',
+      [name, grade_id]
+    );
+    res.json({ success: true, section_id: result.insertId });
+  } catch (error) {
+    console.error('Error creating section:', error);
+    res.status(500).json({ success: false, message: 'Section creation failed' });
+  }
+};
 
 exports.getMentorSectionStudents = (req, res) => {
   const { sectionID } = req.body;
@@ -1733,22 +1746,83 @@ exports.getMentorGradeSubject = (req, res) => {
   });
 };
 
+// exports.getGradeSubjects = (req, res) => {
+//   const { sectionID } = req.body;
+
+//   // LEFT JOIN mentor_section_assignments msa ON ss.section_id = msa.section_id AND sub.id = msa.subject_id
+//   //   LEFT JOIN Mentors m ON msa.mentor_id = m.id
+//   //   LEFT JOIN Users u ON m.phone = u.phone
+//   // , msa.mentor_id, m.roll, u.name
+//   const sql = `
+//     SELECT DISTINCT
+//       sub.id AS subject_id, 
+//       sub.subject_name,
+//       COALESCE(u.name, 'faculty name +') AS mentor_name,
+//       COALESCE(m.roll, 'faculty id +') AS mentor_roll
+//     FROM section_subject_activities ss
+//     JOIN subjects sub ON ss.subject_id = sub.id
+//     LEFT JOIN mentor_section_assignments msa
+//       ON ss.section_id = msa.section_id AND ss.subject_id = msa.subject_id
+//     LEFT JOIN Mentors m ON msa.mentor_id = m.id
+//     LEFT JOIN Users u ON m.phone = u.phone
+//     WHERE ss.section_id = ?;
+//   `;
+//   db.query(sql, [sectionID], (err, results) => {
+//     if (err) {
+//       console.error("Error fetching grade subjects data:", err);
+//       return res.status(500).json({ success: false, message: 'Database error' });
+//     }
+
+//     res.json({ success: true, message: "Subject data fetched successfully", mentorSubjects: results });
+//   });
+// };
+// Get subjects for a grade (updated to show assigned mentors)
 exports.getGradeSubjects = (req, res) => {
   const { sectionID } = req.body;
 
   const sql = `
-    SELECT DISTINCT sub.id AS subject_id, sub.subject_name
+    SELECT 
+      sub.id AS subject_id, 
+      sub.subject_name,
+      GROUP_CONCAT(DISTINCT CONCAT(u.name, ' (', m.roll, ')') 
+        ORDER BY 
+          CASE WHEN sms.section_id = ? THEN 0 ELSE 1 END,
+          u.name
+        SEPARATOR ', '
+      ) AS assigned_mentors,
+      GROUP_CONCAT(DISTINCT 
+        CASE WHEN sms.section_id = ? THEN CONCAT(u.name, '|', m.roll, '|', up.file_path) ELSE NULL END
+        SEPARATOR '|'
+      ) AS section_mentor_info
     FROM section_subject_activities ss
     JOIN subjects sub ON ss.subject_id = sub.id
-    WHERE ss.section_id = ?;
+    LEFT JOIN mentor_section_assignments msa ON sub.id = msa.subject_id 
+      AND (SELECT grade_id FROM sections WHERE id = ?) = msa.grade_id
+    LEFT JOIN mentors m ON msa.mentor_id = m.id
+    LEFT JOIN users u ON m.phone = u.phone
+    LEFT JOIN user_photos up ON m.phone = up.phone
+    LEFT JOIN section_mentor_subject sms ON msa.id = sms.msa_id AND sms.section_id = ?
+    WHERE ss.section_id = ?
+    GROUP BY sub.id, sub.subject_name;
   `;
-  db.query(sql, [sectionID], (err, results) => {
+
+  db.query(sql, [sectionID, sectionID, sectionID, sectionID, sectionID], (err, results) => {
     if (err) {
       console.error("Error fetching grade subjects data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ success: true, message: "Subject data fetched successfully", mentorSubjects: results });
+    res.json({ 
+      success: true, 
+      message: "Subject data fetched successfully", 
+      mentorSubjects: results.map(subject => ({
+        ...subject,
+        // Extract the first mentor assigned to this specific section
+        sectionMentorName: subject.section_mentor_info ? subject.section_mentor_info.split('|')[0] : null,
+        sectionMentorRoll: subject.section_mentor_info ? subject.section_mentor_info.split('|')[1] : null,
+        sectionMentorPhoto: subject.section_mentor_info ? subject.section_mentor_info.split('|')[2] : null
+      }))
+    });
   });
 };
 
@@ -1794,88 +1868,272 @@ exports.getEnroledSubjectMentors = (req, res) => {
   });
 };
 
+// exports.getEnroledGradeSubjectMentor = (req, res) => {
+//   const { gradeID, subjectID } = req.body;
+
+//   const sql = `
+//     SELECT msa.id, u.name, m.specification, m.roll, up.file_path, msa.mentor_id
+//       FROM mentor_section_assignments msa
+//       JOIN Mentors m ON msa.mentor_id = m.id
+//       LEFT JOIN user_photos up ON m.phone = up.phone
+//       JOIN Users u ON m.phone = u.phone
+//       JOIN Grades g ON m.grade_id = g.id
+//       WHERE msa.grade_id = ? AND msa.subject_id = ? ORDER BY m.roll;
+//   `;
+//   db.query(sql, [gradeID, subjectID], (err, results) => {
+//     if (err) {
+//       console.error("Error fetching grade mentor data:", err);
+//       return res.status(500).json({ success: false, message: 'Database error' });
+//     }
+
+//     res.json({ success: true, message: "Mentor data fetched successfully", enroledGradeSubjectMentor: results });
+//   });
+// };
+
+// Assign mentor to subject
+// exports.assignMentorToSubject = async (req, res) => {
+//   const { mentor_id, subject_id, grade_id } = req.body;
+
+//   try {
+//     // First verify the mentor exists and belongs to the grade
+//     const mentorCheck = await db.promise().query(
+//       'SELECT id FROM mentors WHERE id = ? AND grade_id = ?',
+//       [mentor_id, grade_id]
+//     );
+
+//     if (mentorCheck[0].length === 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Mentor does not belong to this grade'
+//       });
+//     }
+
+//     // Update the mentor's subject (set section_id to null)
+//     await db.promise().query(
+//       'INSERT INTO mentor_section_assignments (subject_id,mentor_id,grade_id) VALUES (?,?,?)',
+//       [subject_id, mentor_id, grade_id]
+//     );
+
+//     res.json({
+//       success: true,
+//       message: 'Mentor assigned to subject successfully'
+//     });
+//   } catch (error) {
+//     console.error('Error assigning mentor:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Database error'
+//     });
+//   }
+// };
+// Assign mentor to subject at grade level
+
+// Get enrolled subject mentors for a grade and subject
 exports.getEnroledGradeSubjectMentor = (req, res) => {
   const { gradeID, subjectID } = req.body;
 
   const sql = `
-    SELECT msa.id, u.name, m.specification, m.roll, up.file_path, msa.mentor_id
-      FROM mentor_section_assignments msa
-      JOIN Mentors m ON msa.mentor_id = m.id
-      LEFT JOIN user_photos up ON m.phone = up.phone
-      JOIN Users u ON m.phone = u.phone
-      JOIN Grades g ON m.grade_id = g.id
-      WHERE msa.grade_id = ? AND msa.subject_id = ? ORDER BY m.roll;
+    SELECT DISTINCT
+      m.id AS mentor_id,
+      u.name,
+      m.specification,
+      m.roll,
+      up.file_path,
+      GROUP_CONCAT(DISTINCT sms.section_id) AS assigned_section_ids
+    FROM mentor_section_assignments msa
+    JOIN mentors m ON msa.mentor_id = m.id
+    LEFT JOIN user_photos up ON m.phone = up.phone
+    JOIN users u ON m.phone = u.phone
+    LEFT JOIN section_mentor_subject sms ON msa.id = sms.msa_id
+    WHERE msa.grade_id = ? AND msa.subject_id = ?
+    GROUP BY m.id, u.name, m.specification, m.roll, up.file_path
+    ORDER BY m.roll;
   `;
+
   db.query(sql, [gradeID, subjectID], (err, results) => {
     if (err) {
       console.error("Error fetching grade mentor data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ success: true, message: "Mentor data fetched successfully", enroledGradeSubjectMentor: results });
+    res.json({ 
+      success: true, 
+      message: "Mentor data fetched successfully", 
+      enroledGradeSubjectMentor: results.map(mentor => ({
+        ...mentor,
+        assigned_section_ids: mentor.assigned_section_ids ? mentor.assigned_section_ids.split(',') : []
+      }))
+    });
   });
 };
 
-// Assign mentor to subject
-exports.assignMentorToSubject = async (req, res) => {
+exports.assignMentorToSubject = (req, res) => {
   const { mentor_id, subject_id, grade_id } = req.body;
 
-  try {
-    // First verify the mentor exists and belongs to the grade
-    const mentorCheck = await db.promise().query(
-      'SELECT id FROM mentors WHERE id = ? AND grade_id = ?',
-      [mentor_id, grade_id]
-    );
+  // First check if this mentor is already assigned to this subject-grade combination
+  const checkSql = `
+    SELECT id FROM mentor_section_assignments 
+    WHERE mentor_id = ? AND subject_id = ? AND grade_id = ?
+  `;
 
-    if (mentorCheck[0].length === 0) {
+  db.query(checkSql, [mentor_id, subject_id, grade_id], (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error('Error checking existing assignment:', checkErr);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    if (checkResults.length > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Mentor does not belong to this grade'
+        message: 'Mentor is already assigned to this subject for this grade'
       });
     }
 
-    // Update the mentor's subject (set section_id to null)
-    await db.promise().query(
-      'INSERT INTO mentor_section_assignments (subject_id,mentor_id,grade_id) VALUES (?,?,?)',
-      [subject_id, mentor_id, grade_id]
-    );
+    // Insert new assignment
+    const insertSql = `
+      INSERT INTO mentor_section_assignments 
+      (mentor_id, subject_id, grade_id) 
+      VALUES (?, ?, ?)
+    `;
 
-    res.json({
-      success: true,
-      message: 'Mentor assigned to subject successfully'
+    db.query(insertSql, [mentor_id, subject_id, grade_id], (insertErr, insertResult) => {
+      if (insertErr) {
+        console.error('Error assigning mentor:', insertErr);
+        return res.status(500).json({ success: false, message: 'Database error' });
+      }
+
+      res.json({
+        success: true,
+        message: 'Mentor assigned to subject successfully',
+        assignmentId: insertResult.insertId
+      });
     });
-  } catch (error) {
-    console.error('Error assigning mentor:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Database error'
-    });
-  }
+  });
 };
-exports.assignSubjectToMentorSection = async (req, res) => {
-  const { section_id, mentor_id, subject_id, grade_id } = req.body;
 
-  try {
-    await db.promise().query(
-      'UPDATE mentor_section_assignments SET section_id = ? WHERE subject_id = ? AND mentor_id = ? AND grade_id = ?',
-      [section_id, subject_id, mentor_id, grade_id]
-    );
+// exports.assignSubjectToMentorSection = async (req, res) => {
+//   const { section_id, mentor_id, subject_id, grade_id } = req.body;
 
-    res.json({
-      success: true,
-      message: 'Mentor assigned to section subject successfully'
-    });
-  } catch (error) {
-    console.error('Error assigning mentor:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Database error'
-    });
-  }
-};
+//   try {
+//     // Fetch existing record
+//     const rows = await db.promise().query(
+//       `SELECT section_id FROM mentor_section_assignments 
+//        WHERE mentor_id = ? AND subject_id = ? AND grade_id = ?`,
+//       [mentor_id, subject_id, grade_id]
+//     );
+
+//     if (rows.length > 0) {
+//       const existingSectionsRaw = rows.section_id;
+//       const currentSections = existingSectionsRaw
+//         ? existingSectionsRaw.split(',').map(s => s.trim())
+//         : [];
+//       console.log(rows);
+      
+//       // Avoid duplicate
+//       if (!currentSections.includes(section_id.toString())) {
+//         currentSections.push(section_id.toString());
+
+//         const updatedSections = currentSections.join(',');
+//         await db.promise().query(
+//           `UPDATE mentor_section_assignments 
+//            SET section_id = ? 
+//            WHERE mentor_id = ? AND subject_id = ? AND grade_id = ?`,
+//           [updatedSections, mentor_id, subject_id, grade_id]
+//         );
+//       }
+//     } else {
+//       // Insert new mapping
+//       await db.promise().query(
+//         `INSERT INTO mentor_section_assignments 
+//          (mentor_id, subject_id, grade_id, section_id) 
+//          VALUES (?, ?, ?, ?)`,
+//         [mentor_id, subject_id, grade_id, section_id]
+//       );
+//     }
+
+//     res.json({
+//       success: true,
+//       message: 'Mentor assigned to section(s) successfully'
+//     });
+
+//   } catch (error) {
+//     console.error('Error assigning mentor to section:', error);
+//     res.status(500).json({ success: false, message: 'Database error' });
+//   }
+// };
+
+
 
 //Events
 // Create a new event
+
+// Assign subject mentor to a section
+
+exports.assignSubjectToMentorSection = (req, res) => {
+  const { mentor_id, subject_id, grade_id, section_id } = req.body;
+
+  // First get the msa_id (mentor-subject-grade assignment)
+  const getMsaSql = `
+    SELECT id FROM mentor_section_assignments 
+    WHERE mentor_id = ? AND subject_id = ? AND grade_id = ?
+  `;
+
+  db.query(getMsaSql, [mentor_id, subject_id, grade_id], (msaErr, msaResults) => {
+    if (msaErr) {
+      console.error('Error getting mentor assignment:', msaErr);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    if (msaResults.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Mentor is not assigned to this subject for this grade'
+      });
+    }
+
+    const msa_id = msaResults[0].id;
+
+    // Check if this mentor is already assigned to this section for this subject
+    const checkSql = `
+      SELECT id FROM section_mentor_subject 
+      WHERE msa_id = ? AND section_id = ?
+    `;
+
+    db.query(checkSql, [msa_id, section_id], (checkErr, checkResults) => {
+      if (checkErr) {
+        console.error('Error checking existing section assignment:', checkErr);
+        return res.status(500).json({ success: false, message: 'Database error' });
+      }
+
+      if (checkResults.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mentor is already assigned to this section for this subject'
+        });
+      }
+
+      // Insert new section assignment
+      const insertSql = `
+        INSERT INTO section_mentor_subject 
+        (msa_id, section_id) 
+        VALUES (?, ?)
+      `;
+
+      db.query(insertSql, [msa_id, section_id], (insertErr, insertResult) => {
+        if (insertErr) {
+          console.error('Error assigning mentor to section:', insertErr);
+          return res.status(500).json({ success: false, message: 'Database error' });
+        }
+
+        res.json({
+          success: true,
+          message: 'Mentor assigned to section successfully'
+        });
+      });
+    });
+  });
+};
+
 exports.createEvent = (req, res) => {
   const { phone, event_name, location, participants_limit, event_date, grade_id, event_type, about, guidelines } = req.body;
   const banner_url = req.file ? req.file.path : null;
@@ -1960,7 +2218,7 @@ exports.deleteEvent = (req, res) => {
 // Get calendar events for a month
 exports.getCalendarEvents = (req, res) => {
   const { year, month } = req.query;
-  
+
   // Validate inputs
   if (!year || !month) {
     return res.status(400).json({ success: false, message: 'Year and month are required' });
@@ -2018,8 +2276,8 @@ exports.addCalendarEvent = (req, res) => {
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Event added successfully',
       eventId: result.insertId
     });

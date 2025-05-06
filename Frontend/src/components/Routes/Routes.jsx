@@ -131,6 +131,7 @@ import AdminCoordinatorlistDetails from '../../pages/Admin/Coordinator/Coordinat
 import AdminCoordinatorEnrollment from '../../pages/Admin/Coordinator/CoordinatorEnrollment/AdminCoordinatorEnrollment';
 import AdminLeaveApproval from '../../pages/Admin/Coordinator/CoordinatorLeaveApproval/AdminLeaveApproval';
 import AdminLeaveApprovalHistory from '../../pages/Admin/Coordinator/CoordinatorLeaveApproval/AdminLeaveApprovalHistory';
+import AuthLoader from '../Login/Redirect/AuthLoader';
 
 const Stack = createStackNavigator();
 
@@ -140,9 +141,10 @@ const Routes = () => {
         <MenuProvider>
             <ExamProvider>
                 <NavigationContainer>
-                    <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
+                    <Stack.Navigator initialRouteName="AuthLoader" screenOptions={{ headerShown: false }}>
 
                         {/* Login */}
+                        <Stack.Screen name="AuthLoader" component={AuthLoader} options={{ headerShown: false }} />
                         <Stack.Screen name="Login" component={Login} options={{ headerLeft: () => null, headerShown: false }} />
                         <Stack.Screen name="Welcome" component={Welcome} options={{ headerLeft: () => null, headerShown: false }} />
                         <Stack.Screen name="Redirect" component={Redirect} options={{ headerLeft: () => null }} />

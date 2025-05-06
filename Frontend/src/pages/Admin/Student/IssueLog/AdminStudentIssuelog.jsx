@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,64 +9,78 @@ import {
   ScrollView,
 } from 'react-native';
 import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg';
-import PhoneIcon from    '../../../../assets/AdminPage/StudentHome/Issuelog/Phone.svg';
-import MessageIcon from  '../../../../assets/AdminPage/StudentHome/Issuelog/MessageSquare.svg';
+import PhoneIcon from '../../../../assets/AdminPage/StudentHome/Issuelog/Phone.svg';
+import MessageIcon from '../../../../assets/AdminPage/StudentHome/Issuelog/MessageSquare.svg';
 import styles from './IssuelogStyls';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import Search from   '../../../../assets/AdminPage/StudentHome/studentprofile/search.svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Search from '../../../../assets/AdminPage/StudentHome/studentprofile/search.svg';
 import Homeicon from '../../../../assets/AdminPage/Basicimg/Home.svg';
+import {API_URL} from '@env'
 
-const AdminStudentIssuelog = ({navigation}) => {
+const AdminStudentIssuelog = ({ navigation, route }) => {
+  const { gradeId } = route.params || {};
   const [activeSection, setActiveSection] = useState(null);
   const [searchText, setSearchText] = useState('');
-  
-  const tabs = [
-    'Section A',
-    'Section B',
-    'Section C',
-    'Section D',
-    'Section E',
-    'Section F',
-    'Section G',
-    'Section H',
-    'Section I',
-  ];
-  
-  const [disciplineData] = useState([
-    {
-      id: 1,
-      name: 'John Doe',
-      regNo: '2024VI023',
-      reason: 'Student is saying that he came along with parents to school, and he is late to school because of traffic.',
-      date: '29/10/23',
-      registeredBy: 'SasiKumar',
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      regNo: '2024VI024',
-      reason: 'Student was not wearing proper uniform.',
-      date: '30/10/23',
-      registeredBy: 'SasiKumar',
-    },
-    {
-      id: 3,
-      name: 'Robert Johnson',
-      regNo: '2024VI025',
-      reason: 'Student was using mobile phone during class.',
-      date: '31/10/23',
-      registeredBy: 'SasiKumar',
-    },
-  ]);
+  const [sections, setSections] = useState([]);
+  const [selectedSection, setSelectedSection] = useState(null);
+  const [disciplineData, setDisciplineData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
 
-  // Filter data based on search text (name or regNo)
-  const filteredData = disciplineData.filter(item => 
-    item.name.toLowerCase().includes(searchText.toLowerCase()) || 
-    item.regNo.toLowerCase().includes(searchText.toLowerCase())
-  );
+  useEffect(() => {
+    if (gradeId) {
+      fetchSections(gradeId);
+    }
+  }, [gradeId]);
+
+  useEffect(() => {
+    if (selectedSection) {
+      fetchDisciplineData(selectedSection);
+    }
+  }, [selectedSection]);
+
+  useEffect(() => {
+    const filtered = disciplineData.filter(item => 
+      item.name.toLowerCase().includes(searchText.toLowerCase()) || 
+      item.regNo.toLowerCase().includes(searchText.toLowerCase())
+    );
+    setFilteredData(filtered);
+  }, [searchText, disciplineData]);
+
+  const fetchSections = async (gradeId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/grades/${gradeId}/sections`);
+      const data = await response.json();
+      if (data.success) {
+        setSections(data.sections);
+        if (data.sections.length > 0) {
+          setSelectedSection(data.sections[0].id);
+          setActiveSection(0);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+    }
+  };
+
+  const fetchDisciplineData = async (sectionId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/sections/${sectionId}/discipline-issues`);
+      const data = await response.json();
+      if (data.success) {
+        setDisciplineData(data.issues);
+      }
+    } catch (error) {
+      console.error('Error fetching discipline data:', error);
+    }
+  };
 
   const handleSearch = (text) => {
     setSearchText(text);
+  };
+
+  const handleSectionSelect = (index, sectionId) => {
+    setActiveSection(index);
+    setSelectedSection(sectionId);
   };
 
   return (
@@ -86,20 +100,20 @@ const AdminStudentIssuelog = ({navigation}) => {
         contentContainerStyle={styles.scrollContent}
         style={styles.classnavsection}
         nestedScrollEnabled={true}>
-        {tabs.map((section, index) => (
+        {sections?.map((section, index) => (
           <Pressable
-            key={index}
+            key={section.id}
             style={[
               styles.gradeselection,
               activeSection === index && styles.activeButton,
             ]}
-            onPress={() => setActiveSection(index)}>
+            onPress={() => handleSectionSelect(index, section.id)}>
             <Text
               style={[
                 styles.gradeselectiontext,
                 activeSection === index && styles.activeText,
               ]}>
-              {section}
+              {section.section_name}
             </Text>
           </Pressable>
         ))}

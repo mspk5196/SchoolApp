@@ -1,5 +1,5 @@
 import React from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 // previous button
 import PreviousIcon from '../../../../assets/ParentPage/SettingsIcon/PrevBtn.svg';
 import styles from './SettingStyles';
@@ -13,6 +13,7 @@ import TermsIcon from        '../../../../assets/ParentPage/SettingsIcon/terms.s
 import ReportIcon from       '../../../../assets/ParentPage/SettingsIcon/report.svg';
 import Add_AccountIcon from  '../../../../assets/ParentPage/SettingsIcon/add_account.svg';
 import LogoutIcon from       '../../../../assets/ParentPage/SettingsIcon/logout.svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SettingItem = ({ icon, title, onPress }) => {
   return (
@@ -28,6 +29,34 @@ const SettingItem = ({ icon, title, onPress }) => {
 const Setting = ({ navigation }) => {
   const handleNavigateBack = () => {
     navigation.goBack();
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Remove the user data from AsyncStorage
+      await AsyncStorage.removeItem('userPhone');
+      await AsyncStorage.removeItem('userRoles');
+      
+      // You can clear any other data if needed, like admin or coordinator data
+      await AsyncStorage.removeItem('adminData');
+      await AsyncStorage.removeItem('coordinatorData');
+      await AsyncStorage.removeItem('studentData');
+      await AsyncStorage.removeItem('mentorData');
+  
+      // Show a logout confirmation (optional)
+      Alert.alert('Logged Out', 'You have successfully logged out.');
+  
+      // Redirect to the Welcome or Login screen
+      
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
+      });
+  
+    } catch (error) {
+      console.error('Error during logout:', error);
+      Alert.alert('Error', 'There was an issue logging out. Please try again.');
+    }
   };
   
   return (
@@ -94,9 +123,7 @@ const Setting = ({ navigation }) => {
           <SettingItem 
             icon={<LogoutIcon width={24} height={24} />} 
             title="Log out" 
-            onPress={() => {
-              // Add logout functionality here
-            }}
+            onPress={handleLogout}
           />
         </View>
       </ScrollView>

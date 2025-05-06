@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,38 +9,55 @@ import {
 } from 'react-native';
 import styles from './BacklogsStyles';
 import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg';
+import Homeicon from '../../../../assets/AdminPage/Basicimg/Home.svg';
+import {API_URL} from '@env'
 
-const AdminStudentBacklogs = ({ navigation }) => {
+const AdminStudentBacklogs = ({ navigation, route }) => {
+  const { gradeId } = route.params || {};
   const [activeSection, setActiveSection] = useState('A');
+  const [sections, setSections] = useState([]);
+  const [selectedSection, setSelectedSection] = useState(null);
+  const [assessmentData, setAssessmentData] = useState([]);
 
-  const sections = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-  
-  const assessmentData = [
-    {
-      id: '2024V1023',
-      name: 'Prakash Raj',
-      level: 'Level 2 Assessment',
-      subject: 'Science',
-      days: '4 days',
-    },
-    {
-      id: '2024V1023',
-      name: 'Prakash Raj',
-      level: 'Level 2 Assessment',
-      subject: 'Science',
-      days: '4 days',
-    },
-   
-    {
-      id: '2024V1023',
-      name: 'Prakash Raj',
-      level: 'Level 2 Assessment',
-      subject: 'Science',
-      days: '4 days',
-    },
-  ];
+  useEffect(() => {
+    if (gradeId) {
+      fetchSections(gradeId);
+    }
+  }, [gradeId]);
 
-  // Render assessment card component
+  useEffect(() => {
+    if (selectedSection) {
+      fetchBacklogs(selectedSection);
+    }
+  }, [selectedSection]);
+
+  const fetchSections = async (gradeId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/grades/${gradeId}/sections`);
+      const data = await response.json();
+      if (data.success) {
+        setSections(data.sections);
+        if (data.sections.length > 0) {
+          setSelectedSection(data.sections[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+    }
+  };
+
+  const fetchBacklogs = async (sectionId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/sections/${sectionId}/backlogs`);
+      const data = await response.json();
+      if (data.success) {
+        setAssessmentData(data.backlogs);
+      }
+    } catch (error) {
+      console.error('Error fetching backlogs:', error);
+    }
+  };
+
   const renderAssessmentCard = (item, index) => {
     return (
       <View key={index} style={styles.card}>
@@ -64,7 +81,7 @@ const AdminStudentBacklogs = ({ navigation }) => {
       </View>
     );
   };
- 
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
       <View style={styles.header}>
@@ -73,11 +90,37 @@ const AdminStudentBacklogs = ({ navigation }) => {
           onPress={() => navigation && navigation.goBack()}>
           <PreviousIcon color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Student Discipline Log</Text>
+        <Text style={styles.headerTitle}>Student Backlogs</Text>
       </View>
+
+      <ScrollView
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        style={styles.classnavsection}
+        nestedScrollEnabled={true}>
+        {sections?.map((section, index) => (
+          <Pressable
+            key={section.id}
+            style={[
+              styles.gradeselection,
+              activeSection === index && styles.activeButton,
+            ]}
+            onPress={() => {
+              setActiveSection(index);
+              setSelectedSection(section.id);
+            }}>
+            <Text style={[
+              styles.gradeselectiontext,
+              activeSection === index && styles.activeText,
+            ]}>
+              {section.section_name}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
       
       <View style={{ flex: 1 }}>
-        {/* Assessment Cards in a separate ScrollView */}
         <ScrollView 
           contentContainerStyle={styles.cardsContainer}
           showsVerticalScrollIndicator={false}
@@ -86,6 +129,10 @@ const AdminStudentBacklogs = ({ navigation }) => {
           {assessmentData.map((item, index) => renderAssessmentCard(item, index))}
         </ScrollView>
       </View>
+      <TouchableOpacity style={styles.footer}
+        onPress={() => navigation.navigate('AdminMain')}>
+        <Homeicon/>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

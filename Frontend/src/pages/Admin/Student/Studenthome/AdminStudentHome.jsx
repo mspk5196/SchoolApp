@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HomeIcon from '../../../../assets/AdminPage/StudentHome/Home.svg';
@@ -8,11 +8,33 @@ import BacklogsIcon from '../../../../assets/AdminPage/StudentHome/BacklogsIcon.
 import Progressicon from '../../../../assets/AdminPage/StudentHome/Progressicon.svg';
 import Gradcap from '../../../../assets/AdminPage/StudentHome/Gradcap.svg';
 import Homeicon from '../../../../assets/AdminPage/Basicimg/Home.svg';
-
 import styles from './StudentHomeStyles';
+import {API_URL} from '@env'
 
 const AdminStudentHome = ({ navigation }) => {
   const [activeSection, setActiveSection] = useState(null);
+  const [grades, setGrades] = useState([]);
+  const [selectedGrade, setSelectedGrade] = useState(null);
+
+  useEffect(() => {
+    fetchGrades();
+  }, []);
+
+  const fetchGrades = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/grades`);
+      const data = await response.json();
+      if (data.success) {
+        setGrades(data.grades);
+        if (data.grades.length > 0) {
+          setSelectedGrade(data.grades[0].id);
+          setActiveSection(0);
+        } 
+      }
+    } catch (error) {
+      console.error('Error fetching grades:', error);
+    }
+  };
 
   const data = [
     {
@@ -26,13 +48,17 @@ const AdminStudentHome = ({ navigation }) => {
     },
   ];
 
-
   const Cards = ({ title, Icon, bgColor, color }) => (
     <View style={[styles.card, { backgroundColor: bgColor }]}>
       {Icon}
       <Text style={[styles.cardText, { color: color }]}>{title}</Text>
     </View>
   );
+
+  const handleGradeSelect = (index, gradeId) => {
+    setActiveSection(index);
+    setSelectedGrade(gradeId);
+  };
 
   return (
     <SafeAreaView flexgrow={1} flex={1} style={styles.container}>
@@ -43,22 +69,20 @@ const AdminStudentHome = ({ navigation }) => {
         >
           <HomeIcon height={25} width={25} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Schools</Text>
+        <Text style={styles.headerTitle}>Students</Text>
       </View>
 
-
       <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent} style={styles.classnavsection} nestedScrollEnabled={true}>
-        {["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8"].map((section, index) => (
+        {grades.map((grade, index) => (
           <Pressable
-            key={index}
+            key={grade.id}
             style={[styles.gradeselection, activeSection === index && styles.activeButton]}
-            onPress={() => setActiveSection(index)}
+            onPress={() => handleGradeSelect(index, grade.id)}
           >
-            <Text style={[styles.gradeselectiontext, activeSection === index && styles.activeText]}>{section}</Text>
+            <Text style={[styles.gradeselectiontext, activeSection === index && styles.activeText]}>{grade.grade_name}</Text>
           </Pressable>
         ))}
       </ScrollView>
-
 
       <SectionList
         vertical={true}
@@ -66,21 +90,21 @@ const AdminStudentHome = ({ navigation }) => {
         sections={data}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-
           <Pressable
             onPress={() => {
-              if (item.title === 'Student List') {
-                navigation.navigate('AdminStudentList');
-              } else if (item.title === 'Issues Log') {
-                navigation.navigate('AdminStudentIssuelogs');
+              if (selectedGrade) {
+                if (item.title === 'Student List') {
+                  navigation.navigate('AdminStudentList', { gradeId: selectedGrade });
+                } else if (item.title === 'Issues Log') {
+                  navigation.navigate('AdminStudentIssuelogs', { gradeId: selectedGrade });
+                }
+                else if (item.title === 'Backlogs') {
+                  navigation.navigate('AdminStudentBacklogs', { gradeId: selectedGrade });
+                }
+                else if (item.title === 'Concept Graph') {
+                  navigation.navigate('ConceptGraph', { gradeId: selectedGrade });
+                }
               }
-              else if (item.title === 'Backlogs') {
-                navigation.navigate('AdminStudentBacklogs');
-              }
-              else if (item.title === 'Concept Graph') {
-                navigation.navigate('ConceptGraph');
-              }
-
             }}
           >
             <ScrollView nestedScrollEnabled={true}>

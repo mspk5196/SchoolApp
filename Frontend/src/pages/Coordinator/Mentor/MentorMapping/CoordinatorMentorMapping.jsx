@@ -92,7 +92,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
       Alert.alert('Error', 'Failed to fetch mentor data');
     }
   };
-  
+
   const fetchGradeMentors = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeNonEnroledMentors`, {
@@ -132,62 +132,119 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
     }
   };
 
+
   const addSelectedMentors = async () => {
     try {
       if (selectedFaculties.length === 0) {
         Alert.alert('Error', 'Please select at least one faculty');
         return;
       }
-
-      // Get all sections for the coordinator's grade
+  
+      const selectedMentors = faculties.filter(faculty =>
+        selectedFaculties.includes(faculty.id)
+      );
+  
+      // Get current sections for the grade
       const sectionsResponse = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
       });
-
+  
       const sectionsData = await sectionsResponse.json();
-
-      if (!sectionsData.success || sectionsData.gradeSections.length === 0) {
-        Alert.alert('Error', 'No sections available for this grade');
+  
+      if (!sectionsData.success) {
+        Alert.alert('Error', 'Failed to fetch grade sections');
         return;
       }
-
-      const sections = sectionsData.gradeSections;
-      const selectedMentors = faculties.filter(faculty => selectedFaculties.includes(faculty.id));
-
-      // Assign mentors to sections in order
+  
+      // Get all existing sections
+      let existingSections = sectionsData.gradeSections;
+      console.log("Existing sections:", existingSections);
+  
+      // Generate new section names starting from the next letter after the last section
+      const sectionNames = existingSections.map(sec => sec.section_name).sort();
+      let nextSectionChar = 'A';
+      
+      if (sectionNames.length > 0) {
+        // Find the last section name and get the next character
+        const lastSection = sectionNames[sectionNames.length - 1];
+        nextSectionChar = String.fromCharCode(lastSection.charCodeAt(0) + 1);
+      }
+      
+      console.log("Next section will start from:", nextSectionChar);
+      
+      // Process each selected mentor
+      let successCount = 0;
+      
       for (let i = 0; i < selectedMentors.length; i++) {
         const mentor = selectedMentors[i];
-        const sectionIndex = i % sections.length; // Cycle through sections if more mentors than sections
-        const sectionId = sections[sectionIndex].id;
-
-        const response = await fetch(`${API_URL}/api/coordinator/mentor/assignMentorToSection`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mentor_id: mentor.id,
-            section_id: sectionId,
-            grade_id: coordinatorData.grade_id
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!data.success) {
-          console.error(`Failed to assign mentor ${mentor.id} to section ${sectionId}`);
+        const newSectionName = String.fromCharCode(nextSectionChar.charCodeAt(0) + i);
+        
+        console.log(`Creating section ${newSectionName} for mentor ${mentor.mentor_name}`);
+        
+        try {
+          // Create new section in DB
+          const newSectionRes = await fetch(`${API_URL}/api/coordinator/createSection`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: newSectionName,
+              grade_id: coordinatorData.grade_id,
+            }),
+          });
+  
+          const newSectionData = await newSectionRes.json();
+          
+          if (!newSectionData.success) {
+            console.error(`Failed to create new section ${newSectionName}`);
+            continue;
+          }
+          
+          const sectionId = newSectionData.section_id;
+          console.log(`Successfully created section ${newSectionName} with ID ${sectionId}`);
+          
+          // Assign mentor to the newly created section
+          const assignResponse = await fetch(`${API_URL}/api/coordinator/mentor/assignMentorToSection`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              mentor_id: mentor.id,
+              section_id: sectionId,
+              grade_id: coordinatorData.grade_id,
+            }),
+          });
+  
+          const assignData = await assignResponse.json();
+  
+          if (!assignData.success) {
+            console.error(`Failed to assign mentor ${mentor.id} to section ${sectionId}`);
+          } else {
+            console.log(`Successfully assigned mentor ${mentor.mentor_name} to section ${newSectionName}`);
+            successCount++;
+          }
+        } catch (err) {
+          console.error(`Error processing mentor ${mentor.mentor_name}:`, err);
         }
       }
-
-      Alert.alert('Success', 'Mentors assigned to sections successfully');
+  
+      if (successCount > 0) {
+        Alert.alert('Success', `${successCount} mentor(s) assigned to new sections successfully`);
+      } else {
+        Alert.alert('Error', 'Failed to assign mentors to sections');
+      }
+      
       fetchSectionMentor(); // Refresh the mentor list
+      fetchGradeSections(); // Refresh the section list
       setIsModalVisible(false);
       setSelectedFaculties([]);
+      
     } catch (error) {
       console.error('Error assigning mentors:', error);
       Alert.alert('Error', 'Failed to assign mentors to sections');
     }
   };
+
 
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {

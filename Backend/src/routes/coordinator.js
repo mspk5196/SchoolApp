@@ -173,6 +173,7 @@ router.post('/coordinator/mentor/getGradeMentors', coordinatorController.getGrad
 router.post('/coordinator/mentor/getSectionMentor', coordinatorController.getSectionMentor);
 router.post('/coordinator/mentor/getGradeNonEnroledMentors', coordinatorController.getGradeNonEnroledMentors);
 router.post('/coordinator/mentor/assignMentorToSection', coordinatorController.assignMentorToSection);
+router.post('/coordinator/createSection', coordinatorController.createSection);
 router.post('/coordinator/mentor/getMentorSectionStudents', coordinatorController.getMentorSectionStudents);
 router.post('/coordinator/mentor/getMentorGradeSubject', coordinatorController.getMentorGradeSubject);
 router.post('/coordinator/mentor/getSubjectGradeMentor', coordinatorController.getSubjectGradeMentor);

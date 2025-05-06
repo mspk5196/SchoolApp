@@ -4,13 +4,13 @@ import {
     View,
     Keyboard,
     Pressable,
-    TouchableWithoutFeedback, 
+    TouchableWithoutFeedback,
     ScrollView,
     Alert,
     TouchableOpacity,
-} from 'react-native';  
+} from 'react-native';
 import Loginimg from '../../../assets/FirstPage/login-page/img/loginimg.svg';
-import styles from './loginsty'; 
+import styles from './loginsty';
 import { TextInput } from 'react-native-paper';
 import React, { useState } from 'react';
 import Separator from '../../../assets/FirstPage/login-page/img/separator.svg';
@@ -23,17 +23,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@env';
 import { encryptPassword } from '../../../components/Login/encrypt/encryptPassword';
 
- 
-const Login = () => { 
+
+const Login = () => {
     const navigation = useNavigation();
     const [phoneNumber, setPhoneNumber] = useState('');
-    const [password, setPassword] = useState(''); 
-    const [checked, setChecked] = useState(false); 
+    const [password, setPassword] = useState('');
+    const [checked, setChecked] = useState(false);
 
     const handleLogin = async () => {
         console.log("API URL:", API_URL);
-        try { 
- 
+        try {
+
             if (checked) {
                 const encryptedPassword = encryptPassword(password);
 
@@ -44,12 +44,12 @@ const Login = () => {
                 });
 
                 const data = await response.json();
- 
-                if (!data.success) { 
-                    Alert.alert(data.message || 'Invalid credentials'); 
+
+                if (!data.success) {
+                    Alert.alert(data.message || 'Invalid credentials');
                     return;
-                }  
- 
+                }
+
                 await AsyncStorage.setItem('userRoles', JSON.stringify(data.user.roles));
                 await AsyncStorage.setItem('userPhone', JSON.stringify(data.user.phone));
                 navigation.navigate('Redirect', { phoneNumber });
@@ -73,10 +73,10 @@ const Login = () => {
                         <Text style={styles.sectoptext}>Login to continue</Text>
                         <Loginimg height={267} width={290} style={styles.logimg} />
 
-                        <View style={styles.inputcontainer}> 
+                        <View style={styles.inputcontainer}>
                             <TextInput
                                 style={styles.input}
-                                label="Mobile" 
+                                label="Mobile"
                                 value={phoneNumber}
                                 onChangeText={setPhoneNumber}
                                 mode="outlined"
