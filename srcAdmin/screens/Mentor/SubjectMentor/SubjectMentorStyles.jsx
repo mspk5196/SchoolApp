@@ -11,6 +11,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 10,
     paddingTop: 32,
+    marginHorizontal: -10,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
     backgroundColor: '#FAFAFA',
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 8,
     marginHorizontal: 10,
-    padding: 12,
+    padding: 20,
     borderRadius: 10,
     backgroundColor: '#fff',
     elevation: 3,
@@ -103,18 +104,19 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
     justifyContent: 'center',
+    gap: 5,
   },
   name: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#000',
   },
   specification: {
-    fontSize: 14,
+    fontSize: 12.8,
     color: '#555',
   },
   facultyId: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#777',
   },
   moreIcon: {
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
   },
   moreText: {
     fontSize: 20,
-    color: '#999',
+    color: '#333',
   },
   modal: {
     justifyContent: 'flex-end',

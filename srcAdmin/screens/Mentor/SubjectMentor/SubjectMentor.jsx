@@ -72,7 +72,7 @@ const SubjectMentor = ({navigation}) => {
         >
           <PreviousIcon  color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mentor List</Text>
+        <Text style={styles.headerTitle}>Subject Mentors</Text>
       </View>
 
       <ScrollView
