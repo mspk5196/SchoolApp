@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import {StyleSheet} from 'react-native';
 
 const styles = StyleSheet.create({
   container: {
@@ -8,55 +8,58 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
+    padding: 20,
+    paddingBottom: 10,
+    paddingTop: 32,
     borderBottomWidth: 1,
-    borderBottomColor: '#E3E3E3',
-    backgroundColor: 'white',
+    borderBottomColor: '#E0E0E0',
+    backgroundColor: '#FAFAFA',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderColor: '#00000080',
   },
-  headerTxt: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginLeft: 10,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333333',
   },
-  BackIcon: {
-    width: 20,
-    height: 20,
+  backButton: {
+    paddingRight: 10,
+    paddingTop: 10,
   },
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#F5F7FF',
     alignItems: 'center',
   },
   searchBox: {
-    flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    flex: 1,
     paddingHorizontal: 12,
+    paddingVertical: 5,
     alignItems: 'center',
+    backgroundColor: '#EEEFF9',
+    borderRadius: 40,
     marginRight: 10,
-    height: 40,
   },
-  searchIcon: {
-    fontSize: 16,
-    color: '#999',
+  searchicon: {
+    width: 20,
+    height: 20,
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#333',
+    height: 40,
+    fontSize: 14,
+    padding: 0,
   },
   pendingIcon: {
     marginRight: 5,
   },
-    completedIcon: {
+  completedIcon: {
     marginRight: 5,
-    },
+  },
   refreshButton: {
     width: 40,
     height: 40,
@@ -76,20 +79,22 @@ const styles = StyleSheet.create({
   },
   facultyList: {
     padding: 10,
+    paddingTop: 0,
   },
   taskList: {
     padding: 10,
+    paddingTop: 0,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 8,
-    padding: 16,
+    padding: 20,
     borderRadius: 10,
     backgroundColor: '#fff',
     elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     position: 'relative',
@@ -103,7 +108,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     position: 'relative',
@@ -128,6 +133,7 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
+    gap: 3,
   },
   name: {
     fontSize: 16,
@@ -193,7 +199,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },

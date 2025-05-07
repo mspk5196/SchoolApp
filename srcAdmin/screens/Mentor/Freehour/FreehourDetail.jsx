@@ -7,7 +7,7 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
-import BackIcon from '../../../assets/FreeHour/leftarrow.svg';
+import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg';
 import TimeIcon from '../../../assets/FreeHour/time.svg';
 import styles from './FreehourDetailStyle';
 import staff from '../../../assets/SubjectMentor/staff.png';
@@ -24,12 +24,13 @@ const FreehourDetail = ({navigation, route}) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <BackIcon
-          width={styles.BackIcon.width}
-          height={styles.BackIcon.height}
-          onPress={() => navigation.goBack()}
-        />
-        <Text style={styles.headerTxt}>Free hour</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation && navigation.goBack()}
+        >
+          <PreviousIcon  color="black" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Free Hour</Text>
       </View>
 
       <ScrollView style={styles.scrollView}>

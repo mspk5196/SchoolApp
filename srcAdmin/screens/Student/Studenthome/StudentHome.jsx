@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import HomeIcon from '../../../assets/StudentHome/Home';
+import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg'
 import StudentProfileIcon from '../../../assets/StudentHome/ProfileIcon.svg';
 import IssueIcon from '../../../assets/StudentHome/IssueIcon.svg';
 import BacklogsIcon from '../../../assets/StudentHome/BacklogsIcon.svg';
@@ -41,9 +41,9 @@ const StudentHome = ({ navigation }) => {
           style={styles.backButton}
           onPress={() => navigation && navigation.goBack()}
         >
-          <HomeIcon height={25} width={25}/>
+          <PreviousIcon  color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Schools</Text>
+        <Text style={styles.headerTitle}>Free Hour</Text>
       </View>
 
    

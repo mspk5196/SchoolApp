@@ -11,10 +11,9 @@ import {
   Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import BackIcon from '../../../assets/SubjectMentor/leftarrow.svg';
+import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg';
 import styles from './FreeHourAssignStyle';
 import staff from '../../../assets/SubjectMentor/staff.png';
-import HomeIcon from '../../../assets/FreeHour/home.svg';
 import Footer from '../../../components/footerhome/footer';
 
 const FreeHourAssign = ({ navigation, route }) => {
@@ -127,12 +126,13 @@ const FreeHourAssign = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <BackIcon
-          width={styles.BackIcon.width}
-          height={styles.BackIcon.height}
-          onPress={() => navigation.goBack()}
-        />
-        <Text style={styles.headerTxt}>Free hour</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation && navigation.goBack()}
+        >
+          <PreviousIcon  color="black" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Free Hour</Text>
       </View>
 
       <ScrollView style={styles.content}>

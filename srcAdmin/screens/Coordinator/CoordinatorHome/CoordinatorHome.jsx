@@ -2,11 +2,10 @@ import React from 'react';
 import {Text, View, SectionList, TouchableOpacity} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import styles from './CoordinatorHomeStyle';
-import HomeIcon from '../../../assets/CoordinatorHome/home.svg'; // Reusing existing icon
-import CoordinatorListIcon from '../../../assets/CoordinatorHome/coordinatorlist.svg'; // You'll need to create this icon
-import EnrollmentIcon from '../../../assets/CoordinatorHome/enrollment.svg'; // You'll need to create this icon
-import LeaveApprovalIcon from '../../../assets/CoordinatorHome/leaveapproval.svg'; // You'll need to create this icon
-import BackIcon from '../../../assets/CoordinatorHome/Back.svg'; // You'll need to create this icon
+import CoordinatorListIcon from '../../../assets/CoordinatorHome/coordinatorlist.svg'; 
+import EnrollmentIcon from '../../../assets/CoordinatorHome/enrollment.svg'; 
+import LeaveApprovalIcon from '../../../assets/CoordinatorHome/leaveapproval.svg'; 
+import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg'; 
 import Footer from '../../../components/footerhome/footer';
 
 const data = [
@@ -57,7 +56,7 @@ const CoordinatorHome = ({navigation}) => {
           style={styles.backButton}
           onPress={() => navigation && navigation.goBack()}
         >
-            <BackIcon width={20} height={20} />  
+          <PreviousIcon />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Coordinator</Text>
       </View>

@@ -8,7 +8,7 @@ const styles = StyleSheet.create({
         paddingTop: 32,
         borderBottomWidth: 1,
         borderBottomColor: '#E0E0E0',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FAFAFA',
         flexDirection: 'row',
         alignItems: 'flex-end',
         borderColor: '#00000080',

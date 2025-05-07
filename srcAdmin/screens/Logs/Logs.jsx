@@ -11,11 +11,10 @@ import {
 } from 'react-native';
 import styles from './LogsStyles'; // Assuming you have a separate file for styles
 import Clock from '../../assets/Logs/clock2.svg';
-import BackIcon from '../../assets/Logs/Back.svg';
+import PreviousIcon from '../../assets/Basicimg/PrevBtn.svg';
 import Bell from '../../assets/Logs/bell.svg';
 import Call from '../../assets/Logs/callicon.svg';
 import Message from '../../assets/Logs/msgicon.svg';
-import Home from '../../assets/Logs/home.svg';
 import Footer from '../../components/footerhome/footer';
 const Logs = () => {
   return (
@@ -23,8 +22,11 @@ const Logs = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <BackIcon width={20} height={20} />
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation && navigation.goBack()}
+        >
+          <PreviousIcon  color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Logs</Text>
       </View>

@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     marginRight: 12,
     borderWidth: 2,
-    borderColor: '#FFD700', // Gold border for better look
+    borderColor: '#FFD700', 
   },
   cardContent: {
     flex: 1,

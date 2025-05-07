@@ -7,28 +7,29 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    padding: 20,
+    paddingBottom: 10,
+    paddingTop: 32,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderColor: '#00000080',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333333',
+  },
+  backButton: {
+    paddingRight: 10,
+    paddingTop: 10,
   },
   assesscontainer:{
     flexDirection: 'row',
   },
-  backButton: {
-    marginRight: 12,
-  },
-  backArrow: {
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#333333',
-    marginLeft: 8,
-  },
+  
   scrollView: {
     flex: 1,
   },

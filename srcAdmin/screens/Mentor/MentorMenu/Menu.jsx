@@ -6,9 +6,8 @@ import SubjectIcon from '../../../assets/MentorHome/subject.svg';
 import MentorListIcon from '../../../assets/MentorHome/mentorlist.svg';
 import DisciplineIcon from '../../../assets/MentorHome/mapping.svg';
 import Freehour from '../../../assets/MentorHome/Freehour.svg';
-import HomeIcon from '../../../assets/MentorHome/home.svg';
 import Footer from '../../../components/footerhome/footer.jsx';
-
+import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg';
 
 const data = [
   {
@@ -66,9 +65,9 @@ const Mentor = ({navigation}) => {
           style={styles.backButton}
           onPress={() => navigation && navigation.goBack()}
         >
-          <HomeIcon height={25} width={25}/>
+          <PreviousIcon  color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Schools</Text>
+        <Text style={styles.headerTitle}>Mentors</Text>
       </View>
       <SectionList
         sections={data}

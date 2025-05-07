@@ -12,7 +12,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     paddingTop: 42,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
     backgroundColor: '#FFFFFF',
     alignItems: 'flex-end',
     borderColor: '#00000080',

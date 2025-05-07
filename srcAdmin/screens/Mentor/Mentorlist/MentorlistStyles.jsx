@@ -97,10 +97,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flex: 1,
         paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingVertical: 5,
         alignItems: 'center',
         backgroundColor: '#EEEFF9',
-        borderRadius: 10,
+        borderRadius: 30,
         marginRight: 10,
     },
     

@@ -53,7 +53,7 @@ const CoordinatorList = ({ navigation }) => {
   };
   
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}

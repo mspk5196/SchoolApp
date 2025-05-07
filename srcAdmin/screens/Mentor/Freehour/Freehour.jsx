@@ -10,8 +10,8 @@ import {
   Image,
   Modal,
 } from 'react-native';
-import BackIcon from '../../../assets/FreeHour/leftarrow.svg';
-import SearchIcon from '../../../assets/FreeHour/search.svg';
+import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg';
+import Search from '../../../assets/StudentHome/studentprofile/search.svg';
 import HistoryIcon from '../../../assets/FreeHour/history.svg';
 import PendingIcon from '../../../assets/FreeHour/pending.svg';
 import CompletedIcon from '../../../assets/FreeHour/completed.svg';
@@ -118,20 +118,22 @@ const Freehour = ({navigation, route}) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <BackIcon
-          width={styles.BackIcon.width}
-          height={styles.BackIcon.height}
-          onPress={() => navigation.goBack()}
-        />
-        <Text style={styles.headerTxt}>Free hour</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation && navigation.goBack()}
+        >
+          <PreviousIcon  color="black" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Free Hour</Text>
       </View>
 
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
-            <SearchIcon width={20} height={20} style={styles.searchIcon} />
-           <TextInput
+        <Search style={styles.searchicon}/>
+          <TextInput
             style={styles.searchInput}
-            placeholder="Search..."
+            placeholder="Search by name or ID"
+            placeholderTextColor={'#666'}
             value={searchText}
             onChangeText={setSearchText}
           />
