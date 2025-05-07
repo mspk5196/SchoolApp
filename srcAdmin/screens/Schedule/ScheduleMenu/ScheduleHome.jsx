@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Text, View, ScrollView, Pressable, SectionList, Modal, TouchableOpacity } from 'react-native'
 import styles from './ScheduleHomeStyle'
 import { Calendar } from 'react-native-calendars' 
-import HomeIcon from '../../../assets/ScheduleMenu/Home.svg'
+import PreviousIcon from '../../../assets/Basicimg/PrevBtn.svg'
 import DeleteIcon from '../../../assets/ScheduleMenu/Delete.svg' 
 import RoundHomeIcon from '../../../assets/MentorList/roundhome.svg' 
 import Footer from '../../../components/footerhome/footer'
@@ -97,9 +97,14 @@ const ScheduleHome = ({ navigation }) => {
 
   return (
     <SafeAreaView flexgrow={1} flex={1} style={styles.container}>
-      <View style={styles.Header}>
-        <HomeIcon width={styles.HomeIcon.width} height={styles.HomeIcon.height} onPress={() => navigation.goBack()}/>
-        <Text style={styles.HeaderTxt}>Academic Schedule</Text>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation && navigation.goBack()}
+        >
+          <PreviousIcon  color="black" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Logs</Text>
       </View>
 
       {/* Today date selector similar to MentorDetail */}

@@ -5,25 +5,29 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FaFaFa',
     },
-    HomeIcon: {
-        width: 25,
-        height: 25,
-    },
-    Header: {
+   
+    header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 15,
-        paddingHorizontal: 15,
+        padding: 20,
+        paddingBottom: 10,
+        paddingTop: 32,
         borderBottomWidth: 1,
-        borderBottomColor: '#E3E3E3',
-    },
-    HeaderTxt: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#000000',
-        marginLeft: 10,
-    },
-    // Date selector container
+        borderBottomColor: '#E0E0E0',
+        backgroundColor: '#FAFAFA',
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        borderColor: '#00000080',
+      },
+      headerTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#333333',
+      },
+      backButton: {
+        paddingRight: 10,
+        paddingTop: 10,
+      },
     dateContainer: {
         flexDirection: 'row',
         alignItems: 'center',
