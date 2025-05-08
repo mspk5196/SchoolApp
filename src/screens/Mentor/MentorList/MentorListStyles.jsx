@@ -15,13 +15,13 @@ const styles = StyleSheet.create({
       },
       headerTxt: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: '600',
         color: '#000000',
         marginLeft: 10,
       },
       BackIcon: {
-        width: 20,
-        height: 20,
+        width: 19,
+        height: 17,
       },
     contentContainer: {
         flexDirection: 'row',  // Make items appear in a row
@@ -41,6 +41,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 1,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
     },
     removeButton: {
         marginTop: 8,
@@ -55,6 +57,11 @@ const styles = StyleSheet.create({
     listContent: {
         marginLeft: 0,  // Centered text, so no margin needed
         alignItems: 'center',
+    },
+    homeButtonContainer: {
+      position: 'absolute',
+      bottom: 30,
+      right: 25,
     },
     studentAvatar: {
         width: 60,
@@ -86,14 +93,17 @@ const styles = StyleSheet.create({
       searchContainer: {
         display:'flex',
         flexDirection:'row',
+        backgroundColor: '#EEEFF9',
         marginHorizontal: 16,
         marginVertical: 8,
-        borderRadius: 8,
-        backgroundColor: '#e3e3e3',
+        borderRadius: 15,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
         paddingHorizontal: 10,
         paddingVertical: 5,
       },
       searchInput: {
+        paddingLeft: 14, 
         height: 40,
         fontSize: 16,
         paddingHorizontal: 8,

@@ -1,5 +1,5 @@
 import {View, Text, TextInput, TouchableOpacity, Modal, FlatList} from 'react-native';
-import BackIcon from '../../assets/Profile/Back.svg';
+import BackIcon from '../../assets/GeneralAssests/backarrow.svg';
 import DropdownIcon from '../../assets/Profile/DropDown.svg';
 import React, {useState} from 'react';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';

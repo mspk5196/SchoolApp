@@ -17,13 +17,13 @@ const styles = StyleSheet.create({
       },
       headerTxt: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: '600',
         color: '#000000',
         marginLeft: 10,
       },
       BackIcon: {
-        width: 20,
-        height: 20,
+        width: 19,
+        height: 17,
       },
     gradeSelector: {
         flexGrow: 0,
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#f0f0f0',
+      backgroundColor: '#EEEFF9',
       borderRadius: 24,
       margin: 16,
       paddingHorizontal: 12,

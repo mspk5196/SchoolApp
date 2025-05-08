@@ -15,13 +15,13 @@ const styles = StyleSheet.create({
     },
     headerTxt: {
       fontSize: 20,
-      fontWeight: 'bold',
+      fontWeight: '600',
       color: '#000000',
       marginLeft: 10,
     },
     BackIcon: {
-      width: 20,
-      height: 20,
+      width: 19,
+      height: 17,
     },
     profileSection: {
       flexDirection: 'row',
@@ -29,9 +29,16 @@ const styles = StyleSheet.create({
       padding: 16,
       backgroundColor: '#fff',
       borderBottomWidth:1,
+      borderBottomColor:'#E3E3E3',
+      borderTopLeftRadius:10,
       borderBottomEndRadius:10,
       borderBottomStartRadius:10,
       marginBottom: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
     },
     MentorDayDetails:
     {
@@ -70,6 +77,13 @@ const styles = StyleSheet.create({
       padding: 16,
       backgroundColor: '#fff',
       marginBottom: 10,
+      borderBottomLeftRadius:10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+      borderBottomRightRadius:10,
     },
    
     statBox: {
@@ -83,11 +97,11 @@ const styles = StyleSheet.create({
     },
     statValue: {
       fontSize: 18,
-      fontWeight: 'bold',
+      fontWeight: '600',
       color:'#000'
     },
     statLabel: {
-      fontSize: 12,
+      fontSize: 15,
       color:'#000',
       fontWeight:'600'
 
@@ -95,13 +109,20 @@ const styles = StyleSheet.create({
     infoBox:{
          width:'95%',
          margin:10,
+          borderRadius:10,
+          backgroundColor: '#fff',
+         shadowColor: '#000',
+         shadowOffset: { width: 0, height: 1 },
+         shadowOpacity: 0.1,
+         shadowRadius: 2,
+         elevation: 2,
     },
     infoRow: {
       flexDirection: 'row',
       padding: 16,
       backgroundColor: '#fff',
       marginBottom: 1,
-      borderRadius:10
+      borderRadius:10,
     },
     infoColumn: {
       flex: 1,
@@ -137,16 +158,16 @@ const styles = StyleSheet.create({
     scheduleSection: {
       backgroundColor: '#fff',
       padding: 16,
-      marginTop: 10,
+      marginTop: 0,
       width:'95%',
-      margin:10,
+      marginLeft:0,
       borderRadius:10,
-      marginBottom:-10
+      marginBottom:-20
     },
     sectionTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      marginBottom: 20,
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 10,
       color:'#000'
     },
     dateSelector: {
@@ -163,7 +184,7 @@ const styles = StyleSheet.create({
 
     },
     assignButton:{
-       marginLeft:142,
+       marginLeft:135,
     },
     dateText: {
       fontSize: 14,
@@ -178,7 +199,12 @@ const styles = StyleSheet.create({
       backgroundColor: '#F7F7F7',
       marginBottom: 7,
       width:'95%',
-      margin:10
+      margin:10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 0.5,
     },
     subjectText: {
       fontSize: 16,
@@ -211,7 +237,13 @@ const styles = StyleSheet.create({
       backgroundColor:'#fff',
       width:'95%',
       margin:10,
-      borderRadius:10
+      borderRadius:10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+
     },
     modalOverlay: {
       flex: 1,
@@ -338,7 +370,7 @@ const styles = StyleSheet.create({
     },
     sessionModalTitle: {
       fontSize: 18,
-      fontWeight: '700',
+      fontWeight: '600',
       color: '#000',
       marginLeft: 10,
     },
@@ -364,13 +396,13 @@ const styles = StyleSheet.create({
       marginTop: 20,
       backgroundColor: '#0C36FF',
       paddingVertical: 12,
-      borderRadius: 5,
+      borderRadius: 30,
       alignItems: 'center',
     },
     allotButtonText: {
       color: '#fff',
       fontSize: 16,
-      fontWeight: '600',
+      fontWeight: '500',
     },
     // Add new styles for faculty modal
     facultyModalContent: {
@@ -384,8 +416,11 @@ const styles = StyleSheet.create({
       marginBottom: 15,
     },
     searchBox: {
-      backgroundColor: '#e8e8e8',
+      backgroundColor: '#EEEFF9',
       padding: 12,
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+      fontSize: 14,
       borderRadius: 10,
     },
     // Add these styles to your existing styles object in MentorListDetailsStyles.jsx
@@ -449,7 +484,7 @@ todayIndicator: {
       marginTop: 15,
       backgroundColor: '#0C36FF',
       paddingVertical: 12,
-      borderRadius: 5,
+      borderRadius: 30,
       alignItems: 'center',
     },
     penicon:{

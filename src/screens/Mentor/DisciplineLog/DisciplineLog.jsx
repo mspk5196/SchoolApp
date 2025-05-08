@@ -12,7 +12,8 @@ import {
   Platform,
   KeyboardAvoidingView
 } from 'react-native';
-import BackIcon from '../../../assets/DisciplineLog/leftarrow.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
+import SearchIcon from '../../../assets/GeneralAssests/search.svg';
 import AddIcon from '../../../assets/DisciplineLog/Add.svg';
 import Phone from '../../../assets/DisciplineLog/Phone.svg';
 import MessageSquare from '../../../assets/DisciplineLog/MessageSquare.svg';
@@ -112,9 +113,10 @@ const DisciplineLog = ({ navigation }) => {
       </View>
       
       <View style={styles.searchContainer}>
+        <SearchIcon style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by name or registration number..."
+          placeholder="       Search by name or registration number..."
           value={searchText}
           onChangeText={setSearchText}
           clearButtonMode="while-editing"

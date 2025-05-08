@@ -17,14 +17,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   headerTxt: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 23,
+    fontWeight: '600',
     color: '#000000',
     marginLeft: 10,
   },
   BackIcon: {
-    width: 20,
-    height: 20,
+    width: 19,
+    height: 17,
   },
   monthSelector: {
     flexDirection: 'row',

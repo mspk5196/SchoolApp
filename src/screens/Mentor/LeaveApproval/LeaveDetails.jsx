@@ -8,7 +8,7 @@ import {
   SafeAreaView,
   StyleSheet
 } from 'react-native';
-import BackIcon from "../../../assets/LeaveApproval/leftarrow.svg";
+import BackIcon from "../../../assets/GeneralAssests/backarrow.svg";
 import Dateicon from '../../../assets/LeaveApproval/date.svg';
 import Reasonicon from '../../../assets/LeaveApproval/reason.svg';
 import Staff from "../../../assets/LeaveApproval/staff.png";

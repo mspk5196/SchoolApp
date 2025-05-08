@@ -11,7 +11,7 @@ import {
   ScrollView 
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import BackIcon from '../../assets/Event/Back.svg';
+import BackIcon from '../../assets/GeneralAssests/backarrow.svg';
 import styles from './EventStyle';
 import CalendarIcon from '../../assets/Event/Calendar.svg';
 import LocationIcon from '../../assets/Event/location.svg';
@@ -109,7 +109,7 @@ const EventDetail = ({ event, visible, onClose }) => {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose}>
-            <BackIcon width={24} height={24} />
+            <BackIcon width={19} height={17} />
           </TouchableOpacity>
           <Text style={styles.headerTxt}>Events</Text>
         </View>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, View, ScrollView, Pressable, TouchableOpacity } from 'react-native';
-import BackIcon from '../../../assets/Subjects/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import styles from './LevelPromotionStyle';
 
 const LevelPromotion = ({ navigation }) => {

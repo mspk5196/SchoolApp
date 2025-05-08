@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView, Modal } from 'react-native';
 import styles from './MentorDetailsStyles';
-import BackIcon from '../../../assets/MentorMapping/leftarrow.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import Person from '../../../assets/MentorMapping/person.svg';
 import Staff from '../../../assets/MentorMapping/staff.png';
 import Mentorimg from '../../../assets/MentorMapping/mentor.svg';
@@ -125,13 +125,13 @@ const MentorDetails = ({ route, navigation }) => {
                 <Mentorimg width={50} height={50} style={styles.mentorAvatar} />
               </View>
               <View style={styles.listContent}>
-                <Text style={styles.listName}>{subject.subject}</Text>
+                <Text style={styles.listNamesubject}>{subject.subject}</Text>
                 <TouchableOpacity onPress={() => handleOpenStaffModal(index)}>
-                  <Text style={[styles.listId, { color: subject.selectedStaff ? '#000' : '#007BFF' }]}>
+                  <Text style={[styles.listIdstaff, { color: subject.selectedStaff ? '#000000' : '#007BFF' }]}>
                     {subject.selectedStaff ? subject.facultyName : 'Faculty name +'}
                   </Text>
                 </TouchableOpacity>
-                <Text style={[styles.listId, { color: subject.selectedStaff ? '#000' : '#007BFF' }]}>
+                <Text style={[styles.listIdsubject, { color: subject.selectedStaff ? '#000000' : '#007BFF' }]}>
                   {subject.selectedStaff ? subject.facultyId : 'Faculty ID +'}
                 </Text>
               </View>

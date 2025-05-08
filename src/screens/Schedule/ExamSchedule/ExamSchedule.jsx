@@ -18,7 +18,7 @@ import {
   MenuTrigger,
 } from 'react-native-popup-menu';
 import {Picker} from '@react-native-picker/picker';
-import BackIcon from '../../../assets/ExamSchedule/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import BookIcon from '../../../assets/ExamSchedule/Book.svg';
 import FrequencyIcon from '../../../assets/ExamSchedule/Repeat.svg';
 import TimeIcon from '../../../assets/ExamSchedule/Time.svg';

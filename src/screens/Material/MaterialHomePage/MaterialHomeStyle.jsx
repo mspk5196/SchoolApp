@@ -6,8 +6,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#FaFaFa',
     },
     HomeIcon: {
-        width: 25,
-        height: 25,
+        width: 19,
+        height: 17,
     },
     Header: {
         flexDirection: 'row',
@@ -18,8 +18,8 @@ const styles = StyleSheet.create({
         borderBottomColor: '#E3E3E3',
     },
     HeaderTxt: {
-        fontSize: 27,
-        fontWeight: 'bold',
+        fontSize: 23,
+        fontWeight: '600',
         color: '#000000',
         marginLeft: 10,
     },

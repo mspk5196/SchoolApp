@@ -13,7 +13,7 @@ import {
   Alert,
   StatusBar
 } from 'react-native';
-import BackIcon from '../../assets/Event/Back.svg';
+import BackIcon from '../../assets/GeneralAssests/backarrow.svg';
 import CalendarIcon from '../../assets/Event/Calender.svg';
 import styles from './AddEventFormStyle';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -260,7 +260,7 @@ const AddEvent = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <BackIcon width={24} height={24} />
+          <BackIcon width={19} height={17} />
         </TouchableOpacity>
         <Text style={styles.headerText}>Event</Text>
       </View>

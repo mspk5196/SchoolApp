@@ -8,7 +8,7 @@ import {
   Modal, 
   TextInput
 } from 'react-native';
-import BackIcon from '../../assets/Request/Back.svg';
+import BackIcon from '../../assets/GeneralAssests/backarrow.svg';
 import styles from './GeneralActivityStyle';
 
 const SectionItem = ({title}) => {

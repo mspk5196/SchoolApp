@@ -10,7 +10,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Calendar} from 'react-native-calendars';
 import Modal from 'react-native-modal';
-import BackIcon from '../../../assets/InvigilationDuties/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import BookIcon from '../../../assets/InvigilationDuties/Book.svg';
 import CalendarIcon from '../../../assets/InvigilationDuties/Calendar.svg';
 import TimeIcon from '../../../assets/InvigilationDuties/Time.svg';

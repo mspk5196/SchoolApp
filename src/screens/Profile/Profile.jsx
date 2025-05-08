@@ -1,6 +1,6 @@
 import React from 'react';
 import {SafeAreaView, View, Text, Image, TouchableOpacity} from 'react-native';
-import BackIcon from '../../assets/Profile/Back.svg';
+import BackIcon from '../../assets/GeneralAssests/backarrow.svg';
 import ProfileIcon from '../../assets/Profile/profile.png';
 import Total from '../../assets/Profile/total.svg';
 import Present from '../../assets/Profile/present.svg';

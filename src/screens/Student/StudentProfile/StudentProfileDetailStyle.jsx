@@ -12,13 +12,13 @@ const styles = StyleSheet.create({
       },
       headerTxt: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: '600',
         color: '#000000',
         marginLeft: 10,
       },
       BackIcon: {
-        width: 20,
-        height: 20,
+        width: 19,
+        height: 17,
       },
       container: {
         flex: 1,
@@ -98,6 +98,21 @@ const styles = StyleSheet.create({
       moreOptions: {
         fontSize: 24,
         fontWeight: 'bold',
+        color: '#000',
+      },
+      detailText: {
+        fontSize: 13,
+        fontWeight:'700',
+        color: '#333',
+      },
+      editButton: {
+        marginLeft: 5,
+        padding: 4,
+      },
+      editIcon: {
+        width: 15,
+        height: 15,
+        tintColor: '#666',
       },
       detailsRow: {
         flexDirection: 'row',

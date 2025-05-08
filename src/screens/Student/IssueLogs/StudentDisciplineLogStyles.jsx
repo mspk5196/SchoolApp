@@ -16,13 +16,13 @@ const styles = StyleSheet.create({
   },
   headerTxt: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#000000',
     marginLeft: 10,
   },
   BackIcon: {
-    width: 20,
-    height: 20,
+    width: 19,
+    height: 17,
   },
   selectedCard: {
     backgroundColor: '#EBEEFF',
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   searchInput: {
-    backgroundColor: '#fff',
+    backgroundColor: '#EEEFF9',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,

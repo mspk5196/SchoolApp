@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, TextInput, Modal, Pressable } from 'react-native';
-import BackIcon from '../../../assets/SubjectActivityEnrollment/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import AddIcon from '../../../assets/SubjectActivityEnrollment/Add.svg';
 import DeleteIcon from '../../../assets/SubjectActivityEnrollment/Delete.svg';
 import CancelIcon from '../../../assets/SubjectActivityEnrollment/Cancel.svg';

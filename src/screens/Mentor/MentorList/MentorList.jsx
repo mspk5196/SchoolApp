@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput } from 'react-native';
-import BackIcon from "../../../assets/MentorList/leftarrow.svg";
+import BackIcon from "../../../assets/GeneralAssests/backarrow.svg";
+import Roundhome from '../../../assets/MentorList/roundhome.svg';
 import styles from './MentorListStyles';
 const Staff = require('../../../assets/MentorList/staff.png');
 import Search from '../../../assets/MentorList/search.svg'
@@ -55,29 +56,36 @@ const MentorList = ({ navigation }) => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name or ID"
+          placeholderTextColor="#888"
           value={searchText}
           onChangeText={handleSearch}
         />
       </View>
       
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        {(searchText ? filteredStudents : students).map((student, index) => (
+      {(searchText ? filteredStudents : students).map((student, index) => (
           <TouchableOpacity 
-            key={index} 
-            style={styles.listItem}
-            onPress={() => handleMentorPress(student)}
-          >
+          key={index} 
+          style={styles.listItem}
+          onPress={() => handleMentorPress(student)}
+        >
             <Image source={Staff} style={styles.studentAvatar} />
+         
             <View style={styles.listContent}>
               <Text style={styles.listName}>{student.name}</Text>
               <Text style={styles.listId}>{student.id}</Text>
             </View>
+           
+        
             <View style={styles.removeButton}>
               <Text style={styles.removeText}>View</Text>
             </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
+      <TouchableOpacity style={styles.homeButtonContainer}>
+        <Roundhome width={60} height={60}/>
+      </TouchableOpacity>
     </View>
     
   );

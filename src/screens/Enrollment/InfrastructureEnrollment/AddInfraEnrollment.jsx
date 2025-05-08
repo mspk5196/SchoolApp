@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal } from 'react-native';
-import BackIcon from '../../../assets/InfrastructureEnrollment/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import styles from './AddInfraEnrollmentStyle'; 
 
 const AddInfraEnrollment = ({ navigation, route }) => {
@@ -186,7 +186,7 @@ const AddInfraEnrollment = ({ navigation, route }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <BackIcon width={20} height={20} />
+          <BackIcon width={19} height={17} />
         </TouchableOpacity>
         <Text style={styles.headerText}>
           {isEditing ? 'Edit Venue' : 'Infra Enrollment'}

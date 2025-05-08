@@ -7,7 +7,7 @@ import {
   SafeAreaView,
   Image,
 } from 'react-native';
-import BackIcon from '../../../assets/BackLogs/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import styles from './BackLogsStyle';
 
 const BackLogs = ({ navigation }) => {

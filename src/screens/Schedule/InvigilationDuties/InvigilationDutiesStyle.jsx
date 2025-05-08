@@ -14,13 +14,13 @@ const styles = StyleSheet.create({
  },
     headerTxt:{
       fontSize: 20,
-      fontWeight: 'bold',
+      fontWeight: '600',
       color: '#000000',
       marginLeft: 10,
     },
     BackIcon: {
-        width: 20,
-        height: 20,
+        width: 19,
+        height: 17,
     },
     calendercontainer:{
         marginHorizontal: 15,
@@ -45,12 +45,17 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: "white",
         padding: 15,
-        borderRadius: 5,
+        borderRadius: 10,
         flexDirection: "row",
         alignItems: "center",
         marginHorizontal: 20,
         marginVertical: 10,
         borderLeftWidth: 5, 
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
       },
         cardText: {
             fontSize: 18,

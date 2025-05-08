@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Alert } from 'react-native';
 import { Menu, MenuOptions, MenuOption, MenuTrigger, MenuProvider } from 'react-native-popup-menu';
-import BackIcon from '../../../assets/InfrastructureEnrollment/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import AddIcon from '../../../assets/InfrastructureEnrollment/Add.svg';
 import SearchIcon from '../../../assets/InfrastructureEnrollment/Search.svg';
 import FilterIcon from '../../../assets/InfrastructureEnrollment/Filter.svg';

@@ -16,7 +16,7 @@ import { SafeAreaView as SafeAreaContext } from 'react-native-safe-area-context'
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DocumentPicker from 'react-native-document-picker';
 import styles from './EnglishStyle';
-import BackIcon from '../../../assets/Subjects/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import AddIcon from '../../../assets/Subjects/Add.svg';
 import CalendarIcon from '../../../assets/Subjects/Calendar.svg';
 import PdfIcon from '../../../assets/Subjects/pdf-icon.svg';

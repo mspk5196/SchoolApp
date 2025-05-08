@@ -16,7 +16,7 @@ const styles = StyleSheet.create({
   },
   headerTxt: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#000000',
     marginLeft: 10,
   },
@@ -47,34 +47,42 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     color:"#000"
   },
-  // Search bar styles
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-   display:"flex",
-   flexDirection:'row',
+  searchWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
   
-    
- },
+  searchIcon: {
+    position: 'absolute',
+    left: 31,
+    zIndex: 1,
+    top: '62%',
+    transform: [{ translateY: -10 }],
+  },
+  
   searchInput: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#EEEFF9',
     borderRadius: 15,
-    paddingHorizontal: 16,
+    paddingLeft: 44, // space for the icon
     paddingVertical: 10,
     fontSize: 14,
+    marginTop: 15,
+    marginRight: 76,
+    marginLeft: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',
-    width:300,
-    marginRight:15,
-
-  },
-  historyIconContainer:{
+  }, 
+   historyIconContainer:{
     marginLeft: 20,
+    position: 'absolute',
+    right: 20,
+    top: 70,
   },
   historyIcon:{
     marginTop:10,
     marginLeft:12
   },
+
   historyText:{
     color:'#7991A4'
   },
@@ -105,12 +113,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
   },
   listId: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
     fontWeight: '500',
   },
@@ -145,17 +154,18 @@ const styles = StyleSheet.create({
   },
   noResultsText: {
     fontSize: 16,
-    color: '#666',
+    fontWeight: '500',
+    color: '#777777',
   },
   // Add these to your existing styles object in LeaveApprovalStyles.js
 
 approveAllButton: {
   position: 'absolute',
-  bottom: 16,
+  bottom: 26,
   left: 16,
   right: 16,
   backgroundColor: '#0C36FF', // Adjust color to match your design
-  borderRadius: 8,
+  borderRadius: 30,
   padding: 16,
   alignItems: 'center',
   justifyContent: 'center',
@@ -199,9 +209,9 @@ modalContent: {
 },
 modalTitle: {
   fontSize: 18,
-  fontWeight: 'bold',
+  fontWeight: '600',
   marginBottom: 15,
-  color: '#333',
+  color: '#000000',
 },
 rejectionInput: {
   borderWidth: 1,
@@ -314,6 +324,7 @@ historyHeader: {
 
 historyScrollContainer: {
   maxHeight: '90%',
+  paddingHorizontal: 1,
 },
 
 historyItem: {
@@ -348,15 +359,15 @@ historyAvatar: {
 },
 
 historyName: {
-  fontWeight: '700',
-  color: '#333',
+  fontWeight: '600',
+  color: '#000',
   fontSize: 16,
 },
 
 historyId: {
   color: '#666',
   fontWeight: '500',
-  fontSize: 12,
+  fontSize: 13,
 },
 
 statusBadge: {
@@ -366,16 +377,19 @@ statusBadge: {
 },
 
 approvedBadge: {
-  backgroundColor: '#e1f7e1',
+  backgroundColor: '#DDFFD1',
+  borderRadius: 15,
 },
 
 rejectedBadge: {
-  backgroundColor: '#ffebee',
+  backgroundColor: '#d32f2f',
+  borderRadius: 15,
 },
 
 statusText: {
-  fontWeight: 'bold',
+  fontWeight: '600',
   fontSize: 12,
+  color: '#000',
 },
 
 historyDetails: {
@@ -392,7 +406,9 @@ detailRow: {
 
 detailText: {
   marginLeft: 8,
-  color: '#444',
+  color: '#000',
+  fontSize: 13,
+  fontWeight: '500',
   flex: 1,
 },
 
@@ -404,7 +420,7 @@ substitutesSection: {
 },
 
 substitutesTitle: {
-  fontWeight: 'bold',
+  fontWeight: '600',
   marginBottom: 5,
   fontSize: 14,
 },
@@ -413,6 +429,8 @@ substituteHistoryItem: {
   marginLeft: 10,
   marginBottom: 3,
   color: '#444',
+  fontSize: 13,
+  fontWeight: '500',
 },
 
 rejectionSection: {
@@ -438,6 +456,7 @@ actionDateText: {
   marginTop: 10,
   textAlign: 'right',
   color: '#777',
+  fontWeight: '500',
   fontSize: 12,
   fontStyle: 'italic',
 },
@@ -451,6 +470,7 @@ noHistoryContainer: {
 noHistoryText: {
   color: '#777',
   fontSize: 16,
+  fontWeight: '500',
 },
 });
 

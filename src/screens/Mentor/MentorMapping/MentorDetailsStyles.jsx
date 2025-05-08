@@ -2,6 +2,7 @@ import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
     container: {
+        flex: 0,
         backgroundColor: '#FaFaFa',
     },
     SubNavbar: {
@@ -14,7 +15,7 @@ const styles = StyleSheet.create({
        },
        headerTxt: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: '600',
         color: '#000000',
         marginLeft: 10,
         paddingTop: 0,
@@ -24,8 +25,8 @@ const styles = StyleSheet.create({
 
       },
       BackIcon: {
-        width: 20,
-        height: 20,
+        width: 19,
+        height: 17,
         position: 'absolute',
         left: 17,
         top: -17,
@@ -54,6 +55,9 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#FFD700', // Gold border for better look
       },
+      contentContainer:{
+        backgroundColor: '#FAFAFA',
+      },
       cardContent: {
         flex: 1,
         justifyContent: 'center',
@@ -61,15 +65,20 @@ const styles = StyleSheet.create({
       name: {
         fontSize: 16,
         fontWeight: '600',
-        color:'#000'
+        color:'#000000',
+        marginBottom: 4,
       },
       specification: {
-        fontSize: 14,
-        color: '#00',
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#000000',
+        marginBottom: 4,
       },
       facultyId: {
         fontSize: 12,
-        color: '#000',
+        fontWeight: '500',
+        color: '#000000',
+        marginBottom: 4,
       },
       moreIcon: {
         display:'flex',
@@ -86,7 +95,7 @@ const styles = StyleSheet.create({
         display:'flex',
         flexDirection:'row',
         gap:40,
-        marginTop:20
+        marginTop:10
       },
       student:
       {
@@ -106,10 +115,13 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         paddingHorizontal: 20,
         marginHorizontal: 5,
-        borderRadius: 20,
+        borderRadius: 10,
       },
       activeTab: {
-       
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        marginHorizontal: 5,
+        borderRadius: 10,
         borderBottomWidth:2,
         borderBottomColor:'#3557FF'
       },
@@ -136,12 +148,33 @@ const styles = StyleSheet.create({
       listName:{
         fontSize:14,
         fontWeight:'600',
-        color:'#000'
+        color:'#000',
+        marginBottom: 4,
       },
       listId:{
-        fontSize:14,
-        color:'#000'
+        fontSize:12,
+        color:'#777777'
       },
+      listNamesubject:{
+        fontSize:15,
+        fontWeight:'600',
+        color:'#000',
+        marginBottom: -2,
+      },
+      listIdstaff:{
+        fontSize:13,
+        fontWeight:'500',
+        color:'#777777',
+        marginTop:4
+      },
+      listIdsubject:{
+        fontSize:13,
+        fontWeight:'500',
+        color:'#777777',
+        marginTop:4
+      },
+
+
       listItem:{
         flexDirection: 'row',
         alignItems: 'center',
@@ -242,7 +275,7 @@ closeButton: {
 },
 closeButtonText: {
   fontSize: 16,
-  color: '#007BFF',
+  color: '#0027E3',
   fontWeight: '500',
 },
 })

@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Platform, A
 import DocumentPicker from 'react-native-document-picker';
 import { launchImageLibrary } from 'react-native-image-picker';
 import CalenderIcon from '../../../assets/StudentMentorEnrollment/Calender.svg';
-import BackIcon from '../../../assets/StudentMentorEnrollment/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import PlusIcon from '../../../assets/StudentMentorEnrollment/Plus.svg';
 import DeleteIcon from '../../../assets/StudentMentorEnrollment/delete-icon.svg';
 import DateTimePicker from '@react-native-community/datetimepicker';

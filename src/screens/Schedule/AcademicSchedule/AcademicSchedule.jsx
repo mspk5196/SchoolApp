@@ -9,7 +9,7 @@ import {
   SafeAreaView,
   Alert
 } from 'react-native';
-import BackIcon from '../../../assets/AcademicSchedule/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import Tick2Icon from '../../../assets/AcademicSchedule/tick2.svg';
 import Add2Icon from '../../../assets/AcademicSchedule/Add2.svg';
 import Time2Icon from '../../../assets/AcademicSchedule/Time2.svg';

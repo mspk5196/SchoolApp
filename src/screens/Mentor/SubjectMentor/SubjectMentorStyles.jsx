@@ -24,13 +24,13 @@ const styles = StyleSheet.create({
 },
 headerTxt: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#000000',
     marginLeft: 10,
 },
 BackIcon: {
-    width: 20,
-    height: 20,
+    width: 19,
+    height: 17,
 },
   selectedCard: {
     backgroundColor: '#fafafa', 
@@ -113,15 +113,18 @@ activeText: {
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#000000',
+    marginBottom: 4,
   },
   specification: {
     fontSize: 14,
-    color: '#555',
+    color: '#000000',
+    marginBottom: 4,
   },
   facultyId: {
     fontSize: 12,
-    color: '#777',
+    color: '#000000',
+    marginBottom: 4,
   },
   moreIcon: {
     padding: 8,
@@ -129,7 +132,7 @@ activeText: {
   },
   moreText: {
     fontSize: 20,
-    color: '#999',
+    color: '#000000',
   },
   modal: {
     justifyContent: 'flex-end',

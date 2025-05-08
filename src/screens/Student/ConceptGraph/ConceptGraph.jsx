@@ -11,7 +11,7 @@ import {
   Alert
 } from 'react-native';
 import { Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-native-popup-menu';
-import BackIcon from '../../../assets/ConceptGraph/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import CalenderIcon from '../../../assets/ConceptGraph/Calender.svg';
 import SearchIcon from '../../../assets/ConceptGraph/Search.svg';
 import AddIcon from '../../../assets/ConceptGraph/Add.svg';

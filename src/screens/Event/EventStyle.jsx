@@ -20,8 +20,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   headerTxt: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 23,
+    fontWeight: '600',
     color: '#000000',
     marginLeft: 10,
   },

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Text, View, Pressable, ScrollView, SectionList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import HomeIcon from '../../../assets/StudentHome/Home.svg';
+import HomeIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import StudentProfileIcon from '../../../assets/StudentHome/ProfileIcon.svg';
 import IssueIcon from '../../../assets/StudentHome/IssueIcon.svg';
 import BacklogsIcon from '../../../assets/StudentHome/BacklogsIcon.svg';
@@ -10,7 +10,6 @@ import ConceptGraphIcon from '../../../assets/StudentHome/ConceptIcon.svg';
 import styles from './StudentHomeStyle';
 
 const StudentHome = ({ navigation }) => {
-  const [activeSection, setActiveSection] = useState(null);
 
   const data = [
    {
@@ -38,20 +37,6 @@ const StudentHome = ({ navigation }) => {
         <Text style={styles.HeaderTxt}>Students</Text>
       </View>
 
-
-   
-      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent} style={styles.classnavsection} nestedScrollEnabled={true}>
-        {["Section A", "Section B", "Section C", "Section D", "Section E", "Section F", "Section G"].map((section, index) => (
-          <Pressable
-            key={index}
-            style={[styles.gradeselection, activeSection === index && styles.activeButton]}
-            onPress={() => setActiveSection(index)}
-          >
-            <Text style={[styles.gradeselectiontext, activeSection === index && styles.activeText]}>{section}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-   
    
       <SectionList
       vertical={true}

@@ -11,7 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import Modal from 'react-native-modal';
-import BackIcon from '../../../assets/SubjectMentor/leftarrow.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import staff from '../../../assets/SubjectMentor/staff.png';
 import styles from './SubjectMentorStyles';
 import Tickicon from '../../../assets/SubjectMentor/tickicon.svg';

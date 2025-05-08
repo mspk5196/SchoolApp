@@ -16,13 +16,13 @@ const styles = StyleSheet.create({
   },
   headerTxt: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#000000',
     marginLeft: 10,
   },
   BackIcon: {
-    width: 20,
-    height: 20,
+    width: 19,
+    height: 17,
   },
   formContainer: {
     backgroundColor: '#fff',
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.1,
     shadowRadius: 5,
-    elevation: 3,
+    elevation: 0.5,
   },
   inputContainer: {
     marginBottom: 20,

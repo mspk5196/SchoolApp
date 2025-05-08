@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Modal, FlatList, ScrollView, Pressable, TextInput } from 'react-native';
-import BackIcon from "../../../assets/MentorList/leftarrow.svg";
+import BackIcon from "../../../assets/GeneralAssests/backarrow.svg";
 import Numdays from '../../../assets/MentorList/numdays.svg';
 import Clock from '../../../assets/MentorList/clock.svg';
 import Leaveday from '../../../assets/MentorList/leaveday.svg';
@@ -187,7 +187,7 @@ const MentorDetails = ({ route, navigation }) => {
         
         <View style={styles.statsContainer}>
           <View style={[styles.statBox]}>
-            <Numdays width={40}/>
+            <Numdays/>
             <View style={styles.totalText}>
               <Text style={styles.statLabel}>Total</Text>
               <Text style={styles.statValue}>{mentor.total || '0'}</Text>
@@ -267,11 +267,11 @@ const MentorDetails = ({ route, navigation }) => {
               style={styles.assignButton}
               onPress={() => setShowSessionModal(true)}
             >
-              <Assign width={20} height={20} />
+              <Assign width={30} height={25} />
             </TouchableOpacity>
           </View>
         </View>
-        <ScrollView>
+        <ScrollView showsVerticalScrollIndicator={false}>
         {todayClasses.map((cls, index) => (
           <View key={index} style={styles.classItem}>
             <View>
@@ -324,7 +324,7 @@ const MentorDetails = ({ route, navigation }) => {
             <Calendar
               current={formattedDate}
               markedDates={{
-                [formattedDate]: { selected: true, selectedColor: '#0066CC' }
+                [formattedDate]: { selected: true, selectedColor: '#3557FF' }
               }}
               onDayPress={handleDateSelect}
               theme={{
@@ -348,14 +348,14 @@ const MentorDetails = ({ route, navigation }) => {
           <View style={styles.sessionModalContent}>
             <View style={styles.sessionModalHeader}>
               <BackIcon 
-                width={20} 
-                height={20} 
+                width={19} 
+                height={17} 
                 onPress={() => setShowSessionModal(false)}
               />
               <Text style={styles.sessionModalTitle}>Substitute allocation</Text>
             </View>
             
-            <ScrollView style={styles.sessionList}>
+            <ScrollView style={styles.sessionList} showsVerticalScrollIndicator={false}>
               {sessions.map((session) => (
                 <TouchableOpacity 
                   key={session.id}
@@ -364,9 +364,9 @@ const MentorDetails = ({ route, navigation }) => {
                 >
                   <View style={styles.checkboxContainer}>
                     {selectedSession?.id === session.id ? (
-                      <Tickbox width={20} height={20} />
+                      <Tickbox width={16} height={16} />
                     ) : (
-                      <Tick width={20} height={20} />
+                      <Tick width={16} height={16} />
                     )}
                   </View>
                   <Text style={styles.sessionText}>{session.label}</Text>
@@ -407,7 +407,7 @@ const MentorDetails = ({ route, navigation }) => {
               />
             </View>
             
-            <FlatList
+            <FlatList showsVerticalScrollIndicator={false}
               data={faculties.filter(faculty =>
                 faculty.name.toLowerCase().includes(searchText.toLowerCase())
               )}
@@ -434,9 +434,9 @@ const MentorDetails = ({ route, navigation }) => {
                   </View>
                   <View style={styles.checkboxContainer}>
                     {selectedFaculties.includes(item.id) ? (
-                      <Tickbox width={20} height={20} />
+                      <Tickbox width={16} height={16} />
                     ) : (
-                      <Tick width={20} height={20} />
+                      <Tick width={16} height={16} />
                     )}
                   </View>
                 </TouchableOpacity>

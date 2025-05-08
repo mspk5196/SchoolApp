@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import BackIcon from '../../assets/Calender/leftarrow.svg';
+import BackIcon from '../../assets/GeneralAssests/backarrow.svg';
 import Holiday from '../../assets/Calender/holiday.svg';
 import ChevronDown from '../../assets/Calender/chevron-down.svg';
 import ChevronRight from '../../assets/Calender/chevron-right.svg';
@@ -530,7 +530,7 @@ const CalendarApp = ({navigation}) => {
         {/* Navigation bar */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <BackIcon width={24} height={24} />
+            <BackIcon width={19} height={17} />
           </TouchableOpacity>
           <Text style={styles.headerTxt}>Calendar</Text>
         </View>

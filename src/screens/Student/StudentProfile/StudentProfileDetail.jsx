@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -7,20 +7,26 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  Modal,
+  TextInput,
 } from 'react-native';
 import Grade from '../../../assets/StudentProfileDetails/grade.svg';
 import Mentorimg from '../../../assets/StudentProfileDetails/mentor2.svg';
 import Numdays from '../../../assets/StudentProfileDetails/numdays.svg';
+import PenIcon from '../../../assets/StudentProfileDetails/pen.svg';
 import Clock from '../../../assets/StudentProfileDetails/clock.svg';
 import Leaveday from '../../../assets/StudentProfileDetails/leaveday.svg';
 import Exchange from '../../../assets/StudentProfileDetails/exchange.svg';
-import BackIcon from '../../../assets/StudentProfileDetails/leftarrow.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import styles from './StudentProfileDetailStyle'; 
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { useState } from 'react';
 
 const StudentProfileDetail = ({ navigation, route }) => {
     const { student } = route.params || {};
+    // Add state for modal visibility and mentor name
+    const [modalVisible, setModalVisible] = useState(false);
+    const [mentorName, setMentorName] = useState('Sathish');
+    const [newMentorName, setNewMentorName] = useState('');
 
   // Achievement data
   const achievementData = {
@@ -205,6 +211,15 @@ const StudentProfileDetail = ({ navigation, route }) => {
   const maxHeight = 180; // Maximum height in pixels for the bars
   const scaleFactor = maxHeight / maxValue;
 
+  // Function to handle saving the new mentor name
+  const handleSaveMentor = () => {
+    if (newMentorName.trim() !== '') {
+      setMentorName(newMentorName);
+      setNewMentorName('');
+    }
+    setModalVisible(false);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -216,6 +231,47 @@ const StudentProfileDetail = ({ navigation, route }) => {
           />
           <Text style={styles.headerTxt}>Student Profile</Text>
         </View>
+
+      {/* Mentor Edit Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Mentor</Text>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Mentor Name:</Text>
+              <TextInput
+                style={styles.textInput}
+                value={newMentorName}
+                onChangeText={setNewMentorName}
+                placeholder="Enter mentor name"
+                placeholderTextColor="#999"
+              />
+            </View>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.saveButton]} 
+                onPress={handleSaveMentor}
+              >
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <ScrollView style={styles.scrollView}>
         {/* Student Info Card */}
@@ -242,7 +298,10 @@ const StudentProfileDetail = ({ navigation, route }) => {
           <View style={styles.detailsRow}>
             <View style={styles.detailItem}>
               <Mentorimg width={15} height={15} />
-              <Text style={styles.detailText}>Mentor: Sathish</Text>
+              <Text style={styles.detailText}>Mentor: {mentorName}</Text>
+              <TouchableOpacity style={styles.editButton}>
+                <PenIcon width={15} height={15} style={styles.editIcon} />
+              </TouchableOpacity>
             </View>
             <View style={styles.detailItem}>
               <Grade width={15} height={15} />

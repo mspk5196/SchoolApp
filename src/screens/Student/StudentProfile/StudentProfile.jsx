@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Pressable } from 'react-native';
-import BackIcon from "../../../assets/StudentProfile/leftarrow.svg";
+import BackIcon from "../../../assets/GeneralAssests/backarrow.svg";
 import styles from './StudentProfileStyles';
 const Staff = require('../../../assets/StudentProfile/staff.png');
 import Search from '../../../assets/StudentProfile/search.svg';

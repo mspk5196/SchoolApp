@@ -7,7 +7,7 @@ import MappingIcon from '../../../assets/MentorHome/mapping.svg';
 import LeaveIcon from '../../../assets/MentorHome/leave.svg';
 import MentorListIcon from '../../../assets/MentorHome/mentorlist.svg';
 import DisciplineIcon from '../../../assets/MentorHome/mapping.svg';
-import Home from '../../../assets/MentorHome/home.svg'
+import Home from '../../../assets/GeneralAssests/backarrow.svg'
 const data = [{
     data: [
         { id: '1', title: 'Subject Mentor', bgColor: '#65558F1F', iconColor: '#6A5ACD', Icon: SubjectIcon,color:'#65558F' },

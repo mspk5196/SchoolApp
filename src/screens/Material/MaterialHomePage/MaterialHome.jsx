@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Text, View, ScrollView, Pressable, SectionList } from 'react-native'
 import styles from './MaterialHomeStyle'
-import HomeIcon from '../../../assets/MaterialHome/Home.svg'
+import HomeIcon from '../../../assets/GeneralAssests/backarrow.svg'
 import LevelPromotionIcon from '../../../assets/MaterialHome/LevelPromotion.svg'
 
 const MaterialHome = ({ navigation }) => {

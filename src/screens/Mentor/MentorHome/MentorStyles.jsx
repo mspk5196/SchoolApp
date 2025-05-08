@@ -7,8 +7,8 @@ const styles = StyleSheet.create ({
         flex: 1,
     },
     HomeIcon: {
-        width: 25,
-        height: 25,
+        width: 19,
+        height: 17,
     },
     Header: {
         flexDirection: 'row',
@@ -16,16 +16,16 @@ const styles = StyleSheet.create ({
         paddingVertical: 15,
         paddingHorizontal: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#E3E3E3',
+        borderBottomColor: '#e0e0e0',
     },
     HeaderTxt: {
-        fontSize: 27,
-        fontWeight: 'bold',
+        fontSize: 23,
+        fontWeight: '600',
         color: '#000000',
         marginLeft: 10,
     },
         container: {
-            backgroundColor: '#F5F5F5',
+            backgroundColor: '#FaFaFa',
             flex: 1,
         },
         scrollView: {
@@ -48,7 +48,7 @@ const styles = StyleSheet.create ({
             marginVertical: 8,
             marginHorizontal: 5,
             borderRadius: 15,
-            marginBottom:20,
+            marginBottom:10,
         },
         icon: {
             width: 40,

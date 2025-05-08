@@ -9,7 +9,8 @@ import {
   TextInput,
   Modal
 } from 'react-native';
-import BackIcon from '../../../assets/LeaveApproval/leftarrow.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
+import SearchIcon from '../../../assets/GeneralAssests/search.svg';
 import Checkmark from '../../../assets/LeaveApproval/checkmark.svg';
 import Close from '../../../assets/LeaveApproval/close.svg';
 import Staff from "../../../assets/LeaveApproval/staff.png";
@@ -144,7 +145,7 @@ const LeaveApproval = ({ navigation }) => {
   // Function to show the rejection modal
   const handleReject = (student) => {
     setSelectedStudent(student);
-    setRejectionReason('Due to unavailability of faculties and substitutes your leave is being rejected. Sorry for the inconvenience caused if any.');
+    setRejectionReason('');
     setRejectionModalVisible(true);
   };
 
@@ -229,22 +230,25 @@ const LeaveApproval = ({ navigation }) => {
         <Text style={styles.headerTxt}>Leave Approval</Text>
       </View>
       
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        <View style={styles.historyIconContainer}>
-        <TouchableOpacity onPress={toggleHistoryView}>
-          <History height={20} style={styles.historyIcon}/>
-        
-             <Text style={styles.historyText}>History</Text>
-             </TouchableOpacity>
-             </View>
-      </View>
+    
+  <View style={styles.searchWrapper}>
+    <SearchIcon width={20} height={20} style={styles.searchIcon} />
+    <TextInput
+      style={styles.searchInput}
+      placeholder="Search..."
+      value={searchQuery}
+      onChangeText={setSearchQuery}
+      placeholderTextColor="#888"
+    />
+  </View>
+  <View style={styles.historyIconContainer}>
+    <TouchableOpacity onPress={toggleHistoryView}>
+      <History height={20} style={styles.historyIcon}/>
+      <Text style={styles.historyText}>History</Text>
+    </TouchableOpacity>
+  </View>
+
+
       
       <ScrollView style={styles.scrollContainer}>
         {filteredStudents.map((student, index) => (
@@ -285,7 +289,7 @@ const LeaveApproval = ({ navigation }) => {
         {filteredStudents.length === 0 && (
           <View style={styles.noResultsContainer}>
             <Background width={300} height={300}/>
-            <Text style={styles.noResultsText}>No pending leave requests</Text>
+            <Text style={styles.noResultsText}>No leave applications found</Text>
           </View>
         )}
       </ScrollView>
@@ -402,7 +406,8 @@ const LeaveApproval = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             
-            <ScrollView style={styles.historyScrollContainer}>
+            <ScrollView style={styles.historyScrollContainer}
+            showsVerticalScrollIndicator={false}>
               {historyRecords.length > 0 ? (
                 historyRecords.map((record, index) => (
                   <View key={index} style={styles.historyItem}>
@@ -418,7 +423,9 @@ const LeaveApproval = ({ navigation }) => {
                         styles.statusBadge, 
                         record.status === 'Approved' ? styles.approvedBadge : styles.rejectedBadge
                       ]}>
-                        <Text style={styles.statusText}>{record.status}</Text>
+                        <Text style={styles.statusText}>
+                          {record.status}
+                        </Text>
                       </View>
                     </View>
                     

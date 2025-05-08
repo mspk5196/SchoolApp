@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute } from '@react-navigation/native';
-import BackIcon from '../../assets/Request/Back.svg';
+import BackIcon from '../../assets/GeneralAssests/backarrow.svg';
 import styles from './RequestStyle';
 
 const RequestItem = ({ title, subtitle, date, status, hasCount, count, onPress }) => {

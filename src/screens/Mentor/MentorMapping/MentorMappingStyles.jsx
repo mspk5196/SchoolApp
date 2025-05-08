@@ -17,16 +17,16 @@ const styles = StyleSheet.create({
 },
 headerTxt: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#000000',
     marginLeft: 10,
 },
 BackIcon: {
-    width: 20,
-    height: 20,
+    width: 19,
+    height: 17,
 },
   selectedCard: {
-    backgroundColor: '#EBEEFF', 
+    backgroundColor: '#fafafa', 
   },
 
   tabContainer: {
@@ -95,15 +95,21 @@ BackIcon: {
   name: {
     fontSize: 18,
     fontWeight: '600',
-    color:'#000'
+    color:'#000000',
+    marginBottom: 4,
   },
   specification: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#000000',
+    marginBottom: 4,
+
   },
   facultyId: {
     fontSize: 12,
-    color: '#000',
+    fontWeight: '500',
+    color: '#000000',
+    marginBottom: 4,
   },
   moreIcon: {
     display:'flex',

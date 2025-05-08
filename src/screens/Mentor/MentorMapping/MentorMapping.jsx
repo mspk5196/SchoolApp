@@ -10,7 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import Modal from 'react-native-modal';
-import BackIcon from '../../../assets/MentorMapping/leftarrow.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import staff from '../../../assets/MentorMapping/staff.png';
 import styles from './MentorMappingStyles';
 import Tickicon from '../../../assets/MentorMapping/tickicon.svg';
@@ -88,9 +88,9 @@ const SubjectMentor = ({ navigation }) => {
             >
               <Image source={staff} style={styles.avatar} />
               <View style={styles.cardContent}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.specification}>Section - {item.specification}</Text>
+                <Text style={styles.name}>{item.name}</Text>             
                 <Text style={styles.facultyId}>Faculty ID: {item.facultyId}</Text>
+                <Text style={styles.specification}>Section - {item.specification}</Text>
               </View>
               <TouchableOpacity style={styles.moreIcon}>
                 <Text style={styles.moreText}>10 </Text>

@@ -16,20 +16,27 @@ const styles = StyleSheet.create({
   },
   headerTxt: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#000000',
     marginLeft: 10,
   },
   BackIcon: {
-    width: 20,
-    height: 20,
+    width: 19,
+    height: 17,
+  },
+  searchIcon:{
+    position: 'absolute',
+    left: 29,
+    zIndex: 1,
+    top: '76%',
+    transform: [{ translateY: -10 }],
   },
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   searchInput: {
-    backgroundColor: '#fff',
+    backgroundColor: '#EEEFF9',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -54,8 +61,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+
   },
   avatar: {
     width: 40,
@@ -74,7 +80,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   cardDate: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
     marginLeft: 'auto',
     fontWeight: '500',
@@ -83,7 +89,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   cardLabel: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     marginBottom: 6,
     color: '#333',
@@ -101,8 +107,9 @@ const styles = StyleSheet.create({
   registeredBy: {
     fontSize: 14,
     color: '#000',
-    fontWeight: '500',
+    fontWeight: '600',
     flex: 1,
+    paddingLeft: 8,
   },
   actionButtonCall: {
     backgroundColor: '#AEBCFF', 
@@ -198,7 +205,7 @@ const styles = StyleSheet.create({
   },
   registerButton: {
     backgroundColor: '#0C36FF',
-    borderRadius: 8,
+    borderRadius: 30,
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 10,
@@ -270,7 +277,7 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     backgroundColor: '#0C36FF',
-    borderRadius: 8,
+    borderRadius: 30,
     paddingVertical: 12,
     paddingHorizontal: 24,
     alignItems: 'center',

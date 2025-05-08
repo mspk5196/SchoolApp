@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import BackIcon from '../../assets/Logs/Back.svg';
+import BackIcon from '../../assets/GeneralAssests/backarrow.svg';
 import Phone from '../../assets/Logs/Phone.svg';
 import MessageSquare from '../../assets/Logs/MessageSquare.svg';
 import Clock from '../../assets/Logs/Clock.svg';

@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import BackIcon from '../../../assets/ConceptGraph/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import CalenderIcon from '../../../assets/ConceptGraph/Calender.svg';
 import styles from './ConceptProgressStyle';
 

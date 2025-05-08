@@ -9,7 +9,7 @@ import {
   Alert
 } from 'react-native';
 import DocumentPicker from 'react-native-document-picker';
-import BackIcon from '../../assets/Request/Back.svg';
+import BackIcon from '../../assets/GeneralAssests/backarrow.svg';
 import PdfIcon from '../../assets/Request/pdf-icon.svg';
 import TickIcon from '../../assets/Request/tick.svg';
 import styles from './RequestUploadStyle';

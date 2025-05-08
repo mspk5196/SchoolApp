@@ -17,13 +17,13 @@ const styles = StyleSheet.create({
     },
     headerTxt: {
       fontSize: 20,
-      fontWeight: 'bold',
+      fontWeight: '600',
       color: '#000000',
       marginLeft: 10,
     },
     BackIcon: {
-      width: 20,
-      height: 20,
+      width: 19,
+      height: 17,
     },
     scrollContainer: {
       flex: 1,
@@ -55,13 +55,15 @@ const styles = StyleSheet.create({
       flex: 1,
     },
     name: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
       color: '#333',
+      marginBottom: 4,
     },
     id: {
-      fontSize: 14,
-      color: '#666',
+      fontSize: 13,
+      fontWeight: '500',
+      color: '#777777',
     },
     statusContainer: {
       display:'flex',
@@ -104,7 +106,7 @@ const styles = StyleSheet.create({
     },
     leaveType: {
       fontSize: 14,
-      color: '#F44336',
+      color: '#000000',
       fontWeight: '500',
     },
     reasonContainer: {
@@ -126,15 +128,16 @@ const styles = StyleSheet.create({
       paddingBottom: 100, // Add padding to account for the bottom button
     },
     historyTitle: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: '600',
-      color: '#333',
-      marginBottom: 16,
+      color: '#323F49',
+      marginBottom: 8,
     },
     historyDate: {
       fontSize: 14,
-      color: '#666',
-      marginBottom: 8,
+      fontWeight: '500',
+      color: '#333748',
+      marginBottom: 12,
     },
     historyLeaveCard: {
       backgroundColor: '#fff',
@@ -149,7 +152,7 @@ const styles = StyleSheet.create({
     },
     approveButton: {
       backgroundColor: '#0C36FF',
-      borderRadius: 10,
+      borderRadius: 30,
       paddingVertical: 12,
       paddingHorizontal: 14,
       alignItems: 'center',

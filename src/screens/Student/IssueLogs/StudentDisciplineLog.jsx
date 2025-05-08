@@ -8,7 +8,7 @@ import {
   Image, 
   ScrollView
 } from 'react-native';
-import BackIcon from '../../../assets/IssueLogs/leftarrow.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import PhoneIcon from '../../../assets/IssueLogs/call.svg';
 import MessageIcon from '../../../assets/IssueLogs/msg.svg';
 import styles from './StudentDisciplineLogStyles';

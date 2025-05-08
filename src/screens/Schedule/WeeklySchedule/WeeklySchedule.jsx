@@ -9,7 +9,7 @@ import {
   FlatList,
   Alert
 } from 'react-native';
-import BackIcon from '../../../assets/WeeklySchedule/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import EditIcon from '../../../assets/WeeklySchedule/Edit.svg';
 import BookIcon from '../../../assets/WeeklySchedule/Book.svg';
 import UserIcon from '../../../assets/WeeklySchedule/User.svg';
@@ -250,7 +250,7 @@ const WeeklySchedule = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <BackIcon width={20} height={20} onPress={() => navigation.goBack()} />
+        <BackIcon width={19} height={17} onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Weekly Schedule</Text>
       </View>
       <ScrollView contentContainerStyle={styles.scrollViewContent}>

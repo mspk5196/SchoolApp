@@ -9,7 +9,7 @@ import {
   Modal,
   SafeAreaView
 } from 'react-native';
-import BackIcon from '../../../assets/ConceptGraph/Back.svg';
+import BackIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import styles from './AddConceptGraphStyle';
 
 const AddConceptGraph = ({ navigation, route }) => {
@@ -95,8 +95,8 @@ const AddConceptGraph = ({ navigation, route }) => {
       {/* Header */}
       <View style={styles.header}>
         <BackIcon 
-          width={20}
-          height={20}
+          width={19}
+          height={17}
           onPress={() => navigation.goBack()}
         />
         <Text style={styles.headerText}>

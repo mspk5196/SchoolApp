@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Text, View, Pressable, ScrollView, SectionList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import HomeIcon from '../../../assets/ScheduleHome/Home.svg';
+import HomeIcon from '../../../assets/GeneralAssests/backarrow.svg';
 import CollegeIcon from '../../../assets/ScheduleHome/College.svg';
 import CollegeIcon2 from '../../../assets/ScheduleHome/College2.svg';
 import ExamIcon from '../../../assets/ScheduleHome/Exam.svg';
