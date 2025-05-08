@@ -10,7 +10,7 @@ import RoundHomeIcon from '../../../assets/MentorList/roundhome.svg'
 import Footer from '../../../components/footerhome/footer'
 
 const ScheduleHome = ({ navigation }) => {
-  const [activeGrade, setActiveGrade] = useState(1); // Default to Grade 2 as in image
+  const [activeGrade, setActiveGrade] = useState(0); 
   const [selectedDate, setSelectedDate] = useState('23/12/24');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [formattedDate, setFormattedDate] = useState('2024-12-23');
@@ -26,22 +26,21 @@ const ScheduleHome = ({ navigation }) => {
     },
   ];
 
-  // Function to parse date in dd/mm/yy format to a Date object
+ 
   const parseDate = (dateString) => {
     const [day, month, yearShort] = dateString.split('/');
-    const year = '20' + yearShort; // Assuming 20xx for the year
-    return new Date(year, month - 1, day); // month is 0-indexed in JS Date
+    const year = '20' + yearShort;
+    return new Date(year, month - 1, day); 
   };
 
-  // Function to format Date object to dd/mm/yy
   const formatDisplayDate = (date) => {
     const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // month is 0-indexed
+    const month = String(date.getMonth() + 1).padStart(2, '0'); 
     const year = String(date.getFullYear()).slice(2);
     return `${day}/${month}/${year}`;
   };
 
-  // Function to format Date object to yyyy-mm-dd for internal use
+
   const formatISODate = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -90,9 +89,7 @@ const ScheduleHome = ({ navigation }) => {
 
   // Function to handle schedule cancellation
   const handleCancelSchedule = () => {
-    // Implement your logic here
     setShowCancelModal(false);
-    // You can add additional logic to update the schedule
   };
 
   return (
@@ -107,7 +104,7 @@ const ScheduleHome = ({ navigation }) => {
         <Text style={styles.headerTitle}>Logs</Text>
       </View>
 
-      {/* Today date selector similar to MentorDetail */}
+      
       <View style={styles.dateContainer}>
         <View style={styles.todayIndicator} />
         <Text style={styles.todayText}>Today</Text>

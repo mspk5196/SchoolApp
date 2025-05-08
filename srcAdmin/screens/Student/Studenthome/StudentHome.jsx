@@ -20,8 +20,8 @@ const StudentHome = ({ navigation }) => {
        { id: '1', title: 'Student List', bgColor: '#65558F12', iconColor: '#6A5ACD', Icon: <StudentProfileIcon   />, color: '#65558F' },
        { id: '2', title: 'Issues Log', bgColor: '#FFF3DC', iconColor: '#EEAA16', Icon: <IssueIcon />, color: '#EEAA16' },
        { id: '3', title: 'Backlogs', bgColor: '#FFD6EE', iconColor: '#D81B60', Icon: <BacklogsIcon />, color: '#AD5191' },
-       { id: '4', title: 'Academic progress', bgColor: '#EBEEFF', iconColor: '#3557FF', Icon: <Progressicon />, color: '#3557FF' },
-       { id: '5', title: 'Academic Schedule ', bgColor: '#C9F7F5', iconColor: '#3557FF', Icon: <Gradcap />, color: '#0FBEB3' },
+      //  { id: '4', title: 'Academic progress', bgColor: '#EBEEFF', iconColor: '#3557FF', Icon: <Progressicon />, color: '#3557FF' },
+      //  { id: '5', title: 'Academic Schedule ', bgColor: '#C9F7F5', iconColor: '#3557FF', Icon: <Gradcap />, color: '#0FBEB3' },
      ],
    },
  ];
