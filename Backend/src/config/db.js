@@ -12,28 +12,46 @@ const connection = mysql.createPool({
 });
 
 connection.beginTransaction = (callback) => {
-  connection.getConnection((err, conn) => {
-    if (err) return callback(err);
-    conn.beginTransaction(err => {
+  return new Promise((resolve, reject) => {
+    connection.getConnection((err, conn) => {
       if (err) {
-        conn.release();
-        return callback(err);
+        if (callback) return callback(err);
+        return reject(err);
       }
-      callback(null, {
-        commit: (cb) => {
-          conn.commit(err => {
-            conn.release();
-            cb(err);
-          });
-        },
-        rollback: (cb) => {
-          conn.rollback(err => {
-            conn.release();
-            cb(err);
-          });
-        },
-        query: (sql, params, cb) => {
-          conn.query(sql, params, cb);
+      
+      conn.beginTransaction(err => {
+        if (err) {
+          conn.release();
+          if (callback) return callback(err);
+          return reject(err);
+        }
+        
+        const transaction = {
+          commit: (cb) => {
+            conn.commit(err => {
+              conn.release();
+              if (cb) cb(err);
+            });
+          },
+          rollback: (cb) => {
+            conn.rollback(err => {
+              conn.release();
+              if (cb) cb(err);
+            });
+          },
+          query: (sql, params, cb) => {
+            if (typeof params === 'function') {
+              cb = params;
+              params = [];
+            }
+            conn.query(sql, params, cb);
+          }
+        };
+        
+        if (callback) {
+          callback(null, transaction);
+        } else {
+          resolve(transaction);
         }
       });
     });

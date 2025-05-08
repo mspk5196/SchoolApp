@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginRight: 10,
         backgroundColor: '#F5F5F5',
-        width: 120, // Fixed width from Academic Schedule
+        width: 110, // Fixed width from Academic Schedule
     },
     noScheduleText:{
         color:'grey',
@@ -48,6 +48,7 @@ const styles = StyleSheet.create({
     },
     sectionTabText: {
         fontSize: 14,
+        alignSelf:'center',
         color: '#333333',
     },
     activeSectionTabText: {
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
         paddingVertical: 5, // Added for consistency
     },
     activeDayItem: {
-        borderWidth: 1,
+        borderWidth: 2,
         borderColor: '#0C36FF',
         borderRadius: 20,
         paddingVertical: 10,
@@ -77,8 +78,9 @@ const styles = StyleSheet.create({
     dayText: {
         fontSize: 16,
         fontWeight: '600',
+        alignSelf:'center',
         color: '#666666',
-        marginTop: 4,
+        // marginTop: 4,
     },
     activeDayText: {
         color: '#0C36FF', // Added from Academic Schedule
@@ -159,8 +161,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         elevation: 3,
+        gap:10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
@@ -427,6 +430,12 @@ const styles = StyleSheet.create({
     selectButtonText: {
         color: 'white',
     },
+    loadingContainer:{
+        flex:1,
+        justifyContent:'center',
+        alignItems:'center',
+        marginVertical:'auto'
+    }
 });
 
 export default styles;

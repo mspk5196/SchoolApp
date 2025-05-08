@@ -81,28 +81,31 @@ exports.getAttendance = async (req, res) => {
 };
 
 // Get mentor's subject and grade assignments
-exports.getCoordinatorAssignments = (req, res) => {
-  const { coordinatorId } = req.body;
-
+// Get mentor's subject and grade assignments (updated)
+exports.getMentorAssignments = (req, res) => {
+  const { mentorId } = req.body;
+  
   const query = `
     SELECT DISTINCT 
       sub.id AS subject_id, 
       sub.subject_name,
-      msa.grade_id
+      msa.grade_id,
+      g.grade_name
     FROM mentor_section_assignments msa
     JOIN subjects sub ON msa.subject_id = sub.id
+    JOIN Grades g ON msa.grade_id = g.id
     WHERE msa.mentor_id = ?
   `;
-
-  db.query(query, [coordinatorId], (err, results) => {
+  
+  db.query(query, [mentorId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-
+    
     // Extract unique subjects and grades
     const subjects = [];
     const grades = [];
     const seenSubjects = new Set();
     const seenGrades = new Set();
-
+    
     results.forEach(row => {
       if (!seenSubjects.has(row.subject_id)) {
         subjects.push({
@@ -111,7 +114,7 @@ exports.getCoordinatorAssignments = (req, res) => {
         });
         seenSubjects.add(row.subject_id);
       }
-
+      
       if (row.grade_id && !seenGrades.has(row.grade_id)) {
         grades.push({
           grade_id: row.grade_id
@@ -119,14 +122,128 @@ exports.getCoordinatorAssignments = (req, res) => {
         seenGrades.add(row.grade_id);
       }
     });
-
-    res.json({
-      success: true,
+    
+    res.json({ 
+      success: true, 
       subjects,
       grades
     });
   });
 };
+
+// Get mentor's section information
+exports.getMentorSection = (req, res) => {
+  const { mentorId } = req.body;
+  
+  const query = `
+    SELECT s.section_name
+    FROM mentors m
+    JOIN sections s ON m.section_id = s.id
+    WHERE m.id = ?
+  `;
+  
+  db.query(query, [mentorId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    res.json({ 
+      success: true, 
+      section: results[0]?.section_name || 'Not assigned'
+    });
+  });
+};
+
+// Get mentor's issues count
+exports.getMentorIssues = (req, res) => {
+  const { mentorId } = req.body;
+  
+  const query = `
+    SELECT COUNT(*) AS count
+    FROM issue_log
+    WHERE student_id IN (
+      SELECT id FROM students WHERE section_id = (
+        SELECT section_id FROM mentors WHERE id = ?
+      )
+    )
+  `;
+  
+  db.query(query, [mentorId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    res.json({ 
+      success: true, 
+      count: results[0]?.count || 0
+    });
+  });
+};
+
+// New endpoint to get mentor's schedule
+exports.getMentorSchedule = (req, res) => {
+  const { mentorId, date } = req.body;
+
+  // Parse the date to get the day of week (e.g., "Monday")
+  const dayOfWeek = getDayOfWeekFromDate(date);
+  
+  const query = `
+    SELECT 
+      asch.day,
+      asch.start_time,
+      asch.end_time,
+      sub.subject_name,
+      sec.section_name,
+      g.grade_name,
+      at.activity_type as activity_name
+    FROM weekly_schedule asch
+    JOIN subjects sub ON asch.subject_id = sub.id
+    JOIN sections sec ON asch.section_id = sec.id
+    JOIN grades g ON sec.grade_id = g.id
+    JOIN activity_types at ON asch.activity = at.id
+    WHERE asch.mentors_id = ? 
+    AND asch.day = ?
+    ORDER BY asch.start_time
+  `;
+
+  db.query(query, [mentorId, dayOfWeek], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    res.json({
+      success: true,
+      schedule: results
+    });
+  });
+};
+
+// Helper function to get day of week from date string (YYYY-MM-DD)
+function getDayOfWeekFromDate(dateString) {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const date = new Date(dateString);
+  return days[date.getDay()];
+}
+
+// Helper function to convert day-based schedule to date-based
+function convertDayScheduleToDates(daySchedule) {
+  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const today = new Date();
+  const currentDay = today.getDay(); // 0 (Sunday) to 6 (Saturday)
+
+  // Create a date map for the current week
+  const dateMap = {};
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + (i - currentDay));
+    const dayName = daysOfWeek[date.getDay()];
+    dateMap[dayName] = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+  }
+
+  // Map the schedule to dates
+  return daySchedule.map(item => {
+    const date = dateMap[item.day];
+    return {
+      ...item,
+      date,
+      formattedDate: formatDateForDisplay(date) // You'll need to implement this
+    };
+  });
+}
 
 // Get mentor's section information
 exports.getCoordinatorSection = (req, res) => {
@@ -145,30 +262,6 @@ exports.getCoordinatorSection = (req, res) => {
     res.json({
       success: true,
       section: results[0]?.section_name || 'Not assigned'
-    });
-  });
-};
-
-// Get mentor's issues count
-exports.getCoordinatorIssues = (req, res) => {
-  const { coordinatorId } = req.body;
-
-  const query = `
-    SELECT COUNT(*) AS count
-    FROM issue_log
-    WHERE student_id IN (
-      SELECT id FROM students WHERE section_id = (
-        SELECT section_id FROM mentors WHERE id = ?
-      )
-    )
-  `;
-
-  db.query(query, [coordinatorId], (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-
-    res.json({
-      success: true,
-      count: results[0]?.count || 0
     });
   });
 };
@@ -231,7 +324,7 @@ exports.getLeaveHistory = (req, res) => {
       leaveRequests: results
     });
 
-    console.log(results);
+    // console.log(results);
   });
 };
 
@@ -246,7 +339,7 @@ exports.fetchDocumentTypes = (req, res) => {
       console.error("Error fetching document types:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
-    console.log("Fetched doc types:", data);
+    // console.log("Fetched doc types:", data);
     res.json({ success: true, message: "Document Types fetched successfully", docTypes: result });
   });
 };
@@ -313,7 +406,7 @@ exports.insertDocPurpose = (req, res) => {
 
 exports.getStudentCoordinatorRequests = (req, res) => {
   const { gradeID } = req.body;
-  console.log("Received gradeID:", req.body.gradeID);
+  // console.log("Received gradeID:", req.body.gradeID);
   const sql = `
     SELECT * FROM Document_Requests
     WHERE grade_id = ?
@@ -400,7 +493,7 @@ exports.uploadRequestDocuments = async (req, res) => {
 
 exports.getGradeSubject = (req, res) => {
   const { gradeID } = req.body;
-  console.log("Received gradeID:", (req.body.sectionID || gradeID));
+  // console.log("Received gradeID:", (req.body.sectionID || gradeID));
   const sql = `
     SELECT DISTINCT sub.id AS subject_id, sub.subject_name
     FROM section_subject_activities ss
@@ -485,7 +578,7 @@ exports.uploadStudyMaterial = async (req, res) => {
 
 exports.getMaterials = async (req, res) => {
   const { gradeID, subjectID } = req.query;
-  console.log(`[GET] /api/coordinator/getMaterials?gradeID=${gradeID}&subjectID=${subjectID}`);
+  // console.log(`[GET] /api/coordinator/getMaterials?gradeID=${gradeID}&subjectID=${subjectID}`);
 
   if (!gradeID || !subjectID) {
     return res.status(400).json({ error: 'Missing gradeID or subjectID' });
@@ -503,7 +596,7 @@ exports.getMaterials = async (req, res) => {
     }
 
     res.json({ success: true, message: "Subject materials data fetched successfully", materials: results });
-    console.log(results);
+    // console.log(results);
 
   });
 };
@@ -732,7 +825,7 @@ exports.getSubjects = (req, res) => {
 
 exports.getGradeSections = (req, res) => {
   const { gradeID } = req.body;
-  console.log("Received gradeID:", req.body.gradeID);
+  // console.log("Received gradeID:", req.body.gradeID);
   const sql = `
     SELECT sec.id, sec.section_name, sec.grade_id
     FROM Sections sec
@@ -782,7 +875,7 @@ const bcrypt = require('bcrypt');
 
 exports.enrollStudent = async (req, res) => {
   try {
-    const { name, fatherName, dob, gender, grade, section, mobileNumber } = req.body;
+    const { name, fatherName, dob, gender, grade, section, mobileNumber, mentorID } = req.body;
     const profilePhoto = req.file;
 
     if (!name || !dob || !gender || !grade || !section || !mobileNumber || !profilePhoto) {
@@ -828,9 +921,9 @@ exports.enrollStudent = async (req, res) => {
         );
 
         await trx.query(
-          `INSERT INTO Students (name, dob, gender, section_id, father_mob, profile_photo, roll)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber]
+          `INSERT INTO Students (name, dob, gender, section_id, father_mob, profile_photo, roll, mentor_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber, mentorID ? mentorID : '0']
         );
 
         await trx.query(
@@ -850,9 +943,9 @@ exports.enrollStudent = async (req, res) => {
         );
 
         await trx.query(
-          `INSERT INTO Students (name, dob, gender, section_id, father_mob, profile_photo, roll)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber]
+          `INSERT INTO Students (name, dob, gender, section_id, father_mob, profile_photo, roll, mentor_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber, mentorID]
         );
 
         await trx.query(
@@ -875,6 +968,23 @@ exports.enrollStudent = async (req, res) => {
   }
 };
 
+exports.getSpecificSectionMentor = (req, res) => {
+
+  const { sectionID } = req.body;
+
+  const sql = `
+    SELECT id from mentors WHERE section_id = ?;
+  `;
+  db.query(sql, [sectionID], (err, results) => {
+    if (err) {
+      console.error("Error fetching section mentor:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+    // console.log(results);
+
+    res.json({ success: true, message: "Section mentor fetched successfully", sectionMentor: results });
+  });
+};
 
 // Mentor Enrollment
 exports.enrollMentor = async (req, res) => {
@@ -897,7 +1007,7 @@ exports.enrollMentor = async (req, res) => {
     );
 
     const mentorCount = countResult.length > 0 ? countResult[0].mentor_count + 1 : 1;
-    console.log(countResult);
+    // console.log(countResult);
     // Generate roll number in S1001 format
     const newRoll = `M${String(mentorCount).padStart(3, '0')}`;
     const photoPath = profilePhoto.path;
@@ -1156,50 +1266,50 @@ exports.addActivities = (req, res) => {
 
 //AcadamicSchedule
 // Create or update academic schedule
-exports.createOrUpdateSchedule = async (req, res) => {
-  const { section_id, day, sessions } = req.body;
+// exports.createOrUpdateSchedule = async (req, res) => {
+//   const { section_id, day, sessions } = req.body;
 
-  // Step 1: Delete previous sessions
-  const deleteSql = `
-    DELETE FROM academic_schedule WHERE section_id = ? AND day = ?
-  `;
-  db.query(deleteSql, [section_id, day], (err, results) => {
-    if (err) {
-      console.error("Error deleting previous sessions of section:", err);
-      return res.status(500).json({ success: false, message: 'Database error' });
-    }
+//   // Step 1: Delete previous sessions
+//   const deleteSql = `
+//     DELETE FROM academic_schedule WHERE section_id = ? AND day = ?
+//   `;
+//   db.query(deleteSql, [section_id, day], (err, results) => {
+//     if (err) {
+//       console.error("Error deleting previous sessions of section:", err);
+//       return res.status(500).json({ success: false, message: 'Database error' });
+//     }
 
-    // Step 2: Insert new sessions
-    const insertSessions = async () => {
-      for (const session of sessions) {
-        const { session_number, start_time, end_time, subject_id } = session;
+//     // Step 2: Insert new sessions
+//     const insertSessions = async () => {
+//       for (const session of sessions) {
+//         const { session_number, start_time, end_time, subject_id } = session;
 
-        const createSql = `
-          INSERT INTO academic_schedule (section_id, day, session_number, start_time, end_time, subject_id)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `;
-        try {
-          await new Promise((resolve, reject) => {
-            db.query(createSql, [section_id, day, session_number, start_time, end_time, subject_id], (err, results) => {
-              if (err) {
-                console.error("Error adding sessions of section:", err);
-                reject(err);
-              }
-              resolve(results);
-            });
-          });
-        } catch (error) {
-          return res.status(500).json({ success: false, message: 'Database error' });
-        }
-      }
+//         const createSql = `
+//           INSERT INTO academic_schedule (section_id, day, session_number, start_time, end_time, subject_id)
+//           VALUES (?, ?, ?, ?, ?, ?)
+//         `;
+//         try {
+//           await new Promise((resolve, reject) => {
+//             db.query(createSql, [section_id, day, session_number, start_time, end_time, subject_id], (err, results) => {
+//               if (err) {
+//                 console.error("Error adding sessions of section:", err);
+//                 reject(err);
+//               }
+//               resolve(results);
+//             });
+//           });
+//         } catch (error) {
+//           return res.status(500).json({ success: false, message: 'Database error' });
+//         }
+//       }
 
-      // Once all sessions are inserted, send a single response
-      res.status(200).json({ success: true, message: "Schedule added to section successfully" });
-    };
+//       // Once all sessions are inserted, send a single response
+//       res.status(200).json({ success: true, message: "Schedule added to section successfully" });
+//     };
 
-    insertSessions();
-  });
-};
+//     insertSessions();
+//   });
+// };
 
 // Get academic schedule by section and day
 exports.getSchedule = async (req, res) => {
@@ -1251,10 +1361,16 @@ exports.getSectionsByGrade = async (req, res) => {
 
 // Get all subjects
 exports.getAllSubjects = (req, res) => {
+
+  const { activeSection } = req.body;
+
   const sql = `
-    SELECT id, subject_name FROM subjects
+    SELECT DISTINCT ssa.subject_id as id, sub.subject_name
+    FROM section_subject_activities ssa
+    JOIN Subjects sub ON ssa.subject_id = sub.id
+    WHERE section_id = ?;
   `;
-  db.query(sql, (err, results) => {
+  db.query(sql, [activeSection], (err, results) => {
     if (err) {
       console.error("Error fetching subjects data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
@@ -1439,15 +1555,15 @@ exports.getAvailableMentorsForInvigilation = (req, res) => {
 // Get weekly schedule for a section and day
 exports.getWeeklySchedule = (req, res) => {
   const { sectionId, day } = req.query;
-  // console.log(sectionId, day);
-
 
   const query = `
-    SELECT ws.*, s.subject_name, u.name as mentor_name
+    SELECT ws.*, s.subject_name, u.name as mentor_name, at.activity_type as activity_name, ven.id as venue_id, ven.name as venue_name
     FROM weekly_schedule ws
     JOIN subjects s ON ws.subject_id = s.id
     LEFT JOIN mentors m ON ws.mentors_id = m.id
     LEFT JOIN users u ON m.phone = u.phone
+    LEFT JOIN activity_types at ON ws.activity = at.id
+    JOIN Venues ven ON ws.venue = ven.id
     WHERE ws.section_id = ? AND ws.day = ?
     ORDER BY ws.start_time`;
 
@@ -1456,46 +1572,151 @@ exports.getWeeklySchedule = (req, res) => {
       console.error(err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
-
+    
     res.json({ success: true, scheduleItems: results });
   });
 };
 
+// Update venue status based on current schedule
+exports.updateVenueStatusBasedOnSchedule = () => {
+  const now = new Date();
+  const currentDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
+  const currentTime = now.toTimeString().substring(0, 8);
+
+  const query = `
+    SELECT venue 
+    FROM weekly_schedule 
+    WHERE day = ? 
+    AND start_time <= ? 
+    AND end_time >= ?
+    AND venue IS NOT NULL`;
+
+  db.query(query, [currentDay, currentTime, currentTime], (err, results) => {
+    if (err) {
+      console.error('Error checking active sessions:', err);
+      return;
+    }
+
+    const activeVenueIds = results.map(r => r.venue);
+    const placeholders = activeVenueIds.length > 0 
+      ? activeVenueIds.map(() => '?').join(',') 
+      : 'NULL';
+
+    const updateQuery = `
+      UPDATE venues 
+      SET status = CASE 
+        WHEN id IN (${placeholders}) THEN 'Active' 
+        ELSE 'InActive' 
+      END`;
+    
+    db.query(updateQuery, activeVenueIds, (err) => {
+      if (err) {
+        console.error('Error updating venue statuses:', err);
+      }
+    });
+  });
+};
+
+
+// Check for time conflicts in schedule
+exports.checkTimeConflict = (req, res) => {
+  const { sectionId, day, startTime, endTime, excludeId } = req.query;
+
+  const query = `
+    SELECT COUNT(*) as conflictCount
+    FROM weekly_schedule
+    WHERE section_id = ? 
+    AND day = ?
+    AND (
+      (start_time < ? AND end_time > ?) OR
+      (start_time < ? AND end_time > ?) OR
+      (start_time >= ? AND end_time <= ?)
+    )
+    ${excludeId ? 'AND id != ?' : ''}`;
+
+  const params = [sectionId, day, endTime, startTime, endTime, startTime, startTime, endTime];
+  if (excludeId) params.push(excludeId);
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ 
+      success: true, 
+      hasConflict: results[0].conflictCount > 0 
+    });
+  });
+};
+
+// Call this function periodically (e.g., every 5 minutes)
+setInterval(() => {
+  exports.updateVenueStatusBasedOnSchedule();
+}, 1 * 60 * 1000); // 5 minutes
+
 // Add or update a schedule item
 exports.addOrUpdateWeeklySchedule = (req, res) => {
-  const { sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
+  const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
 
-  // Validate required fields
   if (!sectionId || !day || !startTime || !endTime || !subjectId) {
     return res.status(400).json({ success: false, message: 'Missing required fields' });
   }
 
-  const query = `
-    INSERT INTO weekly_schedule 
-    (section_id, day, start_time, end_time, subject_id, mentors_id, activity, venue)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-    start_time = VALUES(start_time),
-    end_time = VALUES(end_time),
-    subject_id = VALUES(subject_id),
-    mentors_id = VALUES(mentors_id),
-    activity = VALUES(activity),
-    venue = VALUES(venue)`;
+  // If we have an ID, this is an update - use UPDATE query
+  if (id) {
+    const updateQuery = `
+      UPDATE weekly_schedule 
+      SET 
+        section_id = ?,
+        day = ?,
+        start_time = ?,
+        end_time = ?,
+        subject_id = ?,
+        mentors_id = ?,
+        activity = ?,
+        venue = ?
+      WHERE id = ?`;
 
-  db.query(query,
-    [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null],
-    (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ success: false, message: 'Database error' });
-      }
+    db.query(updateQuery,
+      [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, id],
+      (err, results) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ success: false, message: 'Database error' });
+        }
 
-      res.json({
-        success: true,
-        message: 'Schedule item saved successfully',
-        id: results.insertId || req.body.id
+        exports.updateVenueStatusBasedOnSchedule();
+        res.json({
+          success: true,
+          message: 'Schedule item updated successfully',
+          id: id
+        });
       });
-    });
+  } 
+  // Otherwise, this is a new record - use INSERT
+  else {
+    const insertQuery = `
+      INSERT INTO weekly_schedule 
+      (section_id, day, start_time, end_time, subject_id, mentors_id, activity, venue)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    db.query(insertQuery,
+      [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null],
+      (err, results) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ success: false, message: 'Database error' });
+        }
+
+        exports.updateVenueStatusBasedOnSchedule();
+        res.json({
+          success: true,
+          message: 'Schedule item created successfully',
+          id: results.insertId
+        });
+      });
+  }
 };
 
 // Delete a schedule item
@@ -1520,15 +1741,19 @@ exports.deleteWeeklySchedule = (req, res) => {
 
 // Get available mentors for a subject
 exports.getAvailableMentors = (req, res) => {
-  const { subjectId } = req.query;
+  const { subjectId, activeSection } = req.query;
+  // console.log(subjectId, activeSection);
+  
 
   const query = `
     SELECT m.id, u.name, m.roll
-    FROM mentors m
+    FROM mentor_section_assignments msa
+    JOIN section_mentor_subject sms ON msa.id = sms.msa_id
+    JOIN Mentors m ON msa.mentor_id = m.id
     JOIN users u ON m.phone = u.phone
-    WHERE m.subject_id = ?`;
+    WHERE sms.section_id = ? AND msa.subject_id = ?`;
 
-  db.query(query, [subjectId], (err, results) => {
+  db.query(query, [activeSection, subjectId], (err, results) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ success: false, message: 'Database error' });
@@ -1538,10 +1763,35 @@ exports.getAvailableMentors = (req, res) => {
   });
 };
 
+//Get Section Activities
+exports.getSectionSubjectActivities = (req, res) => {
+
+  const {subjectId, activeSection} = req.query;
+
+  // console.log(subjectId, activeSection);
+  
+
+  const sql = `
+    SELECT ssa.activity_type as id, at.activity_type as activity_name
+    FROM section_subject_activities ssa
+    JOIN Activity_types at ON ssa.activity_type = at.id
+    WHERE ssa.subject_id = ? AND ssa.section_id = ?
+  `;
+  db.query(sql,[subjectId, activeSection], (err, results) => {
+    if (err) {
+      console.error("Error fetching section subject activity types:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+    // console.log(results);
+    
+    res.json({ success: true, message: "Activity types fetched successfully", activity_types: results });
+  });
+};
+
 //Students Page
 exports.getSectionStudents = (req, res) => {
   const { sectionID } = req.body;
-  console.log("Received gradeID:", req.body.gradeID);
+  // console.log("Received gradeID:", req.body.gradeID);
   const sql = `
     SELECT st.id, st.name, st.roll, st.profile_photo
     FROM Students st
@@ -1660,32 +1910,57 @@ exports.getGradeNonEnroledMentors = (req, res) => {
 };
 // Assign mentor to section
 exports.assignMentorToSection = async (req, res) => {
-  const { mentor_id, section_id, grade_id } = req.body;
+  const { mentor_id, grade_id } = req.body;
 
   try {
-    // First verify the section belongs to the grade
-    const sectionCheck = await db.promise().query(
-      'SELECT id FROM sections WHERE id = ? AND grade_id = ?',
-      [section_id, grade_id]
+    // Step 1: Get all sections for the grade
+    const sections = await db.promise().query(
+      'SELECT id FROM Sections WHERE grade_id = ?',
+      [grade_id]
     );
 
-    if (sectionCheck[0].length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Section does not belong to this grade'
-      });
+    let assignedSectionId = null;
+
+    // Step 2: Check for an unassigned section
+    for (const section of sections) {
+      const mentorCheck = await db.promise().query(
+        'SELECT id FROM Mentors WHERE section_id = ?',
+        [section.id]
+      );
+      if (mentorCheck.length === 0) {
+        assignedSectionId = section.id;
+        break;
+      }
     }
 
-    // Update the mentor's section
+    // Step 3: If no unassigned section found, create a new one
+    if (!assignedSectionId) {
+      const newSectionName = `Section ${String.fromCharCode(65 + sections.length)}`; // A, B, C, ...
+      const createResult = await db.promise().query(
+        'INSERT INTO Sections (section_name, grade_id) VALUES (?, ?)',
+        [newSectionName, grade_id]
+      );
+      assignedSectionId = createResult.insertId;
+    }
+
+    // Step 4: Assign mentor to the section
     await db.promise().query(
-      'UPDATE mentors SET section_id = ?, grade_id = ? WHERE id = ?',
-      [section_id, grade_id, mentor_id]
+      'UPDATE Mentors SET section_id = ?, grade_id = ? WHERE id = ?',
+      [assignedSectionId, grade_id, mentor_id]
+    );
+
+    // Step 5: Update students in the section
+    await db.promise().query(
+      'UPDATE Students SET mentor_id = ? WHERE section_id = ?',
+      [mentor_id, assignedSectionId]
     );
 
     res.json({
       success: true,
-      message: 'Mentor assigned to section successfully'
+      message: 'Mentor assigned to section successfully',
+      section_id: assignedSectionId
     });
+
   } catch (error) {
     console.error('Error assigning mentor:', error);
     res.status(500).json({
@@ -1694,6 +1969,8 @@ exports.assignMentorToSection = async (req, res) => {
     });
   }
 };
+
+
 exports.createSection = async (req, res) => {
   const { name, grade_id } = req.body;
   try {
@@ -1709,20 +1986,36 @@ exports.createSection = async (req, res) => {
 };
 
 exports.getMentorSectionStudents = (req, res) => {
-  const { sectionID } = req.body;
+  const { sectionID, mentorID } = req.body;
 
   const sql = `
     SELECT st.id, st.name, st.roll, st.profile_photo
     FROM Students st
-    WHERE st.section_id = ?
+    WHERE st.mentor_id = ?
   `;
-  db.query(sql, [sectionID], (err, results) => {
+  db.query(sql, [mentorID], (err, results) => {
     if (err) {
       console.error("Error fetching student data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
     res.json({ success: true, message: "Student data fetched successfully", sectionStudents: results });
+  });
+};
+
+exports.remomveMentorStudents = (req, res) => {
+  const { mentorID, studentID } = req.body;
+
+  const sql = `
+    UPDATE Students set mentor_id = NULL WHERE id = ?;
+  `;
+  db.query(sql, [mentorID, studentID], (err, results) => {
+    if (err) {
+      console.error("Error fetching grade subjects data:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ success: true, message: "Subject data fetched successfully", mentorGradeSubjects: results });
   });
 };
 
@@ -1746,36 +2039,6 @@ exports.getMentorGradeSubject = (req, res) => {
   });
 };
 
-// exports.getGradeSubjects = (req, res) => {
-//   const { sectionID } = req.body;
-
-//   // LEFT JOIN mentor_section_assignments msa ON ss.section_id = msa.section_id AND sub.id = msa.subject_id
-//   //   LEFT JOIN Mentors m ON msa.mentor_id = m.id
-//   //   LEFT JOIN Users u ON m.phone = u.phone
-//   // , msa.mentor_id, m.roll, u.name
-//   const sql = `
-//     SELECT DISTINCT
-//       sub.id AS subject_id, 
-//       sub.subject_name,
-//       COALESCE(u.name, 'faculty name +') AS mentor_name,
-//       COALESCE(m.roll, 'faculty id +') AS mentor_roll
-//     FROM section_subject_activities ss
-//     JOIN subjects sub ON ss.subject_id = sub.id
-//     LEFT JOIN mentor_section_assignments msa
-//       ON ss.section_id = msa.section_id AND ss.subject_id = msa.subject_id
-//     LEFT JOIN Mentors m ON msa.mentor_id = m.id
-//     LEFT JOIN Users u ON m.phone = u.phone
-//     WHERE ss.section_id = ?;
-//   `;
-//   db.query(sql, [sectionID], (err, results) => {
-//     if (err) {
-//       console.error("Error fetching grade subjects data:", err);
-//       return res.status(500).json({ success: false, message: 'Database error' });
-//     }
-
-//     res.json({ success: true, message: "Subject data fetched successfully", mentorSubjects: results });
-//   });
-// };
 // Get subjects for a grade (updated to show assigned mentors)
 exports.getGradeSubjects = (req, res) => {
   const { sectionID } = req.body;
@@ -1812,9 +2075,9 @@ exports.getGradeSubjects = (req, res) => {
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ 
-      success: true, 
-      message: "Subject data fetched successfully", 
+    res.json({
+      success: true,
+      message: "Subject data fetched successfully",
       mentorSubjects: results.map(subject => ({
         ...subject,
         // Extract the first mentor assigned to this specific section
@@ -1868,64 +2131,7 @@ exports.getEnroledSubjectMentors = (req, res) => {
   });
 };
 
-// exports.getEnroledGradeSubjectMentor = (req, res) => {
-//   const { gradeID, subjectID } = req.body;
 
-//   const sql = `
-//     SELECT msa.id, u.name, m.specification, m.roll, up.file_path, msa.mentor_id
-//       FROM mentor_section_assignments msa
-//       JOIN Mentors m ON msa.mentor_id = m.id
-//       LEFT JOIN user_photos up ON m.phone = up.phone
-//       JOIN Users u ON m.phone = u.phone
-//       JOIN Grades g ON m.grade_id = g.id
-//       WHERE msa.grade_id = ? AND msa.subject_id = ? ORDER BY m.roll;
-//   `;
-//   db.query(sql, [gradeID, subjectID], (err, results) => {
-//     if (err) {
-//       console.error("Error fetching grade mentor data:", err);
-//       return res.status(500).json({ success: false, message: 'Database error' });
-//     }
-
-//     res.json({ success: true, message: "Mentor data fetched successfully", enroledGradeSubjectMentor: results });
-//   });
-// };
-
-// Assign mentor to subject
-// exports.assignMentorToSubject = async (req, res) => {
-//   const { mentor_id, subject_id, grade_id } = req.body;
-
-//   try {
-//     // First verify the mentor exists and belongs to the grade
-//     const mentorCheck = await db.promise().query(
-//       'SELECT id FROM mentors WHERE id = ? AND grade_id = ?',
-//       [mentor_id, grade_id]
-//     );
-
-//     if (mentorCheck[0].length === 0) {
-//       return res.status(400).json({
-//         success: false,
-//         message: 'Mentor does not belong to this grade'
-//       });
-//     }
-
-//     // Update the mentor's subject (set section_id to null)
-//     await db.promise().query(
-//       'INSERT INTO mentor_section_assignments (subject_id,mentor_id,grade_id) VALUES (?,?,?)',
-//       [subject_id, mentor_id, grade_id]
-//     );
-
-//     res.json({
-//       success: true,
-//       message: 'Mentor assigned to subject successfully'
-//     });
-//   } catch (error) {
-//     console.error('Error assigning mentor:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Database error'
-//     });
-//   }
-// };
 // Assign mentor to subject at grade level
 
 // Get enrolled subject mentors for a grade and subject
@@ -1956,9 +2162,9 @@ exports.getEnroledGradeSubjectMentor = (req, res) => {
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ 
-      success: true, 
-      message: "Mentor data fetched successfully", 
+    res.json({
+      success: true,
+      message: "Mentor data fetched successfully",
       enroledGradeSubjectMentor: results.map(mentor => ({
         ...mentor,
         assigned_section_ids: mentor.assigned_section_ids ? mentor.assigned_section_ids.split(',') : []
@@ -2011,64 +2217,7 @@ exports.assignMentorToSubject = (req, res) => {
   });
 };
 
-// exports.assignSubjectToMentorSection = async (req, res) => {
-//   const { section_id, mentor_id, subject_id, grade_id } = req.body;
-
-//   try {
-//     // Fetch existing record
-//     const rows = await db.promise().query(
-//       `SELECT section_id FROM mentor_section_assignments 
-//        WHERE mentor_id = ? AND subject_id = ? AND grade_id = ?`,
-//       [mentor_id, subject_id, grade_id]
-//     );
-
-//     if (rows.length > 0) {
-//       const existingSectionsRaw = rows.section_id;
-//       const currentSections = existingSectionsRaw
-//         ? existingSectionsRaw.split(',').map(s => s.trim())
-//         : [];
-//       console.log(rows);
-      
-//       // Avoid duplicate
-//       if (!currentSections.includes(section_id.toString())) {
-//         currentSections.push(section_id.toString());
-
-//         const updatedSections = currentSections.join(',');
-//         await db.promise().query(
-//           `UPDATE mentor_section_assignments 
-//            SET section_id = ? 
-//            WHERE mentor_id = ? AND subject_id = ? AND grade_id = ?`,
-//           [updatedSections, mentor_id, subject_id, grade_id]
-//         );
-//       }
-//     } else {
-//       // Insert new mapping
-//       await db.promise().query(
-//         `INSERT INTO mentor_section_assignments 
-//          (mentor_id, subject_id, grade_id, section_id) 
-//          VALUES (?, ?, ?, ?)`,
-//         [mentor_id, subject_id, grade_id, section_id]
-//       );
-//     }
-
-//     res.json({
-//       success: true,
-//       message: 'Mentor assigned to section(s) successfully'
-//     });
-
-//   } catch (error) {
-//     console.error('Error assigning mentor to section:', error);
-//     res.status(500).json({ success: false, message: 'Database error' });
-//   }
-// };
-
-
-
-//Events
-// Create a new event
-
 // Assign subject mentor to a section
-
 exports.assignSubjectToMentorSection = (req, res) => {
   const { mentor_id, subject_id, grade_id, section_id } = req.body;
 

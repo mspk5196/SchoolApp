@@ -24,14 +24,56 @@ exports.getVenueById = (req, res) => {
   });
 };
 
-exports.createVenue = (req, res) => {
-  Venue.create(req.body, (err, venue) => {
+exports.getVenuesByGrade = (req, res) => {
+  const { gradeId } = req.query;
+
+  const sql = `
+    SELECT id, name, block, floor, capacity, type
+    FROM venues
+    WHERE grade_id = ? OR grade_id IS NULL
+    ORDER BY name`;
+
+  db.query(sql, [gradeId], (err, results) => {
     if (err) {
-      console.error(err);
-      return res.status(400).json({ message: 'Invalid data' });
+      console.error("Error fetching venues:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
     }
-    res.status(201).json(venue);
+
+    res.json({ success: true, venues: results });
   });
+};
+
+exports.createVenue = async (req, res) => {
+  try {
+    const venueData = req.body;
+    
+    // Prepare the venue data for database insertion
+    const preparedData = {
+      name: venueData.name,
+      block: venueData.block,
+      floor: parseInt(venueData.floor, 10),
+      capacity: parseInt(venueData.capacity, 10),
+      subject_id: venueData.subject_id || null,
+      type: venueData.type,
+      status: venueData.status || 'Active'
+    };
+    
+    // Add the grades array separately to be handled in the model
+    if (venueData.grade_ids && venueData.grade_ids.length) {
+      preparedData.grade_ids = venueData.grade_ids;
+    }
+
+    Venue.create(preparedData, (err, venue) => {
+      if (err) {
+        console.error('Error creating venue:', err);
+        return res.status(500).json({ success: false, message: 'Failed to create venue' });
+      }
+      res.json({ success: true, venue });
+    });
+  } catch (error) {
+    console.error('Error in createVenue:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
 };
 
 exports.updateVenue = (req, res) => {

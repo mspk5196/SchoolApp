@@ -7,6 +7,10 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  Alert,
+  ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import Grade from '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/grade.svg';
 import Mentorimg from '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/mentor2.svg';
@@ -18,7 +22,11 @@ import BackIcon from '../../../../../assets/AdminPage/StudentHome/StudentProfile
 import styles from './StudentDetailsStyles';
 import PerformanceGraph from '../../../../../components/Admin/performancegraph/Performancegraph';
 import Homeicon from '../../../../../assets/AdminPage/Basicimg/Home.svg';
+import EditIcon from '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/edit.svg'
+import PenIcon from '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/pen.svg';
+const Staff = require('../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/staff.png');
 import { API_URL } from '@env'
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AdminStudentDetails = ({ navigation, route }) => {
   const { student } = route.params || {};
@@ -28,18 +36,29 @@ const AdminStudentDetails = ({ navigation, route }) => {
   const [issueLogData, setIssueLogData] = useState(null);
   const [mentorsData, setMentorsData] = useState([]);
   const [subjectsData, setSubjectsData] = useState([]);
+  const [adminData, setAdminData] = useState()
+  const [newMentor, setNewMentor] = useState('');
+
+  const [modalVisible, setModalVisible] = useState(false)
 
   useEffect(() => {
+    fetchAdminData();
     if (student && student.id) {
       fetchStudentDetails(student.id);
       // fetchAchievements(student.id);
       fetchAttendance(student.roll);
       // fetchIssueLog(student.id);
-      // fetchMentors(student.id);
+      fetchSubjectMentors(student.id);
       // fetchSubjectsProgress(student.id);
     }
   }, [student]);
 
+  const fetchAdminData = async () => {
+    const storedData = await AsyncStorage.getItem('adminData');
+    if (storedData) {
+      setAdminData(storedData)
+    }
+  }
   const fetchStudentDetails = async (studentId) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/students/${studentId}`);
@@ -52,18 +71,6 @@ const AdminStudentDetails = ({ navigation, route }) => {
     }
   };
 
-  // const fetchAchievements = async (studentId) => {
-  //   try {
-  //     const response = await fetch(`${API_URL}/api/admin/students/${studentId}/achievements`);
-  //     const data = await response.json();
-  //     if (data.success) {
-  //       setAchievementData(data.achievements);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching achievements:', error);
-  //   }
-  // };
-
   const fetchAttendance = async (roll) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/students/${roll}/attendance`);
@@ -71,7 +78,7 @@ const AdminStudentDetails = ({ navigation, route }) => {
       if (data.success) {
         setAttendanceData(data.studentAttendance);
         console.log(data.studentAttendance);
-        
+
       }
     } catch (error) {
       console.error('Error fetching attendance:', error);
@@ -90,48 +97,57 @@ const AdminStudentDetails = ({ navigation, route }) => {
   //   }
   // };
 
-  // const fetchMentors = async (studentId) => {
-  //   try {
-  //     const response = await fetch(`${API_URL}/api/admin/students/${studentId}/mentors`);
-  //     const data = await response.json();
-  //     if (data.success) {
-  //       setMentorsData(data.mentors);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching mentors:', error);
-  //   }
-  // };
+  const fetchSubjectMentors = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/students/getSubjectMentors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sectionID: student.section_id }),
+      });
 
-  // const fetchSubjectsProgress = async (studentId) => {
-  //   try {
-  //     const response = await fetch(`${API_URL}/api/admin/students/${studentId}/progress`);
-  //     const data = await response.json();
-  //     if (data.success) {
-  //       setSubjectsData(data.progress);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching subjects progress:', error);
-  //   }
-  // };
+      const data = await response.json();
+      console.log('Subjects mentors Data API Response:', data);
+
+      if (data.success) {
+        const initializedSubjects = data.subjectMentors.map(subject => ({
+          subject_id: subject.subject_id,
+          subject_name: subject.subject_name,
+          facultyName: subject.sectionMentorName || 'No faculty alloted',
+          facultyId: subject.sectionMentorRoll || '-',
+          sectionMentorPhoto: subject.sectionMentorPhoto,
+          selectedStaff: null
+        }));
+        setMentorsData(initializedSubjects);
+      } else {
+        Alert.alert('No Subject Found', 'No subject is associated with this section');
+      }
+    } catch (error) {
+      console.error('Error fetching subjects data:', error);
+      Alert.alert('Error', 'Failed to fetch subject data');
+    }
+  };
+
+  const handleChangeMentor = async() =>{
+
+  }
 
   if (!studentDetails) {
     return (
       <View style={styles.loadingContainer}>
+        <ActivityIndicator color='rgb(0, 89, 255)' size='large'/>
         <Text>Loading...</Text>
       </View>
     );
   }
 
-  // Calculate achievement progress if data exists
-  let achievementProgress = 0;
-  let pointsRemaining = 0;
-  if (achievementData) {
-    achievementProgress = (achievementData.currentPoints / achievementData.nextLevelPoints) * 100;
-    pointsRemaining = achievementData.nextLevelPoints - achievementData.currentPoints;
-  }
+  const handleSaveMentor = () => {
+    if (newMentorName.trim() !== '') {
+      setMentor(newMentorName);
+      setNewMentorName('');
+    }
+    setModalVisible(false);
+  };
 
-  const TARGET_LEVEL = 20;
-  const TODAY = new Date();
 
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
@@ -162,11 +178,6 @@ const AdminStudentDetails = ({ navigation, route }) => {
           <View style={styles.Subcard}>
             <View style={styles.profileHeader}>
               <View style={styles.profileInfo}>
-                {/* <Image
-                  source={studentDetails.profile_photo ? { uri: studentDetails.profile_photo } :
-                    require('../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/staff.png')}
-                  style={styles.profileImage}
-                /> */}
                 <Image source={getProfileImageSource(studentDetails?.profile_photo)} style={styles.profileImage} />
                 <View style={styles.nameSection}>
                   <Text style={styles.name}>{studentDetails.name}</Text>
@@ -184,6 +195,9 @@ const AdminStudentDetails = ({ navigation, route }) => {
             <View style={styles.detailItem}>
               <Mentorimg width={15} height={15} />
               <Text style={styles.detailText}>Mentor: {studentDetails.mentor_name || 'Not assigned'}</Text>
+              <TouchableOpacity style={styles.editButton}>
+                <PenIcon width={15} height={15} style={styles.editIcon} />
+              </TouchableOpacity>
             </View>
             <View style={styles.detailItem}>
               <Grade width={15} height={15} />
@@ -191,42 +205,6 @@ const AdminStudentDetails = ({ navigation, route }) => {
             </View>
           </View>
         </View>
-
-        {/* {achievementData && (
-          <View style={styles.card}>
-            <View style={styles.achievementHeader}>
-              <Text style={styles.cardTitle}>Achievements</Text>
-              <Text style={styles.achievementLevel}>
-                Level {achievementData.currentLevel}
-              </Text>
-            </View>
-
-            <View style={styles.progressInfoRow}>
-              <Text style={styles.progressLeftText}>
-                {achievementData.currentPoints} Rp
-              </Text>
-              <Text style={styles.progressRightText}>
-                {achievementData.nextLevelPoints} Rp
-              </Text>
-            </View>
-
-            <View style={styles.progressBarContainer}>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFilled,
-                    { width: `${achievementProgress}%` },
-                  ]}
-                />
-              </View>
-            </View>
-
-            <Text style={styles.progressText}>
-              Score {pointsRemaining} more Rp to achieve level{' '}
-              {achievementData.currentLevel + 1}
-            </Text>
-          </View>
-        )} */}
 
         {subjectsData.length > 0 && (
           <PerformanceGraph
@@ -294,26 +272,64 @@ const AdminStudentDetails = ({ navigation, route }) => {
               <View key={index} style={styles.mentorItem}>
                 <View style={styles.mentorBar} />
                 <View style={styles.mentorContent}>
-                  <Image
+                  {/* <Image
                     source={mentor.profile_photo ? { uri: mentor.profile_photo } :
                       require('../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/staff.png')}
                     style={styles.mentorImage}
-                  />
+                  /> */}
+                  <Image source={getProfileImageSource(mentor.sectionMentorPhoto)} style={styles.profileImage} />
                   <View style={styles.mentorInfo}>
-                    <Text style={styles.mentorSubject}>{mentor.subject}</Text>
-                    <Text style={styles.mentorName}>{mentor.name}</Text>
+                    <Text style={styles.mentorSubject}>{mentor.subject_name}</Text>
+                    <Text style={styles.mentorName}>{mentor.facultyName}</Text>
                   </View>
-                  <TouchableOpacity style={styles.refreshButton}>
-                    <Exchange width={20} height={20} color="#fff" />
-                  </TouchableOpacity>
                 </View>
               </View>
             ))}
           </View>
         )}
       </ScrollView>
+      {/* Mentor Edit Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Mentor</Text>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Mentor Name:</Text>
+              <TextInput
+                style={styles.textInput}
+                value={newMentor}
+                onChangeText={setNewMentor}
+                placeholder="Enter mentor name"
+                placeholderTextColor="#999"
+              />
+            </View>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.saveButton]} 
+                onPress={handleSaveMentor}
+              >
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <TouchableOpacity style={styles.footer}
-        onPress={() => navigation.navigate('AdminMain')}>
+        onPress={() => navigation.navigate('AdminMain', { adminData })}>
         <Homeicon />
       </TouchableOpacity>
     </SafeAreaView>

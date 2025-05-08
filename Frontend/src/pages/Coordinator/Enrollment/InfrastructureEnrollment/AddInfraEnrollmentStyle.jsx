@@ -1,7 +1,5 @@
 import { StyleSheet } from "react-native";
 
-
-
 const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -144,7 +142,7 @@ const styles = StyleSheet.create({
     modalItemText: {
       fontSize: 16,
       color: '#000',
-        fontWeight: '500',
+      fontWeight: '500',
     },
     closeButton: {
       marginTop: 15,
@@ -157,9 +155,45 @@ const styles = StyleSheet.create({
     closeButtonText: {
       fontSize: 16,
       color: '#000',
-        fontWeight: '500',
-    }
+      fontWeight: '500',
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#f5f7fa',
+    },
+    // New styles for checkbox items
+    checkboxItem: {
+      paddingVertical: 12,
+      paddingHorizontal: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: '#f0f0f0',
+    },
+    checkboxContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    selectedGradeTag: {
+      backgroundColor: '#E8EEFF',
+      borderRadius: 4,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      marginRight: 6,
+      marginBottom: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    selectedGradeText: {
+      color: '#3557FF',
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    selectedGradesContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: 8,
+    },
   });
   
-
   export default styles;

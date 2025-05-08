@@ -6,6 +6,7 @@ const Staff = require('../../../../../assets/AdminPage/StudentHome/studentprofil
 import Search from '../../../../../assets/AdminPage/StudentHome/studentprofile/search.svg';
 import Homeicon from '../../../../../assets/AdminPage/Basicimg/Home.svg';
 import { API_URL } from '@env'
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AdminStudentList = ({ navigation, route }) => {
   const { gradeId } = route.params || {};
@@ -15,8 +16,10 @@ const AdminStudentList = ({ navigation, route }) => {
   const [activeSection, setActiveSection] = useState(null);
   const [sections, setSections] = useState([]);
   const [selectedSection, setSelectedSection] = useState(null);
+  const [adminData, setAdminData] = useState()
 
   useEffect(() => {
+    fetchAdminData();
     if (gradeId) {
       fetchSections(gradeId);
     }
@@ -35,6 +38,13 @@ const AdminStudentList = ({ navigation, route }) => {
     );
     setFilteredStudents(filtered);
   }, [searchText, students]);
+
+  const fetchAdminData = async () => {
+    const storedData = await AsyncStorage.getItem('adminData');
+    if (storedData) {
+      setAdminData(storedData)
+    }
+  }
 
   const fetchSections = async (gradeId) => {
     try {

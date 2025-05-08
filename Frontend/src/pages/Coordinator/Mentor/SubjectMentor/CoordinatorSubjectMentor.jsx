@@ -31,6 +31,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
   const [searchText, setSearchText] = useState('');
   const [subjects, setSubject] = useState([]);
   const [enroledMentors, setEnroledMentors] = useState([]);
+  const [availableMentors, setAvailableMentors] = useState([]);
 
   useEffect(() => {
     fetchGradeMentor();
@@ -42,6 +43,21 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
       fetchEnroledSubjectMentors(activeSubject);
     }
   }, [activeSubject]);
+
+  // Update available mentors when enrolled mentors change
+  useEffect(() => {
+    if (mentors.length > 0 && enroledMentors.length >= 0) {
+      // Get the IDs of enrolled mentors
+      const enrolledMentorIds = enroledMentors.map(mentor => mentor.id);
+
+      // Filter out mentors who are already enrolled
+      const filteredMentors = mentors.filter(mentor =>
+        !enrolledMentorIds.includes(mentor.id)
+      );
+
+      setAvailableMentors(filteredMentors);
+    }
+  }, [mentors, enroledMentors]);
 
   // Mentors for that grade
   const fetchGradeMentor = async () => {
@@ -80,7 +96,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
 
       if (data.success) {
         setSubject(data.mentorGradeSubjects);
-        if(data.success){
+        if (data.success) {
           setActiveSubject(data.mentorGradeSubjects[0].subject_id)
         }
       } else {
@@ -106,6 +122,8 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
       .then(data => {
         if (data.success) {
           setEnroledMentors(data.gradeEnroledMentor);
+          console.log(data.gradeEnroledMentor);
+          
         } else {
           setEnroledMentors([]);
         }
@@ -129,7 +147,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mentor_id: mentorId,
-          subject_id: activeSubject, 
+          subject_id: activeSubject,
           grade_id: coordinatorData.grade_id
         }),
       });
@@ -164,6 +182,15 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
 
   const handleSubjectChange = (subjectID) => {
     setActiveSubject(subjectID);
+    // Reset selection when subject changes
+    setSelectedFaculties([]);
+  };
+
+  // Prepare for modal opening
+  const openAddMentorModal = () => {
+    setSearchText('');
+    setSelectedFaculties([]);
+    setIsModalVisible(true);
   };
 
   // Render the top part: navbar and tabs
@@ -211,10 +238,22 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
   const renderFooter = () => (
     <TouchableOpacity
       style={styles.addButton}
-      onPress={() => setIsModalVisible(true)}>
+      onPress={openAddMentorModal}>
       <Text style={styles.addButtonText}>+ Add Subject Mentor</Text>
     </TouchableOpacity>
   );
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return staff;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -225,7 +264,12 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
         keyExtractor={item => item.id.toString()}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Image source={staff} style={styles.avatar} />
+            {/* <Image source={staff} style={styles.avatar} /> */}
+            {item.file_path ? (
+              <Image source={getProfileImageSource(item.file_path)} style={styles.avatar} />
+            ) : (
+              <Image source={staff} style={styles.avatar} />
+            )}
             <View style={styles.cardContent}>
               <Text style={styles.name}>{item.name}</Text>
               <Text style={styles.specification}>
@@ -258,45 +302,55 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
             value={searchText}
             onChangeText={text => setSearchText(text)}
           />
-          <FlatList
-            data={mentors?.filter(mentor =>
-              mentor.name.toLowerCase().includes(searchText.toLowerCase())
-            ) || []}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.facultyItem,
-                  selectedFaculties.includes(item.id) && styles.selectedCard,
-                ]}
-                onPress={() => toggleSelection(item.id)}>
-                <View style={styles.facultyDetails}>
-                  <View style={styles.staffName}>
-                    <Oneperson />
-                    <Text style={styles.facultyName}>{item.name}</Text>
+          {availableMentors.length === 0 ? (
+            <View style={styles.noMentorsContainer}>
+              <Text style={styles.noMentorsText}>No available mentors to assign</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={availableMentors.filter(mentor =>
+                mentor.name.toLowerCase().includes(searchText.toLowerCase())
+              )}
+              keyExtractor={item => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.facultyItem,
+                    selectedFaculties.includes(item.id) && styles.selectedCard,
+                  ]}
+                  onPress={() => toggleSelection(item.id)}>
+                  <View style={styles.facultyDetails}>
+                    <View style={styles.staffName}>
+                      <Oneperson />
+                      <Text style={styles.facultyName}>{item.name}</Text>
+                    </View>
+                    <View style={styles.Hat}>
+                      <Hat />
+                      <Text style={styles.facultySpec}>
+                        Specification ({item.specification})
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.Hat}>
-                    <Hat />
-                    <Text style={styles.facultySpec}>
-                      Specification ({item.specification})
-                    </Text>
+                  <View style={styles.checkboxContainer}>
+                    {selectedFaculties.includes(item.id) ? (
+                      <Tickbox width={30} />
+                    ) : (
+                      <Tick width={30} />
+                    )}
                   </View>
-                </View>
-                <View style={styles.checkboxContainer}>
-                  {selectedFaculties.includes(item.id) ? (
-                    <Tickbox width={30} />
-                  ) : (
-                    <Tick width={30} />
-                  )}
-                </View>
-              </TouchableOpacity>
-            )}
-            style={styles.facultyList}
-          />
+                </TouchableOpacity>
+              )}
+              style={styles.facultyList}
+            />
+          )}
 
           <TouchableOpacity
-            style={styles.selectButton}
-            onPress={assignMentorsToSubject}>
+            style={[
+              styles.selectButton,
+              availableMentors.length === 0 && styles.disabledButton
+            ]}
+            onPress={assignMentorsToSubject}
+            disabled={availableMentors.length === 0}>
             <Text style={styles.selectButtonText}>
               Select Faculties <Tickicon />
             </Text>

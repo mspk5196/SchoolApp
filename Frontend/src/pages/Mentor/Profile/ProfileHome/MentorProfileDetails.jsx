@@ -10,11 +10,11 @@ import Home from '../../../../assets/MentorPage/home.svg';
 import Leave2 from '../../../../assets/MentorPage/leave2.svg';
 import Grade from '../../../../assets/MentorPage/grade.svg';
 import styles from './mentordetailssty';
-import {API_URL} from '@env'
+import { API_URL } from '@env'
 
 const MentorProfileDetails = ({ navigation, route }) => {
   const { mentorData } = route.params;
-  
+
   const [attendanceData, setAttendanceData] = useState([]);
   const [mentorDetails, setMentorDetails] = useState({
     subjects: [],
@@ -27,19 +27,19 @@ const MentorProfileDetails = ({ navigation, route }) => {
     (mentor, index, self) =>
       index === self.findIndex((m) => m.id === mentor.id)
   );
-  
-  const fetchAttendanceData = async() => {
+
+  const fetchAttendanceData = async () => {
     try {
       const response = await fetch(`${API_URL}/api/mentor/getMentorAttendance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone:uniqueMentorData[0].phone }),
-      });   
+        body: JSON.stringify({ phone: uniqueMentorData[0].phone }),
+      });
 
       const data = await response.json();
       console.log('Mentor Attendance Data API Response:', data);
 
-      if (data.success && data.attendanceData) {    
+      if (data.success && data.attendanceData) {
         setAttendanceData(data.attendanceData);
       } else {
         Alert.alert('No Mentor Attendance Found', 'No mentor attendance data is associated with this number');
@@ -50,7 +50,7 @@ const MentorProfileDetails = ({ navigation, route }) => {
     }
   }
 
-  const fetchMentorDetails = async() => {
+  const fetchMentorDetails = async () => {
     try {
       // Fetch subjects and grades handled by mentor
       const assignmentsResponse = await fetch(`${API_URL}/api/mentor/getMentorAssignments`, {
@@ -60,7 +60,7 @@ const MentorProfileDetails = ({ navigation, route }) => {
       });
 
       const assignmentsData = await assignmentsResponse.json();
-      
+
       // Fetch section information
       const sectionResponse = await fetch(`${API_URL}/api/mentor/getMentorSection`, {
         method: 'POST',
@@ -109,6 +109,18 @@ const MentorProfileDetails = ({ navigation, route }) => {
     return grades.map(grade => `Grade ${grade.grade_id}`).join(', ');
   };
 
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Profile;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -121,7 +133,12 @@ const MentorProfileDetails = ({ navigation, route }) => {
 
       <View style={styles.card}>
         <View style={styles.profileContainer}>
-          <Image source={Profile} style={styles.profileImage} />
+          {/* <Image source={Profile} style={styles.profileImage} /> */}
+          {uniqueMentorData.file_path ? (
+            <Image source={getProfileImageSource(mentor.file_path)} style={styles.profileImage} />
+          ) : (
+            <Image source={Profile} style={styles.profileImage} />
+          )}
         </View>
         {uniqueMentorData.map((mentor, index) => (
           <View style={styles.details} key={mentor.id}>
@@ -132,7 +149,7 @@ const MentorProfileDetails = ({ navigation, route }) => {
               <Text style={styles.grade}> Grade : {mentor.grade_id} - {mentor.section_name}</Text>
             </View>
           </View>
-        ))}   
+        ))}
       </View>
 
       {attendanceData && (
@@ -187,12 +204,12 @@ const MentorProfileDetails = ({ navigation, route }) => {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.leaveButton} onPress={() => navigation.navigate("MentorLeaveApply",{ mentorData })}>
+      <TouchableOpacity style={styles.leaveButton} onPress={() => navigation.navigate("MentorLeaveApply", { mentorData })}>
         <Leave2 width={wp('8%')} height={wp('8%')} />
         <Text style={styles.leaveButtonText}>Leave Apply</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("MentorMain", {mentorData})}
+      <TouchableOpacity onPress={() => navigation.navigate("MentorMain", { mentorData })}
         style={{
           ...styles.homeButton,
           width: wp('17.5%'),

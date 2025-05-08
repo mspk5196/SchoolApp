@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Alert, ActivityIndicator } from 'react-native';
 import BackIcon from '../../../../assets/CoordinatorPage/InfrastructureEnrollment/Back.svg';
+import CheckboxOff from '../../../../assets/CoordinatorPage/InfrastructureEnrollment/CheckBoxOff.svg';
+import CheckboxON from '../../../../assets/CoordinatorPage/InfrastructureEnrollment/CheckBoxOn.svg';
 import styles from './AddInfraEnrollmentStyle';
 import { API_URL } from '@env';
 
+
 const AddInfraEnrollment = ({ navigation, route }) => {
   const editVenue = route.params?.venue;
-  const isEditing = !!editVenue; 
+  const isEditing = !!editVenue;
   const [loading, setLoading] = useState(false);
- 
-  const [grades, setGrades] = useState([])
-  const [subjects, setSubject] = useState([])
-  const [blocks, setBlocks] = useState([])
+
+  const [grades, setGrades] = useState([]);
+  const [subjects, setSubject] = useState([]);
+  const [blocks, setBlocks] = useState([]);
   const types = ['Academic class', 'Laboratory', 'Library', 'Auditorium', 'Sports', 'Other'];
 
   const [gradeModalVisible, setGradeModalVisible] = useState(false);
@@ -19,23 +22,28 @@ const AddInfraEnrollment = ({ navigation, route }) => {
   const [blockModalVisible, setBlockModalVisible] = useState(false);
   const [typeModalVisible, setTypeModalVisible] = useState(false);
 
+  // Store selected grades as an array of ids
+  const [selectedGrades, setSelectedGrades] = useState(
+    isEditing && editVenue.grades ? editVenue.grades.map(g => g.id) : []
+  );
+
   const [formData, setFormData] = useState({
     name: isEditing ? editVenue.name : '',
     block: isEditing ? editVenue.block : 'A',
     floor: isEditing ? editVenue.floor.toString() : '',
     capacity: isEditing ? editVenue.capacity.toString() : '',
-    grade: isEditing ? editVenue.grade_id?.toString() : '',
     subject: isEditing ? editVenue.subject : '',
     type: isEditing ? editVenue.type : 'Academic class',
     status: isEditing ? editVenue.status : 'Active'
   });
+
   const [showFormData, setShowFormData] = useState({
     name: isEditing ? editVenue.name : '',
     block: isEditing ? editVenue.block : 'A',
     floor: isEditing ? editVenue.floor.toString() : '',
     capacity: isEditing ? editVenue.capacity.toString() : '',
-    grade: isEditing ? editVenue.grade_id?.toString() : '',
-    subject: isEditing ? editVenue.subject : '',
+    gradeNames: isEditing && editVenue.grades ? editVenue.grades.map(g => g.grade_name).join(', ') : '',
+    subject: isEditing && editVenue.subject_name ? editVenue.subject_name : '',
     type: isEditing ? editVenue.type : 'Academic class',
     status: isEditing ? editVenue.status : 'Active'
   });
@@ -44,7 +52,7 @@ const AddInfraEnrollment = ({ navigation, route }) => {
     fetchGrades();
     fetchSubject();
     fetchBlock();
-  }, [])
+  }, []);
 
   const fetchGrades = async () => {
     try {
@@ -54,7 +62,6 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       });
 
       const data = await response.json();
-      console.log('Grades API Response:', data);
 
       if (data.success) {
         setGrades(data.grades);
@@ -82,7 +89,8 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       console.error('Error fetching subject titles:', error);
     }
   };
-  const fetchBlock= async () => {
+
+  const fetchBlock = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/enrollment/getBlocks`, {
         method: 'GET',
@@ -105,12 +113,45 @@ const AddInfraEnrollment = ({ navigation, route }) => {
     });
   };
 
-  const handleChangeDisplay = (field,value) => {
+  const handleChangeDisplay = (field, value) => {
     setShowFormData({
       ...showFormData,
       [field]: value
-    })
-  }
+    });
+  };
+
+  const toggleGradeSelection = (gradeId, gradeName) => {
+    setSelectedGrades(prevSelectedGrades => {
+      // Check if grade is already selected
+      if (prevSelectedGrades.includes(gradeId)) {
+        // Remove grade if already selected
+        const newSelectedGrades = prevSelectedGrades.filter(id => id !== gradeId);
+
+        // Update displayed grade names
+        const selectedGradeNames = grades
+          .filter(grade => newSelectedGrades.includes(grade.id))
+          .map(grade => grade.grade_name)
+          .join(', ');
+
+        handleChangeDisplay('gradeNames', selectedGradeNames);
+
+        return newSelectedGrades;
+      } else {
+        // Add grade if not already selected
+        const newSelectedGrades = [...prevSelectedGrades, gradeId];
+
+        // Update displayed grade names
+        const selectedGradeNames = grades
+          .filter(grade => newSelectedGrades.includes(grade.id))
+          .map(grade => grade.grade_name)
+          .join(', ');
+
+        handleChangeDisplay('gradeNames', selectedGradeNames);
+
+        return newSelectedGrades;
+      }
+    });
+  };
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.floor || !formData.capacity) {
@@ -123,16 +164,16 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       block: formData.block,
       floor: parseInt(formData.floor, 10),
       capacity: parseInt(formData.capacity, 10),
-      grade_id: formData.grade ? parseInt(formData.grade, 10) : null,
-      subject_id: formData.subject ? parseInt(formData.subject, 10) : null, // Ensure this is ID, not name
+      grade_ids: selectedGrades.length > 0 ? selectedGrades : [],
+      subject_id: formData.subject ? parseInt(formData.subject, 10) : null,
       type: formData.type,
       status: formData.status
     };
-  
+
     try {
       setLoading(true);
       let response;
-  
+
       if (isEditing) {
         response = await fetch(`${API_URL}/api/coordinator/enrollment/updateVenue/${editVenue.id}`, {
           method: 'PUT',
@@ -151,11 +192,12 @@ const AddInfraEnrollment = ({ navigation, route }) => {
         });
       }
 
+      const responseData = await response.json();
+
       if (response.ok) {
         navigation.goBack();
       } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to save venue');
+        throw new Error(responseData.message || 'Failed to save venue');
       }
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -164,7 +206,7 @@ const AddInfraEnrollment = ({ navigation, route }) => {
     }
   };
 
-  // Selection Modals (similar to before but updated for types)
+  // Selection Modals
   const BlockSelectionModal = () => (
     <Modal
       animationType="slide"
@@ -172,7 +214,7 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       visible={blockModalVisible}
       onRequestClose={() => setBlockModalVisible(false)}
     >
-      <View style={styles.modalOverlay}> 
+      <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Select Block</Text>
           <ScrollView style={styles.modalScrollView}>
@@ -200,6 +242,7 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       </View>
     </Modal>
   );
+
   const TypeSelectionModal = () => (
     <Modal
       animationType="slide"
@@ -235,6 +278,7 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       </View>
     </Modal>
   );
+
   const SubjectSelectionModal = () => (
     <Modal
       animationType="slide"
@@ -270,42 +314,52 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       </View>
     </Modal>
   );
-  const GradeSelectionModal = () => (
+
+  // Updated grade selection modal with checkboxes
+  const GradeSelectionModal = React.memo(({
+    visible,
+    onClose,
+    grades,
+    selectedGrades,
+    toggleGradeSelection
+  }) => (
     <Modal
       animationType="slide"
       transparent={true}
-      visible={gradeModalVisible}
-      onRequestClose={() => setGradeModalVisible(false)}
+      visible={visible}
+      onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Select Grade</Text>
+          <Text style={styles.modalTitle}>Select Grades</Text>
           <ScrollView style={styles.modalScrollView}>
             {grades.map((grade) => (
               <TouchableOpacity
                 key={grade.id}
-                style={styles.modalItem}
-                onPress={() => {
-                  handleChange('grade', grade.id);
-                  handleChangeDisplay('grade', grade.grade_name);
-                  setGradeModalVisible(false);
-                }}
+                style={styles.checkboxItem}
+                onPress={() => toggleGradeSelection(grade.id, grade.grade_name)}
               >
-                <Text style={styles.modalItemText}>{grade.grade_name}</Text>
+                <View style={styles.checkboxContainer}>
+                  {selectedGrades.includes(grade.id) ? (
+                    <CheckboxON width={20} height={20} />
+                  ) : (
+                    <CheckboxOff width={20} height={20} />
+                  )}
+                  <Text style={styles.modalItemText}>{grade.grade_name}</Text>
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
           <TouchableOpacity
             style={styles.closeButton}
-            onPress={() => setGradeModalVisible(false)}
+            onPress={onClose}
           >
-            <Text style={styles.closeButtonText}>Cancel</Text>
+            <Text style={styles.closeButtonText}>Done</Text>
           </TouchableOpacity>
         </View>
       </View>
     </Modal>
-  );
-
+  ));
 
   if (loading) {
     return (
@@ -396,19 +450,25 @@ const AddInfraEnrollment = ({ navigation, route }) => {
             <TypeSelectionModal />
           </View>
 
-          {/* Grade */}
+          {/* Multiple Grades */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Grade</Text>
+            <Text style={styles.label}>Grades</Text>
             <TouchableOpacity
               style={[styles.input, styles.pickerInput]}
               onPress={() => setGradeModalVisible(true)}
             >
-              <Text style={formData.grade ? styles.inputText : styles.placeholderText}>
-                {showFormData.grade || 'Select grade'}
+              <Text style={selectedGrades.length > 0 ? styles.inputText : styles.placeholderText}>
+                {showFormData.gradeNames || 'Select grades'}
               </Text>
               <Text style={styles.dropdownIcon}>▼</Text>
             </TouchableOpacity>
-            <GradeSelectionModal />
+            <GradeSelectionModal
+              visible={gradeModalVisible}
+              onClose={() => setGradeModalVisible(false)}
+              grades={grades}
+              selectedGrades={selectedGrades}
+              toggleGradeSelection={toggleGradeSelection}
+            />
           </View>
 
           {/* Subject */}

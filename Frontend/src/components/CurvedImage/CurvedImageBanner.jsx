@@ -19,8 +19,8 @@ const CurvedImageBanner = ({ imageSource }) => {
         style={styles.curve}
       >
         <Path
-          fill="#FEE2E2"
-          d={`M0,0 C${width * 0.25},80 ${width * 0.75},80 ${width},0 L${width},80 L0,80 Z`}
+          fill="#FFF"
+          d={`M0,0 C${width * 0.25},50 ${width * 0.75},50 ${width},0 L${width},80 L0,80 Z`}
         />
       </Svg>
     </View>

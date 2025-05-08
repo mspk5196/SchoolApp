@@ -19,12 +19,13 @@ exports.mentorStudents = (req, res) => {
 exports.getMentorData = (req, res) => {
   const { phoneNumber } = req.body;
   const query = `
-    SELECT m.id, u.name, m.roll, m.grade_id, sec.section_name, sub.subject_name, m.section_id, m.phone
+    SELECT m.id, u.name, m.roll, m.grade_id, sec.section_name, sub.subject_name, m.section_id, m.phone, up.file_path
     FROM Mentors m
     JOIN Users u ON m.phone = u.phone
     JOIN Sections sec ON m.section_id = sec.id
     LEFT JOIN mentor_section_assignments msa ON m.id = msa.mentor_id
     LEFT JOIN Subjects sub ON msa.subject_id = sub.id
+    LEFT JOIN User_photos up ON m.phone = up.phone
     WHERE m.phone = ?;
   `;
   db.query(query, [phoneNumber], (err, results) => {

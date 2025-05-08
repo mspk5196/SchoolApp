@@ -77,9 +77,9 @@ router.post('/coordinator/coordinatorStudents', coordinatorController.coordinato
 router.post('/coordinator/getAttendance', coordinatorController.getAttendance);
 router.post('/coordinator/submitLeaveRequest', coordinatorController.submitLeaveRequest);
 router.post('/coordinator/getLeaveHistory', coordinatorController.getLeaveHistory);
-router.post('/coordinator/getMentorAssignments', coordinatorController.getCoordinatorAssignments);
-router.post('/coordinator/getMentorSection', coordinatorController.getCoordinatorSection);
-router.post('/coordinator/getMentorIssues', coordinatorController.getCoordinatorIssues);
+router.post('/coordinator/getMentorAssignments', coordinatorController.getMentorAssignments);
+router.post('/coordinator/getMentorSection', coordinatorController.getMentorSection);
+router.post('/coordinator/getMentorIssues', coordinatorController.getMentorIssues);
 
 //StudentRequests
 router.get('/coordinator/fetchDocumentPurpose', coordinatorController.fetchDocumentPurpose);
@@ -131,6 +131,7 @@ router.get('/coordinator/enrollment/getGrades', infraEnrollment.getGrades);
 router.get('/coordinator/enrollment/getSubjects', infraEnrollment.getSubjects);
 router.get('/coordinator/enrollment/getBlocks', infraEnrollment.getBlocks);
 
+
 //StudentEnrollment
 router.get('/coordinator/getGrades', coordinatorController.getGrades);
 router.post(
@@ -138,6 +139,7 @@ router.post(
   uploadStudentProfile.single('profilePhoto'), // matches FormData key
   coordinatorController.enrollStudent
 );
+router.post('/coordinator/getSpecificSectionMentor',coordinatorController.getSpecificSectionMentor)
 router.post(
   '/coordinator/enrollMentor',
   uploadMentorProfile.single('profilePhoto'), // matches FormData key
@@ -145,10 +147,8 @@ router.post(
 );
 
 // Create/update academic schedule
-router.post('/coordinator/academic-schedule/schedule-add', coordinatorController.createOrUpdateSchedule);
+// router.post('/coordinator/academic-schedule/schedule-add', coordinatorController.createOrUpdateSchedule);
 router.get('/coordinator/academic-schedule/getShedule/:section_id/:day', coordinatorController.getSchedule);
-router.post('/coordinator/academic-schedule/sections', coordinatorController.getSectionsByGrade);
-router.get('/coordinator/academic-schedule/subjects', coordinatorController.getAllSubjects);
 
 //ExamSchedule
 router.get('/coordinator/getExamSchedule', coordinatorController.getExamSchedule);
@@ -160,6 +160,11 @@ router.get('/coordinator/weekly-schedule/getWeeklySchedule', coordinatorControll
 router.post('/coordinator/weekly-schedule/addOrUpdateWeeklySchedule', coordinatorController.addOrUpdateWeeklySchedule);
 router.delete('/coordinator/weekly-schedule/deleteWeeklySchedule/:id', coordinatorController.deleteWeeklySchedule);
 router.get('/coordinator/weekly-schedule/getAvailableMentors', coordinatorController.getAvailableMentors);
+router.post('/coordinator/weekly-schedule/subjects', coordinatorController.getAllSubjects);
+router.post('/coordinator/weekly-schedule/sections', coordinatorController.getSectionsByGrade);
+router.get('/coordinator/weekly-schedule/getSectionSubjectActivities', coordinatorController.getSectionSubjectActivities);
+router.get('/coordinator/weekly-schedule/checkTimeConflict', coordinatorController.checkTimeConflict);
+router.get('/coordinator/enrollment/getVenuesByGrade', infraEnrollment.getVenuesByGrade);
 // Invigilation duties
 router.get('/coordinator/getExamScheduleWithInvigilators', coordinatorController.getExamScheduleWithInvigilators);
 router.post('/coordinator/assignInvigilators', coordinatorController.assignInvigilators);
@@ -182,6 +187,9 @@ router.post('/coordinator/mentor/assignMentorToSubject', coordinatorController.a
 router.post('/coordinator/mentor/assignSubjectToMentorSection', coordinatorController.assignSubjectToMentorSection);
 router.post('/coordinator/mentor/getEnroledSubjectMentors', coordinatorController.getEnroledSubjectMentors);
 router.post('/coordinator/mentor/getEnroledGradeSubjectMentor', coordinatorController.getEnroledGradeSubjectMentor);
+
+
+router.post('/coordinator/mentor/getMentorSchedule', coordinatorController.getMentorSchedule);
 
 //Events
 router.post('/coordinator/events/create', uploadEventBanner.single('bannerPhoto'),coordinatorController.createEvent);

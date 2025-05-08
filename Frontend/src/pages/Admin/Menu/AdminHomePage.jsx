@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, Pressable, ScrollView, Modal, Alert } from 'react-native';
 import styles from './menustyles';
@@ -14,12 +14,22 @@ import Events from '../../../assets/AdminPage/Menu/Events.svg';
 import Calender from '../../../assets/AdminPage/Menu/Calender.svg';
 import { Switch } from 'react-native-switch';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CommonActions, useNavigation } from '@react-navigation/native';
 
 const AdminHomePage = ({ navigation, route }) => {
-  const {adminData} = route.params;
+  // const {adminData} = route.params;
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(true);
+  const [adminData, setAdminData] = useState()
+
+  useEffect(()=>{
+    fetchAdminData();
+  },[])
+  const fetchAdminData = async () => {
+    const storedData = await AsyncStorage.getItem('adminData');
+    if (storedData) {
+      setAdminData(storedData)
+    }
+  }
 
   const handleMenuPress = menuItem => {
     console.log(`${menuItem} pressed`);

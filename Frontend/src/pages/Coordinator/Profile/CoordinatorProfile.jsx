@@ -13,6 +13,7 @@ import { API_URL } from '@env';
 
 const CoordinatorProfile = ({ navigation, route }) => {
   const { coordinatorData } = route.params;
+  
   const [attendanceData, setAttendanceData] = useState({
     total_days: 0,
     present_days: 0,

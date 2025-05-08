@@ -21,6 +21,7 @@ const StudentEnrollment = ({ navigation, route }) => {
     grade: '',
     mobileNumber: '',
     section: '',
+    sectionMentorID: '',
     profileImage: null,
     aadharNo: '',
     emisNo: '',
@@ -41,6 +42,7 @@ const StudentEnrollment = ({ navigation, route }) => {
   const [uploadedDocuments, setUploadedDocuments] = useState([]);
   const [gradeOptions, setGradeOptions] = useState([]);
   const [sectionOptions, setSectionOptions] = useState([]);
+  const [mentorID, setMentorID] = useState(null);
 
   const genderOptions = ['Male', 'Female', 'Other'];
 
@@ -86,6 +88,31 @@ const StudentEnrollment = ({ navigation, route }) => {
     }
   };
 
+
+  const fetchSectionMentor = async(sectionID) =>{
+    console.log("Fetching mentor...");
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/getSpecificSectionMentor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sectionID })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setMentorID(data.sectionMentor);
+        console.log(data.sectionMentor);
+      } else {
+        Alert.alert('Error', 'Failed to fetch sections');
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+      Alert.alert('Error', 'Failed to fetch sections');
+    }
+  }
+
   const handleChange = (field, value) => {
     setStudent({ ...student, [field]: value });
     // Clear error when field is filled
@@ -96,6 +123,9 @@ const StudentEnrollment = ({ navigation, route }) => {
     // If grade is changed, fetch sections for that grade
     if (field === 'grade') {
       fetchSections(value);
+    }
+    if(field === 'section'){
+      fetchSectionMentor(value)
     }
   };
 
@@ -226,6 +256,7 @@ const StudentEnrollment = ({ navigation, route }) => {
       formData.append('gender', student.gender);
       formData.append('grade', student.grade);
       formData.append('section', student.section);
+      formData.append('mentorID', mentorID[0].id);
       formData.append('mobileNumber', student.mobileNumber);
   
       // Add profile photo if exists

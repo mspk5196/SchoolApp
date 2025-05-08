@@ -28,7 +28,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getMentorSectionStudents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sectionID: mentor.section_id }),
+        body: JSON.stringify({ sectionID: mentor.section_id,mentorID:mentor.id }),
       });
 
       const data = await response.json();
@@ -150,6 +150,31 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
     }
   };
 
+  const removeMentorStudents = async (mentorId, studentId) => {
+    console.log(mentorId, studentId);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/mentor/removeMentorStudents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mentorID: mentorId,
+          studentID: studentId,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('Success', 'Mentor assigned to subject successfully');
+      } else {
+        Alert.alert('Error', data.message || 'Failed to assign mentor');
+      }
+    } catch (error) {
+      console.error('Error assigning mentor:', error);
+      Alert.alert('Error', 'Failed to assign mentor');
+    }
+  };
+
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
       const normalizedPath = profilePath.replace(/\\/g, '/');
@@ -226,7 +251,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
                       <Text style={styles.listId}>{student.roll}</Text>
                     </View>
                   </View>
-                  <TouchableOpacity style={styles.removeButton}>
+                  <TouchableOpacity style={styles.removeButton} onPress={()=>removeMentorStudents(student.id, mentor.id)}>
                     <Text style={styles.removeText}>Remove</Text>
                   </TouchableOpacity>
                 </View>

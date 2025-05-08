@@ -15,6 +15,7 @@ router.get('/admin/section/:sectionId/students', adminController.getStudentsByGr
 
 // Student details routes
 router.get('/admin/students/:studentId', adminController.getStudentDetails);
+router.post('/admin/students/getSubjectMentors', adminController.getSubjectMentors);
 router.get('/admin/students/:roll/attendance', adminController.getAttendance);
 
 // Issue log routes

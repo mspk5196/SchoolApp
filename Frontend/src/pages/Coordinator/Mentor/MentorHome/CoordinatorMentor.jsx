@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, View, SectionList, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './MentorStyles';
@@ -8,6 +8,7 @@ import LeaveIcon from '../../../../assets/CoordinatorPage/MentorHome/leave.svg';
 import MentorListIcon from '../../../../assets/CoordinatorPage/MentorHome/mentorlist.svg';
 import DisciplineIcon from '../../../../assets/CoordinatorPage/MentorHome/mapping.svg';
 import Home from '../../../../assets/CoordinatorPage/MentorHome/home.svg'
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const data = [{
     data: [
         { id: '1', title: 'Subject Mentor', bgColor: '#65558F1F', iconColor: '#6A5ACD', Icon: SubjectIcon, color: '#65558F' },
@@ -25,8 +26,23 @@ const MentorCard = ({ title, Icon, bgColor, color, onPress }) => (
     </TouchableOpacity>
 );
 
-const CoordinatorMentor = ({ navigation, route }) => {
-    const {coordinatorData} = route.params;
+const CoordinatorMentor = ({ navigation }) => {
+    const [coordinatorData,setCoordinatorData] = useState(coordinatorData);
+    const fetchData = async() =>{
+        try {
+            const data = await AsyncStorage.getItem('coordinatorData');
+            if (data) {
+              const parsedData = JSON.parse(data);
+              setCoordinatorData(parsedData);
+            }
+          } catch (error) {
+            console.error('Error fetching data:', error);
+          }
+    }
+    useEffect(()=>{
+        fetchData()
+    },[]) 
+    
 
     return (
         <SafeAreaView style={styles.container}>

@@ -252,7 +252,7 @@ const CoordinatorStudentProfileDetails = ({ navigation, route }) => {
         </View>
 
         {/* Achievements Card - Updated */}
-        <View style={styles.card}>
+        {/* <View style={styles.card}>
           <View style={styles.achievementHeader}>
             <Text style={styles.cardTitle}>Achievements</Text>
             <Text style={styles.achievementLevel}>Level {achievementData.currentLevel}</Text>
@@ -272,7 +272,7 @@ const CoordinatorStudentProfileDetails = ({ navigation, route }) => {
           <Text style={styles.progressText}>
             Score {pointsRemaining} more Rp to achieve level {achievementData.currentLevel + 1}
           </Text>
-        </View>
+        </View> */}
 
         {/* Performance Graph Card */}
         <View style={styles.card}>
@@ -392,116 +392,6 @@ const CoordinatorStudentProfileDetails = ({ navigation, route }) => {
           </View>
           <View style={styles.issueLogItem}>
             <Text style={styles.issueLogText}>Discipline : 2</Text>
-          </View>
-        </View>
-
-        {/* Concept Progress Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Concept progress</Text>
-          
-          <View style={styles.subjectTabs}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContainer}>
-              {subjects.map((subject) => (
-                <TouchableOpacity
-                  key={subject}
-                  onPress={() => setActiveSubject(subject)}
-                  style={[
-                    styles.subjectTab,
-                    activeSubject === subject && styles.activeSubjectTab
-                  ]}
-                >
-                  <Text 
-                    style={[
-                      styles.subjectTabText,
-                      activeSubject === subject && styles.activeSubjectTabText
-                    ]}
-                  >
-                    {subject}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-          
-          <View style={styles.chartContainer}>
-            {/* Y-axis labels */}
-            <View style={styles.yAxis}>
-              {[4, 3, 2, 1, 0].map((value) => (
-                <Text key={value} style={styles.axisLabel}>
-                  {value < 10 ? `0${value}` : value}
-                </Text>
-              ))}
-            </View>
-            
-            {/* Chart area */}
-            <View style={styles.chart}>
-              {/* Horizontal grid lines */}
-              {[0, 1, 2, 3, 4].map((i) => (
-                <View key={i} style={[styles.gridLine, { top: i * (CHART_HEIGHT / 4) }]} />
-              ))}
-              
-              {/* Chart line */}
-              <Svg height={CHART_HEIGHT} width={CHART_WIDTH} style={styles.chartSvg}>
-                {/* Line path */}
-                <Path
-                  d={generatePath(coordinates)}
-                  stroke="#2D68FF"
-                  strokeWidth={2}
-                  fill="none"
-                />
-                
-                {/* Gradient under the line */}
-                <Defs>
-                  <LinearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
-                    <Stop offset="0" stopColor="#2D68FF" stopOpacity={0.2} />
-                    <Stop offset="1" stopColor="#2D68FF" stopOpacity={0.05} />
-                  </LinearGradient>
-                </Defs>
-                
-                <Path
-                  d={`${generatePath(coordinates)} L ${coordinates[coordinates.length-1].x} ${CHART_HEIGHT} L ${coordinates[0].x} ${CHART_HEIGHT} Z`}
-                  fill="url(#gradient)"
-                />
-                
-                {/* Data points */}
-                {coordinates.map((point, index) => (
-                  <React.Fragment key={index}>
-                    <Circle
-                      cx={point.x}
-                      cy={point.y}
-                      r={index === Math.floor(coordinates.length / 2) ? 6 : 4}
-                      fill={index === Math.floor(coordinates.length / 2) ? "#2D68FF" : "transparent"}
-                      stroke="#2D68FF"
-                      strokeWidth={2}
-                    />
-                    
-                    {/* Value tooltip for middle point */}
-                    {index === Math.floor(coordinates.length / 2) && (
-                      <Text
-                        x={point.x}
-                        y={point.y - 15}
-                        textAnchor="middle"
-                        stroke="none"
-                        fill="#2D68FF"
-                        fontSize={10}
-                        fontWeight="bold"
-                      >
-                        {point.value.toFixed(1)}
-                      </Text>
-                    )}
-                  </React.Fragment>
-                ))}
-              </Svg>
-              
-              {/* X-axis labels */}
-              <View style={styles.xAxis}>
-                {currentData.map((point, index) => (
-                  <Text key={index} style={[styles.axisLabel, { width: CHART_WIDTH / currentData.length }]}>
-                    {point.month}
-                  </Text>
-                ))}
-              </View>
-            </View>
           </View>
         </View>
 

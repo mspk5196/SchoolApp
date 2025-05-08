@@ -1,21 +1,21 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  TextInput, 
-  Image, 
-  ScrollView, 
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  Image,
+  ScrollView,
   Modal,
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
   KeyboardAvoidingView
 } from 'react-native';
-import Leftarrow from   '../../../../assets/CoordinatorPage/DisciplineLog/leftarrow.svg';
-import Addicon from     '../../../../assets/CoordinatorPage/DisciplineLog/addicon.svg';
-import PhoneIcon from   '../../../../assets/CoordinatorPage/DisciplineLog/call.svg';
-import MessageIcon from '../../../../assets/CoordinatorPage/DisciplineLog/msg.svg';
+import BackIcon from '../../../../assets/CoordinatorPage/DisciplineLog/leftarrow.svg';
+import AddIcon from '../../../../assets/CoordinatorPage/DisciplineLog/addicon.svg';
+import Phone from '../../../../assets/CoordinatorPage/DisciplineLog/call.svg';
+import MessageSquare from '../../../../assets/CoordinatorPage/DisciplineLog/msg.svg';
 import styles from './DisciplineLogStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,10 +24,15 @@ const CoordinatorDisciplineLog = ({ navigation }) => {
   const [reason, setReason] = useState('');
   const [registeredBy, setRegisteredBy] = useState('');
   const [complaintModalVisible, setComplaintModalVisible] = useState(false);
+
+  // Add search state
+  const [searchText, setSearchText] = useState('');
+  const [filteredData, setFilteredData] = useState([]);
+
   const [disciplineData, setDisciplineData] = useState([
     {
       id: 1,
-      name: 'Faculty',
+      name: 'Admin',
       regNo: '2024VI023',
       reason: 'Student is saying that he came along with parents to school, and he is late to school because of traffic.',
       date: '29/10/23',
@@ -42,6 +47,27 @@ const CoordinatorDisciplineLog = ({ navigation }) => {
       registeredBy: 'SasiKumar',
     },
   ]);
+
+  // Filter data when search text changes
+  useEffect(() => {
+    if (searchText.trim() === '') {
+      setFilteredData(disciplineData);
+    } else {
+      const filtered = disciplineData.filter(item => {
+        const searchLower = searchText.toLowerCase();
+        return (
+          item.name.toLowerCase().includes(searchLower) ||
+          item.regNo.toLowerCase().includes(searchLower)
+        );
+      });
+      setFilteredData(filtered);
+    }
+  }, [searchText, disciplineData]);
+
+  // Initialize filtered data with all data
+  useEffect(() => {
+    setFilteredData(disciplineData);
+  }, []);
 
   const formatDate = () => {
     const today = new Date();
@@ -61,7 +87,7 @@ const CoordinatorDisciplineLog = ({ navigation }) => {
         date: formatDate(),
         registeredBy: registeredBy,
       };
-      
+
       setDisciplineData([newComplaint, ...disciplineData]);
       setReason('');
       setRegisteredBy('');
@@ -76,46 +102,66 @@ const CoordinatorDisciplineLog = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.SubNavbar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Leftarrow width={20} height={20} />
-        </TouchableOpacity>
-        <Text style={styles.heading}>Discipline Log</Text>
+      <View style={styles.header}>
+        <BackIcon
+          width={styles.BackIcon.width}
+          height={styles.BackIcon.height}
+          onPress={() => navigation.navigate('CoordinatorMentor')}
+        />
+        <Text style={styles.headerTxt}>Discipline Log</Text>
       </View>
-      
+
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search..."
+          placeholder="Search by name or registration number..."
+          value={searchText}
+          onChangeText={setSearchText}
+          clearButtonMode="while-editing"
         />
       </View>
-      
+
       <ScrollView style={styles.cardContainer}>
-        {disciplineData.map((item) => (
-          <View key={item.id} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Image source={require('../../../../assets/CoordinatorPage/DisciplineLog/staff.png')} style={styles.avatar} />
-              <View>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <Text style={styles.cardSubtitle}>{item.regNo}</Text>
+        {filteredData.length > 0 ? (
+          filteredData.map((item) => (
+            <View key={item.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Image source={require('../../../../assets/CoordinatorPage/DisciplineLog/staff.png')} style={styles.avatar} />
+                <View>
+                  <Text style={styles.cardTitle}>{item.name}</Text>
+                  <Text style={styles.cardSubtitle}>{item.regNo}</Text>
+                </View>
+                <Text style={styles.cardDate}>{item.date}</Text>
               </View>
-              <Text style={styles.cardDate}>{item.date}</Text>
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardLabel}>Reason</Text>
-              <Text style={styles.cardReason}>{item.reason}</Text>
-              <View style={styles.regBar}>
-                <Text style={styles.registeredBy}>Registered by {item.registeredBy}</Text>
-                <PhoneIcon style={styles.phoneIcon}/>
-                <MessageIcon  style={styles.messageIcon} />
+              <View style={styles.cardContent}>
+                <Text style={styles.cardLabel}>Reason</Text>
+                <View style={styles.cardReasonContainer}>
+                  <Text style={styles.cardReason}>{item.reason}</Text>
+                </View>
+                <View style={styles.regBar}>
+                  <Text style={styles.registeredBy}>Registered by {item.registeredBy}</Text>
+                  <TouchableOpacity style={styles.actionButtonCall}>
+                    <Phone width={20} height={20} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionButtonMsg}>
+                    <MessageSquare width={20} height={20} />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
+          ))
+        ) : (
+          <View style={styles.noResultsContainer}>
+            <Text style={styles.noResultsText}>No records found</Text>
           </View>
-        ))}
+        )}
       </ScrollView>
-      
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-        <Addicon width={50} height={50} />
+
+      <TouchableOpacity
+        style={styles.AddButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <AddIcon width={styles.AddIcon.width} height={styles.AddIcon.height} />
       </TouchableOpacity>
 
       {/* Add Complaint Modal */}
@@ -134,7 +180,7 @@ const CoordinatorDisciplineLog = ({ navigation }) => {
               >
                 <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>Add Discipline Record</Text>
-                  
+
                   <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Reason</Text>
                     <TextInput
@@ -146,7 +192,7 @@ const CoordinatorDisciplineLog = ({ navigation }) => {
                       numberOfLines={4}
                     />
                   </View>
-                  
+
                   <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Registered By</Text>
                     <TextInput
@@ -156,7 +202,7 @@ const CoordinatorDisciplineLog = ({ navigation }) => {
                       onChangeText={setRegisteredBy}
                     />
                   </View>
-                  
+
                   <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Date</Text>
                     <TextInput
@@ -165,8 +211,8 @@ const CoordinatorDisciplineLog = ({ navigation }) => {
                       editable={false}
                     />
                   </View>
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={styles.registerButton}
                     onPress={handleRegisterComplaint}
                   >
@@ -191,14 +237,14 @@ const CoordinatorDisciplineLog = ({ navigation }) => {
             <Image source={require('../../../../assets/CoordinatorPage/DisciplineLog/staff.png')} style={styles.confirmAvatar} />
             <Text style={styles.confirmTitle}>Prakash Raj</Text>
             <Text style={styles.confirmSubtitle}>2024VI023</Text>
-            <Text style={styles.confirmLabel}>Student Mentor: vishal</Text>
-            
+            <Text style={styles.confirmLabel}>Student Mentor: Vishal</Text>
+
             <View style={styles.confirmReasonContainer}>
               <Text style={styles.confirmReasonTitle}>Reason</Text>
               <Text style={styles.confirmReasonText}>{reason}</Text>
             </View>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.confirmButton}
               onPress={() => {
                 handleAddComplaint();

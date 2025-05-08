@@ -7,8 +7,9 @@ import {
   SafeAreaView,
   Modal,
   FlatList,
-  Alert
-} from 'react-native'; 
+  Alert,
+  ActivityIndicator
+} from 'react-native';
 import BackIcon from '../../../../assets/CoordinatorPage/WeeklySchedule/Back.svg';
 import EditIcon from '../../../../assets/CoordinatorPage/WeeklySchedule/Edit.svg';
 import BookIcon from '../../../../assets/CoordinatorPage/WeeklySchedule/Book.svg';
@@ -30,6 +31,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
   const [mentors, setMentors] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [venues, setVenues] = useState([])
 
   const { activeGrade } = route.params;
 
@@ -50,8 +52,11 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     subject_id: null,
     faculty: 'Select Faculty',
     faculty_id: null,
-    activity: 'Lecture',
-    venue: 'Room 101'
+    activity: null, // Changed from '1' to null
+    activity_id: null, // New field for activity ID
+    activity_name: 'Lecture',
+    venue: 'Select Venue',
+    venue_id: null // New field for venue ID
   });
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -61,7 +66,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     const fetchSections = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`${API_URL}/api/coordinator/academic-schedule/sections`, {
+        const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/sections`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ activeGrade })
@@ -92,6 +97,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
   useEffect(() => {
     if (activeSection) {
       fetchSchedule();
+      fetchSubjects();
     }
   }, [activeSection, activeDay]);
 
@@ -110,8 +116,14 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
           timeStart: formatTime(item.start_time),
           timeEnd: formatTime(item.end_time),
           faculty: item.mentor_name || 'Not assigned',
-          faculty_id: item.mentors_id
+          faculty_id: item.mentors_id,
+          activity_name: item.activity_name,
+          activity: item.id,
+          venue_id:item.venue_id,
+          venue:item.venue_name,
         })));
+        // console.log(data.scheduleItems);
+
       } else {
         setScheduleItems([]);
       }
@@ -123,42 +135,89 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     }
   };
 
-  useEffect(() => {
-    const fetchSubjects = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/coordinator/academic-schedule/subjects`);
-        const data = await response.json();
-        if (response.ok) {
-          setSubjects(data.subjects);
-        } else {
-          throw new Error(data.message || 'Failed to fetch subjects');
-        }
-      } catch (error) {
-        console.error('Error fetching subjects:', error);
-        Alert.alert('Error', 'Failed to fetch subjects');
+  const fetchSubjects = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/subjects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activeSection })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setSubjects(data.subjects);
+      } else {
+        throw new Error(data.message || 'Failed to fetch subjects');
       }
-    };
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+      Alert.alert('Error', 'Failed to fetch subjects');
+    }
+  };
 
-    fetchSubjects();
-  }, []);
+  // Fetch venues for the current grade
+  const fetchVenues = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/coordinator/enrollment/getVenuesByGrade?gradeId=${activeGrade}`
+      );
+      const data = await response.json();
+      if (data.success) {
+        setVenues(data.venues);
+      }
+    } catch (error) {
+      console.error('Error fetching venues:', error);
+    }
+  };
+
+  // Call this when component mounts or grade changes
+  useEffect(() => {
+    if (activeGrade) {
+      fetchVenues();
+    }
+  }, [activeGrade]);
 
   const formatTime = (timeString) => {
     if (!timeString) return '';
-    const time = new Date(`2000-01-01T${timeString}`);
-    return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Handle cases where timeString might already be in 12-hour format
+    if (timeString.includes('AM') || timeString.includes('PM') || timeString.includes('am') || timeString.includes('pm')) {
+      return timeString; // Already formatted, return as is
+    }
+
+    // Parse 24-hour format
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+
+    return `${displayHour}:${minutes} ${period}`;
   };
 
   const parseTimeTo24Hr = (timeStr) => {
+    if (!timeStr) return '09:40:00'; // default time
+
+    // If already in 24-hour format with seconds (HH:MM:SS)
+    if (/^\d{2}:\d{2}:\d{2}$/.test(timeStr)) {
+      return timeStr;
+    }
+
+    // Handle AM/PM format (HH:MM AM/PM)
     const [time, period] = timeStr.split(' ');
     let [hours, minutes] = time.split(':');
 
-    if (period === 'PM' && hours !== '12') {
+    if ((period === 'PM' || period === 'pm') && hours !== '12') {
       hours = parseInt(hours, 10) + 12;
     } else if (period === 'AM' && hours === '12') {
       hours = '00';
     }
 
-    return `${hours.padStart(2, '0')}:${minutes}:00`;
+    // Ensure hours are two digits
+    hours = hours.toString().padStart(2, '0');
+
+    // Add seconds if not present
+    if (!minutes) minutes = '00';
+
+    return `${hours}:${minutes}:00`;
   };
 
   const handleDaySelect = (day) => {
@@ -174,8 +233,11 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
       subject_id: null,
       faculty: 'Select Faculty',
       faculty_id: null,
-      activity: 'Lecture',
-      venue: 'Room 101'
+      activity: null,
+      activity_id: null,
+      activity_name: 'Select Activity',
+      venue: 'Select Venue',
+      venue_id: null
     });
     setShowAddModal(true);
   };
@@ -184,46 +246,63 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     setNewActivity({
       id: item.id,
       timeStart: item.timeStart,
-      timeEnd: item.timeEnd, 
+      timeEnd: item.timeEnd,
       subject: item.subject_name,
       subject_id: item.subject_id,
       faculty: item.faculty,
       faculty_id: item.faculty_id,
-      activity: item.activity || 'Lecture',
-      venue: item.venue || 'Room 101'
+      activity: item.activity_name,
+      activity_id: item.activity,
+      activity_name: item.activity_name || 'Select Activity',
+      venue: item.venue || 'Room 101', // Assuming your API returns venue_name
+      venue_id: item.venue_id // This should be the venue ID
     });
-    fetchMentors(item.subject_id)
+    fetchMentors(item.subject_id);
     setShowAddModal(true);
   };
 
   const saveNewActivity = async () => {
-    // Validate fields
-    if (!newActivity.subject_id || newActivity.subject === 'Select Subject' ||
-      !newActivity.timeStart || !newActivity.timeEnd) {
-      Alert.alert('Missing Information', 'Please fill all required fields');
-      return;
-    }
-
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/addOrUpdateWeeklySchedule`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const conflictCheck = await fetch(
+        `${API_URL}/api/coordinator/weekly-schedule/checkTimeConflict?` +
+        new URLSearchParams({
           sectionId: activeSection,
           day: activeDay,
           startTime: parseTimeTo24Hr(newActivity.timeStart),
           endTime: parseTimeTo24Hr(newActivity.timeEnd),
-          subjectId: newActivity.subject_id,
-          mentorsId: newActivity.faculty_id,
-          activity: newActivity.activity,
-          venue: newActivity.venue
+          excludeId: newActivity.id || ''
         })
-      });
+      );
+
+      const conflictData = await conflictCheck.json();
+
+      if (conflictData.hasConflict) {
+        Alert.alert('Time Conflict', 'This time slot already has a scheduled activity');
+        return;
+      }
+
+      const response = await fetch(
+        `${API_URL}/api/coordinator/weekly-schedule/addOrUpdateWeeklySchedule`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: newActivity.id,
+            sectionId: activeSection,
+            day: activeDay,
+            startTime: parseTimeTo24Hr(newActivity.timeStart),
+            endTime: parseTimeTo24Hr(newActivity.timeEnd),
+            subjectId: newActivity.subject_id,
+            mentorsId: newActivity.faculty_id,
+            activity: newActivity.activity_id, // Send activity ID
+            venue: newActivity.venue_id // Send venue ID
+          })
+        }
+      );
 
       const data = await response.json();
-
       if (data.success) {
-        fetchSchedule(); // Refresh the schedule
+        fetchSchedule();
         setShowAddModal(false);
       } else {
         Alert.alert('Error', data.message || 'Failed to save schedule');
@@ -256,23 +335,24 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
   const fetchMentors = async (subjectId) => {
     try {
       const response = await fetch(
-        `${API_URL}/api/coordinator/weekly-schedule/getAvailableMentors?subjectId=${subjectId}`
+        `${API_URL}/api/coordinator/weekly-schedule/getAvailableMentors?subjectId=${subjectId}&activeSection=${activeSection}`
       );
+      // console.log(subjectId, activeSection);
 
       const data = await response.json();
 
       if (data.success) {
         setMentors(data.mentors);
-        fetchActivities();
+        fetchActivities(subjectId, activeSection);
       }
     } catch (error) {
       console.error('Error fetching mentors:', error);
     }
   };
 
-  const fetchActivities = async () => {
+  const fetchActivities = async (subjectId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getActivities`, {
+      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/getSectionSubjectActivities?subjectId=${subjectId}&activeSection=${activeSection}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -280,11 +360,11 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success) {
         setActivities(data.activity_types);
-        console.log(data.activity_types);
+        // console.log(data.activity_types);
 
       }
     } catch (error) {
-      console.error('Error fetching subject titles:', error);
+      console.error('Error fetching activity titles:', error);
     }
   };
 
@@ -296,7 +376,10 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
       faculty: 'Select Faculty',
       faculty_id: null
     }));
+    // console.log(subject.id);
     fetchMentors(subject.id);
+    // console.log(subject.id, activeSection);
+
     setShowSubjectModal(false);
   };
 
@@ -343,16 +426,23 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     setShowTimeModal(false);
   };
 
-  const selectActivity = (activity) => {
-    setNewActivity({ ...newActivity, activity });
+  const selectActivity = (activity_id, activity_name) => {
+    setNewActivity(prev => ({
+      ...prev,
+      activity_id,
+      activity_name
+    }));
     setShowActivityModal(false);
   };
 
   const selectVenue = (venue) => {
-    setNewActivity({ ...newActivity, venue });
+    setNewActivity(prev => ({
+      ...prev,
+      venue: venue.name,
+      venue_id: venue.id
+    }));
     setShowVenueModal(false);
   };
-  const venues = ['Room 101', 'Lab 3', 'Auditorium', 'Library', 'Conference Room', 'Online'];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -364,6 +454,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
+          <ActivityIndicator color='#0C36FF' size='large' />
           <Text>Loading...</Text>
         </View>
       ) : (
@@ -442,7 +533,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                     {/* Activity */}
                     <View style={styles.detailRow}>
                       <ActivityIcon width={16} height={16} style={styles.detailIcon} />
-                      <Text style={styles.detailText}>{item.activity || 'Lecture'}</Text>
+                      <Text style={styles.detailText}>{item.activity_name || 'Acadamics'}</Text>
                     </View>
 
                     {/* Venue */}
@@ -543,7 +634,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                   onPress={() => setShowActivityModal(true)}
                 >
                   <ActivityIcon width={16} height={16} style={styles.selectionIcon} />
-                  <Text style={styles.selectionText}>{newActivity.activity}</Text>
+                  <Text style={styles.selectionText}>{newActivity.activity_name}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -778,9 +869,9 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
               <TouchableOpacity
                 key={item.id}
                 style={styles.listModalItem}
-                onPress={() => selectActivity(item.activity_type)}
+                onPress={() => selectActivity(item.id, item.activity_name)}
               >
-                <Text style={styles.listModalItemText}>{item.activity_type}</Text>
+                <Text style={styles.listModalItemText}>{item.activity_name}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -802,11 +893,11 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
           <View style={styles.listModalContainer}>
             {venues.map(item => (
               <TouchableOpacity
-                key={item}
+                key={item.id}
                 style={styles.listModalItem}
-                onPress={() => selectVenue(item)}
+                onPress={() => selectVenue(item)} // Pass the whole venue object
               >
-                <Text style={styles.listModalItemText}>{item}</Text>
+                <Text style={styles.listModalItemText}>{item.name}</Text>
               </TouchableOpacity>
             ))}
           </View>

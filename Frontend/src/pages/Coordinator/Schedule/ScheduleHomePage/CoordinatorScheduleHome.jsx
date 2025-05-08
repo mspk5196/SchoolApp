@@ -21,7 +21,7 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
   const data = [
     {
       data: [
-        { id: '1', title: 'Academic Schedule', bgColor: '#C9F7F5', iconColor: '#6A5ACD', Icon: <CollegeIcon width={50} height={50} />, color: '#0FBEB3' },
+        // { id: '1', title: 'Academic Schedule', bgColor: '#C9F7F5', iconColor: '#6A5ACD', Icon: <CollegeIcon width={50} height={50} />, color: '#0FBEB3' },
         { id: '2', title: 'Exam Schedule', bgColor: '#65558F12', iconColor: '#EEAA16', Icon: <ExamIcon width={50} height={50} />, color: '#65558F' },
         { id: '3', title: 'Invigilation Duties', bgColor: '#FFF3DC', iconColor: '#D81B60', Icon: <InvigilatorIcon width={50} height={50} />, color: '#EEAA16' },
         { id: '4', title: 'Weekly Schedules', bgColor: '#EBEEFF', iconColor: '#3557FF', Icon: <CollegeIcon2 width={50} height={50} />, color: '#3557FF' },
@@ -85,9 +85,9 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
               } else if (item.title === 'Invigilation Duties') {
                 navigation.navigate('CoordinatorInvigilationDuties');
               }
-              else if (item.title === 'Academic Schedule') {
-                navigation.navigate('CoordinatorAcademicSchedule', {activeGrade});
-              }
+              // else if (item.title === 'Academic Schedule') {
+              //   navigation.navigate('CoordinatorAcademicSchedule', {activeGrade});
+              // }
               else if (item.title === 'Weekly Schedules') {
                 navigation.navigate('CoordinatorWeeklySchedule', {activeGrade});
               }
