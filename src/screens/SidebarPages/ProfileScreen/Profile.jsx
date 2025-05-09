@@ -14,8 +14,9 @@ import Clock from '../../../assets/StudentProfileDetails/clock.svg';
 import Leaveday from '../../../assets/StudentProfileDetails/leaveday.svg';
 import Exchange from '../../../assets/StudentProfileDetails/exchange.svg';
 import BackIcon from '../../../assets/StudentProfileDetails/leftarrow.svg';
+import PreviousIcon from '../../../assets/basic-img/Backicon';
 import styles from './ProfileStyles';
-import PerformanceGraph from '../../../components/profilegraph/Performancegraph';
+import PerformanceGraph from '../../../components/profilegraph/Performancegraph1';
 import {useState} from 'react';
 
 const StudentProfileDetail = ({navigation, route}) => {
@@ -87,24 +88,16 @@ const StudentProfileDetail = ({navigation, route}) => {
     },
   ];
 
-  // Y-axis labels
-  //   const yAxisLabels = [25, 20, 15, 10, 5];
-
-  //   // Calculate bar heights - scale factor to convert data values to pixel heights
-  //   const maxValue = 25; // Maximum value on Y axis
-  //   const maxHeight = 180; // Maximum height in pixels for the bars
-  //   const scaleFactor = maxHeight / maxValue;
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <BackIcon
-          width={styles.BackIcon.width}
-          height={styles.BackIcon.height}
-          onPress={() => navigation.goBack()}
-        />
-        <Text style={styles.headerTxt}>Student Profile</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation && navigation.goBack()}
+        >
+          <PreviousIcon size={24} color="black" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
       </View>
 
       <ScrollView style={styles.scrollView}>

@@ -12,6 +12,7 @@ import styles from './PhonebookStyles';
 import Profile from '../../../assets/LeaveIcon/profile.png';
 import CallIcon from '../../../assets/phonebook/call';
 import MsgIcon from '../../../assets/phonebook/msg';
+import BackIcon from '../../../assets/basic-img/Backicon';
 
 const ContactCard = ({name, facultyId, subject, phoneNumber, onMessagePress}) => {
   const handleCallPress = () => {
@@ -86,6 +87,9 @@ const PhonebookApp = ({navigation}) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerContainer}>
+      <BackIcon
+          onPress={() => navigation.goBack()}
+        />
         <Text style={styles.headerText}>Phonebook</Text>
       </View>
       <FlatList

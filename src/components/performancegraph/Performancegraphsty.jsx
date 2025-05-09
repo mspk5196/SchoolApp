@@ -73,12 +73,13 @@ import { StyleSheet } from "react-native";
           fontSize: 10,
           fontWeight: 'bold',
           zIndex: 1,
+          color:"black",
         },  
         dayLabel: {
           marginTop: 8,
           fontSize: 12,
           textAlign: 'center',
-          
+          color: '#000000', 
         },
         legendContainer: {
           flexDirection: 'row',
@@ -98,6 +99,7 @@ import { StyleSheet } from "react-native";
           marginRight: 4,
         },
         legendText: {
+          color: '#000000',
           fontSize: 12,
         },
         barValueText: {

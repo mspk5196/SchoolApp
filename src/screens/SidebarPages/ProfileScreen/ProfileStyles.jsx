@@ -1,21 +1,7 @@
 import {StyleSheet} from 'react-native';
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E3E3E3',
-    backgroundColor: '#FFFFFF',
-  },
-  headerTxt: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginLeft: 10,
-  },
+  
   BackIcon: {
     width: 20,
     height: 20,
@@ -28,15 +14,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
+    padding: 20,
+    paddingBottom: 10,
+    paddingTop: 42,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderColor: '#00000080',
   },
   headerTitle: {
+    marginLeft: 6,
     fontSize: 18,
     fontWeight: '700',
-    marginLeft: 16,
+    color: '#333333',
   },
   scrollView: {
     flex: 1,

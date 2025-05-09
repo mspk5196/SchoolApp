@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import styles from './MaterialScreenStyles';
 import PDFicon from '../../assets/Materials-img/pdf';
-import Deleteicon from '../../assets/Materials-img/delete';
+
 
 const MaterialsScreen = () => {
   const [selectedLanguage, setSelectedLanguage] = useState('Tamil');
@@ -84,7 +84,7 @@ const MaterialsScreen = () => {
     const isActive = levelData.level === currentActiveLevel;
     const isLastLevel = index === levels.length - 1;
     const levelKey = `level-${levelData.level}`;
-    const currentTab = selectedTabs[levelKey] || 'PDF'; // Default to PDF if not set
+    const currentTab = selectedTabs[levelKey] || 'PDF'; 
 
     return (
       <View style={styles.levelContainer} key={levelKey}>
