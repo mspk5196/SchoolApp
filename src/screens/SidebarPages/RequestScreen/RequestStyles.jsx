@@ -7,21 +7,24 @@ export const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'left',
-    padding: 16,
+    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 10,
+    paddingTop: 42,
     borderBottomWidth: 1,
-    backgroundColor: 'white',
-    borderBottomColor: 'black',
+    borderBottomColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderColor: '#00000080',
   },
   headerTitle: {
-    marginLeft: 12, 
+    marginLeft: 6,
     fontSize: 18,
-    fontWeight: 'bold',
-    color:'black'
+    fontWeight: '700',
+    color: '#333333',
   },
-  headerSpacer: {
-    width: 24,
-  },
+  
   requestItem: {
     backgroundColor: '#fff',
     padding: 16,

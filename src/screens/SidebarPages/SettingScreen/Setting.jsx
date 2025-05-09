@@ -1,7 +1,7 @@
 import React from 'react';
 import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 // previous button
-import PreviousIcon from '../../../assets/SettingsIcon/PrevBtn.svg';
+import PreviousIcon from '../../../assets/LeaveIcon/PrevBtn.svg';
 import styles from './SettingStyles';
 //profile icon
 import ProfileIcon from '../../../assets/SettingsIcon/settingprofile.svg';
