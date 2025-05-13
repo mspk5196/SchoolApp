@@ -1,63 +1,56 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Alert, Modal } from 'react-native';
 import DocumentPicker from 'react-native-document-picker';
-import ImagePicker from 'react-native-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import CalenderIcon from '../../../../assets/AdminPage/CoordinatorEnrollment/Calender.svg';
 import BackIcon from     '../../../../assets/AdminPage/CoordinatorEnrollment/Back.svg';
 import PlusIcon from     '../../../../assets/AdminPage/CoordinatorEnrollment/Plus.svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import styles from './CoordinatorEnrollmentStyle';
+import {API_URL} from '@env'
 
 const AdminCoordinatorEnrollment = ({ navigation }) => {
-  const [mentor, setMentor] = useState({
+  const [coordinator, setCoordinator] = useState({
     name: '',
     dob: '',
     gender: '',
-    grade: '',
     mobileNumber: '',
     specification: '',
     profileImage: null,
-    selectedGrades: [], // New field for checkbox selection
+    selectedGrades: [], // Changed to array for multiple grades
   });
 
   const [errors, setErrors] = useState({});
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
-  const [showGradeModal, setShowGradeModal] = useState(false);
   const [uploadedDocuments, setUploadedDocuments] = useState([]);
 
   const genderOptions = ['Male', 'Female', 'Other'];
-  const gradeOptions = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6',
-    'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
-  
-  // Simple grade options for checkbox display
-  const gradeCheckboxOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const gradeCheckboxOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9]; // Grades 1-9
 
   const handleChange = (field, value) => {
-    setMentor({ ...mentor, [field]: value });
+    setCoordinator({ ...coordinator, [field]: value });
     if (value.trim !== undefined && value.trim() !== '') {
       setErrors({ ...errors, [field]: null });
     }
   };
 
   const handleGradeCheckbox = (grade) => {
-    const currentSelected = [...mentor.selectedGrades];
+    const currentSelected = [...coordinator.selectedGrades];
     
     if (currentSelected.includes(grade)) {
       // Remove grade if already selected
       const newSelected = currentSelected.filter(g => g !== grade);
-      setMentor({ 
-        ...mentor, 
-        selectedGrades: newSelected,
-        grade: newSelected.join(', ')
+      setCoordinator({ 
+        ...coordinator, 
+        selectedGrades: newSelected
       });
     } else {
       // Add grade if not selected
       const newSelected = [...currentSelected, grade];
-      setMentor({ 
-        ...mentor, 
-        selectedGrades: newSelected,
-        grade: newSelected.join(', ')
+      setCoordinator({ 
+        ...coordinator, 
+        selectedGrades: newSelected
       });
     }
     
@@ -71,7 +64,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    return `${year}-${month}-${day}`;
   };
 
   const onDateChange = (event, selectedDate) => {
@@ -91,8 +84,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
     };
 
     try {
-      // Use ImagePicker directly for older versions or if the import was incorrect
-      const response = await ImagePicker.launchImageLibrary(options);
+      const response = await launchImageLibrary(options);
       
       if (response.didCancel) {
         console.log('User cancelled image picker');
@@ -101,7 +93,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
         Alert.alert('Error', 'There was a problem selecting this image.');
       } else if (response.assets && response.assets.length > 0) {
         const source = response.assets[0].uri;
-        setMentor({ ...mentor, profileImage: source });
+        setCoordinator({ ...coordinator, profileImage: source });
         setErrors({ ...errors, profileImage: null });
       }
     } catch (error) {
@@ -110,64 +102,39 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
     }
   };
 
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.pick({
-        type: [DocumentPicker.types.pdf, DocumentPicker.types.csv, DocumentPicker.types.xls, DocumentPicker.types.xlsx],
-        allowMultiSelection: false,
-      });
-
-      console.log('Document picked:', result);
-      setUploadedDocuments([...uploadedDocuments, result[0]]);
-    } catch (err) {
-      if (DocumentPicker.isCancel(err)) {
-        console.log('User cancelled document picker');
-      } else {
-        console.log('Document picker error:', err);
-        Alert.alert('Error', 'There was a problem selecting this document.');
-      }
-    }
-  };
-
-  const deleteDocument = (index) => {
-    const updatedDocs = [...uploadedDocuments];
-    updatedDocs.splice(index, 1);
-    setUploadedDocuments(updatedDocs);
-  };
-
   const validateForm = () => {
     const newErrors = {};
     let isValid = true;
 
-    if (!mentor.name.trim()) {
+    if (!coordinator.name.trim()) {
       newErrors.name = 'Name is required';
       isValid = false;
     }
 
-    if (!mentor.dob) {
+    if (!coordinator.dob) {
       newErrors.dob = 'Date of Birth is required';
       isValid = false;
     }
 
-    if (!mentor.gender) {
+    if (!coordinator.gender) {
       newErrors.gender = 'Gender is required';
       isValid = false;
     }
 
-    if (mentor.selectedGrades.length === 0) {
+    if (coordinator.selectedGrades.length === 0) {
       newErrors.grade = 'At least one grade must be selected';
       isValid = false;
     }
 
-    if (!mentor.mobileNumber.trim()) {
+    if (!coordinator.mobileNumber.trim()) {
       newErrors.mobileNumber = 'Mobile number is required';
       isValid = false;
-    } else if (!/^\d{10}$/.test(mentor.mobileNumber.trim())) {
+    } else if (!/^\d{10}$/.test(coordinator.mobileNumber.trim())) {
       newErrors.mobileNumber = 'Please enter a valid 10-digit mobile number';
       isValid = false;
     }
 
-    if (!mentor.specification.trim()) {
+    if (!coordinator.specification.trim()) {
       newErrors.specification = 'Specification is required';
       isValid = false;
     }
@@ -176,13 +143,53 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
     return isValid;
   };
 
-  const handleConfirm = () => {
-    if (validateForm()) {
-      console.log('Mentor data:', mentor);
-      console.log('Uploaded documents:', uploadedDocuments);
-      Alert.alert('Success', 'Mentor enrollment submitted successfully');
-    } else {
+  const handleSubmit = async () => {
+    if (!validateForm()) {
       Alert.alert('Incomplete Form', 'Please fill all required fields before submitting.');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('name', coordinator.name);
+      formData.append('dob', coordinator.dob);
+      formData.append('gender', coordinator.gender);
+      formData.append('mobileNumber', coordinator.mobileNumber);
+      formData.append('specification', coordinator.specification);
+      
+      // Add each selected grade
+      coordinator.selectedGrades.forEach(grade => {
+        formData.append('grades', grade);
+      });
+
+      if (coordinator.profileImage) {
+        formData.append('profilePhoto', {
+          uri: coordinator.profileImage,
+          type: 'image/jpeg',
+          name: 'profile.jpg'
+        });
+      }
+      console.log(formData);
+      
+      const response = await fetch(`${API_URL}/api/admin/enrollCoordinator`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert('Success', 'Coordinator enrolled successfully');
+        navigation.goBack();
+      } else {
+        Alert.alert('Error', data.message || 'Failed to enroll coordinator');
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+      Alert.alert('Error', 'Failed to submit form. Please try again.');
     }
   };
 
@@ -190,7 +197,6 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
     navigation.goBack();
   };
 
-  // Helper to render checkbox rows
   const renderCheckboxRow = (startIndex, count) => {
     const rowItems = [];
     for (let i = 0; i < count; i++) {
@@ -199,12 +205,12 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
         rowItems.push(
           <View key={grade} style={styles.checkboxItem}>
             <TouchableOpacity
-              style={[styles.checkbox, mentor.selectedGrades.includes(grade) && styles.checkboxChecked]}
+              style={[styles.checkbox, coordinator.selectedGrades.includes(grade) && styles.checkboxChecked]}
               onPress={() => handleGradeCheckbox(grade)}
             >
-              {mentor.selectedGrades.includes(grade) && <Text style={styles.checkmark}>✓</Text>}
+              {coordinator.selectedGrades.includes(grade) && <Text style={styles.checkmark}>✓</Text>}
             </TouchableOpacity>
-            <Text style={styles.checkboxLabel}>{grade}</Text>
+            <Text style={styles.checkboxLabel}>Grade {grade}</Text>
           </View>
         );
       }
@@ -230,8 +236,8 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
 
       <ScrollView style={styles.formContainer}>
         <View style={styles.profileImageContainer}>
-          {mentor.profileImage ? (
-            <Image source={{ uri: mentor.profileImage }} style={styles.profileImage} />
+          {coordinator.profileImage ? (
+            <Image source={{ uri: coordinator.profileImage }} style={styles.profileImage} />
           ) : (
             <View style={[styles.profilePlaceholder, errors.profileImage ? styles.inputError : null]}>
               <Text style={styles.profilePlaceholderText}>👨‍🏫</Text>
@@ -251,7 +257,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
           <TextInput
             style={[styles.input, errors.name ? styles.inputError : null]}
             placeholder="Enter name"
-            value={mentor.name}
+            value={coordinator.name}
             onChangeText={(text) => handleChange('name', text)}
           />
           {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
@@ -263,8 +269,8 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
             style={[styles.input, errors.dob ? styles.inputError : null]}
             onPress={() => setShowDatePicker(true)}
           >
-            <Text style={mentor.dob ? styles.inputText : styles.placeholderText}>
-              {mentor.dob || "Enter DOB"}
+            <Text style={coordinator.dob ? styles.inputText : styles.placeholderText}>
+              {coordinator.dob || "Enter DOB"}
             </Text>
             <CalenderIcon style={styles.inputIcon} />
           </TouchableOpacity>
@@ -288,7 +294,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
             onPress={() => setShowGenderModal(true)}
           >
             <Text style={styles.selectionText}>
-              {mentor.gender || "Select Gender"}
+              {coordinator.gender || "Select Gender"}
             </Text>
           </TouchableOpacity>
           {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
@@ -328,8 +334,9 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
             style={[styles.input, errors.mobileNumber ? styles.inputError : null]}
             placeholder="Enter number"
             keyboardType="phone-pad"
-            value={mentor.mobileNumber}
+            value={coordinator.mobileNumber}
             onChangeText={(text) => handleChange('mobileNumber', text)}
+            maxLength={10}
           />
           {errors.mobileNumber && <Text style={styles.errorText}>{errors.mobileNumber}</Text>}
         </View>
@@ -339,15 +346,14 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
           <TextInput
             style={[styles.input, errors.specification ? styles.inputError : null]}
             placeholder="Enter Specification"
-            value={mentor.specification}
+            value={coordinator.specification}
             onChangeText={(text) => handleChange('specification', text)}
           />
           {errors.specification && <Text style={styles.errorText}>{errors.specification}</Text>}
         </View>
 
-        {/* New Grade Checkbox Selection */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Select grade<Text style={styles.requiredAsterisk}>*</Text></Text>
+          <Text style={styles.label}>Select grade(s)<Text style={styles.requiredAsterisk}>*</Text></Text>
           <View style={[styles.checkboxContainer, errors.grade ? styles.inputError : null]}>
             {renderCheckboxRow(1, 3)}
             {renderCheckboxRow(4, 3)}
@@ -367,7 +373,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.confirmButton}
-          onPress={handleConfirm}
+          onPress={handleSubmit}
         >
           <Text style={styles.confirmButtonText}>Confirm</Text>
         </TouchableOpacity>

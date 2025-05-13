@@ -7,6 +7,7 @@ import {
   TextInput,
   Image,
   ScrollView,
+  Linking,
 } from 'react-native';
 import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg';
 import PhoneIcon from '../../../../assets/AdminPage/StudentHome/Issuelog/Phone.svg';
@@ -15,7 +16,8 @@ import styles from './IssuelogStyls';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Search from '../../../../assets/AdminPage/StudentHome/studentprofile/search.svg';
 import Homeicon from '../../../../assets/AdminPage/Basicimg/Home.svg';
-import {API_URL} from '@env'
+import { API_URL } from '@env'
+const Staff = '../../../../assets/AdminPage/StudentHome/Issuelog/staff.png'
 
 const AdminStudentIssuelog = ({ navigation, route }) => {
   const { gradeId } = route.params || {};
@@ -39,9 +41,9 @@ const AdminStudentIssuelog = ({ navigation, route }) => {
   }, [selectedSection]);
 
   useEffect(() => {
-    const filtered = disciplineData.filter(item => 
-      item.name.toLowerCase().includes(searchText.toLowerCase()) || 
-      item.regNo.toLowerCase().includes(searchText.toLowerCase())
+    const filtered = disciplineData.filter(item =>
+      item.student_name.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.roll.toLowerCase().includes(searchText.toLowerCase())
     );
     setFilteredData(filtered);
   }, [searchText, disciplineData]);
@@ -51,10 +53,12 @@ const AdminStudentIssuelog = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/admin/grades/${gradeId}/sections`);
       const data = await response.json();
       if (data.success) {
-        setSections(data.sections);
-        if (data.sections.length > 0) {
-          setSelectedSection(data.sections[0].id);
-          setActiveSection(0);
+        setSections(data.gradeSections);
+        console.log(data.gradeSections);
+
+        if (data.gradeSections) {
+          setSelectedSection(data.gradeSections[0].id);
+          setActiveSection(data.gradeSections[0].id);
         }
       }
     } catch (error) {
@@ -67,6 +71,8 @@ const AdminStudentIssuelog = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/admin/sections/${sectionId}/discipline-issues`);
       const data = await response.json();
       if (data.success) {
+        console.log(data.issues);
+
         setDisciplineData(data.issues);
       }
     } catch (error) {
@@ -78,10 +84,27 @@ const AdminStudentIssuelog = ({ navigation, route }) => {
     setSearchText(text);
   };
 
-  const handleSectionSelect = (index, sectionId) => {
-    setActiveSection(index);
+  const handleSectionSelect = (sectionId) => {
+    setActiveSection(sectionId);
     setSelectedSection(sectionId);
   };
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Staff;
+    }
+  };
+
+  const handleCallPress = (phone) => {
+      // Open phone dialer with the contact's phone number
+      Linking.openURL(`tel:${phone}`);
+    };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -93,27 +116,27 @@ const AdminStudentIssuelog = ({ navigation, route }) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Student Discipline Log</Text>
       </View>
-      
+
       <ScrollView
         horizontal={true}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         style={styles.classnavsection}
         nestedScrollEnabled={true}>
-        {sections?.map((section, index) => (
+        {sections.map((section, index) => (
           <Pressable
             key={section.id}
             style={[
               styles.gradeselection,
-              activeSection === index && styles.activeButton,
+              activeSection === section.id && styles.activeButton,
             ]}
-            onPress={() => handleSectionSelect(index, section.id)}>
+            onPress={() => handleSectionSelect(section.id)}>
             <Text
               style={[
                 styles.gradeselectiontext,
-                activeSection === index && styles.activeText,
+                activeSection === section.id && styles.activeText,
               ]}>
-              {section.section_name}
+              Section {section.section_name}
             </Text>
           </Pressable>
         ))}
@@ -135,26 +158,27 @@ const AdminStudentIssuelog = ({ navigation, route }) => {
           filteredData.map(item => (
             <View key={item.id} style={styles.card}>
               <View style={styles.cardHeader}>
-                <Image
-                  source={require('../../../../assets/AdminPage/StudentHome/Issuelog/staff.png')}
-                  style={styles.avatar}
-                />
+                {item.profile_photo ? (
+                  <Image source={getProfileImageSource(item.profile_photo)} style={styles.avatar} />
+                ) : (
+                  <Image source={Staff} style={styles.avatar} />
+                )}
                 <View>
-                  <Text style={styles.cardTitle}>{item.name}</Text>
-                  <Text style={styles.cardSubtitle}>{item.regNo}</Text>
+                  <Text style={styles.cardTitle}>{item.student_name}</Text>
+                  <Text style={styles.cardSubtitle}>{item.roll}</Text>
                 </View>
-                <Text style={styles.cardDate}>{item.date}</Text>
+                <Text style={styles.cardDate}>{new Date(item.registered_at).toLocaleDateString()}</Text>
               </View>
               <View style={styles.cardContent}>
                 <Text style={styles.cardLabel}>Reason</Text>
                 <View style={styles.cardLine} >
-                <Text style={styles.cardReason}>{item.reason}</Text>
+                  <Text style={styles.cardReason}>{item.complaint}</Text>
                 </View>
                 <View style={styles.regBar}>
                   <Text style={styles.registeredBy}>
-                    Mentor : {item.registeredBy}
+                    Mentor : {item.registered_by_name}
                   </Text>
-                  <TouchableOpacity style={styles.actionButtonCall}>
+                  <TouchableOpacity style={styles.actionButtonCall} onPress={()=>handleCallPress(item.registered_by_phone)}>
                     <PhoneIcon width={20} height={20} />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.actionButtonMsg}>
@@ -171,8 +195,8 @@ const AdminStudentIssuelog = ({ navigation, route }) => {
         )}
       </ScrollView>
       <TouchableOpacity style={styles.footer}
-      onPress={() => navigation.navigate('AdminMain')}>
-        <Homeicon/>
+        onPress={() => navigation.navigate('AdminMain')}>
+        <Homeicon />
       </TouchableOpacity>
     </SafeAreaView>
   );

@@ -7,39 +7,160 @@ import {
   TextInput,
   Image,
   ScrollView,
-  Alert
+  Alert,
+  Modal,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  FlatList,
+  ActivityIndicator,
+  Linking,
+  Keyboard
 } from 'react-native';
-import { API_URL } from '@env'
 import BackIcon from '../../../../assets/CoordinatorPage/IssueLogs/leftarrow.svg';
-import PhoneIcon from '../../../../assets/CoordinatorPage/IssueLogs/call.svg';
-import MessageIcon from '../../../../assets/CoordinatorPage/IssueLogs/msg.svg';
+import AddIcon from '../../../../assets/CoordinatorPage/DisciplineLog/AddIcon.svg';
+import Phone from '../../../../assets/CoordinatorPage/DisciplineLog/call.svg';
+import MessageSquare from '../../../../assets/CoordinatorPage/DisciplineLog/msg.svg';
+import SearchIcon from '../../../../assets/CoordinatorPage/DisciplineLog/search.svg';
 import styles from './StudentDisciplineLogStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { API_URL } from '@env'
+const Staff = '../../../../assets/CoordinatorPage/DisciplineLog/staff.png';
 
 const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
-  const { coordinatorData } = route.params;
+  const { coordinatorData, activeGrade } = route.params;
   const [activeSection, setActiveSection] = useState(null);
 
   const [sections, setSections] = useState([]);
 
-  const [disciplineData] = useState([
-    {
-      id: 1,
-      name: 'Faculty',
-      regNo: '2024VI023',
-      reason: 'Student is saying that he came along with parents to school, and he is late to school because of traffic.',
-      date: '29/10/23',
-      registeredBy: 'SasiKumar',
-    },
-    {
-      id: 2,
-      name: 'Faculty',
-      regNo: '2024VI023',
-      reason: 'Student is saying that he came along with parents to school, and he is late to school because of traffic.',
-      date: '29/10/23',
-      registeredBy: 'SasiKumar',
-    },
-  ]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [reason, setReason] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [studentList, setStudentList] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [disciplineData, setDisciplineData] = useState([]);
+
+  // Search states
+  const [searchText, setSearchText] = useState('');
+  const [filteredData, setFilteredData] = useState([]);
+
+  // Fetch student list
+  const fetchStudent = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/student/getStudentList`);
+      const data = await response.json();
+      if (response.ok) {
+        setStudentList(data.student);
+        console.log(data.student);
+        
+      } else {
+        console.error('Failed to fetch student:', data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching student:', error);
+    }
+  };
+
+  // Fetch discipline logs
+  const fetchDisciplineLogs = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/student/getStudentDisciplineLogs?sectionId=${activeSection}`);
+      const data = await response.json();
+      if (response.ok) {
+        setDisciplineData(data.logs);   
+        setFilteredData(data.logs);
+
+      } else {
+        console.error('Failed to fetch logs:', data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudent();
+    fetchDisciplineLogs();
+  }, [activeSection]);
+
+  // Filter data when search text changes
+  useEffect(() => {
+    if (searchText.trim() === '') {
+      setFilteredData(disciplineData);
+    } else {
+      const filtered = disciplineData.filter(item => {
+        const searchLower = searchText.toLowerCase();
+        return (
+          item.student_name.toLowerCase().includes(searchLower) ||
+          item.roll.toLowerCase().includes(searchLower)
+        );
+      });
+      setFilteredData(filtered);
+    }
+  }, [searchText, disciplineData]);
+
+  const handleAddComplaint = async () => {
+    if (!selectedStudent || !reason.trim()) {
+      Alert.alert('Error', 'Please select student and enter reason');
+      return;
+    }
+
+    try {
+      console.log(coordinatorData.phone);
+      const response = await fetch(`${API_URL}/api/coordinator/student/addStudentComplaint`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roll: selectedStudent.roll,
+          complaint: reason,
+          registeredBy: coordinatorData.phone
+        }),
+      });
+
+      const data = await response.json();
+
+
+      if (response.ok) {
+        fetchDisciplineLogs(); // Refresh the list
+        setReason('');
+        setSelectedStudent(null);
+        setModalVisible(false);
+      } else {
+        Alert.alert('Error', data.message || 'Failed to submit complaint');
+      }
+    } catch (error) {
+      console.error('Error submitting complaint:', error);
+      Alert.alert('Error', 'Failed to submit complaint');
+    }
+  };
+
+  const filteredStudent = studentList.filter(student =>
+    student.student_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+    student.roll.toLowerCase().includes(studentSearch.toLowerCase())
+  );
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Staff;
+    }
+  };
+
+  const handleCallPress = (phone) => {
+    // Open phone dialer with the contact's phone number
+    Linking.openURL(`tel:${phone}`);
+  };
 
   // Fetch sections for the active grade
   useEffect(() => {
@@ -48,7 +169,7 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
         const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
+          body: JSON.stringify({ gradeID: activeGrade }),
         });
 
         const data = await response.json();
@@ -79,51 +200,197 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
           height={styles.BackIcon.height}
           onPress={() => navigation.goBack()}
         />
-        <Text style={styles.headerTxt}>Discipline Logs</Text>
+        <Text style={styles.headerTxt}>Discipline Log</Text>
       </View>
-      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent} style={styles.classnavsection} nestedScrollEnabled={true}>
+
+      <ScrollView
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        style={styles.classnavsection}
+        nestedScrollEnabled={true}
+      >
         {sections.map((section, index) => (
           <Pressable
             key={section.id}
             style={[styles.gradeselection, activeSection === section.id && styles.activeButton]}
             onPress={() => setActiveSection(section.id)}
           >
-            <Text style={[styles.gradeselectiontext, activeSection === section.id && styles.activeText]}>Section {section.section_name}</Text>
+            <Text style={[styles.gradeselectiontext, activeSection === section.id && styles.activeText]}>
+              Section {section.section_name}
+            </Text>
           </Pressable>
         ))}
       </ScrollView>
 
       <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholderTextColor='grey'
-          placeholder="Search..."
-        />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <SearchIcon width={20} height={20} style={{ marginRight: 10 }} />
+          <TextInput
+            style={[styles.searchInput, { flex: 1 }]}
+            placeholder="Search student by name or phone..."
+            value={searchText}
+            onChangeText={setSearchText}
+          />
+        </View>
       </View>
 
-      <ScrollView style={styles.cardContainer}>
-        {disciplineData.map((item) => (
-          <View key={item.id} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Image source={require('../../../../assets/CoordinatorPage/IssueLogs/staff.png')} style={styles.avatar} />
-              <View>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <Text style={styles.cardSubtitle}>{item.regNo}</Text>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#0C36FF" />
+        </View>
+      ) : (
+        <ScrollView style={styles.cardContainer}>
+          {filteredData.length > 0 ? (
+            filteredData.map((item) => (
+              <View key={item.id} style={styles.card}>
+                <View style={styles.cardHeader}>
+                  {item.profile_photo ? (
+                    <Image source={getProfileImageSource(item.profile_photo)} style={styles.avatar} />
+                  ) : (
+                    <Image source={Staff} style={styles.avatar} />
+                  )}
+                  <View>
+                    <Text style={styles.cardTitle}>{item.student_name}</Text>
+                    <Text style={styles.cardSubtitle}>{item.roll}</Text>
+                  </View>
+                  <Text style={styles.cardDate}>{new Date(item.registered_at).toLocaleDateString()}</Text>
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={styles.cardLabel}>Reason</Text>
+                  <View style={styles.cardReasonContainer}>
+                    <Text style={styles.cardReason}>{item.complaint}</Text>
+                  </View>
+                  <View style={styles.regBar}>
+                    <Text style={styles.registeredBy}>Registered by {item.registered_by_name}</Text>
+                    <TouchableOpacity style={styles.actionButtonCall} onPress={() => handleCallPress(item.phone)}>
+                      <Phone width={30} height={30} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButtonMsg}>
+                      <MessageSquare width={30} height={30} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-              <Text style={styles.cardDate}>{item.date}</Text>
+            ))
+          ) : (
+            <View style={styles.noResultsContainer}>
+              <Text style={styles.noResultsText}>No records found</Text>
             </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardLabel}>Reason</Text>
-              <Text style={styles.cardReason}>{item.reason}</Text>
-              <View style={styles.regBar}>
-                <Text style={styles.registeredBy}>Registered by {item.registeredBy}</Text>
-                <PhoneIcon style={styles.phoneIcon} />
-                <MessageIcon style={styles.messageIcon} />
-              </View>
-            </View>
+          )}
+        </ScrollView>
+      )}
+
+      <TouchableOpacity
+        style={styles.AddButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <AddIcon width={styles.AddIcon.width} height={styles.AddIcon.height} />
+      </TouchableOpacity>
+
+      {/* Add Complaint Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.modalContainer}
+              >
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Add Discipline Record</Text>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Select Student</Text>
+                    <TouchableOpacity
+                      style={styles.textInput}
+                      onPress={() => setShowStudentModal(true)}
+                    >
+                      <Text style={{ color: selectedStudent ? '#000' : '#999' }}>
+                        {selectedStudent ? `${selectedStudent.student_name} (${selectedStudent.roll})` : 'Select student...'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Reason</Text>
+                    <TextInput
+                      style={[styles.textInput, { height: 100, textAlignVertical: 'top' }]}
+                      placeholder="Enter reason"
+                      value={reason}
+                      onChangeText={setReason}
+                      multiline
+                    />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Registered By</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={coordinatorData.name}
+                      editable={false}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.registerButton}
+                    onPress={handleAddComplaint}
+                  >
+                    <Text style={styles.registerButtonText}>Register Complaint</Text>
+                  </TouchableOpacity>
+                </View>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
           </View>
-        ))}
-      </ScrollView>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Student Selection Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showStudentModal}
+        onRequestClose={() => setShowStudentModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { height: '70%', width: '90%' }]}>
+            <Text style={styles.modalTitle}>Select Student</Text>
+
+            <View style={[styles.searchInput, { flexDirection: 'row', alignItems: 'center', marginBottom: 15 }]}>
+              <SearchIcon width={20} height={20} style={{ marginRight: 10 }} />
+              <TextInput
+                style={{ flex: 1 }}
+                placeholder="Search student..."
+                value={studentSearch}
+                onChangeText={setStudentSearch}
+              />
+            </View>
+
+            <FlatList
+              data={filteredStudent}
+              keyExtractor={(item) => item.phone}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{ padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' }}
+                  onPress={() => {
+                    setSelectedStudent(item);
+                    setShowStudentModal(false);
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: '600' }}>{item.student_name} (Grade {item.grade_id} - Section {item.section_name})</Text>
+                  {/* <Text style={{ color: '#666' }}>{item.phone}</Text> */}
+                  <Text style={{ color: '#666' }}>{item.roll}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

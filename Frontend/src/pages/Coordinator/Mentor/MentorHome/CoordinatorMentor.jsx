@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, SectionList, Image, TouchableOpacity } from 'react-native';
+import { Text, View, SectionList, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './MentorStyles';
 import SubjectIcon from '../../../../assets/CoordinatorPage/MentorHome/subject.svg';
@@ -27,22 +27,43 @@ const MentorCard = ({ title, Icon, bgColor, color, onPress }) => (
 );
 
 const CoordinatorMentor = ({ navigation }) => {
-    const [coordinatorData,setCoordinatorData] = useState(coordinatorData);
-    const fetchData = async() =>{
+    const [activeGrade, setActiveGrade] = useState();
+    const [coordinatorData, setCoordinatorData] = useState(coordinatorData);
+    const [coordinatorGrades, setCoordinatorGrades] = useState();
+
+    const fetchData = async () => {
         try {
             const data = await AsyncStorage.getItem('coordinatorData');
             if (data) {
-              const parsedData = JSON.parse(data);
-              setCoordinatorData(parsedData);
+                const parsedData = JSON.parse(data);
+                setCoordinatorData(parsedData);
             }
-          } catch (error) {
+        } catch (error) {
             console.error('Error fetching data:', error);
-          }
+        }
     }
-    useEffect(()=>{
+    const fetchCoordinatorGrades = async () => {
+        try {
+            const storedData = await AsyncStorage.getItem('coordinatorGrades');
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                setCoordinatorGrades(parsedData);
+            }
+        } catch (error) {
+            console.error('Error fetching grades data:', error);
+        }
+    };
+
+    useEffect(() => {
         fetchData()
-    },[]) 
+        fetchCoordinatorGrades();
+    }, [])
     
+    useEffect(() => {
+        if (coordinatorGrades) {
+            setActiveGrade(coordinatorGrades[0].grade_id)
+        }
+    }, [coordinatorGrades])
 
     return (
         <SafeAreaView style={styles.container}>
@@ -50,7 +71,24 @@ const CoordinatorMentor = ({ navigation }) => {
                 <Home width={27} height={26} style={styles.homelogo} onPress={() => navigation.navigate('CoordinatorMain')} />
                 <Text style={styles.text}>Mentors</Text>
             </View>
-            <SectionList 
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.sectionTabsContainer}
+            >
+                {coordinatorGrades?.map(grade => (
+                    <TouchableOpacity
+                        key={grade.grade_id}
+                        style={[styles.sectionTab, activeGrade === grade.grade_id && styles.activeSectionTab]}
+                        onPress={() => setActiveGrade(grade.grade_id)}
+                    >
+                        <Text style={[styles.sectionTabText, activeGrade === grade.grade_id && styles.activeSectionTabText]}>
+                            Grade {grade.grade_id}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+            <SectionList
                 sections={data}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
@@ -61,18 +99,18 @@ const CoordinatorMentor = ({ navigation }) => {
                         color={item.color}
                         onPress={() => {
                             if (item.title === 'Subject Mentor') {
-                                navigation.navigate('CoordinatorSubjectMentor', {coordinatorData});
+                                navigation.navigate('CoordinatorSubjectMentor', { coordinatorData, activeGrade });
                             } else if (item.title === 'Mentor Mapping') {
-                                navigation.navigate('CoordinatorMentorMapping', {coordinatorData});
+                                navigation.navigate('CoordinatorMentorMapping', { coordinatorData, activeGrade });
                             }
                             else if (item.title === 'Leave Approval') {
-                                navigation.navigate('CoordinatorLeaveApproval', {coordinatorData})
+                                navigation.navigate('CoordinatorLeaveApproval', { coordinatorData, activeGrade })
                             }
                             else if (item.title === 'Mentor List') {
-                                navigation.navigate('CoordinatorMentorList', {coordinatorData})
+                                navigation.navigate('CoordinatorMentorList', { coordinatorData, activeGrade })
                             }
                             else if (item.title === 'Discipline log') {
-                                navigation.navigate('CoordinatorDisciplineLog', {coordinatorData})
+                                navigation.navigate('CoordinatorDisciplineLog', { coordinatorData, activeGrade })
                             }
                         }}
                     />

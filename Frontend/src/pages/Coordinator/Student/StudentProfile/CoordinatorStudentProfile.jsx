@@ -7,7 +7,7 @@ const Staff = require('../../../../assets/CoordinatorPage/StudentProfile/staff.p
 import Search from '../../../../assets/CoordinatorPage/StudentProfile/search.svg';
 
 const CoordinatorStudentProfile = ({ navigation, route }) => {
-  const { coordinatorData } = route.params;
+  const { coordinatorData, activeGrade } = route.params;
   
   const [searchText, setSearchText] = useState('');
   const [filteredStudents, setFilteredStudents] = useState([]);
@@ -25,7 +25,7 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
         const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
+          body: JSON.stringify({ gradeID: activeGrade }),
         });
 
         const data = await response.json();

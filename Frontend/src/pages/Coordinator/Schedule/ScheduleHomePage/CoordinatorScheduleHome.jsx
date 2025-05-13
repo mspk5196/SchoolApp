@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, Pressable, ScrollView, SectionList } from 'react-native';
+import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HomeIcon from '../../../../assets/CoordinatorPage/ScheduleHome/Home.svg';
 import CollegeIcon from '../../../../assets/CoordinatorPage/ScheduleHome/College.svg';
@@ -9,14 +9,19 @@ import InvigilatorIcon from '../../../../assets/CoordinatorPage/ScheduleHome/Inv
 import styles from './ScheduleHomeStyle';
 
 const CoordinatorScheduleHome = ({ navigation, route }) => {
+  const { coordinatorData, coordinatorGrades } = route.params;
   const [activeGrade, setActiveGrade] = useState(null);
   const [activeSection, setActiveSection] = useState(null);
 
-  const { coordinatorData } = route.params;
 
-  useEffect(()=>{
-    setActiveGrade(coordinatorData.grade_id)
-  }, [coordinatorData]) 
+  useEffect(() => {
+    setActiveGrade(activeGrade)
+  }, [coordinatorData])
+  useEffect(() => {
+    if (coordinatorGrades) {
+      setActiveGrade(coordinatorGrades[0].grade_id)
+    }
+  }, [coordinatorGrades])
 
   const data = [
     {
@@ -38,37 +43,29 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
   );
 
   return (
-    <SafeAreaView flexgrow={1} flex={1}>
+    <SafeAreaView flexgrow={1} flex={0}>
       <View style={styles.Header}>
         <HomeIcon width={styles.HomeIcon.width} height={styles.HomeIcon.height} onPress={() => navigation.goBack()} />
         <Text style={styles.HeaderTxt}>Schedule</Text>
       </View>
 
-
-      {/* <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent} style={styles.classnavgrade} nestedScrollEnabled={true}>
-        {["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7"].map((grade, index) => (
-          <Pressable
-            key={index}
-            style={[styles.gradeselection, activeGrade === index && styles.activeButton]}
-            onPress={() => setActiveGrade(index)}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.sectionTabsContainer}
+      >
+        {coordinatorGrades?.map(grade => (
+          <TouchableOpacity
+            key={grade.grade_id}
+            style={[styles.sectionTab, activeGrade === grade.grade_id && styles.activeSectionTab]}
+            onPress={() => setActiveGrade(grade.grade_id)}
           >
-            <Text style={[styles.gradeselectiontext, activeGrade === index && styles.activeText]}>{grade}</Text>
-          </Pressable>
+            <Text style={[styles.sectionTabText, activeGrade === grade.grade_id && styles.activeSectionTabText]}>
+              Grade {grade.grade_id}
+            </Text>
+          </TouchableOpacity>
         ))}
-      </ScrollView> */}
-
-
-      {/* <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent} style={styles.classnavsection} nestedScrollEnabled={true}>
-        {["Section A", "Section B", "Section C", "Section D", "Section E", "Section F", "Section G"].map((section, index) => (
-          <Pressable
-            key={index}
-            style={[styles.gradeselection, activeSection === index && styles.activeButton]}
-            onPress={() => setActiveSection(index)}
-          >
-            <Text style={[styles.gradeselectiontext, activeSection === index && styles.activeText]}>{section}</Text>
-          </Pressable>
-        ))}
-      </ScrollView> */}
+      </ScrollView>
 
 
       <SectionList
@@ -81,15 +78,15 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
           <Pressable
             onPress={() => {
               if (item.title === 'Exam Schedule') {
-                navigation.navigate('CoordinatorExamSchedule', {activeGrade});
+                navigation.navigate('CoordinatorExamSchedule', { activeGrade });
               } else if (item.title === 'Invigilation Duties') {
-                navigation.navigate('CoordinatorInvigilationDuties');
+                navigation.navigate('CoordinatorInvigilationDuties', { activeGrade });
               }
               // else if (item.title === 'Academic Schedule') {
               //   navigation.navigate('CoordinatorAcademicSchedule', {activeGrade});
               // }
               else if (item.title === 'Weekly Schedules') {
-                navigation.navigate('CoordinatorWeeklySchedule', {activeGrade});
+                navigation.navigate('CoordinatorWeeklySchedule', { activeGrade });
               }
 
             }}

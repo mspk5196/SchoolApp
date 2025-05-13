@@ -263,57 +263,48 @@ exports.getAttendance = (req, res) => {
   });
 };
 
-// exports.getIssueLogs = (req, res) => {
-//   const { roll } = req.params;
-//   console.log(roll);
+exports.getStudentIssueLogs = (req, res) => {
+  const { roll } = req.params;
+  console.log(roll);
 
-
-//   const sql = `
-//     SELECT il.issue_hw, il.issue_dc, il.hw_logged_at, il.dc_logged_at, 
-//            il.dc_reason, u.name AS logged_by
-//     FROM Issue_Log il
-//     LEFT JOIN Mentors m ON il.mentor_id = m.id
-//     LEFT JOIN Users u ON m.phone = u.phone
-//     WHERE il.student_id = ?
-//   `;
-
-//   db.query(sql, [roll], (err, results) => {
-//     if (err) {
-//       console.error('Error fetching students attendance:', err);
-//       return res.status(500).json({ success: false, message: 'Failed to fetch attendance' });
-//     }
-//     console.log(results);
-
-
-//     res.json({ success: true, studentAttendance: results });
-//   });
-// };
-
-// Get discipline issues by grade and section
-exports.getDisciplineIssues = (req, res) => {
-  const { gradeId, section } = req.params;
 
   const sql = `
-    SELECT il.id, s.name AS student_name, s.roll AS student_roll,
-           il.dc_reason AS reason, il.dc_logged_at AS date,
-           m.name AS registered_by, m.roll AS mentor_roll
-    FROM Issue_Log il
-    JOIN Students s ON il.student_id = s.id
-    JOIN Sections sec ON s.section_id = sec.id
-    JOIN Grades g ON sec.grade_id = g.id
-    LEFT JOIN Mentors m ON il.mentor_id = m.id
-    WHERE g.id = ? AND sec.section_name = ? AND il.issue_dc > 0
-    ORDER BY il.dc_logged_at DESC
+    SELECT COUNT(*) as count
+    FROM student_dicipline il
+    WHERE il.roll = ?
   `;
 
-  db.query(sql, [gradeId, section], (err, results) => {
+  db.query(sql, [roll], (err, results) => {
     if (err) {
-      console.error('Error fetching discipline issues:', err);
-      return res.status(500).json({ success: false, message: 'Failed to fetch discipline issues' });
+      console.error('Error fetching students attendance:', err);
+      return res.status(500).json({ success: false, message: 'Failed to fetch no of issues' });
     }
+    console.log(results);
 
-    res.json({ success: true, issues: results });
+
+    res.json({ success: true, studentIssueCount: results });
   });
+};
+
+// Get discipline issues by grade and section
+exports.getStudentDisciplineLogs = async (req, res) => {
+  const {sectionId} = req.params;
+  console.log(sectionId);
+  
+  try {
+    const issues = await db.promise().query(`
+      SELECT sd.*, s.name as student_name, s.profile_photo, sd.roll as student_roll
+      FROM student_dicipline sd
+      JOIN Students s ON sd.roll = s.roll
+      WHERE s.section_id = ?
+      ORDER BY sd.registered_at DESC;
+    `,[sectionId]);
+
+    res.status(200).json({ success: true, issues });
+  } catch (error) {
+    console.error("Error fetching discipline logs:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch logs." });
+  }
 };
 
 // Search discipline issues

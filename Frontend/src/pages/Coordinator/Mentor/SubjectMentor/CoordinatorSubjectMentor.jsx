@@ -23,7 +23,7 @@ import Hat from '../../../../assets/CoordinatorPage/SubjectMentor/hat.svg';
 import styles from './SubjectMentorStyles';
 
 const CoordinatorSubjectMentor = ({ navigation, route }) => {
-  const { coordinatorData } = route.params;
+  const { coordinatorData, activeGrade } = route.params;
   const [activeSubject, setActiveSubject] = useState(null);
   const [mentors, setMentors] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -65,7 +65,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getSubjectGradeMentor`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
+        body: JSON.stringify({ gradeID: activeGrade }),
       });
 
       const data = await response.json();
@@ -88,7 +88,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getMentorGradeSubject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
+        body: JSON.stringify({ gradeID: activeGrade }),
       });
 
       const data = await response.json();
@@ -114,7 +114,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        gradeID: coordinatorData.grade_id,
+        gradeID: activeGrade,
         subjectID: subjectId
       }),
     })
@@ -148,7 +148,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
         body: JSON.stringify({
           mentor_id: mentorId,
           subject_id: activeSubject,
-          grade_id: coordinatorData.grade_id
+          grade_id: activeGrade
         }),
       });
     });

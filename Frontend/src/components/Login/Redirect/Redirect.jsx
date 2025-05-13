@@ -99,12 +99,19 @@ const Redirect = ({ route }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber }), 
       });
-  
       const data = await response.json();
+      const response2 = await fetch(`${API_URL}/api/coordinator/getCoordinatorGrades`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coordinatorId:data.coordinatorData.id }), 
+      });
+      const data2 = await response2.json();
+      
       console.log('Coordinator Data API Response:', data);
 
       if (data.success && data.coordinatorData) {
         await AsyncStorage.setItem('coordinatorData', JSON.stringify(data.coordinatorData));
+        await AsyncStorage.setItem('coordinatorGrades', JSON.stringify(data2.coordinatorGrades));
         navigation.navigate('CoordinatorMain', { coordinatorData: data.coordinatorData });
       } else {
         Alert.alert('No Coordinator Found', 'No coordinator is associated with this number');

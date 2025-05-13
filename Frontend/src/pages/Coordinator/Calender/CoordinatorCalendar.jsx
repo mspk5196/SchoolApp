@@ -227,12 +227,12 @@ const CoordinatorCalendar = ({ navigation }) => {
   const addEvent = () => {
     if (eventType === 'event') {
       if (!eventName || !startTime || !endTime) {
-        alert('Please fill in all fields');
+        Alert.alert('Please fill in all fields');
         return;
       }
     } else {
       if (!holidayReason) {
-        alert('Please enter holiday reason');
+        Alert.alert('Please enter holiday reason');
         return;
       }
     }
@@ -260,12 +260,12 @@ const CoordinatorCalendar = ({ navigation }) => {
           resetForm();
           setModalVisible(false);
         } else {
-          alert('Failed to add event');
+          Alert.alert('Failed to add event');
         }
       })
       .catch(error => {
         console.error('Error adding event:', error);
-        alert('Failed to add event');
+        Alert.alert('Failed to add event');
       });
   };
 
@@ -284,12 +284,12 @@ const CoordinatorCalendar = ({ navigation }) => {
           // Refresh events
           fetchEvents();
         } else {
-          alert('Failed to delete event');
+          Alert.alert('Failed to delete event');
         }
       })
       .catch(error => {
         console.error('Error deleting event:', error);
-        alert('Failed to delete event');
+        Alert.alert('Failed to delete event');
       });
   };
 

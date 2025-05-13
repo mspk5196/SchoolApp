@@ -3,10 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-nativ
 import styles from "./DisciplineLogRegistersty";
 import Back from  "../../../../assets/MentorPage/backarrow.svg";
 import Call2 from '../../../../assets/MentorPage/call2.svg';
+import { useNavigation } from "@react-navigation/native";
 
 const MentorDisciplineLogRegister = ({ onBack }) => {
   const [complaint, setComplaint] = useState("");
 
+  const navigation = useNavigation();
   const handleSubmit = () => {
     if (complaint.trim()) {
       alert("Complaint submitted!");
@@ -20,7 +22,7 @@ const MentorDisciplineLogRegister = ({ onBack }) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}>
+        <TouchableOpacity onPress={()=>navigation.goBack()}>
           <Back width={30} height={30} style={styles.backicon}/>
         </TouchableOpacity>
         <Text style={styles.headerText}>Discipline Log</Text>

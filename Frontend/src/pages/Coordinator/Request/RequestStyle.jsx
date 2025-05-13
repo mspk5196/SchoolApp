@@ -110,6 +110,35 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     lineHeight: 50,
   },
+  sectionTabsContainer: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    marginTop: 10, // Added from Academic Schedule
+  },
+  sectionTab: {
+    paddingHorizontal: 20, // Matched with Academic Schedule
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginRight: 10,
+    backgroundColor: '#F5F5F5',
+    width: 110, // Fixed width from Academic Schedule
+  },
+  noScheduleText: {
+    color: 'grey',
+    alignSelf: 'center'
+  },
+  activeSectionTab: {
+    backgroundColor: '#0C36FF',
+  },
+  sectionTabText: {
+    fontSize: 14,
+    alignSelf: 'center',
+    color: '#333333',
+  },
+  activeSectionTabText: {
+    color: '#FFFFFF',
+    paddingLeft: 5, // Added from Academic Schedule
+  },
 });
 
 export default styles;

@@ -9,7 +9,7 @@ import { styles } from './SubjectAllotmentStyle';
 import { API_URL } from '@env';
 
 const SubjectAllotment = ({ navigation, route }) => { 
-  const { coordinatorData } = route.params;
+  const { coordinatorData, activeGrade } = route.params;
 
   const [activeSection, setActiveSection] = useState('');
   const [subjects, setSubjects] = useState([]);
@@ -58,7 +58,7 @@ const SubjectAllotment = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
+        body: JSON.stringify({ gradeID: activeGrade }),
       });
 
       const data = await response.json();

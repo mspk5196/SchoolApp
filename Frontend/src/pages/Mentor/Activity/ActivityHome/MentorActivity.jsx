@@ -12,6 +12,7 @@ const MentorActivity = ({ navigation, route }) => {
   const [selectedId, setSelectedId] = useState(null);
 
   const {mentorData} = route.params;
+  
 
   const data = [
     { id: 1, icon: <Buffer style={styles.icon} />, title: "Buffer Activity", textColor: "#0FBEB3", backgroundColor: '#C9F7F5' },
@@ -45,10 +46,10 @@ const MentorActivity = ({ navigation, route }) => {
                   navigation.navigate("MentorGeneralActivity",{mentorData});
                   break;
                 case "Discipline Log":
-                  navigation.navigate("MentorDisciplineLog");
+                  navigation.navigate("MentorDisciplineLog",{mentorData});
                   break;
                 case "Emergency Leave":
-                  navigation.navigate("MentorEmergencyLeave");
+                  navigation.navigate("MentorEmergencyLeave",{mentorData});
                   break;
                 case "Survey":
                   navigation.navigate("MentorSurvey",{mentorData});

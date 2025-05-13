@@ -92,6 +92,8 @@ const styles = StyleSheet.create({
       elevation: 2,
       marginBottom: 15,
       paddingVertical:20,
+      marginHorizontal:1,
+      marginVertical:1,
     },
     header: {
       flexDirection: "row",
@@ -142,15 +144,16 @@ const styles = StyleSheet.create({
       padding:10,
     },
     registeredText: {
-      fontSize: 17,
+      fontSize: 15,
       color: "#000000",
       fontWeight:'bold',
       marginTop: 10,
-      marginRight:29,
+      // alignItems:'flex-start'
     },
     actionButtons: {
+      flex:1,
       flexDirection: "row",
-      justifyContent: "flex-end",
+      justifyContent: "space-between",
       marginTop: 10,
     },
     callButton: {
@@ -158,7 +161,6 @@ const styles = StyleSheet.create({
       height: 40,
       justifyContent: "center",
       alignItems: "center",
-      marginRight: 0.1,
     },
     chatButton: {
       width: 40,
@@ -166,7 +168,157 @@ const styles = StyleSheet.create({
       justifyContent: "center",
       alignItems: "center",
     },
- 
+ // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '85%',
+    maxHeight: '80%',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+    color: '#333',
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    backgroundColor: '#f9f9f9',
+  },
+  registerButton: {
+    backgroundColor: '#3366ff',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  registerButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Confirmation modal styles
+  confirmModalOverlay: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  confirmModalContent: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
+  },
+  confirmAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: 12,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  confirmSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 4,
+  },
+  confirmLabel: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 24,
+  },
+  confirmReasonContainer: {
+    width: '100%',
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 30,
+  },
+  confirmReasonTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  confirmReasonText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  confirmButton: {
+    backgroundColor: '#3366ff',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    width: '100%',
+    position: 'absolute',
+    bottom: 32,
+    left: 20,
+    right: 20,
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  AddButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    padding: 20,
+    backgroundColor: '#0C36FF',
+    borderRadius: 50,
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  actionButtonCall: {
+    backgroundColor: '#AEBCFF', 
+    borderRadius: 999,
+    padding: 8,
+    marginLeft: 'auto',
+    marginRight: 10,
+  },
+  actionButtonMsg: {
+    backgroundColor: '#A4F4E7', 
+    borderRadius: 999,
+    padding: 8,
+  },
   
 
 

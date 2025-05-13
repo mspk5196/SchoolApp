@@ -70,6 +70,7 @@ module.exports = uploadEventBanner;
 
 // Coordinator routes
 router.post('/coordinator/getCoordinatorData', coordinatorController.getCoordinatorData);
+router.post('/coordinator/getCoordinatorGrades', coordinatorController.getCoordinatorGrades);
 router.post('/coordinator/coordinatorMentors', coordinatorController.coordinatorMentors);
 router.post('/coordinator/coordinatorStudents', coordinatorController.coordinatorStudents);
 
@@ -172,6 +173,10 @@ router.get('/coordinator/getAvailableMentorsForInvigilation', coordinatorControl
 
 //StudentsPage
 router.post('/coordinator/student/getSectionStudents', coordinatorController.getSectionStudents);
+//Discipline
+router.post('/coordinator/student/addStudentComplaint', coordinatorController.addStudentComplaint);
+router.get('/coordinator/student/getStudentDisciplineLogs', coordinatorController.getStudentDisciplineLogs);
+router.get('/coordinator/student/getStudentList', coordinatorController.getStudentList);
 
 //MentorPage
 router.post('/coordinator/mentor/getGradeMentors', coordinatorController.getGradeMentors);
@@ -188,8 +193,11 @@ router.post('/coordinator/mentor/assignSubjectToMentorSection', coordinatorContr
 router.post('/coordinator/mentor/getEnroledSubjectMentors', coordinatorController.getEnroledSubjectMentors);
 router.post('/coordinator/mentor/getEnroledGradeSubjectMentor', coordinatorController.getEnroledGradeSubjectMentor);
 
-
 router.post('/coordinator/mentor/getMentorSchedule', coordinatorController.getMentorSchedule);
+//Discipline
+router.post('/coordinator/mentor/addFacultyComplaint', coordinatorController.addFacultyComplaint);
+router.get('/coordinator/mentor/getDisciplineLogs', coordinatorController.getDisciplineLogs);
+router.get('/coordinator/mentor/getFacultyList', coordinatorController.getFacultyList);
 
 //Events
 router.post('/coordinator/events/create', uploadEventBanner.single('bannerPhoto'),coordinatorController.createEvent);

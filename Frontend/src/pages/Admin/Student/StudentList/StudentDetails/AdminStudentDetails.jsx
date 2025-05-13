@@ -50,6 +50,7 @@ const AdminStudentDetails = ({ navigation, route }) => {
       // fetchIssueLog(student.id);
       fetchSubjectMentors(student.id);
       // fetchSubjectsProgress(student.id);
+      fetchIssueLog(student.roll)
     }
   }, [student]);
 
@@ -77,25 +78,25 @@ const AdminStudentDetails = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success) {
         setAttendanceData(data.studentAttendance);
-        console.log(data.studentAttendance);
-
+        // console.log(data.studentAttendance);
       }
     } catch (error) {
       console.error('Error fetching attendance:', error);
     }
   };
 
-  // const fetchIssueLog = async (studentId) => {
-  //   try {
-  //     const response = await fetch(`${API_URL}/api/admin/students/${studentId}/issues`);
-  //     const data = await response.json();
-  //     if (data.success) {
-  //       setIssueLogData(data.issues);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching issue log:', error);
-  //   }
-  // };
+  const fetchIssueLog = async (roll) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/students/getStudentIssueLogs/${roll}`);
+      const data = await response.json();
+      if (data.studentIssueCount) {
+        setIssueLogData(data.studentIssueCount[0].count);
+        // console.log(data.studentIssueCount[0].count);
+      }
+    } catch (error) {
+      console.error('Error fetching issue log:', error);
+    }
+  };
 
   const fetchSubjectMentors = async () => {
     try {
@@ -106,7 +107,7 @@ const AdminStudentDetails = ({ navigation, route }) => {
       });
 
       const data = await response.json();
-      console.log('Subjects mentors Data API Response:', data);
+      // console.log('Subjects mentors Data API Response:', data);
 
       if (data.success) {
         const initializedSubjects = data.subjectMentors.map(subject => ({
@@ -195,7 +196,7 @@ const AdminStudentDetails = ({ navigation, route }) => {
             <View style={styles.detailItem}>
               <Mentorimg width={15} height={15} />
               <Text style={styles.detailText}>Mentor: {studentDetails.mentor_name || 'Not assigned'}</Text>
-              <TouchableOpacity style={styles.editButton}>
+              <TouchableOpacity style={styles.editButton} onPress={()=>setModalVisible(true)}>
                 <PenIcon width={15} height={15} style={styles.editIcon} />
               </TouchableOpacity>
             </View>
@@ -260,7 +261,7 @@ const AdminStudentDetails = ({ navigation, route }) => {
             <Text style={styles.issueLogText}>Home work : {issueLogData?.issue_hw || 0}</Text>
           </View>
           <View style={styles.issueLogItem}>
-            <Text style={styles.issueLogText}>Discipline : {issueLogData?.issue_dc || 0}</Text>
+            <Text style={styles.issueLogText}>Discipline : {issueLogData}</Text>
           </View>
         </View>
         {/* )} */}

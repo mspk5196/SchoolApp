@@ -81,7 +81,6 @@ const Block = ({ title, classrooms, onEdit, onToggleStatus, onDelete }) => {
 };
 
 const InfrastructureEnrollment = ({ navigation, route }) => {
-  const { coordinatorData } = route.params;
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

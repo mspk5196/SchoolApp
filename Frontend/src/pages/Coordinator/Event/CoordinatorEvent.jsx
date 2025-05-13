@@ -78,7 +78,7 @@ const EventSection = ({ title, events, onPressEvent, onDeleteEvent }) => {
       <View style={styles.categoryHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
       </View>
-      
+
       {/* <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -147,9 +147,9 @@ const EventDetail = ({ event, visible, onClose }) => {
         <ScrollView style={styles.detailScrollView}>
           <View style={styles.detailImageContainer}>
             {event.banner_url ? (
-              
-              <CurvedImageBanner imageSource={{ uri: `${API_URL}/${event.banner_url}` }}/>
-            
+
+              <CurvedImageBanner imageSource={{ uri: `${API_URL}/${event.banner_url}` }} />
+
             ) : (
               <View style={[styles.detailBannerImage, { backgroundColor: '#FEE2E2' }]}>
                 <Text style={styles.placeholderText}>{event.event_name.substring(0, 1)}</Text>
@@ -205,7 +205,9 @@ const EventDetail = ({ event, visible, onClose }) => {
 };
 
 const CoordinatorEvent = ({ navigation, route }) => {
-  const { coordinatorData } = route.params;
+  const { coordinatorData, coordinatorGrades } = route.params;
+  const [activeGrade, setActiveGrade] = useState();
+
   const [events, setEvents] = useState({
     'Inter-school': [],
     'In-school': [],
@@ -216,10 +218,17 @@ const CoordinatorEvent = ({ navigation, route }) => {
   const [showEventDetail, setShowEventDetail] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  useEffect(() => {
+    if (coordinatorGrades) {
+      setActiveGrade(coordinatorGrades[0].grade_id)
+    }
+  }, [coordinatorGrades])
+
   const fetchEvents = async () => {
     try {
+      
       setRefreshing(true);
-      const response = await fetch(`${API_URL}/api/coordinator/events/get?phone=${coordinatorData.phone}`);
+      const response = await fetch(`${API_URL}/api/coordinator/events/get?phone=${activeGrade}`);
       const data = await response.json();
 
       if (data.success) {
@@ -272,19 +281,19 @@ const CoordinatorEvent = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [activeGrade]);
 
   const handlePressEvent = (event) => {
     setSelectedEvent(event);
     setShowEventDetail(true);
   };
-
+ 
   const handleCloseEventDetail = () => {
     setShowEventDetail(false);
   };
 
   const handleAddEvent = () => {
-    navigation.navigate('AddEventForm', { coordinatorData });
+    navigation.navigate('AddEventForm', { coordinatorData, activeGrade });
   };
 
   const onRefresh = () => {
@@ -292,7 +301,7 @@ const CoordinatorEvent = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView  style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -301,30 +310,52 @@ const CoordinatorEvent = ({ navigation, route }) => {
         <Text style={styles.headerTxt}>Events</Text>
       </View>
 
-      <FlatList
-        data={Object.keys(events)}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-          />
-        }
-        renderItem={({ item }) => (
-          <EventSection
-            title={item}
-            events={events[item]}
-            onPressEvent={handlePressEvent}
-            onDeleteEvent={deleteEvent}
-          />
-        )}
-        keyExtractor={item => item}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollView}
-      />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.sectionTabsContainer}
+      >
+        {coordinatorGrades?.map(grade => (
+          <TouchableOpacity
+            key={grade.grade_id}
+            style={[styles.sectionTab, activeGrade === grade.grade_id && styles.activeSectionTab]}
+            onPress={() => setActiveGrade(grade.grade_id)}
+          >
+            <Text style={[styles.sectionTabText, activeGrade === grade.grade_id && styles.activeSectionTabText]}>
+              Grade {grade.grade_id}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
-      <TouchableOpacity style={styles.floatingButton} onPress={handleAddEvent}>
-        <Text style={styles.plusIcon}>+</Text>
-      </TouchableOpacity>
+      <View style={{ flex: 300 }}>
+
+        <FlatList
+          data={Object.keys(events)}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
+          renderItem={({ item }) => (
+            <EventSection
+              title={item}
+              events={events[item]}
+              onPressEvent={handlePressEvent}
+              onDeleteEvent={deleteEvent}
+            />
+          )}
+          keyExtractor={item => item}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollView}
+        />
+
+        <TouchableOpacity style={styles.floatingButton} onPress={handleAddEvent}>
+          <Text style={styles.plusIcon}>+</Text>
+        </TouchableOpacity>
+
+      </View>
 
       <EventDetail
         event={selectedEvent}

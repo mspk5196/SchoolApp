@@ -3,13 +3,10 @@ const db = require('../../config/db');
 exports.getCoordinatorData = (req, res) => {
   const { phoneNumber } = req.body;
   const sql = `
-    SELECT c.id AS id, c.roll, c.phone, c.section_id, c.grade_id, u.name,
-           sec.section_name, g.grade_name, sub.subject_name
+    SELECT c.id AS id, c.roll, c.phone, u.name, up.file_path
     FROM Coordinators c
-    LEFT JOIN Sections sec ON c.section_id = sec.id
     JOIN Users u ON c.phone = u.phone
-    JOIN Grades g ON c.grade_id = g.id
-    LEFT JOIN Subjects sub ON c.subject_id = sub.id
+    JOIN User_photos up ON c.phone = up.phone
     WHERE c.phone = ?;
   `;
   db.query(sql, [phoneNumber], (err, results) => {
@@ -18,6 +15,22 @@ exports.getCoordinatorData = (req, res) => {
     res.json({ success: true, coordinatorData: results[0] });
   });
 };
+
+exports.getCoordinatorGrades = (req, res) => {
+  const { coordinatorId } = req.body;
+  const sql = `
+    SELECT cga.id, cga.grade_id FROM coordinator_grade_assignments cga WHERE cga.coordinator_id = ?;
+  `;
+  db.query(sql, [coordinatorId], (err, results) => {
+    if (err) return res.status(500).json({ success: false });
+    if (results.length === 0) return res.status(404).json({ success: false });
+    console.log(results);
+
+    res.json({ success: true, coordinatorGrades: results });
+  });
+};
+
+
 
 exports.coordinatorMentors = (req, res) => {
   const { gradeId } = req.body;
@@ -57,6 +70,81 @@ exports.coordinatorStudents = (req, res) => {
     res.json({ success: true, coordinatorStudents: results });
   });
 };
+//StudentIssueLogs
+exports.addStudentComplaint = async (req, res) => {
+  const { roll, complaint, registeredBy } = req.body;
+  console.log(roll);
+  
+
+  if (!roll || !complaint || !registeredBy) {
+    return res.status(400).json({ success: false, message: "Phone and complaint are required." });
+  }
+
+  try {
+    const trx = await db.promise().beginTransaction();
+
+    const faculty = await trx.query(
+      `SELECT name FROM users WHERE phone = ?`,
+      [registeredBy]
+    );
+
+    if (faculty.length === 0) {
+      await trx.rollback();
+      return res.status(404).json({ success: false, message: "Registering faculty not found." });
+    }
+
+    const registeredByName = faculty[0].name;
+
+    await trx.query(
+      `INSERT INTO student_dicipline (roll, complaint, registered_by_phone, registered_by_name)
+       VALUES (?, ?, ?, ?)`,
+      [roll, complaint, registeredBy, registeredByName]
+    );
+
+    await trx.commit();
+    res.status(200).json({ success: true, message: "Complaint submitted successfully." });
+
+  } catch (error) {
+    console.error("Error adding complaint:", error);
+    res.status(500).json({ success: false, message: "Failed to submit complaint." });
+  }
+};
+
+
+exports.getStudentDisciplineLogs = async (req, res) => {
+  const {sectionId} = req.query;
+  try {
+    const logs = await db.promise().query(`
+      SELECT sd.*, s.name as student_name, s.profile_photo, sd.roll
+      FROM student_dicipline sd
+      JOIN Students s ON sd.roll = s.roll
+      WHERE s.section_id = ?
+      ORDER BY sd.registered_at DESC;
+    `,[sectionId]);
+
+    res.status(200).json({ success: true, logs });
+  } catch (error) {
+    console.error("Error fetching discipline logs:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch logs." });
+  }
+};
+
+
+exports.getStudentList = async (req, res) => {
+  try {
+    const student = await db.promise().query(`
+      SELECT s.name as student_name, s.roll, s.section_id, sec.section_name, sec.grade_id
+      FROM Students s
+      JOIN Sections sec ON s.section_id = sec.id
+      ORDER BY s.name
+    `);
+
+    res.status(200).json({ success: true, student });
+  } catch (error) {
+    console.error("Error fetching student list:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch student." });
+  }
+};
 
 //Profile
 // For getting coordinator attendance data
@@ -84,7 +172,7 @@ exports.getAttendance = async (req, res) => {
 // Get mentor's subject and grade assignments (updated)
 exports.getMentorAssignments = (req, res) => {
   const { mentorId } = req.body;
-  
+
   const query = `
     SELECT DISTINCT 
       sub.id AS subject_id, 
@@ -96,16 +184,16 @@ exports.getMentorAssignments = (req, res) => {
     JOIN Grades g ON msa.grade_id = g.id
     WHERE msa.mentor_id = ?
   `;
-  
+
   db.query(query, [mentorId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    
+
     // Extract unique subjects and grades
     const subjects = [];
     const grades = [];
     const seenSubjects = new Set();
     const seenGrades = new Set();
-    
+
     results.forEach(row => {
       if (!seenSubjects.has(row.subject_id)) {
         subjects.push({
@@ -114,7 +202,7 @@ exports.getMentorAssignments = (req, res) => {
         });
         seenSubjects.add(row.subject_id);
       }
-      
+
       if (row.grade_id && !seenGrades.has(row.grade_id)) {
         grades.push({
           grade_id: row.grade_id
@@ -122,9 +210,9 @@ exports.getMentorAssignments = (req, res) => {
         seenGrades.add(row.grade_id);
       }
     });
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       subjects,
       grades
     });
@@ -134,19 +222,19 @@ exports.getMentorAssignments = (req, res) => {
 // Get mentor's section information
 exports.getMentorSection = (req, res) => {
   const { mentorId } = req.body;
-  
+
   const query = `
     SELECT s.section_name
     FROM mentors m
     JOIN sections s ON m.section_id = s.id
     WHERE m.id = ?
   `;
-  
+
   db.query(query, [mentorId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       section: results[0]?.section_name || 'Not assigned'
     });
   });
@@ -155,7 +243,7 @@ exports.getMentorSection = (req, res) => {
 // Get mentor's issues count
 exports.getMentorIssues = (req, res) => {
   const { mentorId } = req.body;
-  
+
   const query = `
     SELECT COUNT(*) AS count
     FROM issue_log
@@ -165,12 +253,12 @@ exports.getMentorIssues = (req, res) => {
       )
     )
   `;
-  
+
   db.query(query, [mentorId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       count: results[0]?.count || 0
     });
   });
@@ -182,7 +270,7 @@ exports.getMentorSchedule = (req, res) => {
 
   // Parse the date to get the day of week (e.g., "Monday")
   const dayOfWeek = getDayOfWeekFromDate(date);
-  
+
   const query = `
     SELECT 
       asch.day,
@@ -516,7 +604,7 @@ exports.uploadStudyMaterial = async (req, res) => {
   let connection;
 
   try {
-    const uploadDir = path.join(__dirname, '../..', 'uploads', 'materials');
+    const uploadDir = path.join(__dirname, '../../../', 'uploads', 'materials');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -536,7 +624,7 @@ exports.uploadStudyMaterial = async (req, res) => {
       const fileId = uuidv4();
       const newFileName = `${fileId}${ext}`;
       const relativePath = path.join('uploads', 'materials', newFileName);
-      const absolutePath = path.join(__dirname, '../..', relativePath);
+      const absolutePath = path.join(__dirname, '../../../', relativePath);
 
       // Move file to /uploads/materials
       fs.renameSync(file.path, absolutePath);
@@ -580,7 +668,7 @@ exports.getMaterials = async (req, res) => {
   const { gradeID, subjectID } = req.query;
   // console.log(`[GET] /api/coordinator/getMaterials?gradeID=${gradeID}&subjectID=${subjectID}`);
 
-  if (!gradeID || !subjectID) {
+  if (!gradeID || !subjectID) { 
     return res.status(400).json({ error: 'Missing gradeID or subjectID' });
   }
 
@@ -612,7 +700,7 @@ exports.deleteMaterial = (req, res) => {
     }
 
     const filePath = results[0].file_url;
-    const absolutePath = path.join(__dirname, '../..', filePath);
+    const absolutePath = path.join(__dirname, '../../../', filePath);
 
     const sql = 'DELETE FROM materials WHERE id = ?';
     db.query(sql, [fileId], (err, result) => {
@@ -652,7 +740,7 @@ exports.deleteLevel = (req, res) => {
 
     // Delete all matching files from the file system
     results.forEach((row) => {
-      const filePath = path.join(__dirname, '../..', row.file_url);
+      const filePath = path.join(__dirname, '../../../', row.file_url);
       fs.unlink(filePath, (fsErr) => {
         if (fsErr) {
           console.error(`ÔØî Error deleting file ${filePath}:`, fsErr.message);
@@ -1572,7 +1660,7 @@ exports.getWeeklySchedule = (req, res) => {
       console.error(err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
-    
+
     res.json({ success: true, scheduleItems: results });
   });
 };
@@ -1598,8 +1686,8 @@ exports.updateVenueStatusBasedOnSchedule = () => {
     }
 
     const activeVenueIds = results.map(r => r.venue);
-    const placeholders = activeVenueIds.length > 0 
-      ? activeVenueIds.map(() => '?').join(',') 
+    const placeholders = activeVenueIds.length > 0
+      ? activeVenueIds.map(() => '?').join(',')
       : 'NULL';
 
     const updateQuery = `
@@ -1608,7 +1696,7 @@ exports.updateVenueStatusBasedOnSchedule = () => {
         WHEN id IN (${placeholders}) THEN 'Active' 
         ELSE 'InActive' 
       END`;
-    
+
     db.query(updateQuery, activeVenueIds, (err) => {
       if (err) {
         console.error('Error updating venue statuses:', err);
@@ -1643,9 +1731,9 @@ exports.checkTimeConflict = (req, res) => {
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ 
-      success: true, 
-      hasConflict: results[0].conflictCount > 0 
+    res.json({
+      success: true,
+      hasConflict: results[0].conflictCount > 0
     });
   });
 };
@@ -1693,7 +1781,7 @@ exports.addOrUpdateWeeklySchedule = (req, res) => {
           id: id
         });
       });
-  } 
+  }
   // Otherwise, this is a new record - use INSERT
   else {
     const insertQuery = `
@@ -1743,7 +1831,7 @@ exports.deleteWeeklySchedule = (req, res) => {
 exports.getAvailableMentors = (req, res) => {
   const { subjectId, activeSection } = req.query;
   // console.log(subjectId, activeSection);
-  
+
 
   const query = `
     SELECT m.id, u.name, m.roll
@@ -1766,10 +1854,10 @@ exports.getAvailableMentors = (req, res) => {
 //Get Section Activities
 exports.getSectionSubjectActivities = (req, res) => {
 
-  const {subjectId, activeSection} = req.query;
+  const { subjectId, activeSection } = req.query;
 
   // console.log(subjectId, activeSection);
-  
+
 
   const sql = `
     SELECT ssa.activity_type as id, at.activity_type as activity_name
@@ -1777,13 +1865,13 @@ exports.getSectionSubjectActivities = (req, res) => {
     JOIN Activity_types at ON ssa.activity_type = at.id
     WHERE ssa.subject_id = ? AND ssa.section_id = ?
   `;
-  db.query(sql,[subjectId, activeSection], (err, results) => {
+  db.query(sql, [subjectId, activeSection], (err, results) => {
     if (err) {
       console.error("Error fetching section subject activity types:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
     // console.log(results);
-    
+
     res.json({ success: true, message: "Activity types fetched successfully", activity_types: results });
   });
 };
@@ -2131,6 +2219,85 @@ exports.getEnroledSubjectMentors = (req, res) => {
   });
 };
 
+// ✅ addcomplanit on  faculty 
+exports.addFacultyComplaint = async (req, res) => {
+  const { phone, complaint, registeredBy } = req.body;
+  console.log(phone);
+  
+
+  if (!phone || !complaint || !registeredBy) {
+    return res.status(400).json({ success: false, message: "Phone and complaint are required." });
+  }
+
+  try {
+    const trx = await db.promise().beginTransaction();
+
+    const faculty = await trx.query(
+      `SELECT name FROM users WHERE phone = ?`,
+      [registeredBy]
+    );
+
+    if (faculty.length === 0) {
+      await trx.rollback();
+      return res.status(404).json({ success: false, message: "Registering faculty not found." });
+    }
+
+    const registeredByName = faculty[0].name;
+
+    await trx.query(
+      `INSERT INTO faculty_dicipline (phone, complaint, registered_by_phone, registered_by_name)
+       VALUES (?, ?, ?, ?)`,
+      [phone, complaint, registeredBy, registeredByName]
+    );
+
+    await trx.commit();
+    res.status(200).json({ success: true, message: "Complaint submitted successfully." });
+
+  } catch (error) {
+    console.error("Error adding complaint:", error);
+    res.status(500).json({ success: false, message: "Failed to submit complaint." });
+  }
+};
+
+
+exports.getDisciplineLogs = async (req, res) => {
+  try {
+    const logs = await db.promise().query(`
+      SELECT fd.*, u.name as faculty_name, up.file_path as profile_photo, m.roll as mentor_roll, c.roll as coordinator_roll
+      FROM faculty_dicipline fd
+      JOIN users u ON fd.phone = u.phone
+      LEFT JOIN user_photos up ON u.phone = up.phone AND up.is_profile_photo = 1
+      LEFT JOIN Mentors m ON fd.phone = m.phone
+      LEFT JOIN Coordinators c ON fd.phone = c.phone
+      ORDER BY fd.registered_at DESC
+    `);
+
+    res.status(200).json({ success: true, logs });
+  } catch (error) {
+    console.error("Error fetching discipline logs:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch logs." });
+  }
+};
+
+
+exports.getFacultyList = async (req, res) => {
+  try {
+    const faculty = await db.promise().query(`
+      SELECT u.name, u.phone, m.roll as mentor_roll, c.roll as coordinator_roll
+      FROM users u
+      LEFT JOIN mentors m ON u.phone = m.phone
+      LEFT JOIN coordinators c ON u.phone = c.phone
+      WHERE u.roles NOT LIKE '%Student%'
+      ORDER BY u.name
+    `);
+
+    res.status(200).json({ success: true, faculty });
+  } catch (error) {
+    console.error("Error fetching faculty list:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch faculty." });
+  }
+};
+
 
 // Assign mentor to subject at grade level
 
@@ -2326,7 +2493,7 @@ exports.getEvents = (req, res) => {
     FROM events e
     LEFT JOIN grades g ON e.grade_id = g.id
     LEFT JOIN event_participants ep ON e.id = ep.event_id
-    WHERE e.phone = ?
+    WHERE e.grade_id = ?
     GROUP BY e.id
     ORDER BY e.event_date DESC
   `;

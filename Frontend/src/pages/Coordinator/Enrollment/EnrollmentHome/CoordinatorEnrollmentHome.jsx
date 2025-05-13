@@ -1,5 +1,5 @@
-import React from 'react';
-import { Text, View, Pressable, ScrollView, SectionList } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HomeIcon from '../../../../assets/CoordinatorPage/EnrollmentHome/Home.svg';
 import CollegeIcon from '../../../../assets/CoordinatorPage/EnrollmentHome/College.svg';
@@ -10,7 +10,14 @@ import styles from './EnrollmentHomeStyle';
 
 const CoordinatorEnrollmentHome = ({ navigation, route }) => {
 
-  const { coordinatorData } = route.params;
+  const { coordinatorData, coordinatorGrades } = route.params;
+  const [activeGrade, setActiveGrade] = useState();
+
+  useEffect(() => {
+    if (coordinatorGrades) {
+      setActiveGrade(coordinatorGrades[0].grade_id)
+    }
+  }, [coordinatorGrades])
 
   const data = [
     {
@@ -32,11 +39,29 @@ const CoordinatorEnrollmentHome = ({ navigation, route }) => {
   );
 
   return (
-    <SafeAreaView flexgrow={1} flex={1}>
+    <SafeAreaView flexgrow={1} flex={0}>
       <View style={styles.Header}>
         <HomeIcon width={styles.HomeIcon.width} height={styles.HomeIcon.height} onPress={() => navigation.navigate('CoordinatorMain')} />
         <Text style={styles.HeaderTxt}>Enrollment</Text>
       </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.sectionTabsContainer}
+      >
+        {coordinatorGrades?.map(grade => (
+          <TouchableOpacity
+            key={grade.grade_id}
+            style={[styles.sectionTab, activeGrade === grade.grade_id && styles.activeSectionTab]}
+            onPress={() => setActiveGrade(grade.grade_id)}
+          >
+            <Text style={[styles.sectionTabText, activeGrade === grade.grade_id && styles.activeSectionTabText]}>
+              Grade {grade.grade_id}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       <SectionList
         vertical={true}
@@ -45,20 +70,20 @@ const CoordinatorEnrollmentHome = ({ navigation, route }) => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
 
-          <Pressable 
+          <Pressable
             onPress={() => {
               if (item.title === 'Student Enrollment') {
-                navigation.navigate('StudentEnrollment', { coordinatorData });
+                navigation.navigate('StudentEnrollment', { coordinatorData, activeGrade });
               } else if (item.title === 'Mentor Enrollment') {
-                navigation.navigate('MentorEnrollment', { coordinatorData });
+                navigation.navigate('MentorEnrollment', { coordinatorData, activeGrade });
               }
               else if (item.title === 'Subject & Activity Enrollment') {
-                navigation.navigate('SubjectAllotment', { coordinatorData });
+                navigation.navigate('SubjectAllotment', { coordinatorData,activeGrade });
               }
               else if (item.title === 'InfraStructure Enrollment') {
-                navigation.navigate('InfrastructureEnrollment', { coordinatorData });
+                navigation.navigate('InfrastructureEnrollment', { coordinatorData, activeGrade });
               }
- 
+
             }}
           >
             <ScrollView nestedScrollEnabled={true}>

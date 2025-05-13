@@ -25,7 +25,7 @@ import styles from './MentorMappingStyles';
 
 const CoordinatorMentorMapping = ({ navigation, route }) => {
 
-  const { coordinatorData } = route.params;
+  const { coordinatorData, activeGrade } = route.params;
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedFaculties, setSelectedFaculties] = useState([]);
@@ -51,7 +51,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
+        body: JSON.stringify({ gradeID: activeGrade }),
       });
 
       const data = await response.json();
@@ -76,7 +76,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getSectionMentor`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activeGrade: coordinatorData.grade_id }),
+        body: JSON.stringify({ activeGrade: activeGrade }),
       });
 
       const data = await response.json();
@@ -98,7 +98,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeNonEnroledMentors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
+        body: JSON.stringify({ gradeID: activeGrade }),
       });
 
       const data = await response.json();
@@ -148,7 +148,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
       const sectionsResponse = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
+        body: JSON.stringify({ gradeID: activeGrade }),
       });
   
       const sectionsData = await sectionsResponse.json();
@@ -190,7 +190,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               name: newSectionName,
-              grade_id: coordinatorData.grade_id,
+              grade_id: activeGrade,
             }),
           });
   
@@ -211,7 +211,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
             body: JSON.stringify({
               mentor_id: mentor.id,
               section_id: sectionId,
-              grade_id: coordinatorData.grade_id,
+              grade_id: activeGrade,
             }),
           });
   

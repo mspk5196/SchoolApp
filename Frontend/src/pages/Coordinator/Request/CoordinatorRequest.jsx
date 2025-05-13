@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const RequestItem = ({ title, subtitle, date, status, onPress }) => {
   return (
     <TouchableOpacity style={styles.requestItem} onPress={onPress}>
-      <View style={styles.requestDetails}> 
+      <View style={styles.requestDetails}>
         <View style={styles.requestTitleRow}>
           <Text style={styles.requestTitle}>{title}</Text>
         </View>
@@ -30,10 +30,18 @@ const RequestItem = ({ title, subtitle, date, status, onPress }) => {
 
 const CoordinatorRequest = ({ navigation }) => {
   const route = useRoute();
-  
+
+  const { coordinatorGrades } = route.params;
 
   const [coordinatorData, setCoordinatorData] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [activeGrade, setActiveGrade] = useState();
+
+  useEffect(() => {
+    if (coordinatorGrades) {
+      setActiveGrade(coordinatorGrades[0].grade_id)
+    }
+  }, [coordinatorGrades])
 
   const convertToIST = (utcDate) => {
     if (!utcDate) return '';
@@ -92,7 +100,7 @@ const CoordinatorRequest = ({ navigation }) => {
 
   useEffect(() => {
     fetchStudentRequests();
-  }, [coordinatorData])
+  }, [activeGrade])
 
   const handleRequestPress = (item) => {
     if (item.status === 'Requested') {
@@ -102,7 +110,7 @@ const CoordinatorRequest = ({ navigation }) => {
         reqData: item
       });
     }
-  }; 
+  };
 
   // {"document_type": ["Bonofide", "Fee Receipt"], "grade_id": 2, "id": 1, "purpose": "Income Tax", "requestID": "1744774325056yx2jv0bep", "request_date": "2025-04-16T03:32:05.000Z", "status": "Requested", "student_roll": "S103"}
 
@@ -111,13 +119,13 @@ const CoordinatorRequest = ({ navigation }) => {
   };
 
   const fetchStudentRequests = async () => {
-    console.log(coordinatorData.grade_id);
+    console.log(activeGrade);
 
     try {
       const response = await fetch(`${API_URL}/api/coordinator/getStudentCoordinatorRequests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
+        body: JSON.stringify({ gradeID: activeGrade }),
       });
 
       const data = await response.json();
@@ -145,31 +153,51 @@ const CoordinatorRequest = ({ navigation }) => {
         <Text style={styles.headerTxt}>Request</Text>
       </View>
 
-      <ScrollView style={styles.scrollContainer}>
-        {requests.length > 0 ? (
-          requests.map((item, index) => (
-            <RequestItem
-              key={index}
-              title={formatRequestTypes(item.document_type)}
-              subtitle={(item.purpose)}
-              date={convertToIST(item.request_date)}
-              status={item.status}
-              hasCount={item.hasCount}
-              count={item.count}
-              requestID={item.requestID}
-              onPress={() => handleRequestPress(item)}
-            />
-          ))
-        ) : (
-          <View style={styles.noRequests}>
-            <Text style={{color:'grey', justifyContent:'center'}}>No Requests</Text>
-          </View>
-        )}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.sectionTabsContainer}
+      >
+        {coordinatorGrades?.map(grade => (
+          <TouchableOpacity
+            key={grade.grade_id}
+            style={[styles.sectionTab, activeGrade === grade.grade_id && styles.activeSectionTab]}
+            onPress={() => setActiveGrade(grade.grade_id)}
+          >
+            <Text style={[styles.sectionTabText, activeGrade === grade.grade_id && styles.activeSectionTabText]}>
+              Grade {grade.grade_id}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
 
-      <TouchableOpacity style={styles.floatingButton} onPress={handleAddRequest}>
-        <Text style={styles.plusIcon}>+</Text>
-      </TouchableOpacity>
+      <View style={{flex:300}}>
+        <ScrollView style={styles.scrollContainer}>
+          {requests.length > 0 ? (
+            requests.map((item, index) => (
+              <RequestItem
+                key={index}
+                title={formatRequestTypes(item.document_type)}
+                subtitle={(item.purpose)}
+                date={convertToIST(item.request_date)}
+                status={item.status}
+                hasCount={item.hasCount}
+                count={item.count}
+                requestID={item.requestID}
+                onPress={() => handleRequestPress(item)}
+              />
+            ))
+          ) : (
+            <View style={styles.noRequests}>
+              <Text style={{ color: 'grey', justifyContent: 'center' }}>No Requests</Text>
+            </View>
+          )}
+        </ScrollView>
+
+        <TouchableOpacity style={styles.floatingButton} onPress={handleAddRequest}>
+          <Text style={styles.plusIcon}>+</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };

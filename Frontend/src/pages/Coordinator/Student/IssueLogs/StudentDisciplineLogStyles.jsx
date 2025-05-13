@@ -282,6 +282,40 @@ activeText: {
     fontSize: 16,
     fontWeight: '600',
   },
+  AddIcon: {
+    width: 20,
+    height: 20,
+  },
+  AddButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    padding: 20,
+    backgroundColor: '#0C36FF',
+    borderRadius: 50,
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  actionButtonCall: {
+    backgroundColor: '#AEBCFF', 
+    borderRadius: 999,
+    padding: 8,
+    marginLeft: 'auto',
+    marginRight: 10,
+  },
+  actionButtonMsg: {
+    backgroundColor: '#A4F4E7', 
+    borderRadius: 999,
+    padding: 8,
+  },
+  
 });
 
 export default styles;

@@ -12,8 +12,8 @@ import styles from './ProfileStyle';
 import { API_URL } from '@env';
 
 const CoordinatorProfile = ({ navigation, route }) => {
-  const { coordinatorData } = route.params;
-  
+  const { coordinatorData, coordinatorGrades } = route.params;
+
   const [attendanceData, setAttendanceData] = useState({
     total_days: 0,
     present_days: 0,
@@ -92,6 +92,8 @@ const CoordinatorProfile = ({ navigation, route }) => {
   useEffect(() => {
     fetchCoordinatorDetails();
     fetchAttendanceData();
+    console.log(coordinatorGrades);
+
   }, [coordinatorData]);
 
   // Helper function to format subjects list
@@ -114,6 +116,18 @@ const CoordinatorProfile = ({ navigation, route }) => {
     );
   }
 
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return ProfileIcon;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -127,7 +141,12 @@ const CoordinatorProfile = ({ navigation, route }) => {
 
       <View style={styles.card}>
         <View style={styles.profileContainer}>
-          <Image source={ProfileIcon} style={styles.profileImage} />
+
+          {coordinatorData.file_path ? (
+            <Image source={getProfileImageSource(coordinatorData.file_path)} style={styles.profileImage} />
+          ) : (
+            <Image source={ProfileIcon} style={styles.profileImage} />
+          )}
         </View>
         <View style={styles.details}>
           <Text style={styles.name}>{coordinatorData.name}</Text>
@@ -200,7 +219,8 @@ const CoordinatorProfile = ({ navigation, route }) => {
         </View>
         <View style={styles.rightColumn}>
           <Text style={styles.infoText}>
-            <Text style={styles.bold}>Mentor For:</Text> {coordinatorData.grade_name}
+
+            <Text style={styles.bold}>Mentor For:</Text> {formatGrades(coordinatorGrades)}
           </Text>
           <Text style={styles.infoText}>
             <Text style={styles.bold}>Handling:</Text> {formatGrades(coordinatorDetails.grades)}
@@ -216,7 +236,7 @@ const CoordinatorProfile = ({ navigation, route }) => {
         <Text style={styles.leaveButtonText}>Leave Apply</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.homeButton} onPress={() => navigation.navigate('CoordinatorMain', {coordinatorData})}>
+      <TouchableOpacity style={styles.homeButton} onPress={() => navigation.navigate('CoordinatorMain', { coordinatorData })}>
         <Home width={30} height={30} />
       </TouchableOpacity>
     </SafeAreaView>

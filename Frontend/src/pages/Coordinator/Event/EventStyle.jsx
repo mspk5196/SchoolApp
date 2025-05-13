@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
   },
   floatingButton: {
     position: 'absolute',
-    right: 25,
-    bottom: 25,
+    right: 20,
+    bottom: 20, // 🔁 change from 250 to 20
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -156,13 +156,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
+    zIndex: 10, // ✅ makes sure it's above other content
   },
   plusIcon: {
     fontSize: 32,
     color: '#FFFFFF',
     lineHeight: 50,
   },
-  
+
   // Event Detail Styles
   detailScrollView: {
     flex: 1,
@@ -170,7 +171,7 @@ const styles = StyleSheet.create({
   detailImageContainer: {
     width: '100%',
     height: 220,
-    backgroundColor:'white',
+    backgroundColor: 'white',
     position: 'relative',
   },
 
@@ -267,7 +268,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 120,
   },
-  
+
   // Additional styles for responsive layout
   modalBackButton: {
     padding: 10,
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#3557FF',
   },
-  
+
   // Registration button styling for event detail
   registerButtonContainer: {
     padding: 16,
@@ -304,6 +305,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  sectionTabsContainer: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    marginTop: 10, 
+    // height:60
+  },
+  sectionTab: {
+    paddingHorizontal: 20, // Matched with Academic Schedule
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginRight: 10,
+    backgroundColor: '#F5F5F5',
+    width: 110, // Fixed width from Academic Schedule
+  },
+  noScheduleText: {
+    color: 'grey',
+    alignSelf: 'center'
+  },
+  activeSectionTab: {
+    backgroundColor: '#0C36FF',
+  },
+  sectionTabText: {
+    fontSize: 14,
+    alignSelf: 'center',
+    color: '#333333',
+  },
+  activeSectionTabText: {
+    color: '#FFFFFF',
+    paddingLeft: 5, // Added from Academic Schedule
   },
 });
 

@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RNFetchBlob from 'rn-fetch-blob';
+import RNFS from 'react-native-fs';
+import FileViewer from 'react-native-file-viewer';
 import styles from './SubjectStyle';
 import BackIcon from '../../../../assets/CoordinatorPage/Subjects/Back.svg';
 import PdfIcon from '../../../../assets/CoordinatorPage/Subjects/pdf-icon.svg';
@@ -23,6 +25,7 @@ import DownloadIcon from '../../../../assets/MentorPage/download.svg';
 import EditIcon from '../../../../assets/CoordinatorPage/Subjects/Edit.svg';
 import { API_URL } from "@env";
 import { requestStoragePermission } from '../../../../components/StoragePermission/requestStoragePermission';
+import { getType } from 'mime';
 
 const MentorSubjectPage = ({ route, navigation }) => {
     const { grade, subject, subjectID, gradeID } = route.params || {};
@@ -37,7 +40,7 @@ const MentorSubjectPage = ({ route, navigation }) => {
 
     useEffect(() => {
         let isMounted = true;
-        
+
         const fetchData = async () => {
             try {
                 await fetchMaterials();
@@ -47,78 +50,122 @@ const MentorSubjectPage = ({ route, navigation }) => {
                 }
             }
         };
-    
+
         fetchData();
-    
+
         return () => {
             isMounted = false;
         };
     }, [gradeID, subjectID]);
-    
-    // Function to download file
-    const downloadFile = async (fileUri, fileName) => {
+
+    const [progress, setProgress] = useState(0);
+    const [visible, setVisible] = useState(false);
+
+    const downloadFile = async (url, fileName) => {
         try {
+            // 1. Use your existing requestStoragePermission() function
             const hasPermission = await requestStoragePermission();
             if (!hasPermission) {
                 Alert.alert('Permission Denied', 'Storage permission required');
                 return;
             }
-    
-            const fileExt = fileName.split('.').pop().toLowerCase();
-            const mimeType = fileExt === 'pdf' ? 'application/pdf' : 
-                             fileExt === 'mp4' ? 'video/mp4' : 
-                             'application/octet-stream';
-    
-            const dirs = RNFetchBlob.fs.dirs;
-            const downloadDir = dirs.DownloadDir;
-            const filePath = `${downloadDir}/${fileName}`;
-    
-            // Show progress alert
+
+            // 2. Define Download Path
+            const downloadDir = Platform.OS === 'android'
+                ? RNFS.DownloadDirectoryPath
+                : RNFS.DocumentDirectoryPath;
+            const filePath = `${downloadDir}/${fileName.replace(/%20/g, ' ')}`;
+
+            // 3. Show download progress alert
             const progressAlert = Alert.alert(
-                'Downloading', 
+                'Downloading, Please Wait',
                 `Downloading ${fileName}...`,
-                [{ text: 'OK', onPress: () => {} }],
+                [],
                 { cancelable: false }
             );
-    
-            const configOptions = {
-                fileCache: true,
-                addAndroidDownloads: {
-                    useDownloadManager: true,
-                    notification: true,
-                    path: filePath,
-                    description: 'File download',
-                    mime: mimeType,
-                    title: fileName,
+
+            // 4. Download File
+            const options = {
+                fromUrl: url,
+                toFile: filePath,
+                notification: true,
+                progress: (res) => {
+                    const progress = (res.bytesWritten / res.contentLength) * 100;
+                    console.log(`Download Progress: ${progress.toFixed(2)}%`);
                 },
-                timeout: 30000 // 30 seconds timeout
             };
-    
-            const res = await RNFetchBlob.config(configOptions)
-                .fetch('GET', fileUri)
-                .progress((received, total) => {
-                    console.log(`Progress: ${received}/${total}`);
-                });
-    
+
+            const download = RNFS.downloadFile(options);
+            const { statusCode } = await download.promise;
+
+            // Close progress alert
             Alert.alert('Success', `Downloaded to ${filePath}`);
-            
-            if (Platform.OS === 'android') {
-                try {
-                    RNFetchBlob.android.actionViewIntent(res.path(), mimeType);
-                } catch (viewError) {
-                    console.log('Cannot open file:', viewError);
-                }
+
+            // 5. Open File (optional)
+            try {
+                console.log(filePath);
+
+                await openRemoteFile(filePath);
+
+            } catch (openError) {
+                console.log('Could not open file:', openError);
             }
-    
+
         } catch (error) {
-            console.error('Download failed:', error);
+            Alert.alert('Error', `Failed to download file: ${error.message}`);
+            console.error('Download error:', error);
+        }
+
+
+        return (
+            <>
+                <Modal visible={visible} transparent animationType="fade">
+                    <View style={styles.modalContainer}>
+                        <View style={styles.dialog}>
+                            <Text style={styles.title}>Downloading...</Text>
+                            <Text style={styles.percent}>{progress}%</Text>
+                        </View>
+                    </View>
+                </Modal>
+
+                {/* You can call this manually or wrap in a button */}
+                <Text onPress={downloadFile} style={styles.downloadBtn}>
+                    Download & Open
+                </Text>
+            </>
+        );
+
+    };
+
+    const getMimeType = (filename) => {
+        const ext = filename.split('.').pop().toLowerCase();
+        switch (ext) {
+            case 'pdf': return 'application/pdf';
+            case 'mp4': return 'video/mp4';
+            case 'jpg': case 'jpeg': return 'image/jpeg';
+            case 'png': return 'image/png';
+            default: return 'application/octet-stream';
+        }
+    };
+
+    const openRemoteFile = async (filePath) => {
+        try {
+            const mimeType = getMimeType(filePath);
+
+            if (Platform.OS === 'Android') {
+                await RNFetchBlob.android.actionViewIntent(filePath, mimeType);
+            } else {
+                await FileViewer.open(filePath, { showOpenWithDialog: true });
+            }
+        } catch (err) {
+            console.error('❌ Could not open file:', err);
             Alert.alert(
-                'Download Failed', 
-                error.message || 'Failed to download file',
-                [{ text: 'OK', onPress: () => {} }]
+                'Cannot Open File',
+                'Please make sure a compatible app (like Adobe PDF Reader) is installed.'
             );
         }
     };
+
 
     const convertToIST = (utcDate) => {
         if (!utcDate) return '';

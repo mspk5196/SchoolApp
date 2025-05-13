@@ -1,4 +1,4 @@
-import {StyleSheet} from 'react-native';
+import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
   container: {
@@ -70,11 +70,14 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.5,
     shadowOffset: {width: 0, height: 2},
     shadowRadius: 5,
-    elevation: 0.5,
+    elevation: 1.5,
+    marginHorizontal:1,
+    marginVertical:1,
     marginBottom: 15,
+    // borderWidth:0.5
   },
   row: {
     flexDirection: 'row',
@@ -132,6 +135,36 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     backgroundColor: '#3557FF',
   },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 5,
+  },
+  greenDot: {
+    backgroundColor: 'green',
+  },
+  redDot: {
+    backgroundColor: 'red',
+  },
+  timeLeft: {
+    fontSize: 14,
+    color: '#EB4B42',
+    marginVertical: 5,
+    alignSelf:'flex-end'
+  },
+
+  
 });
 
 export default styles;

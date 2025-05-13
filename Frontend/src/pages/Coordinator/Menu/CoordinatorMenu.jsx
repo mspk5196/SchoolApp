@@ -21,6 +21,7 @@ import { CommonActions } from "@react-navigation/native";
 const CoordinatorMenu = ({ navigation }) => {
   const [isCoordinator, setIsCoordinator] = useState(true);  
   const [coordinatorData, setCoordinatorData] = useState({});
+  const [coordinatorGrades, setCoordinatorGrades] = useState({});
 
   const coordinatorSwitch = () => {
     if(isCoordinator){
@@ -38,6 +39,7 @@ const CoordinatorMenu = ({ navigation }) => {
       // You can clear any other data if needed, like admin or coordinator data
       await AsyncStorage.removeItem('adminData');
       await AsyncStorage.removeItem('coordinatorData');
+      await AsyncStorage.removeItem('coordinatorGrades');
       await AsyncStorage.removeItem('studentData');
       await AsyncStorage.removeItem('mentorData');
   
@@ -66,49 +68,61 @@ const CoordinatorMenu = ({ navigation }) => {
           setCoordinatorData(parsedData);
         }
       } catch (error) {
-        console.error('Error fetching roles:', error);
+        console.error('Error fetching data:', error);
+      }
+    };
+    const fetchCoordinatorGrades = async () => {
+      try {
+        const storedData = await AsyncStorage.getItem('coordinatorGrades');
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          setCoordinatorGrades(parsedData);
+        }
+      } catch (error) {
+        console.error('Error fetching grades data:', error);
       }
     };
     fetchCoordinatorData();
+    fetchCoordinatorGrades();
   }, [])
-
+  
   const handleMenuPress = (menuItem) => {
     console.log(`${menuItem} pressed`);
 
     switch (menuItem) {
       case 'Profile':
-        navigation.navigate('CoordinatorProfile', { coordinatorData });
+        navigation.navigate('CoordinatorProfile', { coordinatorData, coordinatorGrades });
         break;
       case 'Logout':
         // navigation.navigate('Login');
         handleLogout();
         break;
       case 'Mentor':
-        navigation.navigate('CoordinatorMentor',{ coordinatorData });
+        navigation.navigate('CoordinatorMentor',{ coordinatorData, coordinatorGrades });
         break;
       case 'Student':
-        navigation.navigate('CoordinatorStudent',{ coordinatorData });
+        navigation.navigate('CoordinatorStudent',{ coordinatorData, coordinatorGrades });
         break;
       case 'Materials':
-        navigation.navigate('CoordinatorMaterialHome', { coordinatorData });
+        navigation.navigate('CoordinatorMaterialHome', { coordinatorData, coordinatorGrades });
         break;
       case 'Logs':
-        navigation.navigate('CoordinatorLogs',{ coordinatorData });
+        navigation.navigate('CoordinatorLogs',{ coordinatorData, coordinatorGrades });
         break;
       case 'Schedule':
-        navigation.navigate('CoordinatorScheduleHome',{ coordinatorData });
+        navigation.navigate('CoordinatorScheduleHome',{ coordinatorData, coordinatorGrades });
         break;
       case 'Events':
-        navigation.navigate('CoordinatorEvent',{ coordinatorData });
+        navigation.navigate('CoordinatorEvent',{ coordinatorData, coordinatorGrades });
         break;
       case 'Calendar':
-        navigation.navigate('CoordinatorCalendar',{ coordinatorData });
+        navigation.navigate('CoordinatorCalendar',{ coordinatorData, coordinatorGrades });
         break;
       case 'Request':
-        navigation.navigate('CoordinatorRequest'); 
+        navigation.navigate('CoordinatorRequest',{ coordinatorData, coordinatorGrades }); 
         break;
       case 'Enrollment':
-        navigation.navigate('CoordinatorEnrollmentHome',{ coordinatorData });
+        navigation.navigate('CoordinatorEnrollmentHome',{ coordinatorData, coordinatorGrades });
         break;
       default:
         console.log('No navigation defined for', menuItem);

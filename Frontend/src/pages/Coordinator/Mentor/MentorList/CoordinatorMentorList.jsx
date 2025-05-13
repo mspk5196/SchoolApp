@@ -7,7 +7,7 @@ const Staff = require('../../../../assets/CoordinatorPage/MentorList/staff.png')
 import Search from '../../../../assets/CoordinatorPage/MentorList/search.svg'
 
 const CoordinatorMentorList = ({ navigation, route }) => {
-  const { coordinatorData } = route.params;
+  const { coordinatorData, activeGrade } = route.params;
   const [searchText, setSearchText] = useState('');
   const [filteredMentor, setFilteredMentor] = useState([]);
 
@@ -23,7 +23,7 @@ const CoordinatorMentorList = ({ navigation, route }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          gradeID: coordinatorData.grade_id,
+          gradeID: activeGrade,
           // Include any other necessary parameters
         }),
       });
@@ -57,16 +57,16 @@ const CoordinatorMentorList = ({ navigation, route }) => {
     navigation.navigate('CoordinatorMentorListDetails', { mentor });
   };
   const getProfileImageSource = (profilePath) => {
-      if (profilePath) {
-        // 1. Replace backslashes with forward slashes
-        const normalizedPath = profilePath.replace(/\\/g, '/');
-        // 2. Construct the full URL
-        const fullImageUrl = `${API_URL}/${normalizedPath}`;
-        return { uri: fullImageUrl };
-      } else {
-        return Staff;
-      }
-    };
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Staff;
+    }
+  };
 
   return (
 

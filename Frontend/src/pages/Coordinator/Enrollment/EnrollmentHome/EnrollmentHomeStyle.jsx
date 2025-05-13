@@ -21,12 +21,12 @@ const styles = StyleSheet.create({
     },
     scrollWrapper: {
         marginVertical: 10,
-      },
-      scrollContent: {
+    },
+    scrollContent: {
         flexDirection: "row",
         alignItems: "center",
-        paddingHorizontal: 10, 
-      },
+        paddingHorizontal: 10,
+    },
     classnavgrade: {
         flexDirection: 'row',
         marginTop: 10,
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
         flexGrow: 0,
         flexShrink: 0,
     },
-    classnavsection:{
+    classnavsection: {
         flexDirection: 'row',
         marginBottom: 20,
         flexGrow: 0,
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     },
     gradeselectiontext: {
         color: 'black',
-        fontWeight:'500',
+        fontWeight: '500',
     },
     activeButton: {
         backgroundColor: '#0C36FF',
@@ -67,13 +67,42 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginVertical: 10,
         marginHorizontal: 15,
-      },
-      cardText: {
+    },
+    cardText: {
         fontSize: 18,
         fontWeight: "bold",
         marginLeft: 20,
-      },
-    
+    },
+    sectionTabsContainer: {
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+        marginTop: 10, // Added from Academic Schedule
+    },
+    sectionTab: {
+        paddingHorizontal: 20, // Matched with Academic Schedule
+        paddingVertical: 12,
+        borderRadius: 20,
+        marginRight: 10,
+        backgroundColor: '#F5F5F5',
+        width: 110, // Fixed width from Academic Schedule
+    },
+    noScheduleText: {
+        color: 'grey',
+        alignSelf: 'center'
+    },
+    activeSectionTab: {
+        backgroundColor: '#0C36FF',
+    },
+    sectionTabText: {
+        fontSize: 14,
+        alignSelf: 'center',
+        color: '#333333',
+    },
+    activeSectionTabText: {
+        color: '#FFFFFF',
+        paddingLeft: 5, // Added from Academic Schedule
+    },
+
 });
 
 export default styles;

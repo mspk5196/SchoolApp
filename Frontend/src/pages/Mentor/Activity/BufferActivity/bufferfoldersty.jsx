@@ -92,6 +92,15 @@ const styles = StyleSheet.create({
     width: wp('13%'),
     height: wp('13%'),
   },
+  dropdown: {
+    backgroundColor: '#fafafa',
+    borderColor: '#ddd',
+    height: 50,
+  },
+  dropdownContainer: {
+    backgroundColor: '#fafafa',
+    borderColor: '#ddd',
+  },
 });
 
 
