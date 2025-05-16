@@ -1,8 +1,13 @@
 import { StyleSheet } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
-const styles = StyleSheet.create({
+const styles1 = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f4f4f4',
+  },
   container: {
+    flex: 1,
     paddingHorizontal: wp('3%'),
     backgroundColor: '#f4f4f4',
   },
@@ -23,12 +28,12 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ddd',
     marginBottom: hp('2%'),
   },
-  formContainer: {
-    backgroundColor: '#ffffff',
+  formListContainer: {
     borderRadius: wp('3%'),
     padding: wp('5%'),
     marginTop: hp('2%'),
     marginBottom: hp('3%'),
+    paddingBottom: hp('15%'), // Reduced padding to prevent overlap with buttons
   },
   label: {
     fontSize: wp('3.5%'),
@@ -54,16 +59,33 @@ const styles = StyleSheet.create({
   dropdownContainer: {
     borderColor: '#ddd',
     marginTop: hp('1%'),
-    borderRadius: wp('5%'),
+    borderRadius: wp('2%'),
+    backgroundColor: '#F8F9FA',
+    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
+  // Fixed button container with improved position handling
   fixedButtonContainer: {
     position: 'absolute',
-    left: wp('7%'),
-    right: wp('4%'),
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: hp('93%'),
+    paddingVertical: hp('2%'),
+    paddingHorizontal: wp('5%'),
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#eeeeee',
+    elevation: 5,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    height: hp('10%'), // Fixed height to prevent size changes
   },
   confirmButton: {
     backgroundColor: '#3557FF',
@@ -92,17 +114,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp('4%'),
     backgroundColor: '#F8F9FA',
     fontSize: wp('3.5%'),
+    marginBottom: hp('1.2%'),
   },
-
   modalView: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: hp('85%'), 
-    top:hp('25%'),
+    top: hp('25%'),
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  
   modalTitle: {
     fontSize: wp('5%'),
     fontWeight: '600',
@@ -122,13 +151,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  
   bookIcon: {
     fontSize: wp('4%'),
     color: '#2E5BFF',
     marginTop: hp('1%'),
   },
-  
   studentName: {
     fontSize: wp('4.2%'),
     color: '#000',
@@ -157,5 +184,202 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+const styles = {
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f4f4f4',
+  },
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+  },
+  formContainer: {
+    flex: 1,
+  },
+  formContent: {
+    padding: 16,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  fieldContainer: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 6,
+    color: '#333',
+  },
+  input: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9f9f9',
+    color: '#333',
+  },
+  textArea: {
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    backgroundColor: '#f9f9f9',
+    color: '#333',
+  },
+  dropdown: {
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    minHeight: 48,
+    backgroundColor: '#f9f9f9',
+  },
+  dropdownContainer: {
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  bottomBar: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: '#f4f4f4',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    // elevation: 5,
+  },
+  selectStudentsButton: {
+    flex: 1,
+    height: 48,
+    backgroundColor: '#3557FF',
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  selectStudentsText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  homeButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#AEBCFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  studentItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  studentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  studentDetails: {
+    justifyContent: 'center',
+  },
+  studentName: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  studentRoll: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    borderRadius: 4,
+  },
+  checkboxSelected: {
+    width: 24,
+    height: 24,
+    backgroundColor: '#3557FF',
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectButton: {
+    backgroundColor: '#3557FF',
+    borderRadius: 24,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  selectButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+};
 
 export default styles;

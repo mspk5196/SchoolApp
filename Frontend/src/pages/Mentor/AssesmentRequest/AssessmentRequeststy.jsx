@@ -8,7 +8,6 @@ export default StyleSheet.create({
     paddingTop: 16,
   },
 
-
   //Header
   activityHeader: {
     flexDirection: "row",
@@ -23,29 +22,29 @@ export default StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-  
-  
+
   // Underline
   underline: {
     borderBottomWidth: 0.9,
-    borderBottomColor: 'black',  
-    width: 500,  
-    alignSelf: 'center', 
+    borderBottomColor: 'black',
+    width: 500,
+    alignSelf: 'center',
   },
-
-
 
   //card
   card: {
     backgroundColor: '#fff',
-    borderRadius: 3,
+    borderRadius: 8,
     padding: 16,
-    marginBottom: 12,
-    marginTop:40,
-    borderWidth:0.1,
-    elevation:2,
-    shadowOpacity:2,
-    },
+    marginBottom: 0,
+    marginTop: 16,
+    marginHorizontal: 2,
+    marginVertical: 2,
+    elevation: 1,
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 1 },
+  },
   topInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -86,7 +85,7 @@ export default StyleSheet.create({
     fontSize: 14,
     color: '#333',
     marginBottom: 8,
-    fontWeight:'500',
+    fontWeight: '500',
   },
   detailsRow: {
     flexDirection: 'row',
@@ -94,19 +93,19 @@ export default StyleSheet.create({
     marginBottom: 8,
   },
   time: {
-    marginTop:12,
+    marginTop: 12,
     fontSize: 13,
     color: '#444',
-    flexDirection:'row',
-    gap:5,
+    flexDirection: 'row',
+    gap: 5,
   },
-  timerow:{
-    flexDirection:'row',
+  timerow: {
+    flexDirection: 'row',
   },
   students: {
     fontSize: 14,
     color: '#333',
-    fontWeight:'600',
+    fontWeight: '600',
   },
   levelsRow: {
     flexDirection: 'row',
@@ -117,13 +116,17 @@ export default StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 6,
     paddingHorizontal: 14,
-    borderColor:"#BDBDBD",
-    borderWidth:1,
+    borderColor: "#BDBDBD",
+    borderWidth: 1,
+  },
+  activeLevel: {
+    borderColor: "#3557FF",
+    backgroundColor: "#F5F7FF",
   },
   levelText: {
     fontSize: 12,
     color: '#3557FF',
-    fontWeight:'500',
+    fontWeight: '500',
   },
   listContainer: {
     paddingBottom: 80,
@@ -131,18 +134,77 @@ export default StyleSheet.create({
   activityIcons: {
     position: 'absolute',
     bottom: 20,
-    right: 20,
+    right: 0,
+    // backgroundColor: '#4E6BFF',
+    borderRadius: 30,
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // elevation: 3,
   },
-
 
   //Icons
-  AddIcon: {
-    borderRadius: 30,
-    padding: 10,
+  // AddIcon: {
+  //   padding: 10,
+  // },
+  clockicon: {
+    marginTop: 14,
+    marginRight: 1,
+    marginLeft: 110,
   },
-  clockicon:{
-    marginTop:14,
-    marginRight:1,
-    marginLeft:110,
+
+  // Student List Styles
+  studentsContainer: {
+    backgroundColor: '#fffff',
+    marginBottom: 16,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    marginHorizontal:2,
+    marginVertical:20,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 1 },
+    // shadowOpacity: 0.1,
+    // shadowRadius: 2,
+    // elevation: 1,
+    // borderWidth: 0.5,
+    // borderColor: '#eee',
+    borderTopWidth: 0,
+  },
+  studentCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    marginVertical: 5,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1.5,
+    height:80
+  },
+  studentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  studentDetails: {
+    marginLeft: 10,
+    gap: 5,
+  },
+  studentName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  studentId: {
+    fontSize: 13,
+    color: '#777',
+  },
+  studentDate: {
+    fontSize: 12,
+    color: '#777',
   },
 });

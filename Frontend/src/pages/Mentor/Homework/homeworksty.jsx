@@ -8,6 +8,7 @@ import {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#F8F8F8',
+    flex:1
   },
   header: {
     flexDirection: 'row',
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     alignItems: 'center',
     width: '100%',
-    top: hp('3.5%'),
+    // top: hp('3.5%'),
   },
   confirmText: {
     color: '#fff',

@@ -228,7 +228,7 @@ exports.getLeaveHistory = (req, res) => {
 //Materials
 exports.getGradeSubject = (req, res) => {
   const { gradeID } = req.body;
-  console.log("Received gradeID:", (req.body.sectionID || gradeID));
+  console.log("Received gradeID:", (req.body.gradeID));
   const sql = `
     SELECT DISTINCT sub.id AS subject_id, sub.subject_name
     FROM section_subject_activities ss
@@ -466,18 +466,6 @@ exports.updateLeaveRequestStatus = (req, res) => {
 };
 
 //BufferActivity
-// Get all grades
-// Get all grades
-exports.getGrades = (req, res) => {
-  const sql = `SELECT * FROM Grades`;
-  db.query(sql, (err, results) => {
-    if (err) {
-      console.error("Error fetching grades:", err);
-      return res.status(500).json({ error: "Database error" });
-    }
-    res.json({ success: true, grades: results });
-  });
-};
 
 // Get sections by grade
 exports.getSectionsByGrade = (req, res) => {
@@ -756,13 +744,13 @@ exports.getGeneralActivities = (req, res) => {
 // Get students under mentor for emergency leave
 exports.getMentorStudentsForLeave = (req, res) => {
   const { mentorId } = req.body;
-  
+
   const query = `
     SELECT s.id, s.name, s.roll, s.profile_photo
     FROM Students s
     WHERE s.mentor_id = ?
   `;
-  
+
   db.query(query, [mentorId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ success: true, students: results });
@@ -828,7 +816,7 @@ exports.createEmergencyLeave = async (req, res) => {
 // Get Emergency Leave History
 exports.getEmergencyLeaveHistory = (req, res) => {
   const { mentorId } = req.query;
-  
+
   const query = `
     SELECT 
       el.*,
@@ -841,9 +829,481 @@ exports.getEmergencyLeaveHistory = (req, res) => {
     WHERE el.mentor_id = ?
     ORDER BY el.created_at DESC
   `;
-  
+
   db.query(query, [mentorId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ success: true, leaves: results });
   });
+};
+
+
+//AssessmentRequest
+// Get available time slots for assessment
+exports.getAvailableTimeSlots = (req, res) => {
+  const { gradeId, sectionId, date } = req.body;
+
+  const query = `
+    SELECT start_time, end_time 
+    FROM weekly_schedule
+    WHERE section_id = ? 
+    AND day = DAYNAME(?)
+    AND subject_id IN (SELECT id FROM subjects WHERE subject_name IN ('PET', 'Free period'))
+    ORDER BY start_time
+  `;
+
+  db.query(query, [sectionId, date], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, timeSlots: results });
+  });
+};
+
+// Get subjects for grade and section
+exports.getSubjectsForGradeSection = (req, res) => {
+  const { gradeId, sectionId } = req.body;
+
+  const query = `
+    SELECT DISTINCT s.id, s.subject_name
+    FROM section_subject_activities ssa
+    JOIN subjects s ON ssa.subject_id = s.id
+    WHERE ssa.section_id = ?
+    AND ssa.is_active = 1
+  `;
+
+  db.query(query, [sectionId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, subjects: results });
+  });
+};
+
+// Get students for grade and section
+exports.getStudentsForGradeSection = (req, res) => {
+  const { gradeId, sectionId } = req.body;
+
+  const query = `
+    SELECT 
+  stu.id, 
+  stu.name, 
+  stu.roll, 
+  sl.level
+FROM students stu
+LEFT JOIN student_levels sl 
+  ON stu.roll = sl.student_roll AND sl.status = 'OnGoing'
+WHERE stu.section_id = ?
+ORDER BY stu.name;
+  `;
+
+  db.query(query, [sectionId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, students: results });
+  });
+};
+
+// Create assessment request
+exports.createAssessmentRequest = (req, res) => {
+  const { mentorId, gradeId, sectionId, subjectId, date, startTime, endTime, studentIds, studentLevels } = req.body;
+
+  db.beginTransaction((err, trx) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    const assessmentQuery = `
+      INSERT INTO assessment_requests 
+      (mentor_id, grade_id, section_id, subject_id, date, start_time, end_time)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    trx.query(assessmentQuery, [mentorId, gradeId, sectionId, subjectId, date, startTime, endTime], (err, result) => {
+      if (err) {
+        return trx.rollback(() => {
+          res.status(500).json({ error: err.message });
+        });
+      }
+
+      const assessmentId = result.insertId;
+      const studentValues = studentIds.map(studentId => [assessmentId, studentId]);
+      const studentLevelsValues = studentLevels.map((level, index) => [assessmentId, studentIds[index], level]);
+
+      const studentsQuery = `
+        INSERT INTO assessment_students (assessment_id, student_id, level)
+        VALUES ?
+      `;
+
+      trx.query(studentsQuery, [studentLevelsValues], (err) => {
+        if (err) {
+          return trx.rollback(() => {
+            res.status(500).json({ error: err.message });
+          });
+        }
+
+        trx.commit(err => {
+          if (err) {
+            return trx.rollback(() => {
+              res.status(500).json({ error: err.message });
+            });
+          }
+
+          res.json({
+            success: true,
+            message: 'Assessment request created successfully',
+            assessmentId
+          });
+        });
+      });
+    });
+  });
+};
+
+
+// Get assessment requests for mentor
+exports.getAssessmentRequests = (req, res) => {
+  const { mentorId } = req.body;
+
+  const query = `
+    SELECT 
+  ar.id,
+  ar.date,
+  ar.start_time,
+  ar.end_time,
+  ar.status,
+  g.grade_name,
+  sec.section_name,
+  sub.subject_name,
+  up.file_path,
+  COUNT(asr.student_id) AS student_count,
+  GROUP_CONCAT(DISTINCT asr.level ORDER BY asr.level) AS levels,
+  CONCAT(
+    TIME_FORMAT(ar.start_time, '%h:%i %p'), 
+    ' - ', 
+    TIME_FORMAT(ar.end_time, '%h:%i %p')
+  ) AS time_range
+FROM assessment_requests ar
+JOIN grades g ON ar.grade_id = g.id
+JOIN sections sec ON ar.section_id = sec.id
+JOIN subjects sub ON ar.subject_id = sub.id
+LEFT JOIN assessment_students asr ON ar.id = asr.assessment_id
+LEFT JOIN Mentors m ON ar.mentor_id = m.id
+LEFT JOIN user_photos up ON m.phone = up.phone AND up.is_profile_photo = 1
+WHERE ar.mentor_id = ?
+GROUP BY 
+  ar.id,
+  ar.date,
+  ar.start_time,
+  ar.end_time,
+  ar.status,
+  g.grade_name,
+  sec.section_name,
+  sub.subject_name,
+  up.file_path
+ORDER BY ar.date DESC, ar.start_time DESC;
+
+  `;
+
+  db.query(query, [mentorId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    // Parse levels string to array
+    results.forEach(r => {
+      r.levels = r.levels ? r.levels.split(',').map(Number) : [];
+    });
+
+    res.json({ success: true, assessments: results });
+  });
+};
+
+// Get assessment students
+exports.getAssessmentStudents = (req, res) => {
+  const { assessmentId, level } = req.body;
+
+  const query = `
+    SELECT 
+      s.id,
+      s.name,
+      s.roll,
+      s.profile_photo,
+      asr.level
+    FROM assessment_students asr
+    JOIN students s ON asr.student_id = s.id
+    WHERE asr.assessment_id = ? AND asr.level = ?
+  `;
+
+  db.query(query, [assessmentId, level].filter(Boolean), (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, students: results });
+    // console.log(results);
+
+  });
+};
+
+//Homework
+// Get levels for a grade and subject
+exports.getLevels = (req, res) => {
+  const { gradeId, subjectId } = req.query;
+
+  if (!gradeId || !subjectId) {
+    return res.status(400).json({ error: 'Missing gradeId or subjectId' });
+  }
+
+  const sql = `
+    SELECT DISTINCT level 
+    FROM materials 
+    WHERE grade_id = ? AND subject_id = ?
+    ORDER BY level
+  `;
+  
+  db.query(sql, [gradeId, subjectId], (err, results) => {
+    if (err) {
+      console.error("Error fetching levels:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    const levels = results.map(r => r.level);
+    res.json({ success: true, levels });
+  });
+};
+
+// Add homework
+exports.addHomework = async (req, res) => {
+  const { date, grade_id, section_id, subject_id, level, mentor_id } = req.body;
+
+  if (!date || !grade_id || !section_id || !subject_id || !level || !mentor_id) {
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
+  }
+
+  try {
+    // Start transaction using promise-based wrapper
+    const trx = await db.promise().beginTransaction();
+
+    // Insert homework
+    const homeworkResult = await trx.query(
+      `INSERT INTO homework 
+       (date, grade_id, section_id, subject_id, level, created_by) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [date, grade_id, section_id, subject_id, level, mentor_id]
+    );
+
+    const homeworkId = homeworkResult.insertId;
+
+    // Get all students in the section
+    const students = await trx.query(
+      `SELECT roll FROM students WHERE section_id = ?`,
+      [section_id]
+    );
+
+    // Insert student homework records
+    if (students.length > 0) {
+      const studentHomeworkValues = students.map(student => [homeworkId, student.roll]);
+
+      await trx.query(
+        `INSERT INTO student_homework 
+         (homework_id, student_roll) 
+         VALUES ?`,
+        [studentHomeworkValues]
+      );
+    }
+
+    // Commit transaction
+    await trx.commit();
+
+    res.json({
+      success: true,
+      message: 'Homework added successfully',
+      homeworkId
+    });
+  } catch (err) {
+    console.error("Error adding homework:", err);
+    if (typeof trx?.rollback === 'function') {
+      await trx.rollback();
+    }
+    res.status(500).json({ success: false, message: 'Database error' });
+  }
+};
+
+
+// Get homework list for mentor
+exports.getHomeworkList = (req, res) => {
+  const { mentorId } = req.query;
+
+  if (!mentorId) {
+    return res.status(400).json({ success: false, message: 'Missing mentorId' });
+  }
+
+  const sql = `
+    SELECT 
+      h.id,
+      DATE_FORMAT(h.date, '%d/%m/%Y') AS formatted_date,
+      g.grade_name,
+      s.section_name,
+      sub.subject_name,
+      h.level,
+      COUNT(sh.id) AS total_students,
+      SUM(CASE WHEN sh.status = 'Done' THEN 1 ELSE 0 END) AS done_count,
+      SUM(CASE WHEN sh.status = 'Redo' THEN 1 ELSE 0 END) AS redo_count,
+      SUM(CASE WHEN sh.status = 'Not completed' THEN 1 ELSE 0 END) AS notCom_count
+    FROM homework h
+    JOIN grades g ON h.grade_id = g.id
+    JOIN sections s ON h.section_id = s.id
+    JOIN subjects sub ON h.subject_id = sub.id
+    LEFT JOIN student_homework sh ON h.id = sh.homework_id
+    WHERE h.created_by = ?
+    GROUP BY h.id, h.date, g.grade_name, s.section_name, sub.subject_name, h.level
+    ORDER BY h.date DESC
+  `;
+
+  db.query(sql, [mentorId], (err, results) => {
+    if (err) {
+      console.error("Error fetching homework list:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ success: true, homeworkList: results });
+  });
+};
+// Get subject
+exports.getSectionSubjects = (req, res) => {
+  const { sectionId } = req.body;
+
+  if (!sectionId) {
+    return res.status(400).json({ success: false, message: 'Missing sectionId' });
+  }
+
+  const sql = `
+    SELECT 
+      DISTINCT s.id AS subject_id,
+      s.subject_name
+    FROM section_subject_activities ssa
+    JOIN subjects s ON ssa.subject_id = s.id
+    WHERE ssa.section_id = ?
+    AND ssa.is_active = 1
+  `;
+
+  db.query(sql, [sectionId], (err, results) => {
+    if (err) {
+      console.error("Error fetching subject list:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ success: true, subjects: results });
+  });
+};
+
+// Get homework details with student submissions
+exports.getHomeworkDetails = (req, res) => {
+  const { homeworkId } = req.query;
+
+  if (!homeworkId) {
+    return res.status(400).json({ success: false, message: 'Missing homeworkId' });
+  }
+
+  const sql = `
+    SELECT 
+      h.id,
+      h.date,
+      g.grade_name,
+      s.section_name,
+      sub.subject_name,
+      h.level,
+      sh.student_roll,
+      st.name AS student_name,
+      st.profile_photo,
+      sh.status,
+      sh.completed_date
+    FROM homework h
+    JOIN grades g ON h.grade_id = g.id
+    JOIN sections s ON h.section_id = s.id
+    JOIN subjects sub ON h.subject_id = sub.id
+    JOIN student_homework sh ON h.id = sh.homework_id
+    JOIN students st ON sh.student_roll = st.roll
+    WHERE h.id = ?
+    ORDER BY sh.status, st.name
+  `;
+
+  db.query(sql, [homeworkId], (err, results) => {
+    if (err) {
+      console.error("Error fetching homework details:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ success: false, message: 'Homework not found' });
+    }
+
+    const homeworkInfo = {
+      id: results[0].id,
+      date: results[0].date,
+      grade_name: results[0].grade_name,
+      section_name: results[0].section_name,
+      subject_name: results[0].subject_name,
+      level: results[0].level,
+      submissions: results.map(r => ({
+        student_roll: r.student_roll,
+        student_name: r.student_name,
+        profile_photo: r.profile_photo,
+        status: r.status,
+        completed_date: r.completed_date
+      }))
+    };
+
+    res.json({ success: true, homework: homeworkInfo });
+  });
+};
+
+// Update student homework status
+exports.updateHomeworkStatus = async (req, res) => {
+  const { homeworkId, studentRoll, status } = req.body;
+
+  if (!homeworkId || !studentRoll || !status) {
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
+  }
+
+  try {
+    const completedDate = status === 'Done' ? new Date().toISOString().split('T')[0] : null;
+
+    await db.promise().query(
+      `UPDATE student_homework 
+       SET status = ?, completed_date = ?
+       WHERE homework_id = ? AND student_roll = ?`,
+      [status, completedDate, homeworkId, studentRoll]
+    );
+
+    res.json({ success: true, message: 'Homework status updated successfully' });
+  } catch (err) {
+    console.error("Error updating homework status:", err);
+    res.status(500).json({ success: false, message: 'Database error' });
+  }
+};
+
+// Bulk update homework status
+exports.bulkUpdateHomeworkStatus = async (req, res) => {
+  const { homeworkId, studentRolls, status } = req.body;
+  let trx;
+
+  if (!homeworkId || !studentRolls || !Array.isArray(studentRolls) || !status) {
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
+  }
+
+  try {
+    trx = await db.promise().beginTransaction(); // get transaction object
+
+    const completedDate = status === 'Done'
+      ? new Date().toISOString().split('T')[0]
+      : null;
+
+    for (const studentRoll of studentRolls) {
+      await trx.query(
+        `UPDATE student_homework 
+         SET status = ?, completed_date = ?
+         WHERE homework_id = ? AND student_roll = ?`,
+        [status, completedDate, homeworkId, studentRoll]
+      );
+    }
+
+    await trx.commit();
+
+    res.json({ success: true, message: 'Homework status updated successfully' });
+  } catch (err) {
+    if (trx && typeof trx.rollback === 'function') {
+      await trx.rollback();
+    }
+    console.error("Error bulk updating homework status:", err);
+    res.status(500).json({ success: false, message: 'Database error' });
+  }
 };

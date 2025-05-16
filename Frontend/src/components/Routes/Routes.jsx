@@ -132,6 +132,8 @@ import AdminCoordinatorEnrollment from '../../pages/Admin/Coordinator/Coordinato
 import AdminLeaveApproval from '../../pages/Admin/Coordinator/CoordinatorLeaveApproval/AdminLeaveApproval';
 import AdminLeaveApprovalHistory from '../../pages/Admin/Coordinator/CoordinatorLeaveApproval/AdminLeaveApprovalHistory';
 import AuthLoader from '../Login/Redirect/AuthLoader';
+import MentorSurveyDetails from '../../pages/Mentor/Activity/Survey/MentorSurveyDetails';
+import MentorHomeWorkDetail from '../../pages/Mentor/Homework/MentorHomeWorkDetail';
 
 const Stack = createStackNavigator();
 
@@ -227,6 +229,7 @@ const Routes = () => {
                         <Stack.Screen name="MentorStudentLeaveApprovalHistory" component={MentorStudentLeaveApprovalHistory} />
                         {/* Mentor  HomeWork*/}
                         <Stack.Screen name="MentorHomework" component={MentorHomework} />
+                        <Stack.Screen name="MentorHomeWorkDetail" component={MentorHomeWorkDetail} />
                         {/* Mentor Messages */}
                         <Stack.Screen name="MentorMessageBox" component={MentorMessageBox} />
                         <Stack.Screen name="MentorSendMessage" component={MentorSendMessage} />
@@ -241,6 +244,7 @@ const Routes = () => {
                         <Stack.Screen name="MentorGenrealActivityRegister" component={MentorGenrealActivityRegister} />
                         <Stack.Screen name="MentorSurvey" component={MentorSurvey} />
                         <Stack.Screen name="MentorSurveyRegister" component={MentorSurveyRegister} />
+                        <Stack.Screen name="MentorSurveyDetails" component={MentorSurveyDetails} />
                         {/* Mentor  Assessment*/}
                         <Stack.Screen name="MentorAssessmentRequestRegister" component={MentorAssessmentRequestRegister} />
                         {/* Mentor Materials */}

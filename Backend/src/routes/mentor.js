@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mentorController = require('../controllers/mentor/mentorController');
+const surveyController = require('../controllers/mentor/survey');
 
 router.post('/mentor/getMentorData', mentorController.getMentorData);
 router.get('/mentor/getGrades', mentorController.getGrades);
@@ -46,5 +47,42 @@ router.get('/mentor/getGeneralActivities', mentorController.getGeneralActivities
 router.post('/mentor/getMentorStudentsForLeave', mentorController.getMentorStudentsForLeave);
 router.post('/mentor/createEmergencyLeave', mentorController.createEmergencyLeave);
 router.get('/mentor/getEmergencyLeaveHistory', mentorController.getEmergencyLeaveHistory);
+
+
+//Survey
+// Create a new survey
+router.post('/mentor/survey/create', surveyController.createSurvey);
+router.get('/mentor/survey/getGrades', surveyController.getGrades);
+router.get('/mentor/survey/getGradeSections', surveyController.getSectionsByGrade);
+router.get('/mentor/survey/getMentorStudents', surveyController.getMentorStudents);
+
+// Get surveys for mentor
+router.get('/mentor/survey/mentor/:mentorId', surveyController.getMentorSurveys);
+router.get('/mentor/survey/:surveyId/students', surveyController.getSurveyStudents);
+
+// End a survey
+router.put('/mentor/survey/end/:surveyId', surveyController.endSurvey);
+
+// Submit feedback response
+router.post('/mentor/survey/feedback', surveyController.submitFeedback);
+
+
+//Assessment
+router.post('/mentor/getAvailableTimeSlots', mentorController.getAvailableTimeSlots);
+router.post('/mentor/getAssessmentRequests', mentorController.getAssessmentRequests);
+router.post('/mentor/getAssessmentStudents', mentorController.getAssessmentStudents);
+router.post('/mentor/getSectionsByGrade', mentorController.getSectionsByGrade);
+router.post('/mentor/getSubjectsForGradeSection', mentorController.getSubjectsForGradeSection);
+router.post('/mentor/getStudentsForGradeSection', mentorController.getStudentsForGradeSection);
+router.post('/mentor/createAssessmentRequest', mentorController.createAssessmentRequest);
+
+//Homework
+
+router.get('/mentor/getHomeworkList', mentorController.getHomeworkList);
+router.get('/mentor/getHomeworkDetails', mentorController.getHomeworkDetails);
+router.post('/mentor/updateHomeworkStatus', mentorController.bulkUpdateHomeworkStatus);
+router.get('/mentor/getLevels', mentorController.getLevels);
+router.post('/mentor/addHomework', mentorController.addHomework);
+router.post('/mentor/getSectionSubjects', mentorController.getSectionSubjects);
 
 module.exports = router;

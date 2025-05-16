@@ -74,7 +74,7 @@ exports.coordinatorStudents = (req, res) => {
 exports.addStudentComplaint = async (req, res) => {
   const { roll, complaint, registeredBy } = req.body;
   console.log(roll);
-  
+
 
   if (!roll || !complaint || !registeredBy) {
     return res.status(400).json({ success: false, message: "Phone and complaint are required." });
@@ -112,7 +112,7 @@ exports.addStudentComplaint = async (req, res) => {
 
 
 exports.getStudentDisciplineLogs = async (req, res) => {
-  const {sectionId} = req.query;
+  const { sectionId } = req.query;
   try {
     const logs = await db.promise().query(`
       SELECT sd.*, s.name as student_name, s.profile_photo, sd.roll
@@ -120,7 +120,7 @@ exports.getStudentDisciplineLogs = async (req, res) => {
       JOIN Students s ON sd.roll = s.roll
       WHERE s.section_id = ?
       ORDER BY sd.registered_at DESC;
-    `,[sectionId]);
+    `, [sectionId]);
 
     res.status(200).json({ success: true, logs });
   } catch (error) {
@@ -668,7 +668,7 @@ exports.getMaterials = async (req, res) => {
   const { gradeID, subjectID } = req.query;
   // console.log(`[GET] /api/coordinator/getMaterials?gradeID=${gradeID}&subjectID=${subjectID}`);
 
-  if (!gradeID || !subjectID) { 
+  if (!gradeID || !subjectID) {
     return res.status(400).json({ error: 'Missing gradeID or subjectID' });
   }
 
@@ -996,6 +996,13 @@ exports.enrollStudent = async (req, res) => {
         [mobileNumber]
       );
 
+      const getSectionSubjects = await trx.query(
+        `SELECT DISTINCT subject_id FROM section_subject_activities WHERE section_id = ?`,
+        [section]
+      );
+      const subjectIDs = getSectionSubjects.map(subject => subject.subject_id);
+      console.log("Subject IDs:", subjectIDs);
+
       if (existingUser.length > 0) {
         // User exists - update roles if needed
         let roles = existingUser[0].roles;
@@ -1019,6 +1026,15 @@ exports.enrollStudent = async (req, res) => {
            VALUES (?, '1', '0', '0')`,
           [rollNumber]
         );
+
+        // Insert into student_subjects table
+        for (const subjectID of subjectIDs) {
+          await trx.query(
+            `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
+           VALUES (?, ?, ?, ?, ?)`,
+            [rollNumber, subjectID, '1', section, 'OnGoing']
+          );
+        }
       }
       else {
 
@@ -1041,6 +1057,14 @@ exports.enrollStudent = async (req, res) => {
            VALUES (?, '1', '0', '0')`,
           [rollNumber]
         );
+
+        for (const subjectID of subjectIDs) {
+          await trx.query(
+            `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
+           VALUES (?, ?, ?, ?, ?)`,
+            [rollNumber, subjectID, '1', section, 'OnGoing']
+          );
+        }
       }
 
       await trx.commit();
@@ -2223,7 +2247,7 @@ exports.getEnroledSubjectMentors = (req, res) => {
 exports.addFacultyComplaint = async (req, res) => {
   const { phone, complaint, registeredBy } = req.body;
   console.log(phone);
-  
+
 
   if (!phone || !complaint || !registeredBy) {
     return res.status(400).json({ success: false, message: "Phone and complaint are required." });
