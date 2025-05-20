@@ -34,8 +34,8 @@ const MentorLeaveApply = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [totalLeaveDays, setTotalLeave] = useState('')
 
-   // Error state
-   const [errors, setErrors] = useState({
+  // Error state
+  const [errors, setErrors] = useState({
     name: false,
     leaveType: false,
     startDate: false,
@@ -74,9 +74,9 @@ const MentorLeaveApply = ({ navigation, route }) => {
     fetchRoles();
   }, []);
 
-  useEffect(()=>{
+  useEffect(() => {
     setName(uniqueMentorData[0].name)
-  },[mentorData])
+  }, [mentorData])
 
   if (!showForm) {
     return (
@@ -223,7 +223,7 @@ const MentorLeaveApply = ({ navigation, route }) => {
         const totalDays = calculateDays(startDate, formattedDate);
         setTotalLeave(totalDays);
         console.log(totalDays);
-        
+
       }
     }
   };
@@ -253,7 +253,7 @@ const MentorLeaveApply = ({ navigation, route }) => {
   };
 
   const calculateDays = (startDate, endDate) => {
-    
+
     if (!startDate || !endDate) return 0;
 
     const start = new Date(startDate);
@@ -287,7 +287,7 @@ const MentorLeaveApply = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/mentor/submitLeaveRequest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone:uniqueMentorData[0].phone, name, totalLeaveDays, leaveType, startDate, endDate, startTime, endTime, description }),
+        body: JSON.stringify({ phone: uniqueMentorData[0].phone, name, totalLeaveDays, leaveType, startDate, endDate, startTime, endTime, description }),
       });
 
       const data = await response.json();
@@ -324,7 +324,7 @@ const MentorLeaveApply = ({ navigation, route }) => {
     // Create leave application object
     const leaveApplication = {
       name,
-      phone:uniqueMentorData[0].phone,
+      phone: uniqueMentorData[0].phone,
       totalLeaveDays,
       leaveType,
       startDate,
@@ -364,7 +364,7 @@ const MentorLeaveApply = ({ navigation, route }) => {
           <Text style={styles.label}>Name</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter name" 
+            placeholder="Enter name"
             placeholderTextColor="#999"
             value={uniqueMentorData[0].name}
             onChangeText={(text) => {

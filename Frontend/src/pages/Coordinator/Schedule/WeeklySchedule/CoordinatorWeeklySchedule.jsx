@@ -118,7 +118,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
           faculty: item.mentor_name || 'Not assigned',
           faculty_id: item.mentors_id,
           activity_name: item.activity_name,
-          activity: item.id,
+          activity: item.activity,
           venue_id:item.venue_id,
           venue:item.venue_name,
         })));
@@ -360,7 +360,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success) {
         setActivities(data.activity_types);
-        // console.log(data.activity_types);
+        console.log(data.activity_types);
 
       }
     } catch (error) {

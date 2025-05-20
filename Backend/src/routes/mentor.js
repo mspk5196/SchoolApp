@@ -70,7 +70,7 @@ router.post('/mentor/survey/feedback', surveyController.submitFeedback);
 //Assessment
 router.post('/mentor/getAvailableTimeSlots', mentorController.getAvailableTimeSlots);
 router.post('/mentor/getAssessmentRequests', mentorController.getAssessmentRequests);
-router.post('/mentor/getAssessmentStudents', mentorController.getAssessmentStudents);
+router.post('/mentor/getAssessmentRequestStudents', mentorController.getAssessmentRequestStudents);
 router.post('/mentor/getSectionsByGrade', mentorController.getSectionsByGrade);
 router.post('/mentor/getSubjectsForGradeSection', mentorController.getSubjectsForGradeSection);
 router.post('/mentor/getStudentsForGradeSection', mentorController.getStudentsForGradeSection);
@@ -84,5 +84,40 @@ router.post('/mentor/updateHomeworkStatus', mentorController.bulkUpdateHomeworkS
 router.get('/mentor/getLevels', mentorController.getLevels);
 router.post('/mentor/addHomework', mentorController.addHomework);
 router.post('/mentor/getSectionSubjects', mentorController.getSectionSubjects);
+
+//Dashboard
+router.post('/mentor/daily-schedule', mentorController.getMentorDailySchedule);
+
+//Dashboard Academics
+router.post('/mentor/create-today-sessions', mentorController.createTodayAcademicSessions);
+router.get('/mentor/academic-session/:sessionId', mentorController.getAcademicSession);
+router.post('/mentor/academic-session/:sessionId/start', mentorController.academicSessionStart);
+router.post('/mentor/academic-session/:sessionId/attendance', mentorController.academicSessionAttendance);
+router.post('/mentor/academic-session/:sessionId/complete', mentorController.academicSessionComplete);
+router.get('/mentor/students', mentorController.getSectionStudents);
+router.get('/mentor/check-approved-leaves', mentorController.checkApprovedLeaves);
+router.post('/mentor/update-leave-days', mentorController.updateLeaveDays);
+
+//Dashboard Assessment
+router.post('/mentor/getAssessmentSession', mentorController.getAssessmentSession);
+router.post('/mentor/assessmentSessionStart', mentorController.assessmentSessionStart);
+router.post('/mentor/getAssessmentStudents', mentorController.getAssessmentStudents);
+router.post('/mentor/updateAssessmentMarks', mentorController.updateAssessmentMarks);
+router.post('/mentor/getAssessmentMaterials', mentorController.getAssessmentMaterials);
+router.post('/mentor/createTodayAssessmentSessions', mentorController.createTodayAssessmentSessions);
+router.post('/mentor/getAbsentees', mentorController.getAbsentees);
+router.post('/mentor/getPassPercentage', mentorController.getPassPercentage);
+
+//Edit Daily Schedule
+router.post('/mentor/getSectionSubjectsforSchedule', mentorController.getSectionSubjectsforSchedule);
+router.post('/mentor/getMentorForSubject', mentorController.getMentorForSubject);
+router.post('/mentor/updateDailySchedule', mentorController.updateDailySchedule);
+router.post('/mentor/updateDailyScheduleActivity', mentorController.updateDailyScheduleActivity);
+
+//Dashboard Attention
+router.get('/mentor/getOverdueStudents', mentorController.getOverdueStudents);
+router.get('/mentor/getCoordinatorTasks', mentorController.getCoordinatorTasks);
+router.post('/mentor/accept-task', mentorController.acceptTask);
+router.post('/mentor/checkOverdueLevels', mentorController.checkOverdueLevels);
 
 module.exports = router;

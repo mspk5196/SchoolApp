@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   descriptionInput: {
     height: hp('15%'),
     textAlignVertical: 'top',
-    marginBottom: hp('1%'),
+    // marginBottom: hp('1%'),
   },
   dropdown: {
     borderColor: '#ddd',
@@ -95,11 +95,15 @@ const styles = StyleSheet.create({
   dropdownContainer: {
     borderColor: '#ddd',
   },
+  desinputContainer:{
+    marginBottom: hp('2.5%'),
+    paddingHorizontal: wp('3%'),
+  },
   buttonContainer: {
     flexDirection: 'row',
     alignSelf:'center',
-    marginBottom: 20,
-    gap:50,
+    marginBottom: -50,
+    gap:30,
     bottom:0,
     position:'absolute'
   },

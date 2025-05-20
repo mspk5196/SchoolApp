@@ -18,14 +18,14 @@ connection.beginTransaction = (callback) => {
         if (callback) return callback(err);
         return reject(err);
       }
-      
+
       conn.beginTransaction(err => {
         if (err) {
           conn.release();
           if (callback) return callback(err);
           return reject(err);
         }
-        
+
         const transaction = {
           commit: (cb) => {
             conn.commit(err => {
@@ -47,7 +47,7 @@ connection.beginTransaction = (callback) => {
             conn.query(sql, params, cb);
           }
         };
-        
+
         if (callback) {
           callback(null, transaction);
         } else {
@@ -60,16 +60,16 @@ connection.beginTransaction = (callback) => {
 
 // Add promise wrapper
 connection.promise = () => ({
-  execute: (...args) => new Promise((resolve, reject) => {
-    connection.execute(...args, (err, results) => {
+  query: (...args) => new Promise((resolve, reject) => {
+    connection.query(...args, (err, results, fields) => {
       if (err) return reject(err);
-      resolve(results);
+      resolve([results, fields]);
     });
   }),
-  query: (...args) => new Promise((resolve, reject) => {
-    connection.query(...args, (err, results) => {
+  execute: (...args) => new Promise((resolve, reject) => {
+    connection.execute(...args, (err, results, fields) => {
       if (err) return reject(err);
-      resolve(results);
+      resolve([results, fields]);
     });
   }),
   getConnection: () => new Promise((resolve, reject) => {

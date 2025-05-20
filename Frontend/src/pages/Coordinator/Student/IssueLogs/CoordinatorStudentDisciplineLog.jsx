@@ -71,7 +71,8 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
       if (response.ok) {
         setDisciplineData(data.logs);   
         setFilteredData(data.logs);
-
+        console.log('Discipline Logs API Response:', data.logs);
+        
       } else {
         console.error('Failed to fetch logs:', data.message);
       }
@@ -141,8 +142,8 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
   };
 
   const filteredStudent = studentList.filter(student =>
-    student.student_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-    student.roll.toLowerCase().includes(studentSearch.toLowerCase())
+    student.student_name?.toLowerCase().includes(studentSearch.toLowerCase()) ||
+    student.roll?.toLowerCase().includes(studentSearch.toLowerCase())
   );
 
   const getProfileImageSource = (profilePath) => {

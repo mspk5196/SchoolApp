@@ -86,8 +86,8 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
   const handleSearch = (text) => {
     setSearchText(text);
     const filtered = students.filter((student) =>
-      student.name.toLowerCase().includes(text.toLowerCase()) ||
-      student.id.toLowerCase().includes(text.toLowerCase())
+      student.name?.toLowerCase().includes(text.toLowerCase()) ||
+      student.roll?.toLowerCase().includes(text.toLowerCase())
     );
     setFilteredStudents(filtered);
   };

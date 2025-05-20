@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,29 +6,20 @@ import {
   TouchableOpacity,
   Image,
   SafeAreaView,
+  Alert,
+  Pressable,
 } from 'react-native';
-import Arrow from    '../../../../assets/MentorPage/arrow.svg';
+import Arrow from '../../../../assets/MentorPage/arrow.svg';
 import Checkbox from '../../../../assets/MentorPage/checkbox2.svg';
-import Pencil from   '../../../../assets/MentorPage/edit.svg';
+import Pencil from '../../../../assets/MentorPage/edit.svg';
 import styles from './Academicssty';
-import {widthPercentageToDP as wp} from 'react-native-responsive-screen';
+import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import { API_URL } from '@env';
+const Staff = require('../../../../assets/MentorPage/User.svg');
 
-const createProfile = (name, id) => ({
-  name,
-  id,
-  image: require('../../../../assets/MentorPage/profile.png'),
-  feedback: '',
-});
-
-const level1Profiles = Array(4)
-  .fill()
-  .map(() => createProfile('Prakash Raj', '2024VI023'));
-const level2Profiles = Array(4)
-  .fill()
-  .map(() => createProfile('Vikram Kumar', '2024VI045'));
-
-const MentorDashboardAcademics = ({navigation}) => {
-  const [selectedLevel, setSelectedLevel] = useState('level1');
+const MentorDashboardAcademics = ({ navigation, route }) => {
+  const { sessionId, subject, grade, section, duration, startTime, endTime, subject_id, section_name, date } = route.params;
+  const [selectedLevel, setSelectedLevel] = useState('Level 1');
   const [showCheckboxes, setShowCheckboxes] = useState(false);
   const [checkedItems, setCheckedItems] = useState({});
   const [isChecked, setIsChecked] = useState(false);
@@ -39,20 +30,258 @@ const MentorDashboardAcademics = ({navigation}) => {
   const [editIndex, setEditIndex] = useState(null);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [students, setStudents] = useState([]);
+  const [sessionStatus, setSessionStatus] = useState('Scheduled');
+  const [sessionOver, setSessionOver] = useState(false);
 
-  const [profiles, setProfiles] = useState({
-    level1: level1Profiles,
-    level2: level2Profiles,
-  });
+  const [allLevels, setAllLevels] = useState([]);
+  const [studentsByLevel, setStudentsByLevel] = useState({});
 
-  const currentProfiles = profiles[selectedLevel];
+  const sessionStartDate = React.useMemo(() => parseTimeWithAmPmToDate(startTime, new Date(date)), [startTime, date]);
+  const sessionEndDate = React.useMemo(() => parseTimeWithAmPmToDate(endTime, new Date(date)), [endTime, date]);
+  const totalSessionDuration = sessionEndDate - sessionStartDate;
 
-  const allFeedbackGiven = Object.values(profiles)
-    .flat()
-    .every(profile => profile.feedback !== '');
+  const [hasApprovedLeave, setHasApprovedLeave] = useState({});
+
+  const [feedbackStepStarted, setFeedbackStepStarted] = useState(false);
+
+  const [canStartSession, setCanStartSession] = useState(true);
+
+
+  useEffect(() => {
+    checkSessionStatus();
+    fetchStudents();
+    fetch(`${API_URL}/api/mentor/create-today-sessions`, { method: 'POST' });
+
+    // Check for approved leaves for all students
+    checkApprovedLeaves();
+  }, []);
+
+  useEffect(() => {
+    const now = new Date();
+    const sessionStart = parseTimeWithAmPmToDate(startTime, new Date(date)) // optionally pass scheduled date
+    console.log("Session Start:", sessionStartDate, "Current Time:", now);
+
+    if (now < sessionStartDate) {
+      setCanStartSession(false);
+    } else {
+      setCanStartSession(true);
+    }
+  }, []);
+
+
+  const checkApprovedLeaves = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/mentor/check-approved-leaves?date=${date}`);
+      const data = await response.json();
+
+      if (data.success) {
+        const leaveMap = {};
+        data.leaves.forEach(leave => {
+          leaveMap[leave.student_roll] = true;
+        });
+        setHasApprovedLeave(leaveMap);
+      }
+    } catch (error) {
+      console.error('Error checking approved leaves:', error);
+    }
+  };
+
+  useEffect(() => {
+    const checkAndCompleteExpiredSessions = async () => {
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0); // Set to midnight tonight
+
+      // Check if we're past the session end time but before midnight
+      if (now > sessionEndDate && now < midnight && sessionStatus === 'Pending Completion') {
+        try {
+          await fetch(`${API_URL}/api/mentor/academic-session/${sessionId}/complete`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'Complete material'
+            }),
+          });
+          setSessionStatus('Completed');
+        } catch (error) {
+          console.error('Error auto-completing session:', error);
+        }
+      }
+    };
+
+    // Run this check every hour
+    const interval = setInterval(checkAndCompleteExpiredSessions, 3600000);
+    return () => clearInterval(interval);
+  }, [sessionStatus, sessionEndDate]);
+
+  useEffect(() => {
+    if (sessionStatus !== 'In Progress' || sessionOver) return;
+
+    const updateProgress = () => {
+      const now = new Date();
+      const sessionEnd = parseTimeWithAmPmToDate(endTime);
+
+      if (now >= sessionEnd) {
+        setLoadingProgress(100);
+        setSessionOver(true);
+        setSessionStarted(false);
+        // setSessionStatus('Completed');
+        return;
+      }
+
+      const elapsed = now - sessionStartDate;
+      let progress = (elapsed / totalSessionDuration) * 100;
+      progress = Math.min(100, Math.max(0, progress));
+      setLoadingProgress(progress);
+    };
+
+    // Update immediately
+    updateProgress();
+
+    // Then update every second
+    const interval = setInterval(updateProgress, 1000);
+
+    return () => clearInterval(interval);
+  }, [sessionStatus, sessionOver, startTime, endTime]);
+
+  useEffect(() => {
+    if (!sessionStarted || sessionOver) return;
+    const interval = setInterval(() => {
+      const now = new Date();
+      if (now > sessionEndDate) {
+        setLoadingProgress(100);
+        setSessionOver(true);
+        setSessionStarted(false);
+        clearInterval(interval);
+        return;
+      }
+      const elapsed = now - sessionStartDate;
+      let progress = (elapsed / totalSessionDuration) * 100;
+      progress = Math.min(100, Math.max(0, progress));
+      setLoadingProgress(progress);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [sessionStarted, sessionOver, startTime, endTime]);
+
+  useEffect(() => {
+    const now = new Date();
+    setSessionOver(now > sessionEndDate);
+  }, [endTime, sessionEndDate]);
+
+  const checkSessionStatus = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/mentor/academic-session/${sessionId}`);
+      if (!response.ok) {
+        console.error("Error response:", response.status);
+        return;
+      }
+      const data = await response.json();
+      console.log(data);
+
+      if (data.success) {
+        const now = new Date();
+        const sessionEnd = parseTimeWithAmPmToDate(endTime);
+        const isSessionOver = now > sessionEndDate;
+
+        setSessionOver(isSessionOver);
+
+        if (data.session["0"].status === 'Completed') {
+          // Session was properly completed
+          setSessionStatus('Completed');
+          setLoadingProgress(100);
+          setSessionStarted(false);
+          return;
+        }
+
+        if (isSessionOver) {
+          // Session time is over but not completed
+          if (data.session["0"].status === 'In Progress') {
+            // Session was in progress but not completed
+            setSessionStatus('Pending Completion');
+            setLoadingProgress(100);
+            setSessionStarted(false);
+          } else if (data.session["0"].status === 'Scheduled') {
+            // Session was never started
+            setSessionStatus('Time Over');
+            setLoadingProgress(100);
+            setSessionStarted(false);
+          }
+          return;
+        }
+
+        // Session is not over yet
+        setSessionStatus(data.session["0"].status);
+
+        if (data.session["0"].status === 'In Progress') {
+          setSessionStarted(true);
+          const elapsed = now - sessionStartDate;
+          let progress = (elapsed / totalSessionDuration) * 100;
+          progress = Math.min(100, Math.max(0, progress));
+          setLoadingProgress(progress);
+        } else {
+          setSessionStarted(false);
+          setLoadingProgress(0);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking session status:', error);
+    }
+  };
+
+  // Update your fetchStudents function to include performance data
+  const fetchStudents = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/mentor/students?sectionId=${section}&subjectId=${subject_id}`);
+      const data = await response.json();
+
+      if (data.success) {
+        const levelMap = {};
+        const levelSet = new Set();
+
+        // Process students and check for approved leaves
+        const processedStudents = data.assessments.map(student => {
+          // If student has approved leave, set performance to 'Absent'
+          if (hasApprovedLeave[student.student_roll]) {
+            return { ...student, performance: 'Absent' };
+          }
+          return student;
+        });
+
+        processedStudents.forEach(student => {
+          student.levels.forEach(level => {
+            levelSet.add(level);
+            if (!levelMap[`Level ${level}`]) {
+              levelMap[`Level ${level}`] = [];
+            }
+            levelMap[`Level ${level}`].push(student);
+          });
+        });
+
+        const sortedLevels = Array.from(levelSet).sort((a, b) => a - b).map(l => `Level ${l}`);
+        setAllLevels(sortedLevels);
+        setStudentsByLevel(levelMap);
+        setSelectedLevel(sortedLevels[0] || null);
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    }
+  };
+
+  const currentStudents = studentsByLevel[selectedLevel] || [];
+
+  // const allFeedbackGiven = Object.values(students)
+  //   .flat()
+  //   .every(student => student.performance);
+
+  const allFeedbackGiven = currentStudents.every(student =>
+    student.performance || hasApprovedLeave[student.student_roll]
+  );
 
   const toggleCheckbox = index => {
-    const newCheckedItems = {...checkedItems, [index]: !checkedItems[index]};
+    const newCheckedItems = { ...checkedItems, [index]: !checkedItems[index] };
     setCheckedItems(newCheckedItems);
     setIsChecked(Object.values(newCheckedItems).includes(true));
   };
@@ -63,7 +292,7 @@ const MentorDashboardAcademics = ({navigation}) => {
         return 'green';
       case 'Moderately Attentive':
         return 'blue';
-      case 'Not attentive':
+      case 'Not Attentive':
         return 'orange';
       case 'Absent':
         return 'red';
@@ -72,49 +301,195 @@ const MentorDashboardAcademics = ({navigation}) => {
     }
   };
 
-  const confirmFeedback = () => {
-    const updatedProfiles = currentProfiles.map((profile, index) => {
-      if (editIndex !== null && index === editIndex) {
-        return {...profile, feedback: selectedFeedback};
-      } else if (checkedItems[index]) {
-        return {...profile, feedback: selectedFeedback};
-      }
-      return profile;
-    });
+  // Update confirmFeedback to handle leave days calculation
+  const confirmFeedback = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const updatedStudents = currentStudents.map((student, index) => {
+        if (editIndex !== null && index === editIndex) {
+          return { ...student, performance: selectedFeedback };
+        } else if (checkedItems[index]) {
+          return { ...student, performance: selectedFeedback };
+        }
+        return student;
+      });
 
-    setProfiles(prev => ({
-      ...prev,
-      [selectedLevel]: updatedProfiles,
-    }));
+      // Send updates to backend
+      const studentUpdates = updatedStudents
+        .filter((student, index) => checkedItems[index] || index === editIndex)
+        .map(student => ({
+          studentId: student.id,
+          performance: selectedFeedback
+        }));
 
-    setShowFeedbackModal(false);
-    setCheckedItems({});
-    setIsChecked(false);
-    setSelectedFeedback('');
-    setEditIndex(null);
-  };
+      await fetch(`${API_URL}/api/mentor/academic-session/${sessionId}/attendance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ updates: studentUpdates }),
+      });
 
-  useEffect(() => {
-    let timer;
-    if (loadingProgress > 0 && loadingProgress < 100) {
-      timer = setTimeout(() => {
-        setLoadingProgress(prev => prev + 20);
-      }, 600);
-    } else if (loadingProgress >= 100) {
-      setSessionStarted(true);
+      // ✅ Force update of studentsByLevel
+      setStudentsByLevel(prev => ({
+        ...prev,
+        [selectedLevel]: updatedStudents,
+      }));
+
+      // ✅ Reset modal-related state
+      setShowFeedbackModal(false);
+      setCheckedItems({});
+      setIsChecked(false);
+      setSelectedFeedback('');
+      setFeedbackStepStarted(false);
+      setEditIndex(null);
+    } catch (error) {
+      console.error('Error saving feedback:', error);
     }
-    return () => clearTimeout(timer);
-  }, [loadingProgress]);
-
-  const handleStartSession = () => {
-    setLoadingProgress(20);
   };
+
+
+  // Helper function to determine if session is in morning
+  const isMorningSessionTime = (timeStr) => {
+    const [time, modifier] = timeStr.split(' ');
+    const [hours] = time.split(':').map(Number);
+
+    // Morning session is between 8:45 AM and 12:30 PM
+    if (modifier === 'AM' && hours >= 8 && hours < 12) return true;
+    if (modifier === 'PM' && hours === 12) return true;
+
+    return false;
+  };
+
+  function parseTimeWithAmPmToDate(timeStr, targetDate = new Date()) {
+    const [time, modifier] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+
+    const date = new Date(targetDate);
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  }
+
+
+  const handleStartSession = async () => {
+    const now = new Date();
+    const sessionStart = parseTimeWithAmPmToDate(startTime);
+
+    // If today's date is not equal to the scheduled date, or current time is before session start
+    if (now < sessionStartDate) {
+      Alert.alert("Cannot start session before scheduled time.");
+      return;
+    }
+
+    const sessionEnd = parseTimeWithAmPmToDate(endTime);
+
+    if (now > sessionEnd) {
+      Alert.alert("Cannot start session - time is already over");
+      setSessionOver(true);
+      setSessionStatus('Time Over');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/mentor/academic-session/${sessionId}/start`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSessionStatus('In Progress');
+        setSessionStarted(true);
+
+        // Calculate initial progress
+        const elapsed = now - sessionStart;
+        let progress = (elapsed / totalSessionDuration) * 100;
+        progress = Math.min(100, Math.max(0, progress));
+        setLoadingProgress(progress);
+      }
+    } catch (error) {
+      console.error('Error starting session:', error);
+    }
+  };
+
+
+  const completeLoading = async () => {
+    setSessionStarted(true);
+    setSessionStatus('In Progress');
+  };
+
+  const handleCompleteSession = () => {
+    const studentsNeedingFeedback = currentStudents.filter(
+      student => !student.performance && !hasApprovedLeave[student.student_roll]
+    );
+
+    if (!feedbackStepStarted) {
+      if (studentsNeedingFeedback.length > 0) {
+        setShowCheckboxes(true);
+        setFeedbackStepStarted(true);
+      } else {
+        setShowFinalModal(true); // All students are fine — skip to final modal
+      }
+      return;
+    }
+
+    // This part runs on second click
+    const anyChecked = Object.values(checkedItems).some(val => val === true);
+
+    if (anyChecked) {
+      setShowFeedbackModal(true);
+    } else {
+      Alert.alert(
+        'Select at least one student',
+        'Please check at least one student before proceeding.'
+      );
+    }
+  };
+
+
+
+  const confirmFinalAction = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/mentor/academic-session/${sessionId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: finalAction
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSessionStatus('Completed');
+        setShowFinalModal(false);
+        setShowCheckboxes(false);
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error('Error completing session:', error);
+    }
+  };
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Staff;
+    }
+  }; 
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={()=>navigation.goBack()}>
-            <Arrow width={wp('9%')} height={wp('9%')} />
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Arrow width={wp('9%')} height={wp('9%')} />
         </TouchableOpacity>
         <Text style={styles.headerText}>Academic</Text>
       </View>
@@ -122,142 +497,166 @@ const MentorDashboardAcademics = ({navigation}) => {
 
       <View style={styles.sessionBox}>
         <View style={styles.sessionTextRow}>
-          <Text style={styles.subject}>Mathematics · 60 min</Text>
-          <Text style={styles.time}>09:30 - 10:30</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={styles.subject}>{subject}</Text>
+            <Text style={styles.time}> · {duration}</Text>
+          </View>
+
+          <Text style={styles.time}>{startTime} - {endTime}</Text>
         </View>
         <Text style={styles.gradeText}>
-          Grade VI-A · <Text style={styles.academicText}>Academic</Text>
+          Grade {grade} - {section_name} · <Text style={styles.academicText}>Academic</Text>
         </Text>
         <View style={styles.levelRow}>
-          <TouchableOpacity
-            style={
-              selectedLevel === 'level1' ? styles.level1Btn : styles.level2Btn
-            }
-            onPress={() => setSelectedLevel('level1')}>
-            <Text
-              style={
-                selectedLevel === 'level1'
-                  ? styles.level1Text
-                  : styles.level2Text
-              }>
-              Level 1
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={
-              selectedLevel === 'level2' ? styles.level1Btn : styles.level2Btn
-            }
-            onPress={() => setSelectedLevel('level2')}>
-            <Text
-              style={
-                selectedLevel === 'level2'
-                  ? styles.level1Text
-                  : styles.level2Text
-              }>
-              Level 2
-            </Text>
-          </TouchableOpacity>
+          {allLevels.map(level => (
+            <TouchableOpacity
+              key={level}
+              style={selectedLevel === level ? styles.level1Btn : styles.level2Btn}
+              onPress={() => setSelectedLevel(level)}
+            >
+              <Text style={selectedLevel === level ? styles.level1Text : styles.level2Text}>
+                {level}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
       <ScrollView
         style={styles.scrollBox}
-        contentContainerStyle={{paddingBottom: 100}}>
-        {currentProfiles.map((item, index) => (
-          <View key={index} style={styles.profileCard}>
-            <Image source={item.image} style={styles.profileImg} />
-            <View style={{flex: 1}}>
-              <Text style={styles.profileName}>{item.name}</Text>
-              <Text style={styles.profileId}>{item.id}</Text>
-            </View>
-
-            {item.feedback ? (
-              <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                <Text
-                  style={{
-                    color: getOptionColor(item.feedback),
-                    marginRight: 5,
-                  }}>
-                  {item.feedback}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    const newChecked = {};
-                    newChecked[index] = true;
-                    setCheckedItems(newChecked);
-                    setSelectedFeedback(item.feedback);
-                    setEditIndex(index);
-                    setShowFeedbackModal(true);
-                  }}>
-                  <Pencil width={wp('4.5%')} height={wp('4.5%')} />
-                </TouchableOpacity>
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        {currentStudents.length === 0 ? (
+          <Text style={{ textAlign: 'center', marginTop: 20, color: '#888' }}>
+            No students found for this level.
+          </Text>
+        ) : (
+          currentStudents.map((student, index) => (
+            <View key={index} style={styles.profileCard}>
+              {/* Profile image and name */}
+              {student.profile_photo ? (
+                <Image
+                  source={getProfileImageSource(student.profile_photo)}
+                  style={styles.profileImg}
+                />
+              ) : (
+                <Image source={Staff} style={styles.profileImg} />
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.profileName}>{student.name}</Text>
+                <Text style={styles.profileId}>{student.student_roll}</Text>
               </View>
-            ) : showCheckboxes ? (
-              <TouchableOpacity
-                onPress={() => toggleCheckbox(index)}
-                style={{marginLeft: 'auto', padding: 5}}>
-                {checkedItems[index] ? (
-                  <Checkbox width={wp('6%')} height={wp('6%')} />
-                ) : (
-                  <View
-                    style={{
-                      width: wp('6%'),
-                      height: wp('6%'),
-                      borderWidth: 2,
-                      borderColor: '#ccc',
-                      borderRadius: 4,
+
+              {/* Attendance status */}
+              {hasApprovedLeave[student.student_roll] ? (
+                <Text style={{ color: 'red' }}>Absent (Approved Leave)</Text>
+              ) : student.performance ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{ color: getOptionColor(student.performance), marginRight: 5 }}>
+                    {student.performance}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const newChecked = {};
+                      newChecked[index] = true;
+                      setCheckedItems(newChecked);
+                      setSelectedFeedback(student.performance);
+                      setEditIndex(index);
+                      setShowFeedbackModal(true);
                     }}
-                  />
-                )}
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ))}
+                  >
+                    <Pencil width={wp('4.5%')} height={wp('4.5%')} />
+                  </TouchableOpacity>
+                </View>
+              ) : showCheckboxes ? (
+                <Pressable
+                  onPress={() => toggleCheckbox(index)}
+                  style={{ marginLeft: 'auto', padding: 5 }}
+                >
+                  {checkedItems[index] ? (
+                    <Checkbox width={wp('5%')} height={wp('5%')} />
+                  ) : (
+                    <View
+                      style={{
+                        width: wp('4%'),
+                        height: wp('4%'),
+                        borderWidth: 2,
+                        borderColor: '#ccc',
+                        borderRadius: 4,
+                      }}
+                    />
+                  )}
+                </Pressable>
+              ) : null}
+            </View>
+          ))
+        )}
       </ScrollView>
 
+
       {/* Button / Loader */}
-      {!sessionStarted ? (
-        loadingProgress === 0 ? (
-          <TouchableOpacity
-            style={styles.completeBtn}
-            onPress={handleStartSession}>
-            <Text style={styles.completeText}>Start Session</Text>
-          </TouchableOpacity>
-        ) : (
-          <View
-            style={[
-              styles.completeBtn,
-              {paddingHorizontal: 0, paddingVertical: 0},
-            ]}>
-            <View style={styles.progressContainer}>
-              <View
-                style={[styles.progressBar, {width: `${loadingProgress}%`}]}
-              />
-            </View>
-          </View>
-        )
-      ) : (
+      {sessionStatus === 'Completed' ? (
+        <View style={[styles.completeBtn, { backgroundColor: '#999' }]}>
+          <Text style={styles.completeText}>Completed</Text>
+        </View>
+      ) : sessionStatus === 'Time Over' ? (
+        <View style={[styles.completeBtn, { backgroundColor: '#999' }]}>
+          <Text style={styles.completeText}>Session Time Over</Text>
+        </View>
+      ) : sessionStatus === 'Pending Completion' ? (
         <TouchableOpacity
           style={[
             styles.completeBtn,
-            !allFeedbackGiven && showCheckboxes && !isChecked
-              ? {backgroundColor: '#999'}
-              : {},
+            showCheckboxes && !isChecked && !allFeedbackGiven
+              ? { backgroundColor: '#999' }
+              : {}
           ]}
-          onPress={() => {
-            if (isChecked) {
-              setShowFeedbackModal(true);
-            } else if (showCheckboxes && allFeedbackGiven) {
-              setShowFinalModal(true);
-            } else if (!showCheckboxes) {
-              setShowCheckboxes(true);
-            }
-          }}
-          disabled={!isChecked && showCheckboxes && !allFeedbackGiven}>
+          onPress={handleCompleteSession}
+          disabled={showCheckboxes && !isChecked && !allFeedbackGiven}
+        >
           <Text style={styles.completeText}>
             {isChecked ? 'Add Feedback' : 'Complete Session'}
           </Text>
         </TouchableOpacity>
+      ) : !sessionStarted ? (
+        <TouchableOpacity
+          style={[
+            styles.completeBtn,
+            !canStartSession ? { backgroundColor: '#999' } : {}
+          ]}
+          onPress={handleStartSession}
+          disabled={!canStartSession}
+        >
+          <Text style={styles.completeText}>
+            {canStartSession ? 'Start Session' : 'Cannot start session earlier'}
+          </Text>
+        </TouchableOpacity>
+
+      ) : (
+        <>
+          {!sessionOver ? (
+            <View style={[styles.completeBtn, { paddingHorizontal: 0, paddingVertical: 0 }]}>
+              <View style={styles.progressContainer}>
+                <View style={[styles.progressBar, { width: `${loadingProgress}%` }]} />
+              </View>
+            </View>
+          ) : (
+            sessionStatus !== 'Completed' && (
+              <TouchableOpacity
+                style={[
+                  styles.completeBtn,
+                  showCheckboxes && !isChecked ? { backgroundColor: '#999' } : {}
+                ]}
+                onPress={handleCompleteSession}
+                disabled={showCheckboxes && !isChecked}
+              >
+                <Text style={styles.completeText}>
+                  {isChecked ? 'Add Feedback' : 'Complete Session'}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
+        </>
       )}
 
       {/* Feedback Modal */}
@@ -272,7 +671,7 @@ const MentorDashboardAcademics = ({navigation}) => {
           {[
             'Highly Attentive',
             'Moderately Attentive',
-            'Not attentive',
+            'Not Attentive',
             'Absent',
           ].map((option, i) => (
             <TouchableOpacity
@@ -291,7 +690,7 @@ const MentorDashboardAcademics = ({navigation}) => {
                   },
                 ]}
               />
-              <Text style={[styles.radioText, {color: getOptionColor(option)}]}>
+              <Text style={[styles.radioText, { color: getOptionColor(option) }]}>
                 {option}
               </Text>
             </TouchableOpacity>
@@ -328,7 +727,7 @@ const MentorDashboardAcademics = ({navigation}) => {
               <Text
                 style={[
                   styles.radioText,
-                  {color: finalAction === action ? '#5C2DFF' : '#888'},
+                  { color: finalAction === action ? '#5C2DFF' : '#888' },
                 ]}>
                 {action}
               </Text>
@@ -337,11 +736,7 @@ const MentorDashboardAcademics = ({navigation}) => {
 
           <TouchableOpacity
             style={styles.confirmButton}
-            onPress={() => {
-              console.log(`Selected Action: ${finalAction}`);
-              setShowFinalModal(false);
-              setShowCheckboxes(false);
-            }}>
+            onPress={confirmFinalAction}>
             <Text style={styles.confirmButtonText}>Confirm</Text>
           </TouchableOpacity>
         </View>

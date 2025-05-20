@@ -52,7 +52,7 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
   };
 
   const fetchStudentsForAssessment = (assessmentId, level) => {
-    fetch(`${API_URL}/api/mentor/getAssessmentStudents`, {
+    fetch(`${API_URL}/api/mentor/getAssessmentRequestStudents`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -87,7 +87,7 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
       const fullImageUrl = `${API_URL}/${normalizedPath}`;
       return { uri: fullImageUrl };
     } else {
-      return Profile;
+      return Staff;
     }
   };
 
@@ -181,7 +181,7 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
 
             {expandedItem === item.id && (
               <View style={styles.studentsContainer}>
-                {students.map((student) => renderStudentItem(student))}
+                {students?.map((student) => renderStudentItem(student))}
               </View>
             )}
           </>

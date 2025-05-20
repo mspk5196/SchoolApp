@@ -53,8 +53,8 @@ export default StyleSheet.create({
     color: '#555',
   },
   academicText: {
-    color: '#333',
-    fontWeight: '500',
+    color: '#3366FF',
+    fontWeight: '400',
   },
   levelRow: {
     flexDirection: 'row',

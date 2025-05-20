@@ -461,10 +461,93 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 100,
   },
-  loadingContainer:{
-    flex:1,
-    flexDirection:'column',
-    justifyContent:'center',
-  }
+  loadingContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+
+  // Add these new styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '90%',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  searchContainer: {
+    marginBottom: 15,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 10,
+    fontSize: 14,
+  },
+  mentorList: {
+    maxHeight: 200,
+    marginBottom: 15,
+  },
+  mentorOption: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  selectedMentorOption: {
+    backgroundColor: '#f0f7ff',
+  },
+  mentorName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  mentorRoll: {
+    fontSize: 14,
+    color: '#666',
+  },
+  noMentorsText: {
+    textAlign: 'center',
+    padding: 15,
+    color: '#666',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#f5f5f5',
+    marginRight: 10,
+  },
+  saveButton: {
+    backgroundColor: '#0C36FF',
+    marginLeft: 10,
+  },
+  cancelButtonText: {
+    color: '#333',
+    fontWeight: '600',
+  },
+  saveButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
 })
 export default styles;

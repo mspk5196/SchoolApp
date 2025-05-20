@@ -73,7 +73,6 @@ const MentorDisciplineLog = ({ navigation, route }) => {
       const data = await response.json();
       if (response.ok) {
         setStudentList(data.student);
-        console.log(data.student);
 
       } else {
         console.error('Failed to fetch student:', data.message);
@@ -84,8 +83,8 @@ const MentorDisciplineLog = ({ navigation, route }) => {
   };
 
   const filteredStudent = studentList.filter(student =>
-    student.student_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-    student.roll.toLowerCase().includes(studentSearch.toLowerCase())
+    student.student_name?.toLowerCase().includes(studentSearch.toLowerCase()) ||
+    student.roll?.toLowerCase().includes(studentSearch.toLowerCase())
   );
 
   //Fetching logs
@@ -97,8 +96,8 @@ const MentorDisciplineLog = ({ navigation, route }) => {
 
   useEffect(() => {
     const filtered = disciplineData.filter(item =>
-      item.student_name.toLowerCase().includes(searchText.toLowerCase()) ||
-      item.roll.toLowerCase().includes(searchText.toLowerCase())
+      item.student_name?.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.roll?.toLowerCase().includes(searchText.toLowerCase())
     );
     setFilteredData(filtered);
   }, [searchText, disciplineData]);
@@ -108,7 +107,7 @@ const MentorDisciplineLog = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/admin/sections/${sectionId}/discipline-issues`);
       const data = await response.json();
       if (data.success) {
-        console.log(data.issues);
+        // console.log(data.issues);
 
         setDisciplineData(data.issues);
       }

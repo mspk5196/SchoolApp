@@ -75,6 +75,8 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                     date: sub.completed_date || '',
                     done: sub.status === 'Done',
                     redo: sub.status === 'Redo',
+                    redo_count: sub.redo_count || 0,
+                    lastChecked: sub.checked_date,
                     notCom: sub.status === 'Not completed',
                     profilePhoto: sub.profile_photo || Staff
                 }));
@@ -89,15 +91,15 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
         }
     };
 
-    const handleMarkSelectedAsDone = () => {
-        setPendingAction('Done');
-        setShowEvaluationModal(true);
-    };
+    // const handleMarkSelectedAsDone = () => {
+    //     setPendingAction('Done');
+    //     setShowEvaluationModal(true);
+    // };
 
-    const handleMarkSelectedAsRedo = () => {
-        setPendingAction('Redo');
-        setShowEvaluationModal(true);
-    };
+    // const handleMarkSelectedAsRedo = () => {
+    //     setPendingAction('Redo');
+    //     setShowEvaluationModal(true);
+    // };
 
     const confirmEvaluation = async () => {
         if (!pendingAction || selectedItems.length === 0) {
@@ -292,6 +294,26 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
         );
     };
 
+    function convertUTCtoIST12hr(utcDateStr) {
+        const utcDate = new Date(utcDateStr);
+
+        // Convert to IST by adding 5 hours 30 minutes (in milliseconds)
+        const istOffsetMs = 5.5 * 60 * 60 * 1000;
+        const istDate = new Date(utcDate.getTime() + istOffsetMs);
+
+        // Format to 12-hour time
+        const options = {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        };
+
+        return istDate.toLocaleString('en-IN', options);
+    }
+
     // Submission item component
     const SubmissionItem = ({ item }) => {
         const isSelected = selectedItems.includes(item.id);
@@ -336,6 +358,19 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                     <View>
                         <Text style={styles.userName}>{item.name}</Text>
                         <Text style={styles.submissionDate}>{item.id}</Text>
+                        {item.done ? (
+                            <Text style={{ color: 'green', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>Last Checked At: {convertUTCtoIST12hr(item.lastChecked)}</Text>
+                        ) : null}
+                        {item.notCom ? (
+                            <Text style={{ color: 'blue', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>Not Checked</Text>
+                        ) : null}
+                        {item.redo_count > 0 ? (
+                            <View>
+                                <Text style={{ color: 'red', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>Redo Count: {item.redo_count}</Text>
+                                <Text style={{ color: 'green', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>Last Checked At: {convertUTCtoIST12hr(item.lastChecked)}</Text>
+                            </View>
+                        ) : null}
+
                     </View>
                 </View>
 
@@ -484,7 +519,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                                     refreshing={refreshing}
                                     onRefresh={async () => {
                                         setRefreshing(true);
-                                        await fetchHomeworkData();
+                                        await fetchHomeworkDetails();
                                         setRefreshing(false);
                                     }}
                                     colors={['#3557FF']}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { SafeAreaView, View, Text, Image, TouchableOpacity, Alert } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp, } from 'react-native-responsive-screen';
 import Arrow from '../../../../assets/MentorPage/arrow.svg';
-import Profile from '../../../../assets/MentorPage/profile.png';
+import Profile from '../../../../assets/MentorPage/staff.png';
 import Total from '../../../../assets/MentorPage/total.svg';
 import Present from '../../../../assets/MentorPage/present.svg';
 import Leave from '../../../../assets/MentorPage/leave.png';
@@ -27,6 +27,8 @@ const MentorProfileDetails = ({ navigation, route }) => {
     (mentor, index, self) =>
       index === self.findIndex((m) => m.id === mentor.id)
   );
+  console.log('Unique Mentor Data:', uniqueMentorData);
+
 
   const fetchAttendanceData = async () => {
     try {
@@ -133,9 +135,8 @@ const MentorProfileDetails = ({ navigation, route }) => {
 
       <View style={styles.card}>
         <View style={styles.profileContainer}>
-          {/* <Image source={Profile} style={styles.profileImage} /> */}
-          {uniqueMentorData.file_path ? (
-            <Image source={getProfileImageSource(mentor.file_path)} style={styles.profileImage} />
+          {uniqueMentorData[0].file_path ? (
+            <Image source={getProfileImageSource(uniqueMentorData[0].file_path)} style={styles.profileImage} />
           ) : (
             <Image source={Profile} style={styles.profileImage} />
           )}

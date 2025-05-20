@@ -49,7 +49,7 @@ export default StyleSheet.create({
   name: {
     fontSize: wp('4.5%'),
     fontWeight: '600',
-    color: '#000000',
+    color: '#000',
   },
   id: {
     fontSize: wp('3.5%'),

@@ -222,7 +222,7 @@ const Routes = () => {
                         <Stack.Screen name="MentorProfileDetails" component={MentorProfileDetails} />
 
                         {/* Mentor - Dashboard */}
-                        <Stack.Screen name="MentorDashboardAcadamics" component={MentorDashboardAcademics} />
+                        <Stack.Screen name="MentorDashboardAcademics" component={MentorDashboardAcademics} />
                         <Stack.Screen name="MentorDashboardAttentions" component={MentorDashboardAttentions} />
                         <Stack.Screen name="MentorDashboardAssessment" component={MentorDashboardAssessment} />
                         {/* Menntor Leave Approval - History */}

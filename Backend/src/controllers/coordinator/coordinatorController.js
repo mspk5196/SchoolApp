@@ -1,4 +1,5 @@
 const db = require('../../config/db');
+const { createAcademicSessionsByDate } = require('../mentor/mentorController');
 
 exports.getCoordinatorData = (req, res) => {
   const { phoneNumber } = req.body;
@@ -24,7 +25,7 @@ exports.getCoordinatorGrades = (req, res) => {
   db.query(sql, [coordinatorId], (err, results) => {
     if (err) return res.status(500).json({ success: false });
     if (results.length === 0) return res.status(404).json({ success: false });
-    console.log(results);
+    // console.log(results);
 
     res.json({ success: true, coordinatorGrades: results });
   });
@@ -73,7 +74,7 @@ exports.coordinatorStudents = (req, res) => {
 //StudentIssueLogs
 exports.addStudentComplaint = async (req, res) => {
   const { roll, complaint, registeredBy } = req.body;
-  console.log(roll);
+  // console.log(roll);
 
 
   if (!roll || !complaint || !registeredBy) {
@@ -114,7 +115,7 @@ exports.addStudentComplaint = async (req, res) => {
 exports.getStudentDisciplineLogs = async (req, res) => {
   const { sectionId } = req.query;
   try {
-    const logs = await db.promise().query(`
+    const [rows] = await db.promise().query(`
       SELECT sd.*, s.name as student_name, s.profile_photo, sd.roll
       FROM student_dicipline sd
       JOIN Students s ON sd.roll = s.roll
@@ -122,7 +123,7 @@ exports.getStudentDisciplineLogs = async (req, res) => {
       ORDER BY sd.registered_at DESC;
     `, [sectionId]);
 
-    res.status(200).json({ success: true, logs });
+    res.status(200).json({ success: true, logs : rows });
   } catch (error) {
     console.error("Error fetching discipline logs:", error);
     res.status(500).json({ success: false, message: "Failed to fetch logs." });
@@ -132,14 +133,14 @@ exports.getStudentDisciplineLogs = async (req, res) => {
 
 exports.getStudentList = async (req, res) => {
   try {
-    const student = await db.promise().query(`
+    const [rows] = await db.promise().query(`
       SELECT s.name as student_name, s.roll, s.section_id, sec.section_name, sec.grade_id
       FROM Students s
       JOIN Sections sec ON s.section_id = sec.id
       ORDER BY s.name
     `);
 
-    res.status(200).json({ success: true, student });
+    res.status(200).json({ success: true, student:rows });
   } catch (error) {
     console.error("Error fetching student list:", error);
     res.status(500).json({ success: false, message: "Failed to fetch student." });
@@ -958,6 +959,7 @@ exports.getActivities = (req, res) => {
 };
 
 const bcrypt = require('bcrypt');
+const { createTodayAcademicSessions } = require('../mentor/mentorController');
 
 // Student Enrollment
 
@@ -981,10 +983,12 @@ exports.enrollStudent = async (req, res) => {
       WHERE sec.grade_id = ?
     `, [grade]);
 
-    let studentCount = studentCountResult.student_count || 0;
+    let studentCount = studentCountResult[0].student_count || 0;
     studentCount++; // new student
 
     const rollNumber = `S${grade}${(1000 + studentCount).toString().substring(1)}`;
+    // console.log(studentCount);
+    
 
     const trx = await con.beginTransaction();
 
@@ -1001,7 +1005,7 @@ exports.enrollStudent = async (req, res) => {
         [section]
       );
       const subjectIDs = getSectionSubjects.map(subject => subject.subject_id);
-      console.log("Subject IDs:", subjectIDs);
+      // console.log("Subject IDs:", subjectIDs);
 
       if (existingUser.length > 0) {
         // User exists - update roles if needed
@@ -1686,6 +1690,8 @@ exports.getWeeklySchedule = (req, res) => {
     }
 
     res.json({ success: true, scheduleItems: results });
+    // console.log(results);
+
   });
 };
 
@@ -1768,68 +1774,337 @@ setInterval(() => {
 }, 1 * 60 * 1000); // 5 minutes
 
 // Add or update a schedule item
-exports.addOrUpdateWeeklySchedule = (req, res) => {
+
+// exports.addOrUpdateWeeklySchedule = (req, res) => {
+//   const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
+
+//   if (!sectionId || !day || !startTime || !endTime || !subjectId) {
+//     return res.status(400).json({ success: false, message: 'Missing required fields' });
+//   }
+
+//   // If we have an ID, this is an update - use UPDATE query
+//   if (id) {
+//     const updateQuery = `
+//       UPDATE weekly_schedule 
+//       SET 
+//         section_id = ?,
+//         day = ?,
+//         start_time = ?,
+//         end_time = ?,
+//         subject_id = ?,
+//         mentors_id = ?,
+//         activity = ?,
+//         venue = ?
+//       WHERE id = ?`;
+
+//     db.query(updateQuery,
+//       [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, id],
+//       (err, results) => {
+//         if (err) {
+//           console.error(err);
+//           return res.status(500).json({ success: false, message: 'Database error' });
+//         }
+
+//         exports.updateVenueStatusBasedOnSchedule();
+//         res.json({
+//           success: true,
+//           message: 'Schedule item updated successfully',
+//           id: id
+//         });
+//       });
+//   }
+//   // Otherwise, this is a new record - use INSERT
+//   else {
+//     const insertQuery = `
+//       INSERT INTO weekly_schedule 
+//       (section_id, day, start_time, end_time, subject_id, mentors_id, activity, venue)
+//       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+//     db.query(insertQuery,
+//       [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null],
+//       (err, results) => {
+//         if (err) {
+//           console.error(err);
+//           return res.status(500).json({ success: false, message: 'Database error' });
+//         }
+
+//         exports.updateVenueStatusBasedOnSchedule();
+//         res.json({
+//           success: true,
+//           message: 'Schedule item created successfully',
+//           id: results.insertId
+//         });
+//       });
+//   }
+// };
+
+// exports.addOrUpdateWeeklySchedule = async (req, res) => {
+//   const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
+
+//   if (!sectionId || !day || !startTime || !endTime || !subjectId) {
+//     return res.status(400).json({ success: false, message: 'Missing required fields' });
+//   }
+
+//   try {
+//     // If we have an ID, this is an update - use UPDATE query
+//     if (id) {
+//       const updateQuery = `
+//         UPDATE weekly_schedule 
+//         SET 
+//           section_id = ?,
+//           day = ?,
+//           start_time = ?,
+//           end_time = ?,
+//           subject_id = ?,
+//           mentors_id = ?,
+//           activity = ?,
+//           venue = ?
+//         WHERE id = ?`;
+
+//       await db.promise().query(updateQuery,
+//         [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, id]);
+
+//       // Regenerate future daily schedules based on this change
+//       await regenerateFutureDailySchedules(id);
+
+//       exports.updateVenueStatusBasedOnSchedule();
+//       return res.json({
+//         success: true,
+//         message: 'Schedule item updated successfully',
+//         id: id
+//       });
+//     }
+//     // Otherwise, this is a new record - use INSERT
+//     else {
+//       const insertQuery = `
+//         INSERT INTO weekly_schedule 
+//         (section_id, day, start_time, end_time, subject_id, mentors_id, activity, venue)
+//         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+//       const results = await db.promise().query(insertQuery,
+//         [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null]);
+
+//       // Generate daily schedules for future dates
+//       await generateDailySchedulesFromWeekly(results.insertId);
+
+//       exports.updateVenueStatusBasedOnSchedule();
+//       return res.json({
+//         success: true,
+//         message: 'Schedule item created successfully',
+//         id: results.insertId
+//       });
+//     }
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json({ success: false, message: 'Database error' });
+//   }
+// };
+
+exports.addOrUpdateWeeklySchedule = async (req, res) => {
   const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
 
   if (!sectionId || !day || !startTime || !endTime || !subjectId) {
     return res.status(400).json({ success: false, message: 'Missing required fields' });
   }
 
-  // If we have an ID, this is an update - use UPDATE query
-  if (id) {
-    const updateQuery = `
-      UPDATE weekly_schedule 
-      SET 
-        section_id = ?,
-        day = ?,
-        start_time = ?,
-        end_time = ?,
-        subject_id = ?,
-        mentors_id = ?,
-        activity = ?,
-        venue = ?
-      WHERE id = ?`;
+  try {
+    // Step 1: Calculate session_no
+    const [existingSessions] = await db.promise().query(
+      `SELECT COUNT(*) AS count FROM weekly_schedule 
+       WHERE section_id = ? AND day = ? AND start_time < ?`,
+      [sectionId, day, startTime]
+    );
+    const sessionNo = existingSessions[0].count + 1;
+    // console.log("weekly",id);
+    
+    // Step 2: Update existing schedule
+    if (id) {
+      const updateQuery = `
+        UPDATE weekly_schedule 
+        SET 
+          section_id = ?,
+          day = ?,
+          start_time = ?,
+          end_time = ?,
+          subject_id = ?,
+          mentors_id = ?,
+          activity = ?,
+          venue = ?,
+          session_no = ?
+        WHERE id = ?`;
 
-    db.query(updateQuery,
-      [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, id],
-      (err, results) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ success: false, message: 'Database error' });
-        }
 
-        exports.updateVenueStatusBasedOnSchedule();
-        res.json({
-          success: true,
-          message: 'Schedule item updated successfully',
-          id: id
-        });
+      await db.promise().query(updateQuery,
+        [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, sessionNo, id]);
+      // await db.promise().query(updateAcademicSessionsQuery,
+      //   [id]);
+      
+      await regenerateFutureDailySchedules(id);
+      exports.updateVenueStatusBasedOnSchedule();
+      await regenerateFutureDailySchedules(id);
+      // ✅ Sync academic sessions
+      const today = new Date().toISOString().split('T')[0];
+      await createAcademicSessionsByDate(today);
+
+      return res.json({
+        success: true,
+        message: 'Schedule item updated successfully',
+        id: id
       });
-  }
-  // Otherwise, this is a new record - use INSERT
-  else {
-    const insertQuery = `
-      INSERT INTO weekly_schedule 
-      (section_id, day, start_time, end_time, subject_id, mentors_id, activity, venue)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    }
+    // Step 3: Insert new schedule
+    else {
+      const insertQuery = `
+        INSERT INTO weekly_schedule 
+        (section_id, day, start_time, end_time, subject_id, mentors_id, activity, venue, session_no)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-    db.query(insertQuery,
-      [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null],
-      (err, results) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ success: false, message: 'Database error' });
-        }
+      const [results] = await db.promise().query(insertQuery,
+        [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, sessionNo]);
 
-        exports.updateVenueStatusBasedOnSchedule();
-        res.json({
-          success: true,
-          message: 'Schedule item created successfully',
-          id: results.insertId
-        });
+      await generateDailySchedulesFromWeekly(results.insertId);
+      await generateAcademicSessionsForNextNDays();
+      exports.updateVenueStatusBasedOnSchedule();
+      return res.json({
+        success: true,
+        message: 'Schedule item created successfully',
+        id: results.insertId
       });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Database error' });
   }
 };
+
+async function generateAcademicSessionsForNextNDays(days = 20) {
+  let totalCreated = 0;
+  for (let i = 0; i < days; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() + i);
+    const formattedDate = date.toISOString().split('T')[0];
+    const created = await createAcademicSessionsByDate(formattedDate);
+    totalCreated += created;
+  }
+  return totalCreated;
+}
+
+// New endpoint for daily adjustments
+exports.adjustDailySchedule = async (req, res) => {
+  const { date, sectionId, originalScheduleId, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
+
+  try {
+    // First check if an adjusted schedule already exists for this date
+    const [existing] = await db.promise().query(
+      `SELECT id FROM daily_schedule 
+       WHERE date = ? AND section_id = ? AND original_schedule_id = ? AND is_adjusted = 1`,
+      [date, sectionId, originalScheduleId]
+    );
+
+    if (existing) {
+      // Update existing adjustment
+      await db.promise().query(
+        `UPDATE daily_schedule SET
+          start_time = ?,
+          end_time = ?,
+          subject_id = ?,
+          mentors_id = ?,
+          activity = ?,
+          venue = ?
+        WHERE id = ?`,
+        [startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, existing.id]
+      );
+    } else {
+      // Create new adjustment
+      await db.promise().query(
+        `INSERT INTO daily_schedule 
+        (section_id, date, start_time, end_time, subject_id, mentors_id, activity, venue, is_adjusted, original_schedule_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+        [sectionId, date, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, originalScheduleId]
+      );
+    }
+
+    exports.updateVenueStatusBasedOnSchedule();
+    return res.json({ success: true, message: 'Daily schedule adjusted successfully' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Database error' });
+  }
+};
+
+// Helper function to generate daily schedules from weekly template
+async function generateDailySchedulesFromWeekly(weeklyScheduleId) {
+
+
+  // Get the weekly schedule template
+  const [rows] = await db.promise().query('SELECT * FROM weekly_schedule WHERE id = ?', [weeklyScheduleId]);
+  const weekly = rows[0];
+
+  if (!weekly) return;
+  // console.log("Raw weekly.day:", weekly.day);
+  // Find all future dates that match this day of week
+  const today = new Date();
+  const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    .indexOf(weekly.day?.charAt(0).toUpperCase() + weekly.day?.slice(1).toLowerCase());
+
+  // Generate for next 3 months (adjust as needed)
+  for (let i = 0; i < 30; i++) {
+
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    // console.log(date.getDay(), dayIndex);
+    if (date.getDay() === dayIndex) {
+
+      // Check if this date already has a schedule (either generated or adjusted)
+      const [existingSessions] = await db.promise().query(
+        `SELECT COUNT(*) AS count FROM daily_schedule 
+   WHERE date = ? AND section_id = ? AND start_time < ?`,
+        [date, weekly.section_id, weekly.start_time]
+      );
+      const sessionNo = existingSessions[0].count + 1;
+
+      // Create the daily schedule
+      await db.promise().query(
+        `INSERT INTO daily_schedule 
+  (section_id, date, start_time, end_time, subject_id, mentors_id, activity, venue, original_schedule_id, session_no)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          weekly.section_id,
+          date,
+          weekly.start_time,
+          weekly.end_time,
+          weekly.subject_id,
+          weekly.mentors_id,
+          weekly.activity,
+          weekly.venue,
+          weeklyScheduleId,
+          sessionNo
+        ]
+      );
+
+    }
+  }
+}
+
+// Helper function to regenerate future daily schedules when weekly template changes
+async function regenerateFutureDailySchedules(id) {
+  // Get the updated weekly schedule
+  const [weekly] = await db.promise().query('SELECT * FROM weekly_schedule WHERE id = ?', [id]);
+  console.log("hi",weekly[0]);
+  
+  if (!weekly) return;
+
+  // Delete all future non-adjusted daily schedules from this template
+  await db.promise().query(
+    `UPDATE daily_schedule 
+     SET start_time = ?, end_time = ?, subject_id = ?, mentors_id = ?, activity = ?, venue = ?
+     WHERE original_schedule_id = ? AND date >= CURDATE()`,
+    [weekly[0].start_time, weekly[0].end_time, weekly[0].subject_id, weekly[0].mentors_id, weekly[0].activity, weekly[0].venue, id]
+  );
+
+  // Regenerate them
+  // await generateDailySchedulesFromWeekly(weeklyScheduleId);
+}
 
 // Delete a schedule item
 exports.deleteWeeklySchedule = (req, res) => {
@@ -1903,7 +2178,7 @@ exports.getSectionSubjectActivities = (req, res) => {
 //Students Page
 exports.getSectionStudents = (req, res) => {
   const { sectionID } = req.body;
-  // console.log("Received gradeID:", req.body.gradeID);
+
   const sql = `
     SELECT st.id, st.name, st.roll, st.profile_photo
     FROM Students st
@@ -1914,7 +2189,8 @@ exports.getSectionStudents = (req, res) => {
       console.error("Error fetching student data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
-
+    console.log(results);
+    
     res.json({ success: true, message: "Student data fetched successfully", sectionStudent: results });
   });
 };

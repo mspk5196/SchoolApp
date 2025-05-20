@@ -1,361 +1,221 @@
-import React from 'react';
-import {  
-  SafeAreaView,
+import React, { useEffect, useState } from 'react';
+import {
   View,
   Text,
-  ScrollView,
-  TouchableOpacity,
+  StyleSheet,
   Dimensions,
+  ActivityIndicator,
+  ScrollView
 } from 'react-native';
-import { StyleSheet } from 'react-native';
-// import Leftarrow from '../../../assets/leftarrow.svg';
+import styles from './Performancegraphsty';
+import { API_URL } from '@env'
 
-const PerformanceScreen = ({ navigation }) => {
-  const TARGET_LEVEL = 20;  
-  const BEYOND_TARGET_LEVEL = 30; 
-  const TODAY = new Date();
+const PerformanceGraph = ({ student }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [graphData, setGraphData] = useState({
+    student: null,
+    subjects: [],
+    max_level: 0
+  });
 
-  
-  const subjectsData = [
-    { 
-      label: 'Tamil', 
-      currentLevel: 20,
-      targetDate: new Date('2025-05-15'),
-      totalHeight: TARGET_LEVEL,
-    },
-    { 
-      label: 'English', 
-      currentLevel: 15,
-      targetDate: new Date('2025-04-10'),
-      totalHeight: TARGET_LEVEL,
-    },
-    { 
-      label: 'Maths', 
-      currentLevel: 7,
-      targetDate: new Date('2025-05-20'),
-      totalHeight: TARGET_LEVEL,
-    },
-    { 
-      label: 'Science', 
-      currentLevel: 25,
-      targetDate: new Date('2025-05-15'),
-      totalHeight: TARGET_LEVEL,
-    },
-    { 
-      label: 'Social', 
-      currentLevel: 10,
-      targetDate: new Date('2025-04-30'),
-      totalHeight: TARGET_LEVEL,
-    },
-    { 
-      label: 'History', 
-      currentLevel: 8,
-      targetDate: new Date('2025-03-25'),
-      totalHeight: TARGET_LEVEL,
-    },
-  ];
+  // Fetch performance data when student prop changes
+  useEffect(() => {
+    const fetchPerformanceData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_URL}/api/admin/students/${student.roll}/performance`);
+        const data = await response.json();
 
-  // Y-axis labels
-  const yAxisLabels = ["L30", "L25", "L20", "L15", "L10", "L5"];
-  
-  // Calculate bar heights
-  const maxValue = BEYOND_TARGET_LEVEL;
-  const maxHeight = 180;
-  const scaleFactor = maxHeight / maxValue;
-  
-  // Function to determine segment colors
-  const getPerformanceSegments = (subject) => {
-    const currentDate = new Date();
-    const deadlinePassed = currentDate > subject.targetDate;
-    const segments = [];
-    
-    if (subject.currentLevel >= TARGET_LEVEL) {
-      if (subject.currentLevel > TARGET_LEVEL) {
-        segments.push({ 
-          value: subject.currentLevel - TARGET_LEVEL, 
-          color: '#27AE60',
-          gradient: ['#6dd36f', '#27AE60']
-        });
+        if (data.success) {
+          setGraphData(data.data);
+        } else {
+          setError(data.message || 'Failed to fetch performance data');
+        }
+      } catch (err) {
+        console.error('Error fetching performance data:', err);
+        setError('Error fetching performance data');
+      } finally {
+        setLoading(false);
       }
-      segments.push({ 
-        value: TARGET_LEVEL, 
-        color: '#0C36FF',
-        gradient: ['#4dabf7', '#0C36FF']
-      });
-    } else {
-      segments.push({ 
-        value: TARGET_LEVEL - subject.currentLevel,  
-        color: '#EB4B42',
-        gradient: ['#f77066', '#EB4B42']
-      });
-      segments.push({ 
-        value: subject.currentLevel, 
-        color: '#0C36FF',
-        gradient: ['#4dabf7', '#0C36FF']
-      });
+    };
+
+    if (student && student.roll) {
+      fetchPerformanceData();
     }
-    
-    return segments;
+  }, [student]);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0C36FF" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
+  // Calculate bar heights and segments
+  const getPerformanceSegments = (subject) => {
+    const scaleFactor = 180 / graphData.max_level;
+
+    if (!subject.levels || subject.levels.length === 0) {
+      return { segments: [], scaleFactor };
+    }
+
+    const segments = subject.levels.map(lvl => {
+      let color = 'rgba(153, 153, 153, 0.22)'; // default gray for pending
+
+      if (lvl.status === 'completed') color = '#0C36FF'; // blue
+      if (lvl.status === 'early') color = '#27AE60';     // green
+      if (lvl.status === 'overdue') color = '#EB4B42';   // red
+      if (lvl.status === 'onGoing') color = '#B0B0B0';   // grey
+
+      return {
+        value: 1,
+        color,
+        label: `L${lvl.level}`,
+      };
+    });
+
+    return { segments: segments.reverse(), scaleFactor };
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      
+  // Generate y-axis labels dynamically based on max level
+  const generateYAxisLabels = () => {
+  const max = graphData.max_level;
+  let divisions = 2;
 
-      <ScrollView style={styles.scrollView}>
-        {/* Performance Graph Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Performance Graph</Text>
-          <Text style={styles.graphSubtitle}>Target Level: L{TARGET_LEVEL}</Text>
-          
-          <View style={styles.graphContainer}>
-            {/* Y-axis labels */}
-            <View style={styles.yAxisLabels}>
-              {yAxisLabels.map((label, index) => (
-                <Text key={index} style={styles.yAxisLabel}>{label}</Text>
-              ))}
-            </View>
-            
-            {/* Bars container */}
-            <View style={styles.barsContainer}>
-              {subjectsData.map((subject, index) => {
-                const segments = getPerformanceSegments(subject);
-                const deadlinePassed = TODAY > subject.targetDate;
-                
-                return (
-                  <View key={index} style={styles.barColumn}>
+  // Cap minimum steps to 1
+  const rawStep = Math.ceil(max / divisions);
+  const step = rawStep < 1 ? 1 : rawStep;
+
+  const labels = [];
+  for (let i = 0; i <= max; i += step) {
+    labels.push(`L${i}`);
+  }
+
+  // Always ensure L{max} is included as the top label
+  if (labels[labels.length - 1] !== `L${max}`) {
+    labels.push(`L${max}`);
+  }
+
+  return labels;
+};
+
+
+  const yAxisLabels = generateYAxisLabels();
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>Performance Graph</Text>
+
+      <View style={styles.graphContainer}>
+        {/* Y-axis labels */}
+        <View style={styles.yAxisLabels}>
+          {yAxisLabels.map((label, index) => (
+            <Text key={index} style={styles.yAxisLabel}>{label}</Text>
+          ))}
+        </View>
+
+        {/* Bars container */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.barsScroll}>
+          <View style={styles.barsContainer}>
+            {graphData.subjects.map((subject, index) => {
+              const { segments, scaleFactor } = getPerformanceSegments(subject);
+
+              return (
+                <View key={index} style={styles.barColumn}>
+                  {segments.length === 0 ? (
+                    <Text style={{ fontSize: 18, color: '#ccc' }}>-</Text>
+                  ) : (
                     <View style={styles.barWrapper}>
                       {segments.map((segment, segIndex) => {
-                        const segmentsBelow = segments.slice(segIndex + 1);
-                        const heightBelow = segmentsBelow.reduce((total, seg) => total + seg.value * scaleFactor, 0);
-                        
-                        return(
-                          <View 
-                            key={segIndex} 
+                        const segmentHeight = segment.value * scaleFactor;
+                        const heightBelow = segments.slice(segIndex + 1).reduce(
+                          (total, seg) => total + (seg.value * scaleFactor), 0
+                        );
+
+                        const isTopSegment = segIndex === 0;
+
+                        return (
+                          <View
+                            key={segIndex}
                             style={[
-                              styles.barSegment, 
-                              { 
-                                height: segment.value * scaleFactor,
+                              styles.barSegment,
+                              {
+                                height: segmentHeight,
                                 backgroundColor: segment.color,
                                 bottom: heightBelow,
-                                borderTopLeftRadius: segIndex === 0 ? 5 : 0,
-                                borderTopRightRadius: segIndex === 0 ? 5 : 0,
-                                ...((segIndex === 0) && {
-                                  shadowColor: '#000',
-                                  shadowOffset: { width: 0, height: 1 },
-                                  shadowOpacity: 0.2,
-                                  shadowRadius: 2,
-                                  elevation: 2,
-                                })
+                                borderTopLeftRadius: isTopSegment ? 6 : 0,
+                                borderTopRightRadius: isTopSegment ? 6 : 0,
                               }
-                            ]} 
+                            ]}
                           />
                         );
                       })}
-                      
-                      
                     </View>
-                    <Text style={styles.barLabel}>{subject.label}</Text>
-                  </View>
-                );
-              })}
-            </View>
+                  )}
+                  <Text style={styles.barLabel}>{subject.subject_name}</Text>
+                </View>
+              );
+            })}
+
           </View>
-          
-          {/* Legend */}
-          <View style={styles.legendContainer}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#0C36FF' }]} />
-              <Text style={styles.legendText}>Current Level</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#27AE60' }]} />
-              <Text style={styles.legendText}>Exceeded Target</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#EB4B42' }]} />
-              <Text style={styles.legendText}>Target Gap</Text>
-            </View>
-          </View>
+        </ScrollView>
+      </View>
+
+      {/* Legend */}
+      <View style={styles.legendContainer}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendColor, { backgroundColor: '#0C36FF' }]} />
+          <Text style={styles.legendText}>Current Level</Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendColor, { backgroundColor: '#27AE60' }]} />
+          <Text style={styles.legendText}>Beyond Target</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendColor, { backgroundColor: 'rgba(153, 153, 153, 0.22)' }]} />
+          <Text style={styles.legendText}>Total Levels</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendColor, { backgroundColor: '#B0B0B0' }]} />
+          <Text style={styles.legendText}>On Going</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendColor, { backgroundColor: '#EB4B42' }]} />
+          <Text style={styles.legendText}>Overdue</Text>
+        </View>
+      </View>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
+// Add some additional styles
+const localStyles = StyleSheet.create({
+  loadingContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    padding: 20,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 16,
-  },
-  scrollView: {
+  errorContainer: {
     flex: 1,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    margin: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
-  },
-  graphSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
-  },
-  graphContainer: {
-    flexDirection: 'row',
-    height: 220,
-    marginTop: 10,
-    paddingBottom: 20,
-  },
-  yAxisLabels: {
-    width: 30,
-    height: '90%',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingRight: 5,
-    paddingVertical: 10,
-  },
-  yAxisLabel: {
-    fontSize: 10,
-    color: '#666',
-  },
-  barsContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    paddingHorizontal: 5,
-    borderLeftWidth: 1,
-    borderLeftColor: '#e0e0e0',
-    paddingLeft: 10,
-    height: '90%',
-  },
-  barColumn: {
+    justifyContent: 'center',
     alignItems: 'center',
-    width: '16%',
-    height: '100%',
+    padding: 20,
   },
-  barWrapper: {
-    width: '70%',
-    alignItems: 'center',
-    height: '100%',
-    justifyContent: 'flex-end',
-    position: 'relative',
-  },
-  barSegment: {
-    width: '100%',
-    position: 'absolute',
-    left: 0,
-    right: 0
-  },
-  barLabel: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#333',
+  errorText: {
+    color: '#EB4B42',
     textAlign: 'center',
-  },
-  levelIndicator: {
-    position: 'absolute',
-    top: -25,
-    backgroundColor: '#333',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  levelText: {
-    fontSize: 10,
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-  deadlineIndicator: {
-    position: 'absolute',
-    top: -25,
-    right: -5,
-    backgroundColor: '#EB4B42',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  deadlineText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  legendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 20,
-    flexWrap: 'wrap',
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 10,
-    marginVertical: 5,
-  },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 3,
-    marginRight: 5,
-  },
-  legendText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  summaryContainer: {
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
-  },
-  summaryItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  summaryValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
   },
 });
 
-export default PerformanceScreen;
+export default PerformanceGraph;

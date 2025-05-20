@@ -1,5 +1,6 @@
 const db = require('../../config/db');
 
+//✅
 exports.getAdminData = (req, res) => {
   const { phoneNumber } = req.body;
   const sql = `
@@ -16,6 +17,7 @@ exports.getAdminData = (req, res) => {
 };
 
 // Get all grades for admin student home
+//✅
 exports.getGrades = (req, res) => {
   const sql = `SELECT id, grade_name FROM Grades ORDER BY grade_name`;
 
@@ -28,6 +30,8 @@ exports.getGrades = (req, res) => {
     res.json({ success: true, grades: results });
   });
 };
+
+//✅
 // Get all grades for admin student home
 exports.getGradeSections = (req, res) => {
   const { gradeId } = req.params;
@@ -77,6 +81,7 @@ exports.getStudentStatsByGrade = (req, res) => {
 };
 
 // Get students by grade and section
+//✅
 exports.getStudentsByGradeAndSection = (req, res) => {
   const { sectionId } = req.params;
   console.log(sectionId);
@@ -106,6 +111,7 @@ exports.getStudentsByGradeAndSection = (req, res) => {
 };
 
 // Search students by name or ID
+//✅
 exports.searchStudents = (req, res) => {
   const { gradeId } = req.params;
   const { query } = req.query;
@@ -133,29 +139,20 @@ exports.searchStudents = (req, res) => {
 };
 
 // Get student details
+//✅
 exports.getStudentDetails = (req, res) => {
   const { studentId } = req.params;
 
   const studentSql = `
-    SELECT s.*, sec.section_name, g.grade_name, 
+    SELECT s.*, sec.section_name, g.grade_name, g.id AS grade_id,
            u.name AS mentor_name, m.roll AS mentor_roll
     FROM Students s
     JOIN Sections sec ON s.section_id = sec.id
     JOIN Grades g ON sec.grade_id = g.id
-    LEFT JOIN Mentors m ON sec.id = m.section_id
+    LEFT JOIN Mentors m ON s.mentor_id = m.id
     LEFT JOIN Users u ON m.phone = u.phone
     WHERE s.id = ?
   `;
-
-  // const performanceSql = `
-  //   SELECT p.subject_id, sub.subject_name, p.level, p.score, p.recorded_at,
-  //          (SELECT COUNT(*) FROM Backlogs WHERE student_id = ? AND subject_id = p.subject_id) AS backlog_count
-  //   FROM Performance p
-  //   JOIN Subjects sub ON p.subject_id = sub.id
-  //   WHERE p.student_id = ?
-  //   ORDER BY p.recorded_at DESC
-  // `;
-
 
   db.query(studentSql, [studentId], (err, studentResults) => {
     if (err) {
@@ -169,27 +166,14 @@ exports.getStudentDetails = (req, res) => {
 
     const student = studentResults[0];
 
-    // db.query(performanceSql, [studentId, studentId], (err, performanceResults) => {
-    //   if (err) {
-    //     console.error('Error fetching performance data:', err);
-    //     return res.status(500).json({ success: false, message: 'Failed to fetch performance data' });
-    //   }
-
-    // db.query(issuesSql, [studentId], (err, issuesResults) => {
-    //   if (err) {
-    //     console.error('Error fetching issue logs:', err);
-    //     return res.status(500).json({ success: false, message: 'Failed to fetch issue logs' });
-    //   }
-
     res.json({
       success: true,
       student,
     });
   });
-  //   });
-  // });
 };
 
+//✅
 exports.getSubjectMentors = (req, res) => {
   const { sectionID } = req.body;
 
@@ -239,10 +223,10 @@ exports.getSubjectMentors = (req, res) => {
   });
 };
 
+//✅
 exports.getAttendance = (req, res) => {
   const { roll } = req.params;
-  console.log(roll);
-
+  // console.log(roll);
 
   const sql = `
     SELECT sa.id, sa.roll,sa.total_days, sa.present_days, sa.leave_days, 
@@ -256,51 +240,73 @@ exports.getAttendance = (req, res) => {
       console.error('Error fetching students attendance:', err);
       return res.status(500).json({ success: false, message: 'Failed to fetch attendance' });
     }
-    console.log(results);
-
+    // console.log(results);
 
     res.json({ success: true, studentAttendance: results });
   });
 };
 
+//✅
 exports.getStudentIssueLogs = (req, res) => {
   const { roll } = req.params;
-  console.log(roll);
-
 
   const sql = `
     SELECT COUNT(*) as count
-    FROM student_dicipline il
-    WHERE il.roll = ?
+    FROM student_dicipline
+    WHERE roll = ?
+  `;
+
+  const sql2 = `
+    SELECT 
+      COALESCE(SUM(redo_count), 0) AS total_redo_count
+    FROM 
+      student_homework
+    WHERE 
+      student_roll = ? AND (status = 'Done' OR status = 'Redo')
   `;
 
   db.query(sql, [roll], (err, results) => {
     if (err) {
-      console.error('Error fetching students attendance:', err);
-      return res.status(500).json({ success: false, message: 'Failed to fetch no of issues' });
+      console.error('Error fetching student issue count:', err);
+      return res.status(500).json({ success: false, message: 'Failed to fetch issue count' });
     }
-    console.log(results);
 
+    db.query(sql2, [roll], (err, results2) => {
+      if (err) {
+        console.error('Error fetching student homework count:', err);
+        return res.status(500).json({ success: false, message: 'Failed to fetch homework data' });
+      }
 
-    res.json({ success: true, studentIssueCount: results });
+      const issueCount = results[0]?.count || 0;
+      const redoCount = results2[0]?.total_redo_count || 0;
+
+      res.json({ 
+        success: true, 
+        studentIssueCount: issueCount, 
+        studentRedoCount: redoCount 
+      });
+      console.log(issueCount, redoCount);
+      
+    });
   });
 };
 
+
 // Get discipline issues by grade and section
 exports.getStudentDisciplineLogs = async (req, res) => {
-  const {sectionId} = req.params;
+  const { sectionId } = req.params;
   console.log(sectionId);
-  
+
   try {
-    const issues = await db.promise().query(`
+    const [rows] = await db.promise().query(`
       SELECT sd.*, s.name as student_name, s.profile_photo, sd.roll as student_roll
       FROM student_dicipline sd
       JOIN Students s ON sd.roll = s.roll
       WHERE s.section_id = ?
       ORDER BY sd.registered_at DESC;
-    `,[sectionId]);
+    `, [sectionId]);
 
-    res.status(200).json({ success: true, issues });
+    res.status(200).json({ success: true, issues:rows });
   } catch (error) {
     console.error("Error fetching discipline logs:", error);
     res.status(500).json({ success: false, message: "Failed to fetch logs." });
@@ -391,5 +397,82 @@ exports.searchStudentBacklogs = (req, res) => {
     }
 
     res.json({ success: true, backlogs: results });
+  });
+};
+
+// Search mentors by name or roll
+exports.searchMentors = (req, res) => {
+  const { gradeId } = req.query;
+  console.log(gradeId);
+
+  if (!gradeId) {
+    return res.status(400).json({ success: false, message: 'Missing gradeId' });
+  }
+
+  const sql = `
+    SELECT m.id, m.roll, u.name, u.phone, up.file_path AS profile_photo
+    FROM Mentors m
+    JOIN Users u ON m.phone = u.phone
+    LEFT JOIN User_Photos up ON u.phone = up.phone
+    WHERE m.grade_id = ?
+    ORDER BY u.name
+  `;
+
+  db.query(sql, [gradeId], (err, results) => {
+    if (err) {
+      console.error('Error fetching mentors:', err);
+      return res.status(500).json({ success: false, message: 'Failed to fetch mentors' });
+    }
+
+    res.json({ success: true, mentors: results });
+    console.log(results);
+
+  });
+};
+
+
+// Update student's mentor
+exports.updateStudentMentor = (req, res) => {
+  const { studentId, mentorId } = req.body;
+
+  // First validate that both student and mentor exist
+  const validateSql = `
+    SELECT s.id AS student_id, m.id AS mentor_id
+    FROM Students s, Mentors m
+    WHERE s.id = ? AND m.id = ?
+  `;
+
+  db.query(validateSql, [studentId, mentorId], (err, results) => {
+    if (err) {
+      console.error('Error validating student/mentor:', err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ success: false, message: 'Student or mentor not found' });
+    }
+
+    // Update the student's mentor
+    const updateSql = `
+      UPDATE Students 
+      SET mentor_id = ?
+      WHERE id = ?
+    `;
+
+    db.query(updateSql, [mentorId, studentId], (err, updateResults) => {
+      if (err) {
+        console.error('Error updating mentor:', err);
+        return res.status(500).json({ success: false, message: 'Failed to update mentor' });
+      }
+
+      console.log('Mentor updated successfully:', updateResults);
+
+      res.json({
+        success: true,
+        message: 'Mentor updated successfully',
+        studentId,
+        mentorId
+      });
+    });
   });
 };

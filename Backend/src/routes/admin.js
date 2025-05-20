@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin/adminController');
 const coordinatorEnrolment = require('../controllers/admin/coordinatorEnrolment');
+const performanceGraph = require('../controllers/admin/performanceGraph')
 const multer = require('multer');
 
 const profileCoordinatorPhotoStorage = multer.diskStorage({
@@ -26,6 +27,10 @@ router.get('/admin/stats/:gradeId', adminController.getStudentStatsByGrade);
 router.get('/admin/grades/:gradeId/sections', adminController.getGradeSections);
 router.get('/admin/section/:sectionId/students', adminController.getStudentsByGradeAndSection);
 
+//Student mentor change
+router.get('/admin/students/mentors', adminController.searchMentors);
+router.post('/admin/students/updateMentor', adminController.updateStudentMentor);
+//Do not change the order of the above two routes, as the first one is used in the MentorSelectModal.js file
 // Student details routes
 router.get('/admin/students/:studentId', adminController.getStudentDetails);
 router.post('/admin/students/getSubjectMentors', adminController.getSubjectMentors);
@@ -39,6 +44,9 @@ router.get('/admin/issues/search/:gradeId', adminController.searchDisciplineIssu
 // Backlogs routes
 router.get('/admin/backlogs/:gradeId/:section', adminController.getStudentBacklogs);
 router.get('/admin/backlogs/search/:gradeId', adminController.searchStudentBacklogs);
+
+//Performance Graph
+router.get('/admin/students/:roll/performance', performanceGraph.getPerformanceData);
 
 // Coordinator Enrolment
 router.post(

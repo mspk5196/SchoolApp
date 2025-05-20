@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  FlatList,
 } from 'react-native';
 import Grade from '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/grade.svg';
 import Mentorimg from '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/mentor2.svg';
@@ -27,6 +28,7 @@ import PenIcon from '../../../../../assets/AdminPage/StudentHome/StudentProfileD
 const Staff = require('../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/staff.png');
 import { API_URL } from '@env'
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MentorSelectModal from './MentorSelectModal';
 
 const AdminStudentDetails = ({ navigation, route }) => {
   const { student } = route.params || {};
@@ -34,14 +36,14 @@ const AdminStudentDetails = ({ navigation, route }) => {
   const [achievementData, setAchievementData] = useState(null);
   const [attendanceData, setAttendanceData] = useState(null);
   const [issueLogData, setIssueLogData] = useState(null);
+  const [homeworkIssue, setHomeworkIssue] = useState(null);
   const [mentorsData, setMentorsData] = useState([]);
   const [subjectsData, setSubjectsData] = useState([]);
   const [adminData, setAdminData] = useState()
-  const [newMentor, setNewMentor] = useState('');
 
   const [modalVisible, setModalVisible] = useState(false)
 
-  useEffect(() => {
+  const fetchAllDetails = async () => {
     fetchAdminData();
     if (student && student.id) {
       fetchStudentDetails(student.id);
@@ -52,6 +54,11 @@ const AdminStudentDetails = ({ navigation, route }) => {
       // fetchSubjectsProgress(student.id);
       fetchIssueLog(student.roll)
     }
+  }
+
+
+  useEffect(() => {
+    fetchAllDetails();
   }, [student]);
 
   const fetchAdminData = async () => {
@@ -60,6 +67,7 @@ const AdminStudentDetails = ({ navigation, route }) => {
       setAdminData(storedData)
     }
   }
+
   const fetchStudentDetails = async (studentId) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/students/${studentId}`);
@@ -89,9 +97,10 @@ const AdminStudentDetails = ({ navigation, route }) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/students/getStudentIssueLogs/${roll}`);
       const data = await response.json();
-      if (data.studentIssueCount) {
-        setIssueLogData(data.studentIssueCount[0].count);
-        // console.log(data.studentIssueCount[0].count);
+      if (data.studentIssueCount || data.studentRedoCount) {
+        setIssueLogData(data.studentIssueCount);
+        setHomeworkIssue(data.studentRedoCount);
+        // console.log(data.studentRedoCount);
       }
     } catch (error) {
       console.error('Error fetching issue log:', error);
@@ -128,26 +137,14 @@ const AdminStudentDetails = ({ navigation, route }) => {
     }
   };
 
-  const handleChangeMentor = async() =>{
-
-  }
-
   if (!studentDetails) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator color='rgb(0, 89, 255)' size='large'/>
+        <ActivityIndicator color='rgb(0, 89, 255)' size='large' />
         <Text>Loading...</Text>
       </View>
     );
   }
-
-  const handleSaveMentor = () => {
-    if (newMentorName.trim() !== '') {
-      setMentor(newMentorName);
-      setNewMentorName('');
-    }
-    setModalVisible(false);
-  };
 
 
   const getProfileImageSource = (profilePath) => {
@@ -196,7 +193,7 @@ const AdminStudentDetails = ({ navigation, route }) => {
             <View style={styles.detailItem}>
               <Mentorimg width={15} height={15} />
               <Text style={styles.detailText}>Mentor: {studentDetails.mentor_name || 'Not assigned'}</Text>
-              <TouchableOpacity style={styles.editButton} onPress={()=>setModalVisible(true)}>
+              <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}>
                 <PenIcon width={15} height={15} style={styles.editIcon} />
               </TouchableOpacity>
             </View>
@@ -207,13 +204,10 @@ const AdminStudentDetails = ({ navigation, route }) => {
           </View>
         </View>
 
-        {subjectsData.length > 0 && (
-          <PerformanceGraph
-            subjectsData={subjectsData}
-            targetLevel={TARGET_LEVEL}
-            today={TODAY}
-          />
-        )}
+        {/* {subjectsData.length > 0 && ( */}
+          <PerformanceGraph student={studentDetails} />
+
+        {/* )} */}
 
         {attendanceData && (
           <View style={styles.card}>
@@ -258,7 +252,7 @@ const AdminStudentDetails = ({ navigation, route }) => {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Issue log count</Text>
           <View style={styles.issueLogItem}>
-            <Text style={styles.issueLogText}>Home work : {issueLogData?.issue_hw || 0}</Text>
+            <Text style={styles.issueLogText}>Home work : {homeworkIssue}</Text>
           </View>
           <View style={styles.issueLogItem}>
             <Text style={styles.issueLogText}>Discipline : {issueLogData}</Text>
@@ -273,11 +267,6 @@ const AdminStudentDetails = ({ navigation, route }) => {
               <View key={index} style={styles.mentorItem}>
                 <View style={styles.mentorBar} />
                 <View style={styles.mentorContent}>
-                  {/* <Image
-                    source={mentor.profile_photo ? { uri: mentor.profile_photo } :
-                      require('../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/staff.png')}
-                    style={styles.mentorImage}
-                  /> */}
                   <Image source={getProfileImageSource(mentor.sectionMentorPhoto)} style={styles.profileImage} />
                   <View style={styles.mentorInfo}>
                     <Text style={styles.mentorSubject}>{mentor.subject_name}</Text>
@@ -290,45 +279,17 @@ const AdminStudentDetails = ({ navigation, route }) => {
         )}
       </ScrollView>
       {/* Mentor Edit Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
+      <MentorSelectModal
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Mentor</Text>
-            
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Mentor Name:</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newMentor}
-                onChangeText={setNewMentor}
-                placeholder="Enter mentor name"
-                placeholderTextColor="#999"
-              />
-            </View>
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.saveButton]} 
-                onPress={handleSaveMentor}
-              >
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setModalVisible(false)}
+        onSelect={() => {
+          setModalVisible(false);
+          fetchAllDetails();
+        }}
+        gradeId={studentDetails.grade_id}
+        studentId={studentDetails.id}
+      />
+
       <TouchableOpacity style={styles.footer}
         onPress={() => navigation.navigate('AdminMain', { adminData })}>
         <Homeicon />
