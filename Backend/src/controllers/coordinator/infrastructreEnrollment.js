@@ -30,7 +30,7 @@ exports.getVenuesByGrade = (req, res) => {
   const sql = `
     SELECT id, name, block, floor, capacity, type
     FROM venues
-    WHERE grade_id = ? OR grade_id IS NULL
+    WHERE (grade_id = ? OR grade_id IS NULL) AND is_accepted = 1
     ORDER BY name`;
 
   db.query(sql, [gradeId], (err, results) => {
@@ -38,7 +38,8 @@ exports.getVenuesByGrade = (req, res) => {
       console.error("Error fetching venues:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
-
+    console.log(results);
+    
     res.json({ success: true, venues: results });
   });
 };
@@ -55,7 +56,7 @@ exports.createVenue = async (req, res) => {
       capacity: parseInt(venueData.capacity, 10),
       subject_id: venueData.subject_id || null,
       type: venueData.type,
-      status: venueData.status || 'Active'
+      status: venueData.status || 'InActive'
     };
     
     // Add the grades array separately to be handled in the model

@@ -180,7 +180,7 @@ const AdminStudentDetails = ({ navigation, route }) => {
                 <View style={styles.nameSection}>
                   <Text style={styles.name}>{studentDetails.name}</Text>
                   <Text style={styles.id}>{studentDetails.roll}</Text>
-                  <Text style={styles.performanceTag}>Good performer</Text>
+                  {/* <Text style={styles.performanceTag}>Good performer</Text> */}
                 </View>
               </View>
               <TouchableOpacity>
@@ -204,10 +204,8 @@ const AdminStudentDetails = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* {subjectsData.length > 0 && ( */}
-          <PerformanceGraph student={studentDetails} />
+        <PerformanceGraph student={studentDetails} />
 
-        {/* )} */}
 
         {attendanceData && (
           <View style={styles.card}>

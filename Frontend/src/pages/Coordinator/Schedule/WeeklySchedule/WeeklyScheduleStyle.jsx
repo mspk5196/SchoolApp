@@ -39,16 +39,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#F5F5F5',
         width: 110, // Fixed width from Academic Schedule
     },
-    noScheduleText:{
-        color:'grey',
-        alignSelf:'center'
+    noScheduleText: {
+        color: 'grey',
+        alignSelf: 'center'
     },
     activeSectionTab: {
         backgroundColor: '#0C36FF',
     },
     sectionTabText: {
         fontSize: 14,
-        alignSelf:'center',
+        alignSelf: 'center',
         color: '#333333',
     },
     activeSectionTabText: {
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     dayText: {
         fontSize: 16,
         fontWeight: '600',
-        alignSelf:'center',
+        alignSelf: 'center',
         color: '#666666',
         // marginTop: 4,
     },
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         elevation: 3,
-        gap:10,
+        gap: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 20,
-        color:'black',
+        color: 'black',
         textAlign: 'center',
     },
     modalSection: {
@@ -295,8 +295,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         backgroundColor: '#E0E0E0',
         borderRadius: 8,
-        flex:1,
-        marginRight:20,
+        flex: 1,
+        marginRight: 20,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#0C36FF',
         borderRadius: 8,
         alignItems: 'center',
-        flex:1,
+        flex: 1,
         justifyContent: 'center',
     },
     saveButtonText: {
@@ -430,11 +430,11 @@ const styles = StyleSheet.create({
     selectButtonText: {
         color: 'white',
     },
-    loadingContainer:{
-        flex:1,
-        justifyContent:'center',
-        alignItems:'center',
-        marginVertical:'auto'
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginVertical: 'auto'
     }
 });
 

@@ -7,136 +7,151 @@ import {
   SafeAreaView,
   Image,
   Alert,
+  Pressable,
 } from 'react-native';
 import { API_URL } from '@env'
-import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
+import PreviousIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
 import styles from './BackLogsStyle';
+import Nodata from '../../../../components/General/Nodata';
 
 const CoordinatorBackLogs = ({ navigation, route }) => {
-  const { coordinatorData } = route.params;
-  const [activeSection, setActiveSection] = useState(null);
-
-  const [sections, setSections] = useState([])
+  const { coordinatorData, activeGrade } = route.params;
+  console.log(activeGrade);
+  
+  const [activeSection, setActiveSection] = useState('A');
+  const [sections, setSections] = useState([]);
+  const [selectedSection, setSelectedSection] = useState(null);
+  const [assessmentData, setAssessmentData] = useState([]);
 
   useEffect(() => {
-    const fetchSections = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gradeID: coordinatorData.grade_id }),
-        });
+    if (activeGrade) {
+      fetchSections();
+    }
+  }, [activeGrade]);
 
-        const data = await response.json();
-        console.log('Grade Sections Data API Response:', data);
+  useEffect(() => {
+    if (selectedSection) {
+      fetchBacklogs(selectedSection);
+    }
+  }, [selectedSection]);
 
-        if (data.success) {
-          setSections(data.gradeSections);
-          if (data.gradeSections.length > 0) {
-            setActiveSection(data.gradeSections[0].id);
-          }
-        } else {
-          Alert.alert('No Sections Found', 'No section is associated with this grade');
+  const fetchSections = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/grades/${activeGrade}/sections`);
+      const data = await response.json();
+      if (data.success) {
+        setSections(data.gradeSections);
+        // console.log(data.gradeSections);
+
+        if (data.gradeSections.length > 0) {
+          setSelectedSection(data.gradeSections[0].id);
+          setActiveSection(data.gradeSections[0].id);
         }
-      } catch (error) {
-        console.error('Error fetching sections data:', error);
-        Alert.alert('Error', 'Failed to fetch sections data');
       }
-    };
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+    }
+  };
 
-    fetchSections();
-  }, [coordinatorData]);
+  const fetchBacklogs = async (sectionId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/backlogs/${sectionId}`);
+      const data = await response.json();
+      if (data.success) {
+        setAssessmentData(data.overdueStudents);
+        // console.log(data.overdueStudents);
 
-  const assessmentData = [
-    {
-      id: '2024V1023',
-      name: 'Prakash Raj',
-      level: 'Level 2 Assessment',
-      subject: 'Science',
-      days: '4 days',
-    },
-    {
-      id: '2024V1023',
-      name: 'Prakash Raj',
-      level: 'Level 2 Assessment',
-      subject: 'Science',
-      days: '4 days',
-    },
-    // ... other assessment data ...
-    {
-      id: '2024V1023',
-      name: 'Prakash Raj',
-      level: 'Level 2 Assessment',
-      subject: 'Science',
-      days: '4 days',
-    },
-  ];
+      }
+    } catch (error) {
+      console.error('Error fetching backlogs:', error);
+    }
+  };
 
-  // Render assessment card component
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Staff;
+    }
+  };
+
   const renderAssessmentCard = (item, index) => {
+
     return (
-      <View key={index} style={styles.card}>
+
+      <View style={styles.card} key={index}>
         <View style={styles.cardLeftContent}>
           <View style={styles.profileSection}>
-            <Image
-              source={require('../../../../assets/CoordinatorPage/BackLogs/profile-placeholder.png')}
-              style={styles.profileImage}
-              defaultSource={require('../../../../assets/CoordinatorPage/BackLogs/profile-placeholder.png')}
-            />
+            <Image source={getProfileImageSource(item?.profile_photo)} style={styles.profileImage} />
             <View style={styles.profileInfo}>
-              <Text style={styles.nameText}>{item.name}</Text>
-              <Text style={styles.idText}>{item.id}</Text>
-              <Text style={styles.levelText}>{item.level}</Text>
+              <Text style={styles.nameText}>{item.student_name}</Text>
+              <Text style={styles.idText}>{item.student_roll}</Text>
+              <Text style={styles.levelText}>Level {item.level}</Text>
             </View>
           </View>
         </View>
         <View style={styles.cardRightContent}>
-          <Text style={styles.subjectText}>{item.subject}</Text>
-          <Text style={styles.daysText}>{item.days}</Text>
+          <Text style={styles.subjectText}>{item.subject_name}</Text>
+          <Text style={styles.daysText}>{item.days_overdue} Days</Text>
         </View>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <BackIcon width={styles.BackIcon.width} height={styles.BackIcon.height} />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation && navigation.goBack()}>
+          <PreviousIcon color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTxt}>Backlogs</Text>
+        <Text style={styles.headerTitle}>Student Backlogs</Text>
       </View>
 
-      {/* Main Container with fixed layout */}
-      <View style={{ flex: 1 }}>
-        {/* Section Tabs with fixed height */}
-        <View style={styles.tabsContainer}>
-          <ScrollView
-            horizontal={true}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.sectionTabsContent}
-          >
-            {sections.map(section => (
-              <TouchableOpacity
-                key={section.id}
-                style={[styles.sectionTab, activeSection === section.id && styles.activeTab]}
-                onPress={() => setActiveSection(section.id)}
-              >
-                <Text style={[styles.sectionTabText, activeSection === section.id && styles.activeTabText]}>
-                  Section {section.section_name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        style={styles.classnavsection}
+        nestedScrollEnabled={true}
+      >
+        {sections?.map((section, index) => (
+          <Pressable
+            key={section.id}
+            style={[
+              styles.gradeselection,
+              activeSection === section.id && styles.activeButton,
+            ]}
+            onPress={() => {
+              setActiveSection(section.id);
+              setSelectedSection(section.id);
+            }}>
+            <Text style={[
+              styles.gradeselectiontext,
+              activeSection === section.id && styles.activeText,
+            ]}>
+              Section {section.section_name}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
 
-        {/* Assessment Cards in a separate ScrollView */}
+      <View style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={styles.cardsContainer}
           showsVerticalScrollIndicator={false}
           style={{ flex: 1 }}
         >
-          {assessmentData.map((item, index) => renderAssessmentCard(item, index))}
+          {assessmentData.length > 0 ? (
+            assessmentData.map((item, index) => renderAssessmentCard(item, index))
+          ) : (
+            <Nodata />
+          )}
         </ScrollView>
       </View>
     </SafeAreaView>

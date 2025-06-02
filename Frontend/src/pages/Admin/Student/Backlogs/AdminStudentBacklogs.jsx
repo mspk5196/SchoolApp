@@ -6,11 +6,14 @@ import {
   ScrollView,
   SafeAreaView,
   Image,
+  Pressable,
 } from 'react-native';
 import styles from './BacklogsStyles';
 import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg';
 import Homeicon from '../../../../assets/AdminPage/Basicimg/Home.svg';
-import {API_URL} from '@env'
+import { API_URL } from '@env'
+import Nodata from '../../../../components/General/Nodata';
+const Staff = require('../../../../assets/AdminPage/StudentHome/Issuelog/staff.png')
 
 const AdminStudentBacklogs = ({ navigation, route }) => {
   const { gradeId } = route.params || {};
@@ -21,7 +24,7 @@ const AdminStudentBacklogs = ({ navigation, route }) => {
 
   useEffect(() => {
     if (gradeId) {
-      fetchSections(gradeId);
+      fetchSections();
     }
   }, [gradeId]);
 
@@ -31,14 +34,17 @@ const AdminStudentBacklogs = ({ navigation, route }) => {
     }
   }, [selectedSection]);
 
-  const fetchSections = async (gradeId) => {
+  const fetchSections = async () => {
     try {
       const response = await fetch(`${API_URL}/api/admin/grades/${gradeId}/sections`);
       const data = await response.json();
       if (data.success) {
-        setSections(data.sections);
-        if (data.sections.length > 0) {
-          setSelectedSection(data.sections[0].id);
+        setSections(data.gradeSections);
+        // console.log(data.gradeSections);
+
+        if (data.gradeSections.length > 0) {
+          setSelectedSection(data.gradeSections[0].id);
+          setActiveSection(data.gradeSections[0].id);
         }
       }
     } catch (error) {
@@ -48,35 +54,48 @@ const AdminStudentBacklogs = ({ navigation, route }) => {
 
   const fetchBacklogs = async (sectionId) => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/sections/${sectionId}/backlogs`);
+      const response = await fetch(`${API_URL}/api/admin/backlogs/${sectionId}`);
       const data = await response.json();
       if (data.success) {
-        setAssessmentData(data.backlogs);
+        setAssessmentData(data.overdueStudents);
+        // console.log(data.overdueStudents);
+
       }
     } catch (error) {
       console.error('Error fetching backlogs:', error);
     }
   };
 
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Staff;
+    }
+  };
+
   const renderAssessmentCard = (item, index) => {
+
     return (
-      <View key={index} style={styles.card}>
+
+      <View style={styles.card} key={index}>
         <View style={styles.cardLeftContent}>
           <View style={styles.profileSection}>
-            <Image 
-              source={require('../../../../assets/AdminPage/StudentHome/Issuelog/staff.png')} 
-              style={styles.profileImage} 
-            />
+            <Image source={getProfileImageSource(item?.profile_photo)} style={styles.profileImage} />
             <View style={styles.profileInfo}>
-              <Text style={styles.nameText}>{item.name}</Text>
-              <Text style={styles.idText}>{item.id}</Text>
-              <Text style={styles.levelText}>{item.level}</Text>
+              <Text style={styles.nameText}>{item.student_name}</Text>
+              <Text style={styles.idText}>{item.student_roll}</Text>
+              <Text style={styles.levelText}>Level {item.level}</Text>
             </View>
           </View>
         </View>
         <View style={styles.cardRightContent}>
-          <Text style={styles.subjectText}>{item.subject}</Text>
-          <Text style={styles.daysText}>{item.days}</Text>
+          <Text style={styles.subjectText}>{item.subject_name}</Text>
+          <Text style={styles.daysText}>{item.days_overdue} Days</Text>
         </View>
       </View>
     );
@@ -94,45 +113,46 @@ const AdminStudentBacklogs = ({ navigation, route }) => {
       </View>
 
       <ScrollView
-        horizontal={true}
+        horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         style={styles.classnavsection}
-        nestedScrollEnabled={true}>
+        nestedScrollEnabled={true}
+      >
         {sections?.map((section, index) => (
           <Pressable
             key={section.id}
             style={[
               styles.gradeselection,
-              activeSection === index && styles.activeButton,
+              activeSection === section.id && styles.activeButton,
             ]}
             onPress={() => {
-              setActiveSection(index);
+              setActiveSection(section.id);
               setSelectedSection(section.id);
             }}>
             <Text style={[
               styles.gradeselectiontext,
-              activeSection === index && styles.activeText,
+              activeSection === section.id && styles.activeText,
             ]}>
-              {section.section_name}
+              Section {section.section_name}
             </Text>
           </Pressable>
         ))}
       </ScrollView>
-      
+
       <View style={{ flex: 1 }}>
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.cardsContainer}
           showsVerticalScrollIndicator={false}
           style={{ flex: 1 }}
         >
-          {assessmentData.map((item, index) => renderAssessmentCard(item, index))}
+          {assessmentData.length > 0 ? (
+            assessmentData.map((item, index) => renderAssessmentCard(item, index))
+          ) : (
+            <Nodata/>
+          )}
         </ScrollView>
       </View>
-      <TouchableOpacity style={styles.footer}
-        onPress={() => navigation.navigate('AdminMain')}>
-        <Homeicon/>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 };

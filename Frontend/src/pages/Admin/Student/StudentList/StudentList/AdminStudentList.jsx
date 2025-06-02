@@ -7,6 +7,7 @@ import Search from '../../../../../assets/AdminPage/StudentHome/studentprofile/s
 import Homeicon from '../../../../../assets/AdminPage/Basicimg/Home.svg';
 import { API_URL } from '@env'
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Nodata from '../../../../../components/General/Nodata';
 
 const AdminStudentList = ({ navigation, route }) => {
   const { gradeId } = route.params || {};
@@ -131,22 +132,27 @@ const AdminStudentList = ({ navigation, route }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        {(searchText ? filteredStudents : students).map((student, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.listItem}
-            onPress={() => navigation.navigate('AdminStudentDetails', { student })}
-          >
-            <Image source={getProfileImageSource(student.profile_photo)} style={styles.studentAvatar} />
-            <View style={styles.listContent}>
-              <Text style={styles.listName}>{student.name}</Text>
-              <Text style={styles.listId}>{student.roll}</Text>
-            </View>
-            <View style={styles.removeButton}>
-              <Text style={styles.removeText}>View</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        {students.length > 0 ? (
+          (searchText ? filteredStudents : students).map((student, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.listItem}
+              onPress={() => navigation.navigate('AdminStudentDetails', { student })}
+            >
+              <Image source={getProfileImageSource(student.profile_photo)} style={styles.studentAvatar} />
+              <View style={styles.listContent}>
+                <Text style={styles.listName}>{student.name}</Text>
+                <Text style={styles.listId}>{student.roll}</Text>
+              </View>
+              <View style={styles.removeButton}>
+                <Text style={styles.removeText}>View</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        ):(
+          <Nodata/>
+        )}
+
       </ScrollView>
       <TouchableOpacity style={styles.footer}
         onPress={() => navigation.navigate('AdminMain')}>

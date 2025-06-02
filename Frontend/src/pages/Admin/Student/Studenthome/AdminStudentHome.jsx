@@ -11,7 +11,7 @@ import Homeicon from '../../../../assets/AdminPage/Basicimg/Home.svg';
 import styles from './StudentHomeStyles';
 import {API_URL} from '@env'
 
-const AdminStudentHome = ({ navigation }) => {
+const AdminStudentHome = ({ navigation }) => { 
   const [activeSection, setActiveSection] = useState(null);
   const [grades, setGrades] = useState([]);
   const [selectedGrade, setSelectedGrade] = useState(null);

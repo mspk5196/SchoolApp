@@ -79,7 +79,9 @@ const styles = StyleSheet.create({
     gradeList: {
         flexDirection: "row",
         marginVertical: 10,
-        marginHorizontal:10
+        marginHorizontal: 10,
+        flex: 0,
+        flexGrow: 0
     },
 
     gradeItem: {
@@ -87,10 +89,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         backgroundColor: "#FFFFFF",
         borderRadius: 40,
-        justifyContent:'center',
-        alignItems:'center',
+        justifyContent: 'center',
+        alignItems: 'center',
         height: 50,
-        width:90,
+        width: 90,
         borderRadius: 40,
         marginRight: 10,
     },

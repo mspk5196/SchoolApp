@@ -1,236 +1,283 @@
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Image,
-  SafeAreaView,
-  StatusBar
-} from 'react-native';
-import styles from './LogsStyles'; // Assuming you have a separate file for styles
-import Clock from    '../../../assets/AdminPage//Logs/clock2.svg';
-import BackIcon from '../../../assets/AdminPage//Logs/Back.svg';
-import Bell from     '../../../assets/AdminPage//Logs/bell.svg';
-import Call from     '../../../assets/AdminPage//Logs/callicon.svg';
-import Message from  '../../../assets/AdminPage//Logs/msgicon.svg';
-import Home from     '../../../assets/AdminPage//Logs/home.svg';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, SafeAreaView, Alert, Linking, ActivityIndicator } from 'react-native';
+import styles from './LogsStyles';
+import Clock from '../../../assets/AdminPage/Logs/clock2.svg';
+import BackIcon from '../../../assets/AdminPage/Logs/Back.svg';
+import Bell from '../../../assets/AdminPage/Logs/bell.svg';
+import Call from '../../../assets/AdminPage/Logs/callicon.svg';
+import Message from '../../../assets/AdminPage/Logs/msgicon.svg';
+import Home from '../../../assets/AdminPage/Logs/home.svg';
+import { API_URL } from '@env';
+import Nodata from '../../../components/General/Nodata';
+const Staff = require('../../../assets/AdminPage/Logs/staff.png');
 
-const AdminLogs = () => {
+const AdminLogs = ({ route, navigation }) => {
+  const { adminData } = route.params;
+  const [venues, setVenues] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [assessmentRequests, setAssessmentRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch all data in parallel
+      const [venuesRes, classesRes, assessmentsRes] = await Promise.all([
+        fetch(`${API_URL}/api/admin/getRequestedVenues`),
+        fetch(`${API_URL}/api/admin/getUnstartedClassesAdmin`),
+        fetch(`${API_URL}/api/admin/getAssessmentRequestsAdmin`)
+      ]);
+
+      const venuesData = await venuesRes.json();
+      const classesData = await classesRes.json();
+      const assessmentsData = await assessmentsRes.json();
+
+      setVenues(venuesData.venues || []);
+      setClasses(classesData.classes || []);
+      setAssessmentRequests(assessmentsData.requestedAssessments || []);
+
+    } catch (e) {
+      Alert.alert('Error', 'Failed to fetch logs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVenueAction = async (venueId, action) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/updateVenueStatus`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venueId, action })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        fetchLogs(); // Refresh the data
+      } else {
+        Alert.alert('Error', 'Failed to update venue');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update venue');
+    }
+  };
+
+  const handleProcessAssessment = async (requestId, action) => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/processAssessmentRequest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, action })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('Success', data.message);
+        fetchLogs(); // Refresh data
+      } else {
+        Alert.alert('Error', data.message || 'Failed to process request');
+      }
+    } catch (error) {
+      console.error('Error processing assessment:', error);
+      Alert.alert('Error', 'Failed to process assessment request');
+    }
+  };
+
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours) % 12 || 12;
+    const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
+    return `${hour}:${minutes} ${ampm}`;
+  };
+
+  const handleCallPress = (phone) => {
+    // Open phone dialer with the contact's phone number
+    Linking.openURL(`tel:${phone}`);
+  };
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Staff;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <BackIcon width={20} height={20} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Logs</Text>
       </View>
 
-      {/* Log Items */}
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Games Card */}
-        <View style={styles.gameCard}>
-          <View style={styles.gameCardHeader}>
-            <View>
-              <Text style={styles.gameCardTitle}>Games</Text>
-              <Text style={styles.gameCardSubtitle}>Grade 6</Text>
-              <Text style={styles.gameCardSubtitle}>Section - A,B</Text>
-            </View>
-            <View style={styles.statusContainer}>
-              <View style={styles.activeStatus}>
-                <View style={styles.activeDot} />
-                <Text style={styles.activeText}>Active</Text>
-              </View>
-              <Text style={styles.endsInText}>Ends in : 30min</Text>
-            </View>
-          </View>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.rejectButton}>
-              <Text style={styles.rejectButtonText}>Reject</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.approveButton}>
-              <Text style={styles.approveButtonText}>Approve</Text>
-            </TouchableOpacity>
-          </View>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size='large' color='blue' />
         </View>
-
-        {/* Class Not Started Card */}
-        <View style={styles.classCard}>
-          <View style={styles.classCardHeader}>
-            <View>
-              <Text style={styles.classCardTitle}>Mr.Prakash Raj</Text>
-              <Text style={styles.classCardSubtitle}>Grade 6 - Maths</Text>
-              <Text style={styles.notStartedText}>Class not started !</Text>
+      ) : (
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {/* New Venues Section */}
+          {/* {venues.length > 0 && (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>New Venue Requests</Text>
             </View>
-            <View>
-              <View style={styles.bellTimeContainer}>
-                <Bell width={16} height={16} />
-                <Text style={styles.timeText}>9:16 AM</Text>
-              </View>
-              <View style={styles.actionButtonsContainer}>
-                <TouchableOpacity style={styles.callButton}>
-                  <Call width={16} height={16} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.messageButton}>
-                  <Message width={16} height={16} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Biology Lab Card */}
-        <View style={styles.labCard}>
-          <View style={styles.userInfoContainer}>
-            <View style={styles.avatarContainer}>
-              <Image 
-                source={require('../../../assets/AdminPage/Logs/staff.png')} 
-                style={styles.avatar} 
-              />
-              <View>
-                <Text style={styles.teacherName}>John Philips</Text>
-                <Text style={styles.idText}>22MAD10</Text>
-              </View>
-            </View>
-            <Text style={styles.dateText}>22/12/24</Text>
-          </View>
-          <View style={styles.labDetails}>
-            <Text style={styles.detailText}>Biology Lab-2(AS block)</Text>
-            <Text style={styles.detailText}>Grade 11,12</Text>
-            <Text style={styles.detailText}>30 Students</Text>
-            <Text style={styles.greenText}>New Infrastructure Added</Text>
-          </View>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.rejectButton}>
-              <Text style={styles.rejectButtonText}>Reject</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.approveButton}>
-              <Text style={styles.approveButtonText}>Approve</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Leave Application Card */}
-        <View style={styles.leaveCard}>
-          <View style={styles.leaveCardHeader}>
-            <View style={styles.avatarContainer}>
-              <Image 
-                source={require('../../../assets/AdminPage/Logs/staff.png')} 
-                style={styles.avatar} 
-              />
-              <View>
-                <Text style={styles.teacherName}>Prakash Raj</Text>
-                <Text style={styles.idText}>2024VI023</Text>
-              </View>
-            </View>
-            <View style={styles.leaveTimeContainer}>
-              <View style={styles.timeWithIcon}>
-                <Clock width={16} height={16} style={{marginRight: 4}} />
-                <Text style={{fontWeight: '600'}}>01:00 PM</Text>
-              </View>
-              <Text style={styles.leaveText}>Sick leave</Text>
-            </View>
-          </View>
-          <Text style={styles.appliedByText}>Applied by Ram Kumar</Text>
-          <Text style={styles.descriptionTitle}>Description</Text>
-          <View style={styles.descriptionBox}>
-            <Text style={styles.descriptionText}>
-              Due to high fever and cold, student is willing to go home.
-            </Text>
-          </View>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={[styles.callButton, {backgroundColor: '#E3F2FD', marginRight: 8}]}>
-              <Call width={20} height={20} />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.messageButton, {backgroundColor: '#E8F5E9', marginRight: 8}]}>
-              <Message width={20} height={20} />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, {backgroundColor: '#3557FF', flex: 1}]}>
-              <Text style={[styles.actionButtonText, {color: '#FFFFFF'}]}>Approve</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Assessment Request Card */}
-        <View style={styles.assessmentCard}>
-          <View style={styles.assessmentHeader}>
-            <View style={styles.avatarContainer}>
-              <Image 
-                source={require('../../../assets/AdminPage/Logs/staff.png')} 
-                style={styles.avatar} 
-              />
-              <View>
-                <Text style={styles.teacherName}>Prakash Raj</Text>
-                <Text style={styles.idText}>2024VI023</Text>
-              </View>
-            </View>
-            <Text style={styles.requestedText}>Requested</Text>
-          </View>
-          <View style={styles.assesscontainer}>
-          <View style={styles.gradeInfo}>
-            <Text style={styles.detailText}>Grade 6 - A</Text>
-            <Text style={styles.detailText}>Mathematics</Text>
-            </View>
-            <View style={styles.classTimeRow}>
-              <View style={styles.timeWithIconAssessment}>
-                <Clock width={16} height={16} style={{marginRight: 4}} />
-                <Text style={styles.timeText}>9:00 AM - 12:00 PM</Text>
-              </View>
-              <Text style={styles.studentsText}>6 Students</Text>
-            </View>
-          </View>
-          
-          <View style={styles.levelContainer}>
-            <TouchableOpacity style={styles.levelButton}>
-              <Text style={styles.levelButtonText}>Level 1</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.levelButton}>
-              <Text style={styles.levelButtonText}>Level 2</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.assessmentRequestText}>Assessment request</Text>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.rejectButton}>
-              <Text style={styles.rejectButtonText}>Reject</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.approveButton}>
-              <Text style={styles.approveButtonText}>Approve</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Academic Card */}
-        <View style={styles.academicCard}>
-          <View style={styles.academicHeader}>
-            <View style={styles.avatarContainer}>
-              <Image 
-                source={require('../../../assets/AdminPage/Logs/staff.png')} 
-                style={styles.avatar} 
-              />
-              <View>
-                <Text style={styles.teacherName}>John Philips</Text>
-                <Text style={styles.idText}>22MAD10</Text>
-                <Text style={styles.subjectText}>Mathematics</Text>
-                <View style={styles.gradeWithAcademic}>
-                  <Text style={styles.detailText}>Grade VI-A</Text>
-                  <View style={styles.dot}></View>
-                  <Text style={styles.academicText}>Academic</Text>
+          )} */}
+          {venues.map((venue) => (
+            <View style={styles.labCard} key={venue.id}>
+              <View style={styles.userInfoContainer}>
+                <View style={styles.avatarContainer}>
+                  <Image source={getProfileImageSource(venue.file_path)} style={styles.avatar} />
+                  <View>
+                    <Text style={styles.teacherName}>{venue.created_by_name || 'Venue'}</Text>
+                    <Text style={styles.idText}>{venue.roll}</Text>
+                  </View>
                 </View>
-                <Text style={styles.incompleteText}>Self-Assessment incomplete</Text>
+                <Text style={styles.dateText}>
+                  {venue.created_at ? new Date(venue.created_at).toLocaleDateString() : ''}
+                </Text>
+              </View>
+              <View style={styles.labDetails}>
+                <Text style={styles.detailText}>{venue.name || ''}</Text>
+                <Text style={styles.detailText}>Block {venue.block || ''}</Text>
+                <Text style={styles.detailText}>Capacity: {venue.capacity || ''}</Text>
+                <Text style={styles.greenText}>New Venue Request</Text>
+              </View>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.rejectButton}
+                  onPress={() => handleVenueAction(venue.id, 'reject')}
+                >
+                  <Text style={styles.rejectButtonText}>Reject</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.approveButton}
+                  onPress={() => handleVenueAction(venue.id, 'approve')}
+                >
+                  <Text style={styles.approveButtonText}>Approve</Text>
+                </TouchableOpacity>
               </View>
             </View>
-            <Text style={styles.dateText}>22/12/24</Text>
-          </View>
-        </View>
-      </ScrollView>
-      
+          ))}
+
+          {/* Classes Not Started Section */}
+          {/* {classes.length > 0 && (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Classes Not Started</Text>
+            </View>
+          )} */}
+          {classes.map((cls) => (
+            <View style={styles.classCard} key={cls.id}>
+              <View style={styles.classCardHeader}>
+                <View>
+                  <Text style={styles.classCardTitle}>{cls.mentor_name}</Text>
+                  <Text style={styles.classCardSubtitle}>
+                    {cls.grade_name} - {cls.section_name} - {cls.subject_name}
+                  </Text>
+                  <Text style={styles.notStartedText}>Class not started!</Text>
+                </View>
+                <View>
+                  <View style={styles.bellTimeContainer}>
+                    <Bell width={16} height={16} />
+                    <Text style={styles.timeText}>
+                      {formatTime(cls.start_time)} - {formatTime(cls.end_time)}
+                    </Text>
+                  </View>
+                  <View style={styles.actionButtonsContainer}>
+                    <TouchableOpacity style={styles.callButton} onPress={() => handleCallPress(cls.mentor_phone)}>
+                      <Call width={16} height={16} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.messageButton}>
+                      <Message width={16} height={16} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </View>
+          ))}
+
+          {/* Assessment Requests Section */}
+          {/* {assessmentRequests.length > 0 && (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Assessment Requests</Text>
+            </View>
+          )} */}
+          {assessmentRequests.map((req) => (
+            <View style={styles.assessmentCard} key={req.id}>
+              <View style={styles.assessmentHeader}>
+                <View style={styles.avatarContainer}>
+                  <Image source={getProfileImageSource(req.file_path)} style={styles.avatar} />
+                  <View>
+                    <Text style={styles.teacherName}>{req.mentor_name}</Text>
+                    <Text style={styles.idText}>{req.mentor_roll}</Text>
+                  </View>
+                </View>
+                <Text style={styles.requestedText}>Requested</Text>
+              </View>
+              <View style={styles.assesscontainer}>
+                <View style={styles.gradeInfo}>
+                  <Text style={styles.detailText}>
+                    {req.grade_name} - {req.section_name}
+                  </Text>
+                  <Text style={styles.detailText}>{req.subject_name}</Text>
+                </View>
+                <View style={styles.classTimeRow}>
+                  <View style={styles.timeWithIconAssessment}>
+                    <Clock width={16} height={16} style={{ right: 6 }} />
+                    <Text style={styles.timeText}>
+                      {formatTime(req.start_time)} - {formatTime(req.end_time)}
+                    </Text>
+                  </View>
+                  <Text style={styles.studentsText}>{req.student_count} Students</Text>
+                </View>
+              </View>
+              <View style={styles.levelContainer}>
+                {req.levels && req.levels.split(',').map((level, i) => (
+                  <TouchableOpacity style={styles.levelButton} key={i}>
+                    <Text style={styles.levelButtonText}>Level {level}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.assessmentRequestText}>Assessment request</Text>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.rejectButton}
+                  onPress={() => handleProcessAssessment(req.id, 'cancel')}
+                >
+                  <Text style={styles.rejectButtonText}>Reject</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.approveButton}
+                  onPress={() => handleProcessAssessment(req.id, 'confirm')}
+                >
+                  <Text style={styles.approveButtonText}>Approve</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+          {venues.length === 0 && classes.length === 0 && assessmentRequests.length === 0 && (
+            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 200}}> 
+              <Nodata />
+            </View>
+          )}
+        </ScrollView>
+      )}
+
       <TouchableOpacity style={styles.homeButton}>
         <Home width={24} height={24} color="#FFFFFF" />
       </TouchableOpacity>
-      
     </SafeAreaView>
   );
 };

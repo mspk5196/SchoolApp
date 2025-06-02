@@ -9,6 +9,7 @@ import DateIcon from '../../../assets/MentorPage/date.svg';
 const Staff = require('../../../assets/CoordinatorPage/StudentProfile/staff.png');
 import Pending from '../../../assets/MentorPage/pendingstatus.svg';
 import { API_URL } from '@env'
+import Nodata from "../../../components/General/Nodata";
 
 const MentorLeaveApproval = ({ navigation, route }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,7 +47,7 @@ const MentorLeaveApproval = ({ navigation, route }) => {
       });
   };
 
-  const handleApprove = (requestId,roll,noOfDays) => {
+  const handleApprove = (requestId, roll, noOfDays) => {
     fetch(`${API_URL}/api/mentor/updateLeaveRequestStatus`, {
       method: 'POST',
       headers: {
@@ -54,8 +55,8 @@ const MentorLeaveApproval = ({ navigation, route }) => {
       },
       body: JSON.stringify({
         requestId,
-        student_roll:roll,
-        noOfDays:noOfDays,
+        student_roll: roll,
+        noOfDays: noOfDays,
         status: 'Approved'
       }),
     })
@@ -165,6 +166,11 @@ const MentorLeaveApproval = ({ navigation, route }) => {
       <FlatList
         data={filteredData}
         keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={
+          <View style={{height:350}}>
+            <Nodata/>
+          </View>
+        }
         renderItem={({ item }) => (
           <View style={styles.inboxItem}>
             <View style={styles.topInfoBox}>
@@ -204,7 +210,7 @@ const MentorLeaveApproval = ({ navigation, route }) => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.acceptBtn}
-                onPress={() => handleApprove(item.id,item.student_roll,item.no_of_days)}>
+                onPress={() => handleApprove(item.id, item.student_roll, item.no_of_days)}>
                 <Text style={styles.acceptText}>Accept</Text>
               </TouchableOpacity>
             </View>

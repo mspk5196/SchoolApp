@@ -3,12 +3,12 @@ import { StyleSheet } from 'react-native';
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#faFaFa',
+        backgroundColor: '#FFFFFF',
     },
     scrollViewContent: {
         paddingBottom: 80, // Space for the floating add button
     },
-    
+
     // Header
     header: {
         flexDirection: 'row',
@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
         color: '#000000',
         marginLeft: 10,
     },
-    
+
     // Section Tabs
     sectionTabsContainer: {
         paddingVertical: 10,
@@ -37,20 +37,25 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginRight: 10,
         backgroundColor: '#F5F5F5',
-        width: 105, // Fixed width from Academic Schedule
+        width: 110, // Fixed width from Academic Schedule
+    },
+    noScheduleText: {
+        color: 'grey',
+        alignSelf: 'center'
     },
     activeSectionTab: {
         backgroundColor: '#0C36FF',
     },
     sectionTabText: {
         fontSize: 14,
+        alignSelf: 'center',
         color: '#333333',
     },
     activeSectionTabText: {
         color: '#FFFFFF',
         paddingLeft: 5, // Added from Academic Schedule
     },
-    
+
     // Days Navigation
     daysContainer: {
         flexDirection: 'row',
@@ -65,7 +70,7 @@ const styles = StyleSheet.create({
         paddingVertical: 5, // Added for consistency
     },
     activeDayItem: {
-        borderWidth: 1,
+        borderWidth: 2,
         borderColor: '#0C36FF',
         borderRadius: 20,
         paddingVertical: 10,
@@ -73,14 +78,15 @@ const styles = StyleSheet.create({
     dayText: {
         fontSize: 16,
         fontWeight: '600',
+        alignSelf: 'center',
         color: '#666666',
-        marginTop: 4,
+        // marginTop: 4,
     },
     activeDayText: {
         color: '#0C36FF', // Added from Academic Schedule
         paddingLeft: 5,
     },
-    
+
     // Schedule Container
     scheduleContainer: {
         paddingHorizontal: 60,
@@ -90,7 +96,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginBottom: 5,
     },
-    
+
     // Time Section
     timeContainer: {
         width: 120,
@@ -122,7 +128,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#7991A4', // Matched with Academic Schedule
         marginTop: 8,
     },
-    
+
     // Details Section
     detailsContainer: {
         flex: 1,
@@ -143,20 +149,21 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#333333',
     },
-    
+
     // Add Button
     addButton: {
         position: 'absolute',
-        right: 135,
-        bottom: -49,
+        right: 20,
+        bottom: 20,
         backgroundColor: '#0C36FF',
         borderRadius: 25,
         paddingVertical: 12,
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         elevation: 3,
+        gap: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
@@ -171,7 +178,7 @@ const styles = StyleSheet.create({
     addButtonIcon: {
         color: '#FFFFFF',
     },
-    
+
     // Create/Edit Button - updated with Academic Schedule styles
     createButtonContainer: {
         padding: 16,
@@ -198,7 +205,7 @@ const styles = StyleSheet.create({
         marginLeft: 'auto', // Improved from Academic Schedule
         marginBottom: 15,
     },
-    
+
     // Delete Button
     deleteButton: {
         position: 'absolute',
@@ -206,7 +213,7 @@ const styles = StyleSheet.create({
         right: -26,
         padding: 8,
     },
-    
+
     // Modal Styles
     modalOverlay: {
         flex: 1,
@@ -218,13 +225,15 @@ const styles = StyleSheet.create({
         width: '85%',
         backgroundColor: '#FFFFFF',
         borderRadius: 10,
-        padding: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 20,
         maxHeight: '80%',
     },
     modalTitle: {
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 20,
+        color: 'black',
         textAlign: 'center',
     },
     modalSection: {
@@ -262,7 +271,7 @@ const styles = StyleSheet.create({
     selectionInput: {
         flexDirection: 'row',
         alignItems: 'center',
-        height: 40,
+        height: 35,
         borderWidth: 1,
         borderColor: '#DDDDDD',
         borderRadius: 5,
@@ -279,37 +288,37 @@ const styles = StyleSheet.create({
     modalActions: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 20, // Matched with Academic Schedule
+        marginTop: 10, // Matched with Academic Schedule
     },
     cancelButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 8,
         flex: 1,
-        height: 40,
-        justifyContent: 'center',
+        marginRight: 20,
         alignItems: 'center',
-        backgroundColor: '#F0F0F0',
-        borderRadius: 8, // Matched with Academic Schedule
-        marginRight: 8,
-        padding: 12, // Added from Academic Schedule
+        justifyContent: 'center',
     },
     cancelButtonText: {
-        fontSize: 14,
         color: '#333333',
+        fontSize: 16,
+        fontWeight: '500',
     },
     saveButton: {
-        flex: 1,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
         backgroundColor: '#0C36FF',
-        borderRadius: 8, // Matched with Academic Schedule
-        marginLeft: 8,
-        padding: 12, // Added from Academic Schedule
+        borderRadius: 8,
+        alignItems: 'center',
+        flex: 1,
+        justifyContent: 'center',
     },
     saveButtonText: {
         fontSize: 14,
         color: '#FFFFFF',
     },
-    
+
     // List Modal Styles
     listModalContainer: {
         width: 200,
@@ -328,7 +337,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#333333',
     },
-    
+
     // Time Picker Modal Styles - updated from Academic Schedule
     timeModalContainer: {
         backgroundColor: 'white',
@@ -408,7 +417,7 @@ const styles = StyleSheet.create({
     unselectedPeriodPickerText: {
         color: '#333333',
     },
-    
+
     // Select Button - from Academic Schedule
     selectButton: {
         padding: 12,
@@ -421,6 +430,12 @@ const styles = StyleSheet.create({
     selectButtonText: {
         color: 'white',
     },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginVertical: 'auto'
+    }
 });
 
 export default styles;

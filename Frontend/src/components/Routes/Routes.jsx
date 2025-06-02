@@ -111,7 +111,7 @@ import AdminMentorMenu from '../../pages/Admin/Mentor/MentorMenu/AdminMentorMenu
 import AdminStudentHome from '../../pages/Admin/Student/Studenthome/AdminStudentHome';
 import AdminLogs from '../../pages/Admin/Logs/AdminLogs';
 import AdminScheduleHome from '../../pages/Admin/Schedule/ScheduleMenu/AdminScheduleHome';
-import AdminEvent from '../../pages/Admin/Events/eventmain/AdminEvent';
+import AdminEvent from '../../pages/Admin/Events/AdminEvent';
 import AdminCalendar from '../../pages/Admin/Calendar/AdminCalendar';
 import AdminCoordinatorHome from '../../pages/Admin/Coordinator/CoordinatorHome/AdminCoordinatorHome';
 import AdminSubjectMentor from '../../pages/Admin/Mentor/SubjectMentor/AdminSubjectMentor';
@@ -134,6 +134,9 @@ import AdminLeaveApprovalHistory from '../../pages/Admin/Coordinator/Coordinator
 import AuthLoader from '../Login/Redirect/AuthLoader';
 import MentorSurveyDetails from '../../pages/Mentor/Activity/Survey/MentorSurveyDetails';
 import MentorHomeWorkDetail from '../../pages/Mentor/Homework/MentorHomeWorkDetail';
+import AdminAddEvent from '../../pages/Admin/Events/AdminAddEvent';
+import StudentPageEventRegister from '../../pages/Parent/SidebarPages/EventScreen/eventRegisterform/StudentPageEventRegister';
+import StudentEventDetails from '../../pages/Parent/SidebarPages/EventScreen/EventDetails/StudentEventDetails';
 
 const Stack = createStackNavigator();
 
@@ -269,6 +272,8 @@ const Routes = () => {
                         <Stack.Screen name="StudentPageCalendar" component={StudentCalendar} />
                         {/* Events */}
                         <Stack.Screen name="StudentPageEvents" component={StudentPageEvent} />
+                        <Stack.Screen name="StudentEventDetails" component={StudentEventDetails} />
+                        <Stack.Screen name="StudentPageEventRegister" component={StudentPageEventRegister} />
                         <Stack.Screen name="StudentPageLikedEvents" component={StudentPageLikedEvents} />
                         {/* Leave */}
                         <Stack.Screen name="StudentPageLeaveDetails" component={StudentPageLeavedetails} />
@@ -321,6 +326,9 @@ const Routes = () => {
                         <Stack.Screen name="AdminCoordinatorEnrollment" component={AdminCoordinatorEnrollment} />
                         <Stack.Screen name="AdminLeaveApproval" component={AdminLeaveApproval} />
                         <Stack.Screen name="AdminLeaveApprovalHistory" component={AdminLeaveApprovalHistory} />
+                        {/* Admin - Event Page */}
+                        <Stack.Screen name="AdminAddEvent" component={AdminAddEvent} />
+                        <Stack.Screen name="AdminEventDetails" component={AdminAddEvent} />
 
                     </Stack.Navigator>
                 </NavigationContainer>

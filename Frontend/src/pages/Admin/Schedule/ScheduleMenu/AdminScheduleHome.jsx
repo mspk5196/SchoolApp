@@ -1,46 +1,46 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Text, View, ScrollView, Pressable, SectionList, Modal, TouchableOpacity } from 'react-native'
+import { Text, View, ScrollView, Pressable, SectionList, Modal, TouchableOpacity, Alert } from 'react-native'
 import styles from './ScheduleHomeStyle'
-import { Calendar } from 'react-native-calendars' 
-import HomeIcon from      '../../../../assets/AdminPage/ScheduleMenu/Home.svg'
-import DeleteIcon from    '../../../../assets/AdminPage/ScheduleMenu/Delete.svg' 
-import RoundHomeIcon from '../../../../assets/AdminPage/MentorList/roundhome.svg' 
+import { Calendar } from 'react-native-calendars'
+import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg'
+import HomeIcon from '../../../../assets/AdminPage/ScheduleMenu/Home.svg'
+import DeleteIcon from '../../../../assets/AdminPage/ScheduleMenu/Delete.svg'
+import { API_URL } from '@env'
 
 const AdminScheduleHome = ({ navigation }) => {
-  const [activeGrade, setActiveGrade] = useState(1); // Default to Grade 2 as in image
-  const [selectedDate, setSelectedDate] = useState('23/12/24');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
-  const [formattedDate, setFormattedDate] = useState('2024-12-23');
   const [showCancelModal, setShowCancelModal] = useState(false);
-  
-  const data = [
-    {
-      data: [
-        { id: '1', title: 'Section A', bgColor: '#C9F7F5', color: '#0FBEB3' },
-        { id: '2', title: 'Section B', bgColor: '#65558F12', color: '#65558F' },
-        { id: '3', title: 'Section C', bgColor: '#FFF3DC', color: '#EEAA16' },
-      ],
-    },
-  ];
 
-  // Function to parse date in dd/mm/yy format to a Date object
+  const [activeGrade, setActiveGrade] = useState(null);
+  const [grades, setGrades] = useState([]);
+
+  const [sections, setSections] = useState([]);
+
+  useEffect(() => {
+    fetchGrades();
+  }, []);
+  useEffect(() => {
+    if (activeGrade) {
+      fetchSections();
+    }
+  }, [activeGrade]);
+
   const parseDate = (dateString) => {
     const [day, month, yearShort] = dateString.split('/');
-    const year = '20' + yearShort; // Assuming 20xx for the year
-    return new Date(year, month - 1, day); // month is 0-indexed in JS Date
+    const year = '20' + yearShort;
+    return new Date(year, month - 1, day);
   };
 
-  // Function to format Date object to dd/mm/yy
   const formatDisplayDate = (date) => {
     const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // month is 0-indexed
+    const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = String(date.getFullYear()).slice(2);
     return `${day}/${month}/${year}`;
   };
 
-  // Function to format Date object to yyyy-mm-dd for internal use
+
   const formatISODate = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -48,11 +48,31 @@ const AdminScheduleHome = ({ navigation }) => {
     return `${year}-${month}-${day}`;
   };
 
+  const today = new Date();
+  const defaultDisplayDate = formatDisplayDate(today); // dd/mm/yy
+  const defaultISODate = formatISODate(today);         // yyyy-mm-dd
+
+  const [selectedDate, setSelectedDate] = useState(defaultDisplayDate);
+  const [formattedDate, setFormattedDate] = useState(defaultISODate);
+
+
+  const isToday = () => {
+    const today = new Date();
+    const selected = parseDate(selectedDate);
+
+    return (
+      today.getDate() === selected.getDate() &&
+      today.getMonth() === selected.getMonth() &&
+      today.getFullYear() === selected.getFullYear()
+    );
+  };
+
+
   // Function to navigate to previous day
   const goToPreviousDay = () => {
     const currentDate = parseDate(selectedDate);
     currentDate.setDate(currentDate.getDate() - 1);
-    
+
     setSelectedDate(formatDisplayDate(currentDate));
     setFormattedDate(formatISODate(currentDate));
   };
@@ -61,7 +81,7 @@ const AdminScheduleHome = ({ navigation }) => {
   const goToNextDay = () => {
     const currentDate = parseDate(selectedDate);
     currentDate.setDate(currentDate.getDate() + 1);
-    
+
     setSelectedDate(formatDisplayDate(currentDate));
     setFormattedDate(formatISODate(currentDate));
   };
@@ -70,7 +90,7 @@ const AdminScheduleHome = ({ navigation }) => {
   const handleDateSelect = (date) => {
     const dateParts = date.dateString.split('-');
     const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0].slice(2)}`;
-    
+
     setSelectedDate(formattedDate);
     setFormattedDate(date.dateString);
     setShowCalendarModal(false);
@@ -78,48 +98,122 @@ const AdminScheduleHome = ({ navigation }) => {
 
   // Cards component for displaying sections
   const Cards = ({ title, bgColor, color }) => {
+    // console.log(title);
+
     return (
       <View style={[styles.card, { backgroundColor: bgColor }]}>
         <View style={styles.centeredCardContent}>
-          <Text style={[styles.cardText, styles.centeredText, { color: color }]}>{title}</Text>
+          <Text style={[styles.cardText, styles.centeredText, { color: color }]}>Section {title}</Text>
         </View>
       </View>
     );
   };
 
-  // Function to handle schedule cancellation
-  const handleCancelSchedule = () => {
-    // Implement your logic here
-    setShowCancelModal(false);
-    // You can add additional logic to update the schedule
+  const fetchGrades = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/grades`);
+      const data = await response.json();
+      if (data.success) {
+        console.log(data.grades);
+        setGrades(data.grades);
+
+        if (data.grades.length > 0) {
+          setActiveGrade(data.grades[0].id);
+          fetchSections()
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching grades:', error);
+    }
   };
+
+  const fetchSections = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/grades/${activeGrade}/sections`);
+      const data = await response.json();
+      if (data.success) {
+        // console.log(data.gradeSections);
+        const formattedSections = [
+          {
+            title: `Section ${activeGrade}`,
+            data: data.gradeSections || []
+          }
+        ];
+        setSections(formattedSections);
+        console.log(formattedSections);
+
+
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+    }
+  };
+
+  // Update the handleCancelSchedule function in AdminScheduleHome.jsx
+  const handleCancelSchedule = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/schedules/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          date: formattedDate,
+          grade_id: activeGrade
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        Alert.alert('Schedule cancelled successfully');
+        // Refresh the sections data
+        fetchSections();
+      } else {
+        Alert.alert('Failed to cancel schedule: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Error cancelling schedule:', error);
+      Alert.alert('Error cancelling schedule');
+    } finally {
+      setShowCancelModal(false);
+    }
+  };
+
 
   return (
     <SafeAreaView flexgrow={1} flex={1} style={styles.container}>
-      <View style={styles.Header}>
-        <HomeIcon width={styles.HomeIcon.width} height={styles.HomeIcon.height} onPress={() => navigation.goBack()}/>
-        <Text style={styles.HeaderTxt}>Academic Schedule</Text>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation && navigation.goBack()}
+        >
+          <PreviousIcon color="black" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Logs</Text>
       </View>
 
-      {/* Today date selector similar to MentorDetail */}
+
       <View style={styles.dateContainer}>
-        <View style={styles.todayIndicator} />
-        <Text style={styles.todayText}>Today</Text>
-        <View style={styles.dateNavigation}>
-          <TouchableOpacity onPress={goToPreviousDay}>
-            <Text style={styles.dateNavArrow}>{"<"}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.dateButton}
-            onPress={() => setShowCalendarModal(true)}
-          >
-            <Text style={styles.dateText}>{selectedDate}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={goToNextDay}>
-            <Text style={styles.dateNavArrow}>{">"}</Text>
-          </TouchableOpacity>
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          <View style={styles.todayIndicator} />
+          <Text style={styles.todayText}>{isToday() ? `Today(${new Date(formattedDate).toLocaleDateString('en-US', { weekday: 'long' })})` : new Date(formattedDate).toLocaleDateString('en-US', { weekday: 'long' })}</Text>
+          <View style={styles.dateNavigation}>
+            <TouchableOpacity onPress={goToPreviousDay}>
+              <Text style={styles.dateNavArrow}>{"<"}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => setShowCalendarModal(true)}
+            >
+              <Text style={styles.dateText}>{selectedDate}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={goToNextDay}>
+              <Text style={styles.dateNavArrow}>{">"}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <TouchableOpacity onPress={() => setShowCancelModal(true)}>
           <DeleteIcon width={23} height={23} style={styles.deleteIcon} />
@@ -127,13 +221,13 @@ const AdminScheduleHome = ({ navigation }) => {
       </View>
 
       <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent} style={styles.classnavgrade} nestedScrollEnabled={true}>
-        {["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7"].map((grade, index) => (
+        {grades.map((grade, index) => (
           <Pressable
-            key={index}
-            style={[styles.gradeselection, activeGrade === index && styles.activeButton]}
-            onPress={() => setActiveGrade(index)}
+            key={grade.id}
+            style={[styles.gradeselection, activeGrade === grade.id && styles.activeButton]}
+            onPress={() => setActiveGrade(grade.id)}
           >
-            <Text style={[styles.gradeselectiontext, activeGrade === index && styles.activeText]}>{grade}</Text>
+            <Text style={[styles.gradeselectiontext, activeGrade === grade.id && styles.activeText]}>{grade.grade_name}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -141,20 +235,21 @@ const AdminScheduleHome = ({ navigation }) => {
       <SectionList
         vertical={true}
         scrollEnabled={true}
-        sections={data}
+        sections={sections}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <Pressable onPress={() => navigation.navigate('AdminScheduleDetails', { section: item.title })}>
+          <Pressable onPress={() => navigation.navigate('AdminScheduleDetails', { sectionId: item.id, activeGrade })}>
             <ScrollView nestedScrollEnabled={true}>
-              <Cards title={item.title} bgColor={item.bgColor} color={item.color} />
+              <Cards title={item.section_name} bgColor={item.id % 2 ? '#C9F7F5' : '#65558F12'} color={item.id % 2 ? '#0FBEB3' : '#65558F'} />
             </ScrollView>
           </Pressable>
         )}
       />
 
       {/* Bottom Home Button */}
-      <TouchableOpacity style={styles.homeButtonContainer} onPress={() => navigation.navigate('AdminMain')}>
-        <RoundHomeIcon width={60} height={60}/>
+      <TouchableOpacity style={styles.footer}
+        onPress={() => navigation.navigate('AdminMain')}>
+        <HomeIcon />
       </TouchableOpacity>
 
       {/* Calendar Modal */}
@@ -194,15 +289,15 @@ const AdminScheduleHome = ({ navigation }) => {
           <View style={styles.cancelModalContent}>
             <Text style={styles.modalTitle}>Cancel Schedule</Text>
             <Text style={styles.modalText}>Are you sure you want to cancel this schedule?</Text>
-            
+
             <View style={styles.buttonContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => setShowCancelModal(false)}
               >
                 <Text style={styles.cancelButtonText}>No</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.confirmButton}
                 onPress={handleCancelSchedule}

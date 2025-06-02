@@ -1556,7 +1556,7 @@ exports.getMentorDailySchedule = (req, res) => {
     JOIN sections sec ON ds.section_id = sec.id
     LEFT JOIN activity_types avt ON ds.activity = avt.id
     LEFT JOIN venues v ON ds.venue = v.id
-    WHERE ds.mentors_id = ? AND ds.date = ?
+    WHERE ds.mentors_id = ? AND ds.date = ? AND ds.status = 'Active'
     ORDER BY ds.start_time
   `;
 
@@ -1611,7 +1611,7 @@ async function createAcademicSessionsByDate(date) {
 
   const [schedules] = await db.promise().query(`
   SELECT * FROM daily_schedule
-  WHERE date >= ? AND date < DATE_ADD(?, INTERVAL 1 DAY) AND mentors_id IS NOT NULL AND activity != 5
+  WHERE date >= ? AND date < DATE_ADD(?, INTERVAL 1 DAY) AND mentors_id IS NOT NULL AND activity = 1
 `, [date, date]);
 
   // console.log('Schedules:', schedules, Array.isArray(schedules), schedules.length);
@@ -2392,9 +2392,9 @@ exports.getAssessmentStudents = async (req, res) => {
 
 // Update assessment marks
 exports.updateAssessmentMarks = async (req, res) => {
-  const { sessionId, students, totalMarks, materialId } = req.body;
+  const { sessionId, students, student_levels } = req.body;
 
-  if (!sessionId || !Array.isArray(students) || !totalMarks || !materialId) {
+  if (!sessionId || !Array.isArray(students) || !student_levels) {
     return res.status(400).json({
       success: false,
       message: 'Missing required parameters'
@@ -2405,7 +2405,7 @@ exports.updateAssessmentMarks = async (req, res) => {
 
   try {
     // Get session details
-    const sessionDetails = await transaction.query(`
+    const [sessionDetails] = await transaction.query(`
       SELECT subject_id, section_id FROM assessment_sessions WHERE id = ?
     `, [sessionId]);
 
@@ -2413,17 +2413,17 @@ exports.updateAssessmentMarks = async (req, res) => {
       throw new Error('Session not found');
     }
 
-    const { subject_id, section_id } = sessionDetails[0];
+    const { subject_id, section_id } = sessionDetails;
 
-    // Update session
+    // Update session status only (no total marks at session level now)
     await transaction.query(`
       UPDATE assessment_sessions
-      SET total_marks = ?, material_id = ?, status = 'Completed', actual_end_time = NOW()
+      SET status = 'Completed', actual_end_time = NOW()
       WHERE id = ?
-    `, [totalMarks, materialId, sessionId]);
+    `, [sessionId]);
 
     // Get pass percentage
-    const passPercentRows = await transaction.query(`
+    const [passPercentRows] = await transaction.query(`
       SELECT ap.percent
       FROM level_pass_percent ap
       JOIN sections s ON ap.grade_id = s.grade_id
@@ -2437,15 +2437,17 @@ exports.updateAssessmentMarks = async (req, res) => {
 
     for (const student of students) {
       const mark = typeof student.mark === 'number' ? student.mark : Number(student.mark) || 0;
+      const totalMarks = student.total_marks || 0;
       const percentage = totalMarks > 0 ? Math.round((mark / totalMarks) * 100) : 0;
       const passedStatus = percentage >= passPercent ? 'Passed' : 'Failed';
+      const materialIds = student.material_ids || '[]';
 
       const currentLevelInfo = await transaction.query(`
         SELECT * FROM student_levels
         WHERE student_roll = ? AND subject_id = ? AND section_id = ?
       `, [student.student_roll, subject_id, section_id]);
 
-      const currentLevel = currentLevelInfo[0].level;
+      const currentLevel = currentLevelInfo[0]?.level || 1;
 
       const existing = await transaction.query(`
         SELECT id FROM assessment_session_marks WHERE as_id = ? AND student_roll = ?
@@ -2454,7 +2456,14 @@ exports.updateAssessmentMarks = async (req, res) => {
       if (existing.length > 0) {
         await transaction.query(`
           UPDATE assessment_session_marks
-          SET mark = ?, status = ?, total_marks = ?, percentage = ?, passed_status = ?, current_level = ?
+          SET 
+            mark = ?, 
+            status = ?, 
+            total_marks = ?, 
+            percentage = ?, 
+            passed_status = ?, 
+            current_level = ?,
+            material_id = ?
           WHERE id = ?
         `, [
           mark,
@@ -2462,14 +2471,15 @@ exports.updateAssessmentMarks = async (req, res) => {
           totalMarks,
           percentage,
           passedStatus,
-          existing[0].id,
-          currentLevel
+          currentLevel,
+          materialIds,
+          existing[0].id
         ]);
       } else {
         await transaction.query(`
           INSERT INTO assessment_session_marks
-          (as_id, student_roll, mark, status, total_marks, percentage, passed_status, current_level)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          (as_id, student_roll, mark, status, total_marks, percentage, passed_status, current_level, material_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           sessionId,
           student.student_roll,
@@ -2478,7 +2488,8 @@ exports.updateAssessmentMarks = async (req, res) => {
           totalMarks,
           percentage,
           passedStatus,
-          currentLevel
+          currentLevel,
+          materialIds
         ]);
       }
 
@@ -2490,7 +2501,7 @@ exports.updateAssessmentMarks = async (req, res) => {
       }
     }
 
-    // Promote passed students
+    // Promote passed students (same as before)
     for (const student of studentsToPromote) {
       const currentLevelInfo = await transaction.query(`
         SELECT * FROM student_levels
@@ -2545,7 +2556,7 @@ exports.updateAssessmentMarks = async (req, res) => {
 exports.getAssessmentMaterials = (req, res) => {
   const { subjectId, sectionId, level } = req.body;
   console.log(subjectId, sectionId);
-  
+
   const query = `
     SELECT m.id, m.file_name, m.level
     FROM materials m
@@ -2558,8 +2569,8 @@ exports.getAssessmentMaterials = (req, res) => {
   db.query(query, [subjectId, sectionId, level], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ success: true, materials: results });
-    console.log("materials",results);
-    
+    console.log("materials", results);
+
   });
 };
 

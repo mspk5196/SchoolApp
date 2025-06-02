@@ -7,17 +7,19 @@ export const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'left',
+    alignItems: 'center', // fixed from 'left'
+    justifyContent: 'space-between', // better alignment
     padding: 16,
     borderBottomWidth: 1,
     backgroundColor: 'white',
     borderBottomColor: 'black',
   },
   headerTitle: {
-    marginLeft: 12, 
     fontSize: 18,
     fontWeight: 'bold',
-    color:'black'
+    color: 'black',
+    // textAlign: 'center',
+    flex: 1,
   },
   headerSpacer: {
     width: 24,
@@ -42,7 +44,7 @@ export const styles = StyleSheet.create({
   requestType: {
     fontSize: 16,
     fontWeight: 'bold',
-    color:'black'
+    color: 'black'
   },
   requestDate: {
     fontSize: 14,
@@ -70,6 +72,7 @@ export const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
+    paddingBottom: 24,
   },
   formCard: {
     backgroundColor: '#fff',
@@ -135,8 +138,11 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginHorizontal: 16,
-    marginTop: 'auto', // This will push the button to bottom
+    marginTop: 'auto',
     marginBottom: 24,
+  },
+  disabledButton: {
+    backgroundColor: '#b0c4de',
   },
   confirmButtonText: {
     color: '#fff',
@@ -158,6 +164,7 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
+    zIndex: 10,
   },
   floatingButtonText: {
     color: '#fff',
@@ -166,6 +173,7 @@ export const styles = StyleSheet.create({
   },
   detailContainer: {
     flex: 1,
+    paddingBottom: 24,
   },
   documentRow: {
     flexDirection: 'row',
@@ -185,5 +193,49 @@ export const styles = StyleSheet.create({
   },
   clickableItem: {
     opacity: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#4169E1',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#ff3333',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#4169E1',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: .6,
+    // justifyContent: 'center',
+    // alignItems: 'center',
+    // minHeight: 120,
+  },
+  emptyText: {
+    color: '#888',
+    fontSize: 16,
+    marginTop: 12,
   },
 });

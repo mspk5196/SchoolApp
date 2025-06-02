@@ -28,7 +28,8 @@ const AddEventForm = ({ navigation, route }) => {
   const [grade, setGrade] = useState(null);
   const [eventType, setEventType] = useState('');
   const [aboutEvent, setAboutEvent] = useState('');
-  const [guidelines, setGuidelines] = useState('');
+  const [guidelinesRegistration, setGuidelinesRegistration] = useState('');
+  const [guidelinesParticipation, setGuidelinesParticipation] = useState('');
 
   // For date picker
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -138,12 +139,12 @@ const AddEventForm = ({ navigation, route }) => {
       Alert.alert('Required Fields', 'Please fill in all required fields');
       return;
     }
-  
+
     setIsLoading(true);
-  
+
     try {
       const formData = new FormData();
-      
+
       // Append all fields to FormData
       formData.append('phone', coordinatorData.phone);
       formData.append('event_name', eventName);
@@ -153,15 +154,16 @@ const AddEventForm = ({ navigation, route }) => {
       formData.append('grade_id', grade);
       formData.append('event_type', eventType);
       formData.append('about', aboutEvent);
-      formData.append('guidelines', guidelines);
-      
+      formData.append('guidelinesRegistration', guidelinesRegistration);
+      formData.append('guidelinesParticipation', guidelinesParticipation);
+
       // Append the image file
       formData.append('bannerPhoto', {
         uri: bannerImage,
         type: 'image/jpeg',
         name: 'event_banner.jpg'
       });
-  
+
       const response = await fetch(`${API_URL}/api/coordinator/events/create`, {
         method: 'POST',
         body: formData,
@@ -169,7 +171,7 @@ const AddEventForm = ({ navigation, route }) => {
           'Accept': 'application/json',
         },
       });
-  
+
       const data = await response.json();
       if (data.success) {
         Alert.alert('Success', 'Event created successfully');
@@ -366,15 +368,28 @@ const AddEventForm = ({ navigation, route }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Guidelines</Text>
+            <Text style={styles.label}>Guidelines(registration)</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Enter guidelines"
+              placeholder="Enter registration guidelines"
               multiline={true}
               numberOfLines={4}
               placeholderTextColor='grey'
-              value={guidelines}
-              onChangeText={setGuidelines}
+              value={guidelinesRegistration}
+              onChangeText={setGuidelinesRegistration}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Guidelines(participation)</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Enter participation guidelines"
+              multiline={true}
+              numberOfLines={4}
+              placeholderTextColor='grey'
+              value={guidelinesParticipation}
+              onChangeText={setGuidelinesParticipation}
             />
           </View>
 

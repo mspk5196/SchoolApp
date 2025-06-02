@@ -48,13 +48,13 @@ const AdminHomePage = ({ navigation, route }) => {
         navigation.navigate('AdminStudentHome');
         break;
       case 'Logs':
-        navigation.navigate('AdminLogs');
+        navigation.navigate('AdminLogs', {adminData});
         break;
       case 'Schedule':
         navigation.navigate('AdminScheduleHome');
         break;
       case 'Events':
-        navigation.navigate('AdminEvent');
+        navigation.navigate('AdminEvent', {adminData});
         break;
       case 'Calendar':
         navigation.navigate('AdminCalendar');

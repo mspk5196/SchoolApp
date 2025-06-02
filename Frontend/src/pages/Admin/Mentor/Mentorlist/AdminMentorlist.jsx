@@ -1,98 +1,114 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Animated } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Animated, Alert } from 'react-native';
 import Leftarrow from "../../../../assets/AdminPage/Basicimg/PrevBtn.svg";
 import styles from './MentorlistStyles';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
-import Search from       '../../../../assets/AdminPage/MentorHome/search.svg';
-import Filter from       '../../../../assets/AdminPage/MentorHome/filter.svg';
-import Tickbox from      '../../../../assets/AdminPage/MentorHome/tickbox.svg';
-import Tick from         '../../../../assets/AdminPage/MentorHome/tick.svg';
-import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg';
+import Search from '../../../../assets/AdminPage/MentorHome/search.svg';
+import { API_URL } from '@env'
 
 
-const AdminMentorlist = ({ navigation }) => {
+const AdminMentorlist = ({ navigation, route }) => {
+  const { selectedGrade } = route.params;
   const [searchText, setSearchText] = useState('');
-  const [filteredStudents, setFilteredStudents] = useState([]);
-  const [showFilterSidebar, setShowFilterSidebar] = useState(false);
-  const [filters, setFilters] = useState({
-    grades: [],
-    subjects: [],
-    time: { start: '', end: '' }
-  });
-  
-  const students = [
-    { name: 'Prakash Raj 1', id: '2024V1023', mentorId: 'MA10101', subject: 'Maths, Social', mentorFor: 'Grade 5', handling: 'Class 1,5,7', total: 56, present: 53, leave: 3 },
-    { name: 'Prakash Raj 2', id: '2024V1024', mentorId: 'MA10102', subject: 'Science, English', mentorFor: 'Grade 6', handling: 'Class 2,6', total: 48, present: 45, leave: 3 },
-    { name: 'Prakash Raj 3', id: '2024V1025', mentorId: 'MA10103', subject: 'English, Social', mentorFor: 'Grade 4', handling: 'Class 4,8', total: 62, present: 60, leave: 2 },
-    { name: 'Prakash Raj 4', id: '2024V1026', mentorId: 'MA10104', subject: 'Science, Maths', mentorFor: 'Grade 7', handling: 'Class 7,9', total: 53, present: 50, leave: 3 },
-    { name: 'Prakash Raj 5', id: '2024V1027', mentorId: 'MA10105', subject: 'Hindi, English', mentorFor: 'Grade 3', handling: 'Class 3,5', total: 45, present: 42, leave: 3 },
-    { name: 'Prakash Raj 6', id: '2024V1028', mentorId: 'MA10106', subject: 'Maths, Science', mentorFor: 'Grade 8', handling: 'Class 8,10', total: 58, present: 55, leave: 3 },
-    { name: 'Prakash Raj 7', id: '2024V1029', mentorId: 'MA10107', subject: 'Social, Hindi', mentorFor: 'Grade 9', handling: 'Class 9,11', total: 50, present: 48, leave: 2 },
-    { name: 'Prakash Raj 8', id: '2024V1030', mentorId: 'MA10108', subject: 'English, Maths', mentorFor: 'Grade 10', handling: 'Class 10,12', total: 65, present: 62, leave: 3 },
-    { name: 'Prakash Raj 9', id: '2024V1031', mentorId: 'MA10109', subject: 'Science, Social', mentorFor: 'Grade 6', handling: 'Class 6,8', total: 55, present: 52, leave: 3 },
-    { name: 'Prakash Raj 10', id: '2024V1032', mentorId: 'MA10110', subject: 'Hindi, Science', mentorFor: 'Grade 7', handling: 'Class 7,9', total: 60, present: 57, leave: 3 },
-  ];
-  
+  const [filteredMentor, setFilteredMentor] = useState([]);
+
+  const [mentors, setMentor] = useState([])
+
+  useEffect(() => {
+    fetchGradeMentors()
+  }, [selectedGrade])
+
+  const fetchGradeMentors = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeMentors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gradeID: selectedGrade,
+        }),
+      });
+
+      const data = await response.json();
+      // console.log('Grade mentors Data API Response:', data);
+
+      if (data.success) {
+        setMentor(data.gradeMentors);
+        // console.log(data.gradeMentors);
+      } else {
+        Alert.alert('No Mentors Found', 'No mentors are associated with this grade');
+      }
+    } catch (error) {
+      console.error('Error fetching mentors data:', error);
+      Alert.alert('Error', 'Failed to fetch mentor data');
+    }
+  };
+
   // Filter students based on the search text
   const handleSearch = (text) => {
     setSearchText(text);
-    const filtered = students.filter((student) =>
-      student.name.toLowerCase().includes(text.toLowerCase()) ||
-      student.id.toLowerCase().includes(text.toLowerCase())
+    const filtered = mentors.filter((mentor) =>
+      mentor.name.toLowerCase().includes(text.toLowerCase()) ||
+      mentor.roll.toLowerCase().includes(text.toLowerCase())
     );
-    setFilteredStudents(filtered);
+    setFilteredMentor(filtered);
   };
 
   // Navigate to mentor details when a card is clicked
   const handleMentorPress = (mentor) => {
     navigation.navigate('AdminMentorListDetails', { mentor });
   };
-
-  // Toggle filter sidebar
-  const toggleFilterSidebar = () => {
-    setShowFilterSidebar(!showFilterSidebar);
-  };
   
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Staff;
+    }
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#fafafa' }}>
+
+    <View style={[styles.container, { flex: 1 }]}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation && navigation.goBack()}
-        >
-          <PreviousIcon  color="black" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Student List</Text>
+        <Leftarrow
+          width={styles.BackIcon.width}
+          height={styles.BackIcon.height}
+          onPress={() => navigation.goBack()}
+        />
+        <Text style={styles.headerTxt}>Mentor List</Text>
       </View>
-      
-      {/* Search Bar and Filter Icon */}
-      <View style={styles.searchFilterContainer}>
-        <View style={styles.searchContainer}>
-          <Search style={styles.searchicon}/>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by name or ID"
-            placeholderTextColor={'black'}
-            value={searchText}
-            onChangeText={handleSearch}
-          />
-        </View>
-        <TouchableOpacity style={styles.filterButton} onPress={toggleFilterSidebar}>
-          <Filter width={22} height={22} />
-        </TouchableOpacity>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Search style={styles.searchicon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by name or ID"
+          placeholderTextColor='grey'
+          value={searchText}
+          onChangeText={handleSearch}
+        />
       </View>
-      
+
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        {(searchText ? filteredStudents : students).map((student, index) => (
-          <TouchableOpacity 
-            key={index} 
+        {(searchText ? filteredMentor : mentors).map((mentor, index) => (
+          <TouchableOpacity
+            key={mentor.id}
             style={styles.listItem}
-            onPress={() => handleMentorPress(student)}
+            onPress={() => handleMentorPress(mentor)}
           >
-            <Image source={Staff} style={styles.studentAvatar} />
+            {mentor.photo_url ? (
+              <Image source={getProfileImageSource(mentor.photo_url)} style={styles.studentAvatar} />
+            ) : (
+              <Image source={Staff} style={styles.studentAvatar} />
+            )}
             <View style={styles.listContent}>
-              <Text style={styles.listName}>{student.name}</Text>
-              <Text style={styles.listId}>{student.id}</Text>
+              <Text style={styles.listName}>{mentor.name}</Text>
+              <Text style={styles.listId}>{mentor.roll}</Text>
             </View>
             <View style={styles.removeButton}>
               <Text style={styles.removeText}>View</Text>
@@ -100,184 +116,7 @@ const AdminMentorlist = ({ navigation }) => {
           </TouchableOpacity>
         ))}
       </ScrollView>
-      
-      {/* Filter Sidebar Component */}
-      <FilterSidebar 
-        isVisible={showFilterSidebar} 
-        onClose={toggleFilterSidebar} 
-        filters={filters} 
-        setFilters={setFilters} 
-      />
     </View>
-  );
-};
-
-const FilterSidebar = ({ isVisible, onClose, filters, setFilters }) => {
-  const slideAnim = useState(new Animated.Value(isVisible ? 0 : 300))[0];
-  
-  useEffect(() => {
-    Animated.timing(slideAnim, {
-      toValue: isVisible ? 0 : 300,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [isVisible, slideAnim]);
-
-  const toggleGradeFilter = (grade) => {
-    const updatedGrades = [...filters.grades];
-    const index = updatedGrades.indexOf(grade);
-    
-    if (index !== -1) {
-      updatedGrades.splice(index, 1);
-    } else {
-      updatedGrades.push(grade);
-    }
-    
-    setFilters({...filters, grades: updatedGrades});
-  };
-
-  const toggleSubjectFilter = (subject) => {
-    const updatedSubjects = [...filters.subjects];
-    const index = updatedSubjects.indexOf(subject);
-    
-    if (index !== -1) {
-      updatedSubjects.splice(index, 1);
-    } else {
-      updatedSubjects.push(subject);
-    }
-    
-    setFilters({...filters, subjects: updatedSubjects});
-  };
-
-  const handleTimeChange = (type, value) => {
-    setFilters({
-      ...filters,
-      time: {
-        ...filters.time,
-        [type]: value
-      }
-    });
-  };
-
-  const removeFilter = (type, value) => {
-    if (type === 'grade') {
-      const updatedGrades = filters.grades.filter(grade => grade !== value);
-      setFilters({...filters, grades: updatedGrades});
-    } else if (type === 'subject') {
-      const updatedSubjects = filters.subjects.filter(subject => subject !== value);
-      setFilters({...filters, subjects: updatedSubjects});
-    }
-  };
-
-  const applyFilters = () => {
-    // Apply filter logic here
-    onClose();
-  };
-
-  return (
-    <Animated.View 
-      style={[
-        styles.filterSidebar,
-        { transform: [{ translateX: slideAnim }] },
-        !isVisible && { display: 'none' }
-      ]}
-    >
-      <View style={styles.filterHeader}>
-        <Text style={styles.filterTitle}>Filters</Text>
-        <TouchableOpacity 
-          style={styles.closeButton}
-          onPress={onClose}
-        >
-          <Text style={styles.closeButtonText}>×</Text>
-        </TouchableOpacity>
-      </View>
-      
-      {/* Grade Filter Section */}
-      <View style={styles.filterSection}>
-        <Text style={styles.filterSectionTitle}>Grade</Text>
-        <View style={styles.filterChips}>
-          {filters.grades.map(grade => (
-            <TouchableOpacity 
-              key={`grade-chip-${grade}`} 
-              style={styles.filterChip}
-              onPress={() => removeFilter('grade', grade)}
-            >
-              <Text style={styles.chipText}>{grade}</Text>
-              <Text style={styles.chipClose}>×</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={styles.checkboxContainer}>
-          <View style={styles.checkboxColumn}>
-            {[1, 2, 3, 4, 5].map(grade => (
-              <TouchableOpacity 
-                key={`grade-${grade}`}
-                style={styles.checkboxRow}
-                onPress={() => toggleGradeFilter(grade)}
-              >
-                <View style={styles.checkbox}>
-                  {filters.grades.includes(grade) ? <Tick width={20} height={20} /> : <Tickbox width={20} height={20} />}
-                </View>
-                <Text style={styles.checkboxLabel}>{grade}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.checkboxColumn}>
-            {[6, 7, 8, 9, 10].map(grade => (
-              <TouchableOpacity 
-                key={`grade-${grade}`}
-                style={styles.checkboxRow}
-                onPress={() => toggleGradeFilter(grade)}
-              >
-                <View style={styles.checkbox}>
-                  {filters.grades.includes(grade) ? <Tick width={20} height={20} /> : <Tickbox width={20} height={20} />}
-                </View>
-                <Text style={styles.checkboxLabel}>{grade}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </View>
-      
-      {/* Subject Filter Section */}
-      <View style={styles.filterSection}>
-        <Text style={styles.filterSectionTitle}>Subject</Text>
-        <View style={styles.filterChips}>
-          {filters.subjects.map(subject => (
-            <TouchableOpacity 
-              key={`subject-chip-${subject}`} 
-              style={styles.filterChip}
-              onPress={() => removeFilter('subject', subject)}
-            >
-              <Text style={styles.chipText}>{subject}</Text>
-              <Text style={styles.chipClose}>×</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={styles.checkboxContainer}>
-          {['Tamil', 'English', 'Mathematics', 'Science', 'Social'].map(subject => (
-            <TouchableOpacity 
-              key={`subject-${subject}`}
-              style={styles.checkboxRow}
-              onPress={() => toggleSubjectFilter(subject)}
-            >
-              <View style={styles.checkbox}>
-                {filters.subjects.includes(subject) ? <Tick width={20} height={20} /> : <Tickbox width={20} height={20} />}
-              </View>
-              <Text style={styles.checkboxLabel}>{subject}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-      
-      {/* Apply Filters Button */}
-      <TouchableOpacity 
-        style={styles.applyFiltersButton}
-        onPress={applyFilters}
-      >
-        <Text style={styles.applyFiltersText}>Apply Filters</Text>
-      </TouchableOpacity>
-    </Animated.View>
   );
 };
 

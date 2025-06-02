@@ -1,82 +1,202 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect, act } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import styles from './PerformanceGraphStyles';
 import { useNavigation } from '@react-navigation/native';
+import { API_URL } from '@env';
 
-const PerformanceGraph = ({ onBarPress, showTitle = true }) => {
-  const [activeTab, setActiveTab] = useState('Tamil');
+const PerformanceGraph = ({ studentData, showTitle = true }) => {
+  const [activeTab, setActiveTab] = useState('Overall');
+  const [loading, setLoading] = useState(true);
+  const [performanceData, setPerformanceData] = useState(null);
+  const [sectionSubjects, setSectionSubjects] = useState([]);
   const navigation = useNavigation();
 
-  const data = {
-    Tamil: [
-      { day: 'Day 8', classvalue: 70, discipline: 10, homework: 10, dayNumber: 8 },
-      { day: 'Day 9', classvalue: 60, discipline: 10, homework: 10, dayNumber: 9 },
-      { day: 'Day 10', classvalue: 55, discipline: 10, homework: 10, dayNumber: 10 },
-      { day: 'Today', classvalue: 50, discipline: 10, homework: 10, dayNumber: 11 },
-      { day: 'Day 12', classvalue: 0, discipline: 0, homework: 0, dayNumber: 12 },
-      { day: 'Day 13', classvalue: 0, discipline: 0, homework: 0, dayNumber: 13 },
-      { day: 'Day 14', classvalue: 0, discipline: 0, homework: 0, dayNumber: 14 },
-    ],
-    English: [
-      { day: 'Day 8', classvalue: 70, discipline: 8, homework: 9, dayNumber: 8 },
-      { day: 'Day 9', classvalue: 65, discipline: 10, homework: 8, dayNumber: 9 },
-      { day: 'Day 10', classvalue: 60, discipline: 9, homework: 10, dayNumber: 10 },
-      { day: 'Today', classvalue: 55, discipline: 10, homework: 10, dayNumber: 11 },
-      { day: 'Day 12', classvalue: 0, discipline: 0, homework: 0, dayNumber: 12 },
-      { day: 'Day 13', classvalue: 0, discipline: 0, homework: 0, dayNumber: 13 },
-      { day: 'Day 14', classvalue: 0, discipline: 0, homework: 0, dayNumber: 14 },
-    ],
-    Math: [
-      { day: 'Day 8', classvalue: 75, discipline: 10, homework: 8, dayNumber: 8 },
-      { day: 'Day 9', classvalue: 70, discipline: 9, homework: 9, dayNumber: 9 },
-      { day: 'Day 10', classvalue: 65, discipline: 10, homework: 9, dayNumber: 10 },
-      { day: 'Today', classvalue: 60, discipline: 10, homework: 10, dayNumber: 11 },
-      { day: 'Day 12', classvalue: 0, discipline: 0, homework: 0, dayNumber: 12 },
-      { day: 'Day 13', classvalue: 0, discipline: 0, homework: 0, dayNumber: 13 },
-      { day: 'Day 14', classvalue: 0, discipline: 0, homework: 0, dayNumber: 14 },
-    ],
-    Monthly: [
-      { day: 'Apr', classvalue: 68, discipline: 20, homework: 0, dayNumber: 1, month: 'Apr' },
-      { day: 'May', classvalue: 65, discipline: 20, homework: 0, dayNumber: 2, month: 'May' },
-      { day: 'Jun', classvalue: 60, discipline: 20, homework: 0, dayNumber: 3, month: 'Jun' },
-      { day: 'Jul', classvalue: 55, discipline: 20, homework: 0, dayNumber: 4, month: 'Jul' },
-      { day: 'Aug', classvalue: 0, discipline: 0, homework: 0, dayNumber: 5, month: 'Aug' },
-      { day: 'Sep', classvalue: 0, discipline: 0, homework: 0, dayNumber: 6, month: 'Sep' },
-      { day: 'Oct', classvalue: 0, discipline: 0, homework: 0, dayNumber: 7, month: 'Oct' },
-    ],
-    Overall: [
-      { day: 'Day 8', classvalue: 68, discipline: 10, homework: 9, dayNumber: 8 },
-      { day: 'Day 9', classvalue: 66, discipline: 9, homework: 10, dayNumber: 9 },
-      { day: 'Day 10', classvalue: 63, discipline: 10, homework: 9, dayNumber: 10 },
-      { day: 'Today', classvalue: 58, discipline: 10, homework: 10, dayNumber: 11 },
-      { day: 'Day 12', classvalue: 0, discipline: 0, homework: 0, dayNumber: 12 },
-      { day: 'Day 13', classvalue: 0, discipline: 0, homework: 0, dayNumber: 13 },
-      { day: 'Day 14', classvalue: 0, discipline: 0, homework: 0, dayNumber: 14 },
-    ],
-  };
+  useEffect(() => {
+    if (!studentData?.student_id) return;
 
-  const tabs = ['Monthly', 'Overall', 'Tamil', 'English', 'Math'];
+    const fetchPerformance = async () => {
+      const res = await fetch(`${API_URL}/api/student/getStudentPerformance/${studentData.student_id}`);
+      const json = await res.json();
+      setPerformanceData(json);
+    };
+
+    fetchPerformance();
+  }, [studentData]);
+
+  useEffect(() => {
+    const fetchPerformanceData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_URL}/api/student/getStudentPerformance/${studentData.student_id}`);
+        const data = await response.json();
+        setPerformanceData(data);
+        if (data.subjectList && (!sectionSubjects || sectionSubjects.length === 0)) {
+          setSectionSubjects(data.subjectList.map(s => ({ subject_name: s })));
+        }
+      } catch (error) {
+        console.error('Error fetching performance data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    const fetchSubjects = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_URL}/api/student/getSectionSubjects`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ sectionId: studentData.section_id }),
+        });
+        const data = await response.json();
+        setSectionSubjects(data.subjects);
+        // console.log('Fetched subjects:', data.subjects);
+
+      } catch (error) {
+        console.error('Error fetching performance data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    // console.log('Student Data:', studentData.student_id);
+
+    if (studentData) {
+      fetchPerformanceData();
+      fetchSubjects();
+    }
+  }, [studentData]);
 
   const handleBarPress = (day) => {
-    if (onBarPress) {
-      onBarPress(day);
-    } else {
-      // If no custom handler is provided, navigate to details screen
-      navigation.navigate('PerformanceDetailsScreen', {
+    // console.log(day);
+
+    if (activeTab != 'Overall' && activeTab != 'Monthly') {
+      navigation.navigate('StudentPerformanceDetailsScreen', {
         data: day,
-        activeTab: activeTab
+        studentData,
+        activeTab: activeTab,
+        subject: activeTab !== 'Monthly' && activeTab !== 'Overall' ? activeTab : null
       });
     }
   };
 
-  const getXAxisLabel = (day) => {
-    // For Monthly tab, return the month value
-    if (activeTab === 'Monthly') {
-      return day.month;
-    }
-    // For other tabs, return the day value
-    return day.day;
+  const formatGraphData = () => {
+    if (!performanceData) return {};
+
+    // Create array of last 7 days including today
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i)); // Creates days from Day 1 to Today
+      return date;
+    });
+
+    const data = {
+      Overall: [],
+      Monthly: [],
+      ...Object.fromEntries(sectionSubjects.map(sub => [sub.subject_name, []]))
+    };
+
+    // Helper to convert backend date to ISO format
+    const toISODate = (dateStr) => {
+      if (dateStr.includes(',')) { // If it's in "Fri May 23..." format
+        return new Date(dateStr).toISOString().split('T')[0];
+      }
+      return dateStr; // Assume it's already in YYYY-MM-DD format
+    };
+
+    // Process daily data
+    last7Days.forEach((dateObj, index) => {
+      const dateISO = dateObj.toISOString().split('T')[0];
+      const dayLabel = index === 6 ? 'Today' : `Day ${index + 1}`;
+
+      // Find matching backend data
+      const backendDateKey = Object.keys(performanceData.daily || {}).find(d =>
+        toISODate(d) === dateISO
+      );
+      const dailyData = backendDateKey ? performanceData.daily[backendDateKey] : null;
+
+      // Process Overall data (80% academic, 20% combined homework/discipline)
+      const overallScore = dailyData?.Overall || 0;
+      data.Overall.push({
+        day: dayLabel,
+        classvalue: Math.round(overallScore * 0.8), // Academic (80%)
+        homework: Math.round(overallScore * 0.1),   // Homework (10%)
+        discipline: Math.round(overallScore * 0.1), // Discipline (10%)
+        dayNumber: index + 1,
+        date: dateISO
+      });
+
+      // Process subject data
+      sectionSubjects.forEach(subject => {
+        const subjectName = subject.subject_name;
+        const subjectScore = dailyData?.[subjectName] || 0;
+
+        data[subjectName].push({
+          day: dayLabel,
+          classvalue: Math.round(subjectScore * 0.8), // Academic
+          homework: Math.round(subjectScore * 0.1),   // Homework
+          discipline: Math.round(subjectScore * 0.1), // Discipline
+          dayNumber: index + 1,
+          date: dateISO
+        });
+      });
+    });
+
+    // Process monthly data
+    const months = Object.keys(performanceData.monthly || {}).sort();
+    const last3Months = months.slice(-3);
+
+    last3Months.forEach((month, index) => {
+      const monthName = new Date(month + '-01').toLocaleString('default', { month: 'short' });
+      const monthData = performanceData.monthly[month];
+      const overallScore = monthData?.Overall || 0;
+
+      data.Monthly.push({
+        day: monthName,
+        classvalue: Math.round(overallScore * 0.8),
+        homework: Math.round(overallScore * 0.1),
+        discipline: Math.round(overallScore * 0.1),
+        dayNumber: index + 1,
+        month: monthName
+      });
+    });
+
+    return data;
   };
+
+  // useEffect(() => {
+  //   console.log("Raw performance data:", performanceData);
+  //   const formatted = formatGraphData();
+  //   console.log("Formatted graph data:", formatted);
+
+  // }, [performanceData]);
+
+  // const tabs = ['Monthly', 'Overall', ...(performanceData?.subjects ? Object.keys(performanceData.subjects) : [])];
+
+  const graphData = formatGraphData();
+  // console.log(sectionSubjects);
+
+  const tabs = ['Monthly', 'Overall', ...sectionSubjects.map(s => s.subject_name)];
+
+  const getXAxisLabel = (day) => {
+    return activeTab === 'Monthly' ? day.month : day.day;
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (!performanceData) {
+    return (
+      <View style={styles.container}>
+        <Text>No performance data available</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -107,18 +227,16 @@ const PerformanceGraph = ({ onBarPress, showTitle = true }) => {
 
       {/* Graph */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.graphContainer}>
-        
-        {data[activeTab].map((day) => {
+        {graphData[activeTab]?.map((day) => {
           const totalScore = day.classvalue + day.discipline + day.homework;
           const assignmentHeight = `${day.classvalue}%`;
           const extraHeight = `${day.discipline + day.homework}%`;
           const extraValue = day.discipline + day.homework;
 
           const hasScore = totalScore > 0;
-          // Orange color for current day/month, blue for others
-          const assignmentColor = 
-            (activeTab === 'Monthly' && day.day === 'Jul') || 
-            (activeTab !== 'Monthly' && day.day === 'Today') 
+          const assignmentColor =
+            (activeTab === 'Monthly' && day.day === 'Jul') ||
+              (activeTab !== 'Monthly' && day.day === 'Today')
               ? '#F4A460' : '#0C36FF';
 
           return (
@@ -128,50 +246,41 @@ const PerformanceGraph = ({ onBarPress, showTitle = true }) => {
               onPress={() => hasScore && handleBarPress(day)}
               disabled={!hasScore}
             >
-              
-                <View style={styles.barWrapper}>
-                  {hasScore ? (
-                    // Render score bars
-                    <>
-                      {/* Score Label */}
-                      <Text style={styles.scoreLabel}>{totalScore}%</Text>
+              <View style={styles.barWrapper}>
+                {hasScore ? (
+                  <>
+                    <Text style={styles.scoreLabel}>{totalScore}%</Text>
 
-                      <View style={styles.barContent}>
-                        {/* Assignment Bar */}
-                        <View
-                          style={[
-                            styles.assignmentBar,
-                            { height: assignmentHeight, backgroundColor: assignmentColor }
-                          ]}
-                        >
-                          {/* Assignment Value */}
-                          <Text style={styles.barValueText}>
-                            {day.classvalue}%
-                          </Text>
-                        </View>
-
-                        {/* Discipline + Homework Bar */}
-                        <View
-                          style={[
-                            styles.disciplineBar,
-                            { height: extraHeight }
-                          ]}
-                        >
-                          {/* Discipline + Homework Value */}
-                          <Text style={styles.barValueText}>
-                            {extraValue}%
-                          </Text>
-                        </View>
+                    <View style={styles.barContent}>
+                      <View
+                        style={[
+                          styles.assignmentBar,
+                          { height: assignmentHeight, backgroundColor: assignmentColor }
+                        ]}
+                      >
+                        <Text style={styles.barValueText}>
+                          {day.classvalue}%
+                        </Text>
                       </View>
-                    </>
-                  ) : (
-                    // Render empty bar
-                    <View style={styles.emptyBar}>
-                      <Text style={styles.emptyBarText}>-</Text>
+
+                      <View
+                        style={[
+                          styles.disciplineBar,
+                          { height: extraHeight }
+                        ]}
+                      >
+                        <Text style={styles.barValueText}>
+                          {extraValue}%
+                        </Text>
+                      </View>
                     </View>
-                  )}
-                </View>
-              
+                  </>
+                ) : (
+                  <View style={styles.emptyBar}>
+                    <Text style={styles.emptyBarText}>-</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.dayLabel}>{getXAxisLabel(day)}</Text>
             </TouchableOpacity>
           );

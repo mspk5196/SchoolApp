@@ -43,22 +43,22 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10, 
+    paddingHorizontal: 10,
   },
-classnavgrade: {
+  classnavgrade: {
     flexDirection: 'row',
     marginTop: 10,
     marginBottom: 10,
     flexGrow: 0,
     flexShrink: 0,
-},
-classnavsection:{
+  },
+  classnavsection: {
     flexDirection: 'row',
     marginBottom: 20,
     flexGrow: 0,
     flexShrink: 0,
-},
-gradeselection: {
+  },
+  gradeselection: {
     backgroundColor: '#ffffff',
     padding: 10,
     marginLeft: 10,
@@ -66,17 +66,17 @@ gradeselection: {
     width: 90,
     borderRadius: 30,
     alignItems: 'center',
-},
-gradeselectiontext: {
+  },
+  gradeselectiontext: {
     color: 'black',
-    fontWeight:'500',
-},
-activeButton: {
+    fontWeight: '500',
+  },
+  activeButton: {
     backgroundColor: '#0C36FF',
-},
-activeText: {
+  },
+  activeText: {
     color: 'white',
-},
+  },
   listItem: {
     width: '45%',
     margin: 8,
@@ -94,9 +94,9 @@ activeText: {
     display: 'flex',
     alignItems: 'center',
     marginTop: 12,
-    width:74,
+    width: 74,
     backgroundColor: '#2D50FD',
-    paddingVertical: 4, 
+    paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 5,
   },
@@ -143,12 +143,12 @@ activeText: {
     paddingVertical: 5,
   },
   searchInput: {
-    color:"#000",
+    color: "#000",
     height: 40,
     flex: 1,
     fontSize: 16,
     paddingHorizontal: 8,
-    
+
   },
   footer: {
     position: 'absolute',
@@ -158,7 +158,7 @@ activeText: {
     padding: 12,
     borderRadius: 100,
   },
- 
+
 });
 
 export default styles;

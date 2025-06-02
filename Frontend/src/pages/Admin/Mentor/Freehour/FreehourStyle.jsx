@@ -54,9 +54,9 @@ const styles = StyleSheet.create({
   pendingIcon: {
     marginRight: 5,
   },
-    completedIcon: {
+  completedIcon: {
     marginRight: 5,
-    },
+  },
   refreshButton: {
     width: 40,
     height: 40,
@@ -151,11 +151,13 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
+    width: 110,
   },
   assignButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '500',
+    textAlign: 'center',
   },
   statusPending: {
     flexDirection: 'row',
@@ -200,6 +202,42 @@ const styles = StyleSheet.create({
   homeIcon: {
     fontSize: 24,
     color: '#1857C0',
+  },
+  errorText: {
+    color: '#F44336',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  statusPending: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 16,
+  },
+  statusCompleted: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 16,
+  },
+  statusText: {
+    fontSize: 14,
+    color: '#FF9800',
+    marginTop: 4,
+  },
+  statusCompletedText: {
+    fontSize: 14,
+    color: '#4CAF50',
+    marginTop: 4,
+  },
+  completeButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginTop: 8,
+  },
+  completeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
   },
 });
 

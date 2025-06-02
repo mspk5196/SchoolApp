@@ -129,7 +129,7 @@ const CoordinatorRequestUpload = ({ route, navigation }) => {
       const data = await response.json();
       if (data.success) {
         Alert.alert('Success', `${documentTitles.length} documents uploaded successfully!`);
-        navigation.navigate('RequestHome', {
+        navigation.navigate('CoordinatorRequest', {
           updatedStatus: 'Completed', 
           requestId: reqData.requestID,
         });

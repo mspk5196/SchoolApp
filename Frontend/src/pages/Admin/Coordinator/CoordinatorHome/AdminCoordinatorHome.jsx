@@ -1,12 +1,13 @@
-import React from 'react';
-import {Text, View, SectionList, TouchableOpacity} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import React, { useEffect } from 'react';
+import { Text, View, SectionList, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './CoordinatorHomeStyle';
-import HomeIcon from            '../../../../assets/AdminPage/CoordinatorHome/home.svg'; // Reusing existing icon
+import HomeIcon from '../../../../assets/AdminPage/CoordinatorHome/home.svg'; // Reusing existing icon
 import CoordinatorListIcon from '../../../../assets/AdminPage/CoordinatorHome/coordinatorlist.svg'; // You'll need to create this icon
-import EnrollmentIcon from      '../../../../assets/AdminPage/CoordinatorHome/enrollment.svg'; // You'll need to create this icon
-import LeaveApprovalIcon from   '../../../../assets/AdminPage/CoordinatorHome/leaveapproval.svg'; // You'll need to create this icon
-import BackIcon from            '../../../../assets/AdminPage/CoordinatorHome/Back.svg'; // You'll need to create this icon
+import EnrollmentIcon from '../../../../assets/AdminPage/CoordinatorHome/enrollment.svg'; // You'll need to create this icon
+import LeaveApprovalIcon from '../../../../assets/AdminPage/CoordinatorHome/leaveapproval.svg'; // You'll need to create this icon
+import BackIcon from '../../../../assets/AdminPage/CoordinatorHome/Back.svg'; // You'll need to create this icon
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const data = [
   {
@@ -39,24 +40,25 @@ const data = [
   },
 ];
 
-const CoordinatorCard = ({title, Icon, bgColor, color, onPress}) => (
+const CoordinatorCard = ({ title, Icon, bgColor, color, onPress }) => (
   <TouchableOpacity
     onPress={onPress}
-    style={[styles.card, {backgroundColor: bgColor}]}>
+    style={[styles.card, { backgroundColor: bgColor }]}>
     <Icon style={styles.icon} />
-    <Text style={[styles.cardText, {color: color}]}>{title}</Text>
+    <Text style={[styles.cardText, { color: color }]}>{title}</Text>
   </TouchableOpacity>
 );
 
-const AdminCoordinatorHome = ({navigation}) => {
+const AdminCoordinatorHome = ({ navigation }) => {
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation && navigation.goBack()}
         >
-            <BackIcon width={20} height={20} />  
+          <BackIcon width={20} height={20} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Coordinator</Text>
       </View>
@@ -64,7 +66,7 @@ const AdminCoordinatorHome = ({navigation}) => {
         sections={data}
         keyExtractor={item => item.id}
         style={styles.scrollView}
-        renderItem={({item}) => (
+        renderItem={({ item }) => (
           <CoordinatorCard
             title={item.title}
             Icon={item.Icon}
@@ -82,11 +84,11 @@ const AdminCoordinatorHome = ({navigation}) => {
           />
         )}
       />
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.homeButton}
         onPress={() => navigation.navigate('AdminMain')}
       >
-        <HomeIcon height={25} width={25} fill="#FFFFFF"/>
+        <HomeIcon height={25} width={25} fill="#FFFFFF" />
       </TouchableOpacity>
     </SafeAreaView>
   );

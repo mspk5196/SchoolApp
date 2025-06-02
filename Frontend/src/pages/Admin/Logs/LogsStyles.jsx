@@ -128,12 +128,13 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 14,
     color: '#333333',
-    marginLeft: 4,
+    right:3
   },
   actionButtonsContainer: {
     flexDirection: 'row',
     marginTop: 8,
     gap: 8,
+    justifyContent:'flex-end',
   },
   callButton: {
     width: 36,

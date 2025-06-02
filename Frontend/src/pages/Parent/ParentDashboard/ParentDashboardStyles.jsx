@@ -258,6 +258,7 @@ const styles = StyleSheet.create({
     color: '#E55048',
     fontSize: 14,
     fontWeight: '500',
+    marginVertical:'auto'
   },
   homeworkActions: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Image,
@@ -9,14 +9,29 @@ import {
   Linking,
 } from 'react-native';
 import styles from './PhonebookStyles';
-import Profile from  '../../../../assets/ParentPage/LeaveIcon/profile.png';
+import Profile from '../../../../assets/ParentPage/LeaveIcon/profile.png';
 import CallIcon from '../../../../assets/ParentPage/phonebook/call';
-import MsgIcon from  '../../../../assets/ParentPage/phonebook/msg';
+import PrevIcon from '../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
+import MsgIcon from '../../../../assets/ParentPage/phonebook/msg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '@env'
 
-const ContactCard = ({name, facultyId, subject, phoneNumber, onMessagePress}) => {
+const ContactCard = ({ name, facultyId, subject, phoneNumber, onMessagePress, profile }) => {
   const handleCallPress = () => {
     // Open phone dialer with the contact's phone number
     Linking.openURL(`tel:${phoneNumber}`);
+  };
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Profile;
+    }
   };
 
   return (
@@ -25,7 +40,7 @@ const ContactCard = ({name, facultyId, subject, phoneNumber, onMessagePress}) =>
       <View style={styles.contentContainer}>
         <View style={styles.leftContent}>
           <View style={styles.avatarContainer}>
-            <Image source={Profile} style={styles.avatar} resizeMode="cover" />
+            <Image source={getProfileImageSource(profile)} style={styles.avatar} />
           </View>
           <View style={styles.info}>
             <Text style={styles.name}>{name}</Text>
@@ -34,12 +49,12 @@ const ContactCard = ({name, facultyId, subject, phoneNumber, onMessagePress}) =>
           </View>
         </View>
         <View style={styles.actions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={handleCallPress}>
             <CallIcon height={35} width={35} />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={onMessagePress}>
             <MsgIcon height={35} width={35} />
@@ -51,47 +66,83 @@ const ContactCard = ({name, facultyId, subject, phoneNumber, onMessagePress}) =>
   );
 };
 
-const StudentPagePhonebook = ({navigation}) => {
-  const [contacts, setContacts] = useState([
-    {id: '1', name: 'Mr.SasiKumar', facultyId: '203384', subject: 'Tamil', phoneNumber: '9876543210'},
-    {id: '2', name: 'Mr.SasiKumar', facultyId: '203384', subject: 'English', phoneNumber: '9876543210'},
-    {id: '3', name: 'Mr.SasiKumar', facultyId: '203384', subject: 'Maths', phoneNumber: '9876543210'},
-    {id: '4', name: 'Mr.SasiKumar', facultyId: '203384', subject: 'Science', phoneNumber: '9876543210'},
-    {id: '5', name: 'Mr.SasiKumar', facultyId: '203384', subject: 'Social', phoneNumber: '9876543210'},
-    {
-      id: '6',
-      name: 'Ms.Priya',
-      facultyId: '203385',
-      subject: 'Computer Science',
-      phoneNumber: '9876543211',
-    },
-    {id: '7', name: 'Mr.Rajesh', facultyId: '203386', subject: 'Physics', phoneNumber: '9876543212'},
-    {id: '8', name: 'Mrs.Lakshmi', facultyId: '203387', subject: 'Chemistry', phoneNumber: '9876543213'},
-  ]);
+const StudentPagePhonebook = ({ navigation }) => {
+  const [contacts, setContacts] = useState([]);
 
   const handleMessagePress = (contact) => {
     navigation.navigate('StudentPageMessage', { contact });
   };
 
-  const renderItem = ({item}) => (
+  const [studentData, setStudentData] = useState([]);
+
+  const fetchStudentData = async () => {
+    try {
+      const storedData = await AsyncStorage.getItem('studentData');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        setStudentData(parsedData[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  }
+
+  useEffect(() => {
+    fetchStudentData();
+  }, []);
+
+
+  const fetchSectionSubjectMentors = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/student/fetchSectionSubjectMentors`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sectionId: studentData.section_id
+        }),
+      }); // Replace with your API endpoint
+      const data = await response.json();
+      setContacts(data.subjectMentors || []);
+    } catch (error) {
+      console.error('Error fetching mentors:', error);
+    }
+  }
+
+  useEffect(() => {
+    if (studentData.section_id) {
+      fetchSectionSubjectMentors();
+    }
+  }, [studentData.section_id]);
+
+  const renderItem = ({ item }) => (
     <ContactCard
-      name={item.name}
-      facultyId={item.facultyId}
-      subject={item.subject}
-      phoneNumber={item.phoneNumber}
+      name={item.mentor_name}
+      facultyId={item.mentor_roll}
+      subject={item.subject_name}
+      profile={item.file_path}
+      phoneNumber={item.mentor_phone}
       onMessagePress={() => handleMessagePress(item)}
     />
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.headerText}>Phonebook</Text>
+      
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <PrevIcon width={24} height={24} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Phone Book</Text>
+        </View>
       </View>
+
       <FlatList
         data={contacts}
         renderItem={renderItem}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item.subject_id}
         contentContainerStyle={styles.listContainer}
       />
     </SafeAreaView>

@@ -149,7 +149,7 @@ router.post(
 
 // Create/update academic schedule
 // router.post('/coordinator/academic-schedule/schedule-add', coordinatorController.createOrUpdateSchedule);
-router.get('/coordinator/academic-schedule/getShedule/:section_id/:day', coordinatorController.getSchedule);
+// router.get('/coordinator/academic-schedule/getShedule/:section_id/:day', coordinatorController.getSchedule);
 
 //ExamSchedule
 router.get('/coordinator/getExamSchedule', coordinatorController.getExamSchedule);
@@ -173,6 +173,7 @@ router.get('/coordinator/getAvailableMentorsForInvigilation', coordinatorControl
 
 //StudentsPage
 router.post('/coordinator/student/getSectionStudents', coordinatorController.getSectionStudents);
+
 //Discipline
 router.post('/coordinator/student/addStudentComplaint', coordinatorController.addStudentComplaint);
 router.get('/coordinator/student/getStudentDisciplineLogs', coordinatorController.getStudentDisciplineLogs);
@@ -192,12 +193,20 @@ router.post('/coordinator/mentor/assignMentorToSubject', coordinatorController.a
 router.post('/coordinator/mentor/assignSubjectToMentorSection', coordinatorController.assignSubjectToMentorSection);
 router.post('/coordinator/mentor/getEnroledSubjectMentors', coordinatorController.getEnroledSubjectMentors);
 router.post('/coordinator/mentor/getEnroledGradeSubjectMentor', coordinatorController.getEnroledGradeSubjectMentor);
-
 router.post('/coordinator/mentor/getMentorSchedule', coordinatorController.getMentorSchedule);
+router.post('/coordinator/mentor/available-substitute-mentors', coordinatorController.getAvailableMentors);
+router.post('/coordinator/mentor/substitute-mentor', coordinatorController.updateMentorSubstitution);
 //Discipline
 router.post('/coordinator/mentor/addFacultyComplaint', coordinatorController.addFacultyComplaint);
 router.get('/coordinator/mentor/getDisciplineLogs', coordinatorController.getDisciplineLogs);
 router.get('/coordinator/mentor/getFacultyList', coordinatorController.getFacultyList);
+//LeaveApproval
+router.post('/coordinator/getMentorLeaveRequests', coordinatorController.getMentorLeaveRequests);
+router.post('/coordinator/getMentorLeaveHistory', coordinatorController.getMentorLeaveHistory);
+router.post('/coordinator/getAvailableMentorsForDate', coordinatorController.getAvailableMentorsForDate);
+router.post('/coordinator/approveMentorLeave', coordinatorController.approveMentorLeave);
+router.post('/coordinator/rejectMentorLeave', coordinatorController.rejectMentorLeave);
+router.post('/coordinator/getAllMentorLeaveHistory', coordinatorController.getAllMentorLeaveHistory);
 
 //Events
 router.post('/coordinator/events/create', uploadEventBanner.single('bannerPhoto'),coordinatorController.createEvent);
@@ -208,6 +217,13 @@ router.delete('/coordinator/events/delete', coordinatorController.deleteEvent);
 router.get('/coordinator/calendar/events', coordinatorController.getCalendarEvents);
 router.post('/coordinator/calendar/events', coordinatorController.addCalendarEvent);
 router.delete('/coordinator/calendar/events', coordinatorController.deleteCalendarEvent);
+
+//Logs
+router.post('/coordinator/getOverdueClasses', coordinatorController.getOverdueClasses);
+router.post('/coordinator/getOverdueStudentLevels', coordinatorController.getOverdueStudentLevels);
+router.post('/coordinator/assignTask', coordinatorController.assignTask);
+router.post('/coordinator/getRequestedAssessments', coordinatorController.getRequestedAssessments);
+router.post('/coordinator/processAssessmentRequest', coordinatorController.processAssessmentRequest);
 
 
 module.exports = router;

@@ -11,12 +11,12 @@ import {
     StatusBar,
     Platform,
     Alert,
-    PermissionsAndroid
+    PermissionsAndroid,
+    Linking,
+    ActivityIndicator
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RNFetchBlob from 'rn-fetch-blob';
-import RNFS from 'react-native-fs';
-import FileViewer from 'react-native-file-viewer';
 import styles from './SubjectStyle';
 import BackIcon from '../../../../assets/CoordinatorPage/Subjects/Back.svg';
 import PdfIcon from '../../../../assets/CoordinatorPage/Subjects/pdf-icon.svg';
@@ -25,7 +25,9 @@ import DownloadIcon from '../../../../assets/MentorPage/download.svg';
 import EditIcon from '../../../../assets/CoordinatorPage/Subjects/Edit.svg';
 import { API_URL } from "@env";
 import { requestStoragePermission } from '../../../../components/StoragePermission/requestStoragePermission';
-import { getType } from 'mime';
+import RNFS from 'react-native-fs';
+import FileViewer from 'react-native-file-viewer';
+import mime from 'react-native-mime-types';
 
 const MentorSubjectPage = ({ route, navigation }) => {
     const { grade, subject, subjectID, gradeID } = route.params || {};
@@ -58,111 +60,53 @@ const MentorSubjectPage = ({ route, navigation }) => {
         };
     }, [gradeID, subjectID]);
 
-    const [progress, setProgress] = useState(0);
-    const [visible, setVisible] = useState(false);
+    const [downloadProgress, setDownloadProgress] = useState(null);
 
-    const downloadFile = async (url, fileName) => {
+    const openFileLikeWhatsApp = async (fileUrl, fileName) => {
+        setDownloadProgress(0);
+        const localFile = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+
         try {
-            // 1. Use your existing requestStoragePermission() function
-            const hasPermission = await requestStoragePermission();
-            if (!hasPermission) {
-                Alert.alert('Permission Denied', 'Storage permission required');
-                return;
-            }
-
-            // 2. Define Download Path
-            const downloadDir = Platform.OS === 'android'
-                ? RNFS.DownloadDirectoryPath
-                : RNFS.DocumentDirectoryPath;
-            const filePath = `${downloadDir}/${fileName.replace(/%20/g, ' ')}`;
-
-            // 3. Show download progress alert
-            const progressAlert = Alert.alert(
-                'Downloading, Please Wait',
-                `Downloading ${fileName}...`,
-                [],
-                { cancelable: false }
-            );
-
-            // 4. Download File
-            const options = {
-                fromUrl: url,
-                toFile: filePath,
-                notification: true,
+            const downloadResult = await RNFS.downloadFile({
+                fromUrl: fileUrl,
+                toFile: localFile,
                 progress: (res) => {
-                    const progress = (res.bytesWritten / res.contentLength) * 100;
-                    console.log(`Download Progress: ${progress.toFixed(2)}%`);
+                    const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);
+                    setDownloadProgress(percent);
                 },
-            };
+                progressDivider: 1,
+            }).promise;
 
-            const download = RNFS.downloadFile(options);
-            const { statusCode } = await download.promise;
+            setDownloadProgress(null);
 
-            // Close progress alert
-            Alert.alert('Success', `Downloaded to ${filePath}`);
-
-            // 5. Open File (optional)
-            try {
-                console.log(filePath);
-
-                await openRemoteFile(filePath);
-
-            } catch (openError) {
-                console.log('Could not open file:', openError);
-            }
-
-        } catch (error) {
-            Alert.alert('Error', `Failed to download file: ${error.message}`);
-            console.error('Download error:', error);
-        }
-
-
-        return (
-            <>
-                <Modal visible={visible} transparent animationType="fade">
-                    <View style={styles.modalContainer}>
-                        <View style={styles.dialog}>
-                            <Text style={styles.title}>Downloading...</Text>
-                            <Text style={styles.percent}>{progress}%</Text>
-                        </View>
-                    </View>
-                </Modal>
-
-                {/* You can call this manually or wrap in a button */}
-                <Text onPress={downloadFile} style={styles.downloadBtn}>
-                    Download & Open
-                </Text>
-            </>
-        );
-
-    };
-
-    const getMimeType = (filename) => {
-        const ext = filename.split('.').pop().toLowerCase();
-        switch (ext) {
-            case 'pdf': return 'application/pdf';
-            case 'mp4': return 'video/mp4';
-            case 'jpg': case 'jpeg': return 'image/jpeg';
-            case 'png': return 'image/png';
-            default: return 'application/octet-stream';
-        }
-    };
-
-    const openRemoteFile = async (filePath) => {
-        try {
-            const mimeType = getMimeType(filePath);
-
-            if (Platform.OS === 'Android') {
-                await RNFetchBlob.android.actionViewIntent(filePath, mimeType);
+            if (downloadResult.statusCode === 200) {
+                const mimeType = mime.lookup(fileName) || undefined;
+                await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
             } else {
-                await FileViewer.open(filePath, { showOpenWithDialog: true });
+                Alert.alert('Download failed', 'Could not download the file.');
             }
         } catch (err) {
-            console.error('❌ Could not open file:', err);
-            Alert.alert(
-                'Cannot Open File',
-                'Please make sure a compatible app (like Adobe PDF Reader) is installed.'
-            );
+            setDownloadProgress(null);
+            if (
+                err &&
+                (err.message?.includes('No app associated') ||
+                    err.message?.includes('no activity found to handle Intent'))
+            ) {
+                Alert.alert(
+                    'No App Found',
+                    'No app is installed to open this file type. Would you like to open it in your browser?',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Open in Browser',
+                            onPress: () => Linking.openURL(fileUrl),
+                        },
+                    ]
+                );
+            } else {
+                Alert.alert('Error', 'Could not open the file.');
+            }
+            console.error('File open error:', err);
         }
     };
 
@@ -353,9 +297,9 @@ const MentorSubjectPage = ({ route, navigation }) => {
                                                 material.pdfs.map((pdf, idx) => (
                                                     <View key={`pdf-${pdf.id || pdf.name || idx}`} style={styles.fileRow}>
                                                         <PdfIcon style={styles.pdfIcon} />
-                                                        <Text style={styles.fileName}>{pdf.name}</Text>
+                                                        <Text style={styles.fileName}>{(pdf.name).replace(/%/g, ' ')}</Text>
                                                         <TouchableOpacity
-                                                            onPress={() => downloadFile(pdf.uri, pdf.name)}
+                                                            onPress={() => openFileLikeWhatsApp(pdf.uri, pdf.name)}
                                                         >
                                                             <DownloadIcon />
                                                         </TouchableOpacity>
@@ -373,7 +317,7 @@ const MentorSubjectPage = ({ route, navigation }) => {
                                                         <VideoIcon style={styles.videoIcon} />
                                                         <Text style={styles.fileName}>{video.name}</Text>
                                                         <TouchableOpacity
-                                                            onPress={() => downloadFile(video.uri, video.name)}
+                                                            onPress={() => openFileLikeWhatsApp(video.uri, video.name)}
                                                         >
                                                             <DownloadIcon />
                                                         </TouchableOpacity>
@@ -398,6 +342,35 @@ const MentorSubjectPage = ({ route, navigation }) => {
                     </View>
                 )}
             </ScrollView>
+
+            <Modal
+                visible={downloadProgress !== null}
+                transparent
+                animationType="fade"
+                onRequestClose={() => { }} // disables Android back button
+            >
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
+                    <View style={{
+                        backgroundColor: '#fff',
+                        padding: 30,
+                        borderRadius: 10,
+                        alignItems: 'center'
+                    }}>
+                        <ActivityIndicator size="large" color="#007bff" style={{ marginBottom: 10 }} />
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 5, color: 'black' }}>
+                            Downloading...
+                        </Text>
+                        <Text style={{ fontSize: 16, color: 'black' }}>
+                            {downloadProgress}%
+                        </Text>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };

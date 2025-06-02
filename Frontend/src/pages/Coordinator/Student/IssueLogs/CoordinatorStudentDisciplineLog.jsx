@@ -264,11 +264,11 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
                   </View>
                   <View style={styles.regBar}>
                     <Text style={styles.registeredBy}>Registered by {item.registered_by_name}</Text>
-                    <TouchableOpacity style={styles.actionButtonCall} onPress={() => handleCallPress(item.phone)}>
-                      <Phone width={30} height={30} />
+                    <TouchableOpacity style={styles.actionButtonCall} onPress={() => handleCallPress(item.registered_by_phone)}>
+                      <Phone width={20} height={20} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.actionButtonMsg}>
-                      <MessageSquare width={30} height={30} />
+                      <MessageSquare width={20} height={20} />
                     </TouchableOpacity>
                   </View>
                 </View>

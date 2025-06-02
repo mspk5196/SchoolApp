@@ -396,6 +396,18 @@ export default StyleSheet.create({
     marginLeft: 8,
     fontStyle: 'italic',
   },
+  levelMaterialContainer: {
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  levelHeader: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
 
 
 });

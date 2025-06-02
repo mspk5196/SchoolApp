@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,112 +8,181 @@ import {
   FlatList,
   TextInput,
   Image,
-  Modal,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import BackIcon from      '../../../../assets/AdminPage/FreeHour/leftarrow.svg';
-import SearchIcon from    '../../../../assets/AdminPage/FreeHour/search.svg';
-import HistoryIcon from   '../../../../assets/AdminPage/FreeHour/history.svg';
-import PendingIcon from   '../../../../assets/AdminPage/FreeHour/pending.svg';
+import BackIcon from '../../../../assets/AdminPage/FreeHour/leftarrow.svg';
+import SearchIcon from '../../../../assets/AdminPage/FreeHour/search.svg';
+import HistoryIcon from '../../../../assets/AdminPage/FreeHour/history.svg';
+import PendingIcon from '../../../../assets/AdminPage/FreeHour/pending.svg';
 import CompletedIcon from '../../../../assets/AdminPage/FreeHour/completed.svg';
-import HomeIcon from      '../../../../assets/AdminPage/FreeHour/home.svg';
+import HomeIcon from '../../../../assets/AdminPage/FreeHour/home.svg';
 import styles from './FreehourStyle';
 import staff from '../../../../assets/AdminPage/SubjectMentor/staff.png';
+import { API_URL } from '@env';
 
-const AdminFreehour = ({navigation, route}) => {
+const AdminFreehour = ({ navigation, route }) => {
+  const { selectedGrade } = route.params;
   const [searchText, setSearchText] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-  const [tasks, setTasks] = useState([
-    {
-      id: '1',
-      facultyId: '203384',
-      facultyName: 'Mr.SasiKumar',
-      description: 'Cover syllabus',
-      activity: 'Substitution',
-      status: 'pending',
-      timeSlot: '10:40AM - 11:20AM',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      facultyId: '203384',
-      facultyName: 'Mr.SasiKumar',
-      description: 'Lab assignment',
-      activity: 'Lab Work',
-      status: 'completed',
-      timeSlot: '10:40AM - 11:20AM',
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-    },
-  ]);
+  const [faculties, setFaculties] = useState([]);
+  const [filteredFaculties, setFilteredFaculties] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Sample data for free hour faculties
-  const faculties = Array.from({length: 5}, (_, index) => ({
-    id: index + 1,
-    name: `Mr.SasiKumar`,
-    facultyId: `203384`,
-    timeSlot: '10:40AM - 11:20AM',
-  }));
-
-  // Check for new task from navigation params
+  // Fetch free hour data on component mount
   useEffect(() => {
-    if (route.params?.newTask) {
-      const newTask = {
-        ...route.params.newTask,
-        facultyName: faculties.find(f => f.facultyId === route.params.newTask.facultyId)?.name || 'Unknown',
-      };
-      setTasks(prevTasks => [newTask, ...prevTasks]);
-      
-      // Clear the route params to prevent duplicate additions
-      navigation.setParams({ newTask: null });
+    fetchFreeHours();
+    fetchTasks();
+    fetch(`${API_URL}/api/admin/generateDailyFreeSlots`, { menthod: 'GET' });
+
+  }, []);
+
+  const fetchFreeHours = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}/api/admin/getFreeHour?grade=${selectedGrade}`);
+      const data = await response.json();
+      setFaculties(data);
+      setFilteredFaculties(data);
+      if (data.length === 0) {
+        Alert.alert('No free hours available');
+        setLoading(false);
+      }
+      else {
+        setLoading(false);
+      }
+
+    } catch (error) {
+      console.error('Error fetching free hours:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [route.params?.newTask]);
+  };
+
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/getFreeHourActivity`);
+      const data = await response.json();
+      setTasks(data);
+      console.log(data);
+
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    }
+  };
 
   // Filter faculties based on search text
-  const filteredFaculties = faculties.filter(faculty =>
-    faculty.name.toLowerCase().includes(searchText.toLowerCase()),
-  );
+  useEffect(() => {
+    if (searchText.trim() === '') {
+
+      setFilteredFaculties(faculties);
+    } else {
+      const filtered = faculties.filter(faculty =>
+        faculty.mentorName.toLowerCase().includes(searchText.toLowerCase()) ||
+        faculty.mentorRoll.toLowerCase().includes(searchText.toLowerCase())
+      );
+      setFilteredFaculties(filtered);
+    }
+  }, [searchText, faculties]);
 
   // Handle card press to navigate to details
   const handleCardPress = (faculty) => {
-    navigation.navigate('AdminFreeHourDetail', { faculty });
+    navigation.navigate('AdminFreeHourDetail', { faculty, timeSlot: `${faculty.start_time} - ${faculty.end_time}` });
   };
 
   // Handle assign task button press
   const handleAssignTask = (faculty) => {
-    navigation.navigate('AdminFreeHourAssign', { faculty });
+    console.log(faculty);
+
+    navigation.navigate('AdminFreeHourAssign', {
+      faculty: {
+        ds_id: faculty.id,
+        mentorId: faculty.mentorId,
+        name: faculty.name,
+        facultyId: faculty.roll,
+        timeSlot: `${faculty.start_time} - ${faculty.end_time}`,
+        rawStartTime: faculty.start_time,
+        rawEndTime: faculty.end_time,
+        file_path: faculty.file_path,
+      }
+    });
   };
 
   // Handle mark as completed
-  const handleMarkAsCompleted = (taskId) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === taskId ? {...task, status: 'completed'} : task
-      )
-    );
+  const handleMarkAsCompleted = async (taskId) => {
+    try {
+      await fetch(`${API_URL}/api/admin/tasks/${taskId}/complete`, {
+        method: 'PUT'
+      });
+      fetchTasks(); // Refresh tasks
+    } catch (error) {
+      console.error('Error marking task as completed:', error);
+    }
+  };
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return staff;
+    }
   };
 
   // Render task in history view
-  const renderTaskItem = ({ item }) => (
-    <View style={styles.taskCard}>
-      <View style={styles.cardLeftBorder} />
-      <Image source={staff} style={styles.avatar} />
-      <View style={styles.cardContent}>
-        <Text style={styles.name}>{item.facultyName}</Text>
-        <Text style={styles.facultyId}>Faculty ID: {item.facultyId}</Text>
-        <Text style={styles.timeSlot}>{item.timeSlot}</Text>
-      </View>
-      {item.status === 'pending' ? (
-        <View style={styles.statusPending}>
-            <PendingIcon width={20} height={20} style={styles.pendingIcon} />
-          <Text style={styles.statusText}>Pending</Text>
+  const renderTaskItem = ({ item }) => {
+
+    return (
+      <View style={styles.taskCard}>
+        <View style={styles.cardLeftBorder} />
+        {item.file_path ? (
+          <Image source={getProfileImageSource(item.file_path)} style={styles.avatar} />
+        ) : (
+          <Image source={staff} style={styles.avatar} />
+        )}
+        <View style={styles.cardContent}>
+          <Text style={styles.name}>{item.facultyName}</Text>
+          <Text style={styles.facultyId}>Faculty ID: {item.facultyId}</Text>
+          <Text style={styles.timeSlot}>{item.timeSlot}</Text>
+          <Text style={styles.description}>{item.description}</Text>
+          <Text style={styles.activity}>Activity: {item.activity_type}</Text>
         </View>
-      ) : (
-        <View style={styles.statusCompleted}>
+        {item.status === 'Pending' ? (
+          <View style={styles.statusPending}>
+            <View>
+              <PendingIcon width={20} height={20} style={styles.pendingIcon} />
+              <Text style={styles.statusText}>Pending</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.completeButton}
+              onPress={() => handleMarkAsCompleted(item.id)}
+            >
+              <Text style={styles.completeButtonText}>Mark Complete</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.statusCompleted}>
             <CompletedIcon width={20} height={20} style={styles.completedIcon} />
-          <Text style={styles.statusCompletedText}>Completed</Text>
-        </View>
-      )}
-    </View>
-  );
+            <Text style={styles.statusCompletedText}>Completed</Text>
+          </View>
+        )}
+      </View>
+
+    );
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container]}>
+        <Text style={{ textAlign: 'center', marginVertical: 'auto' }}>Loading...</Text>
+        <ActivityIndicator size="large" color="#0000ff" style={{ marginVertical: 'auto' }} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -128,16 +197,16 @@ const AdminFreehour = ({navigation, route}) => {
 
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
-            <SearchIcon width={20} height={20} style={styles.searchIcon} />
-           <TextInput
+          <SearchIcon width={20} height={20} style={styles.searchIcon} />
+          <TextInput
             style={styles.searchInput}
             placeholder="Search..."
             value={searchText}
             onChangeText={setSearchText}
           />
         </View>
-        <TouchableOpacity 
-          style={[styles.refreshButton, showHistory && styles.activeButton]} 
+        <TouchableOpacity
+          style={[styles.refreshButton, showHistory && styles.activeButton]}
           onPress={() => setShowHistory(!showHistory)}
         >
           <HistoryIcon width={20} height={20} style={styles.historyIcon} />
@@ -147,7 +216,7 @@ const AdminFreehour = ({navigation, route}) => {
       {showHistory ? (
         <FlatList
           data={tasks}
-          keyExtractor={item => item.id}
+          keyExtractor={item => item.id.toString()}
           renderItem={renderTaskItem}
           style={styles.taskList}
           showsVerticalScrollIndicator={false}
@@ -155,33 +224,48 @@ const AdminFreehour = ({navigation, route}) => {
       ) : (
         <FlatList
           data={filteredFaculties}
-          keyExtractor={item => item.id.toString()}
-          renderItem={({item}) => (
-            <TouchableOpacity 
-              style={styles.card}
-              onPress={() => handleCardPress(item)}
-            >
-              <View style={styles.cardLeftBorder} />
-              <Image source={staff} style={styles.avatar} />
-              <View style={styles.cardContent}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.facultyId}>Faculty ID: {item.facultyId}</Text>
-                <Text style={styles.timeSlot}>{item.timeSlot}</Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.assignButton}
-                onPress={() => handleAssignTask(item)}
+          keyExtractor={(item, index) => `${item.mentorId}-${item.rawStartTime}-${item.rawEndTime}-${index}`}
+          renderItem={({ item }) => {
+            const currentTime = new Date().toTimeString().split(' ')[0]; // "HH:MM:SS"
+            const isTimeOver = item.start_time < currentTime;
+
+            return (
+              <TouchableOpacity
+                style={styles.card}
+                onPress={() => { item.is_adjusted === 1 ? handleCardPress(item) : null }}
               >
-                <Text style={styles.assignButtonText}>Assign task</Text>
+                <View style={styles.cardLeftBorder} />
+                {item.file_path ? (
+                  <Image source={getProfileImageSource(item.file_path)} style={styles.avatar} />
+                ) : (
+                  <Image source={staff} style={styles.avatar} />
+                )}
+                <View style={styles.cardContent}>
+                  <Text style={styles.name}>{item.name}</Text>
+                  <Text style={styles.facultyId}>Faculty ID: {item.roll}</Text>
+                  <Text style={styles.timeSlot}>{item.start_time} - {item.end_time}</Text>
+                </View>
+                <TouchableOpacity
+                  disabled={isTimeOver || item.is_adjusted === 1}
+                  style={[
+                    styles.assignButton,
+                    (isTimeOver || item.is_adjusted === 1) && { backgroundColor: 'grey' }
+                  ]}
+                  onPress={() => handleAssignTask(item)}
+                >
+                  <Text style={styles.assignButtonText}>
+                    {item.is_adjusted === 1 ? 'Already Assigned' : (isTimeOver ? 'Time Over' : 'Assign Task')}
+                  </Text>
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          )}
+            )
+          }}
           style={styles.facultyList}
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.homeButton}
         onPress={() => navigation.navigate('AdminMain')}
       >

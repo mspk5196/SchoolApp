@@ -1,15 +1,27 @@
 import { StyleSheet } from "react-native";
 const styles = StyleSheet.create({
-    SubNavbar: {
+    container: {
+        flex: 1,
+        backgroundColor: '#f3f3f3',
+    },
+    header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
+        paddingVertical: 15,
+        paddingHorizontal: 15,
         borderBottomWidth: 1,
-        borderBlockColor: '#00000040',
+        borderBottomColor: '#E3E3E3',
+        backgroundColor: '#FFFFFF',
     },
-    Leftarrow: {
-        marginRight: 10,
+    headerTxt: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#000000',
+        marginLeft: 10,
+    },
+    BackIcon: {
+        width: 20,
+        height: 20,
     },
     contentContainer: {
         flexDirection: 'row',  // Make items appear in a row
@@ -33,8 +45,8 @@ const styles = StyleSheet.create({
     removeButton: {
         marginTop: 8,
         backgroundColor: '#2D50FD',
-        paddingVertical: 4,
-        paddingHorizontal: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 13,
         borderRadius: 5,
     },
     removeText: {
@@ -57,157 +69,35 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginLeft: 10,
     },
-    listName: {
-        fontWeight: '500'
-    },
-    
-    // Container for both search bar and filter button
-    searchFilterContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-    },
-    
-    // Search container that doesn't include filter button
-    searchContainer: {
-        flexDirection: 'row',
-        flex: 1,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        alignItems: 'center',
-        backgroundColor: '#EEEFF9',
-        borderRadius: 10,
-        marginRight: 10,
-    },
-    
-    searchicon: {
-        width: 20,
-        height: 20,
-        marginRight: 8,
-    },
-    searchInput: {
-        flex: 1,
-        height: 40,
-        fontSize: 14,
-        padding: 0,
-    },
-    filterButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    filterSidebar:
-     {
-        position: 'absolute',
-        right: 0,
-        top: 50,
-        bottom: 0,
-        width: 250,
-        backgroundColor: '#F8F8F8',
-        zIndex: 100,
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 2, height: 0 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-        paddingTop: 20,
-        paddingHorizontal: 15,
-    },
-    filterHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingBottom: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#EAEAEA',
-        marginBottom: 15,
-    },
-    closeButton: {
-        width: 25,
-        height: 25,
-        borderRadius: 14,
-        backgroundColor: '#EAEAEA',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    closeButtonText: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        lineHeight: 20,
-        textAlign: 'center',
-    },
-    applyFiltersButton: {
-        backgroundColor: '#2D50FD',
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 10,
-    },
-    applyFiltersText: {
-        color: '#fff',
-        fontSize: 14,
+    listName:
+    {
         fontWeight: '600',
+        color: '#000',
     },
-    filterTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    filterSection: {
-        marginBottom: 20,
-    },
-    filterSectionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 10,
-        color: '#333',
-    },
-    checkboxContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        marginTop: 5,
-    },
-    checkboxColumn: {
-        width: '45%',
-    },
-    checkboxRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    checkbox: {
-        marginRight: 8,
-    },
-    checkboxLabel: {
+    listId:
+    {
         fontSize: 14,
+        color: '#666',
     },
-    filterChips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginBottom: 10,
+
+    searchicon: {
+        marginTop: 10
     },
-    filterChip: {
+    searchContainer: {
+        display: 'flex',
         flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#E8E8E8',
-        borderRadius: 15,
+        marginHorizontal: 16,
+        marginVertical: 8,
+        borderRadius: 8,
+        backgroundColor: '#e3e3e3',
         paddingHorizontal: 10,
         paddingVertical: 5,
-        marginRight: 8,
-        marginBottom: 8,
     },
-    chipText: {
-        fontSize: 12,
-        marginRight: 5,
-    },
-    chipClose: {
+    searchInput: {
+        height: 40,
         fontSize: 16,
-        fontWeight: 'bold',
+        color: 'black',
+        paddingHorizontal: 8,
     },
 });
 

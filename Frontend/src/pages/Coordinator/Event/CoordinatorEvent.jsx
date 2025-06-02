@@ -133,6 +133,13 @@ const EventDetail = ({ event, visible, onClose }) => {
       year: 'numeric'
     });
   };
+  const [showFullText, setShowFullText] = useState(true);
+
+  const toggleShowFullText = () => {
+    setShowFullText(!showFullText);
+  };
+
+  // <CurvedImageBanner imageSource={{ uri: `${API_URL}/${event.banner_url}` }} />
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false}>
@@ -147,14 +154,13 @@ const EventDetail = ({ event, visible, onClose }) => {
         <ScrollView style={styles.detailScrollView}>
           <View style={styles.detailImageContainer}>
             {event.banner_url ? (
-
-              <CurvedImageBanner imageSource={{ uri: `${API_URL}/${event.banner_url}` }} />
-
+              <Image source={{ uri: `${API_URL}/${event.banner_url}` }} style={styles.eventImage} resizeMode="cover" />
             ) : (
-              <View style={[styles.detailBannerImage, { backgroundColor: '#FEE2E2' }]}>
-                <Text style={styles.placeholderText}>{event.event_name.substring(0, 1)}</Text>
+              <View style={[styles.eventImage, { backgroundColor: '#FEE2E2' }]}>
+                <Text style={styles.placeholderText}>{event.event_name}</Text>
               </View>
             )}
+            <View style={styles.imageCurve} />
           </View>
 
           <View style={styles.detailContent}>
@@ -172,7 +178,7 @@ const EventDetail = ({ event, visible, onClose }) => {
 
               <View style={styles.detailInfoItem}>
                 <View style={styles.detailInfoIconContainer}>
-                  <LocationMain width={20} height={20} />
+                  <LocationIcon width={20} height={20} />
                 </View>
                 <View>
                   <Text style={styles.detailInfoTitle}>{event.location}</Text>
@@ -181,22 +187,99 @@ const EventDetail = ({ event, visible, onClose }) => {
               </View>
             </View>
 
-            <View style={styles.detailSection}>
-              <Text style={styles.detailSectionTitle}>About Event</Text>
-              <Text style={styles.detailSectionText}>
-                {event.about || "No description available."}
-              </Text>
-            </View>
-
-            <View style={styles.detailSection}>
-              <Text style={styles.detailSectionTitle}>Guidelines</Text>
-              <View style={styles.guidelineItem}>
-                <Text style={styles.guidelineBullet}>•</Text>
-                <Text style={styles.guidelineText}>
-                  {event.guidelines || "No specific guidelines provided."}
+            <ScrollView style={styles.innerscroll}>
+              {/* About Event */}
+              <View style={styles.aboutContainer}>
+                <Text style={styles.aboutTitle}>About Event</Text>
+                <Text
+                  style={styles.aboutText}
+                  numberOfLines={showFullText ? undefined : 3}
+                  ellipsizeMode="tail">
+                  {event.about}
                 </Text>
+                <TouchableOpacity onPress={toggleShowFullText}>
+                  <Text style={styles.readMoreText}>
+                    {showFullText ? 'Read Less' : 'Read More'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-            </View>
+
+              {/* Guidelines Section */}
+              <View style={styles.guidelinesContainer}>
+                <Text style={styles.guidelinesTitle}>Guidelines</Text>
+
+                {/* Registration Guidelines */}
+                <View style={styles.guidelineSection}>
+                  <View style={styles.guidelineTitleRow}>
+                    <View style={styles.diamondBullet} />
+                    <Text style={styles.guidelineSectionTitle}>
+                      Registration:
+                    </Text>
+                  </View>
+                  <View style={styles.guidelineItems}>
+                    <Text style={styles.guidelineItem}>
+                      • {event.registration_guidelines}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Participation Guidelines */}
+                <View style={styles.guidelineSection}>
+                  <View style={styles.guidelineTitleRow}>
+                    <View style={styles.diamondBullet} />
+                    <Text style={styles.guidelineSectionTitle}>
+                      Participation:
+                    </Text>
+                  </View>
+                  <View style={styles.guidelineItems}>
+                    <Text style={styles.guidelineItem}>
+                      • {event.participation_guidelines}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Cancellations Guidelines */}
+                {/* <View style={styles.guidelineSection}>
+                <View style={styles.guidelineTitleRow}>
+                  <View style={styles.diamondBullet} />
+                  <Text style={styles.guidelineSectionTitle}>
+                    Cancellations:
+                  </Text>
+                </View>
+                <View style={styles.guidelineItems}>
+                  <Text style={styles.guidelineItem}>
+                    • Cancel at least X hours before if unable to attend.
+                  </Text>
+                  <Text style={styles.guidelineItem}>
+                    • Frequent no-shows may affect future participation.
+                  </Text>
+                </View>
+              </View>
+
+              // comment - Special Rules Guidelines 
+              <View style={styles.guidelineSection}>
+                <View style={styles.guidelineTitleRow}>
+                  <View style={styles.diamondBullet} />
+                  <Text style={styles.guidelineSectionTitle}>
+                    Special Rules:
+                  </Text>
+                </View>
+                <View style={styles.guidelineItems}>
+                  <Text style={styles.guidelineItem}>
+                    • Some events may have limited seats or require prior
+                    submissions.
+                  </Text>
+                  <Text style={styles.guidelineItem}>
+                    • Paid events will have refund policies mentioned.
+                  </Text>
+                  <Text style={styles.guidelineItem}>
+                    • Virtual events will include a meeting link and
+                    instructions.
+                  </Text>
+                </View>
+              </View> */}
+              </View>
+            </ScrollView>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -226,7 +309,7 @@ const CoordinatorEvent = ({ navigation, route }) => {
 
   const fetchEvents = async () => {
     try {
-      
+
       setRefreshing(true);
       const response = await fetch(`${API_URL}/api/coordinator/events/get?phone=${activeGrade}`);
       const data = await response.json();
@@ -287,7 +370,7 @@ const CoordinatorEvent = ({ navigation, route }) => {
     setSelectedEvent(event);
     setShowEventDetail(true);
   };
- 
+
   const handleCloseEventDetail = () => {
     setShowEventDetail(false);
   };

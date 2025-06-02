@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import EventBus from "../../../../utils/EventBus";
 import { API_URL } from "@env";
 import { ActivityIndicator } from 'react-native-paper';
+import Nodata from '../../../../components/General/Nodata';
 
 const StudentPageRequest = ({ navigation }) => {
   const [showForm, setShowForm] = useState(false);
@@ -496,7 +497,7 @@ const StudentPageRequest = ({ navigation }) => {
 
         {requests.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No requests found</Text>
+            <Nodata/>
           </View>
         ) : (
           <FlatList

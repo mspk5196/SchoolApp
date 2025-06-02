@@ -1,35 +1,154 @@
-import React from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import PreviousIcon from '../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import styles from "./ParentDashboardStyles";
-// Import PerformanceGraph component
 import PerformanceGraph from "../../../components/Parent/PerformanceGraph/PerformanceGraph";
+import { API_URL } from "@env";
+import RNFS from 'react-native-fs';
+import FileViewer from 'react-native-file-viewer';
+import mime from 'react-native-mime-types';
 
 const PerformanceDetailsScreen = ({ route }) => {
-  const { data, activeTab } = route.params;
   const navigation = useNavigation();
+  const { data, activeTab, studentData } = route.params;
+  // console.log(studentData);
 
-  const individualPerformanceData = {
-    date: "23/02/25",
-    level: "Level 2",
-    rank: "3rd",
-    highestScore: 99,
-    score: "90/100",
-    classAverage: 70,
-    ClassType: "Assessment",  //if academic or assessment it will show the assessment score and if it is academic it will show the academic score
-    MaterialLink: "Assessment.pdf",
-    disciplineScore: 10,
-    disciplineTotal: 10,
-    homeworkScore: 10,
-    homeworkTotal: 10,
-    assessmentScore: 70,
-    assessmentTotal: 80,
-    academicScore: 70,
-    academicTotal: 80,
-    ClassStatus: "Attentive",
+  const [details, setDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDetails = async () => {
+      try {
+        setLoading(true);
+        let detailsData = {};
+
+        // Only fetch if subject is selected (subject-wise tab)
+        if (route.params.subject) {
+          // 1. Try to fetch assessment details for this subject and date
+          const res = await fetch(`${API_URL}/api/student/getAssessmentDetails`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentRoll: studentData.roll,  // Use roll instead of studentId
+              sectionId: studentData.section_id,
+              subject: route.params.subject,
+              date: data.date
+            })
+          });
+          const assessment = await res.json();
+
+          if (assessment && assessment.hasAssessment) {
+            // When setting detailsData for Assessment:
+            detailsData = {
+              type: 'Assessment',
+              level: assessment.level,
+              rank: assessment.rank,
+              highestScore: assessment.highestScore,
+              score: assessment.score,
+              classAverage: assessment.classAverage,
+              disciplinePercent: assessment.disciplinePercent,
+              homeworkPercent: assessment.homeworkPercent,
+              assessmentPercent: assessment.assessmentPercent,
+              materials: assessment.materials || []
+            };
+          } else {
+            // 2. Else, fetch academic details for this subject and date
+            const res2 = await fetch(`${API_URL}/api/student/getAcademicDetails`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                studentId: studentData.student_id,
+                sectionId: studentData.section_id,
+                subject: route.params.subject,
+                date: data.date
+              })
+            });
+            const academic = await res2.json();
+            // When setting detailsData for Academic:
+            detailsData = {
+              type: 'Academic',
+              attentiveness: academic.attentiveness,
+              level: academic.level,
+              disciplinePercent: academic.disciplinePercent,
+              homeworkPercent: academic.homeworkPercent,
+              academicPercent: academic.academicPercent,
+              materials: academic.materials || []
+            };
+            console.log("Performance Details:", academic);
+          }
+        }
+        setDetails(detailsData);
+
+      } catch (error) {
+        console.error('Error fetching details:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDetails();
+  }, [data, activeTab, route.params.subject, studentData]);
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "N/A";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-GB'); // DD/MM/YYYY format
   };
+
+  const getPerformanceStatus = (score) => {
+    if (score >= 70) return "Highly Attentive";
+    if (score >= 40) return "Moderately Attentive";
+    return "Not Attentive";
+  };
+
+  const openFileLikeWhatsApp = async (fileUrl, fileName) => {
+    try {
+      const localFile = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+      const downloadResult = await RNFS.downloadFile({
+        fromUrl: fileUrl,
+        toFile: localFile,
+      }).promise;
+
+      if (downloadResult.statusCode === 200) {
+        // Get MIME type from file extension
+        const mimeType = mime.lookup(fileName) || undefined;
+        await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
+      } else {
+        Alert.alert('Download failed', 'Could not download the file.');
+      }
+    } catch (err) {
+      if (
+        err &&
+        (err.message?.includes('No app associated') ||
+          err.message?.includes('no activity found to handle Intent'))
+      ) {
+        Alert.alert(
+          'No App Found',
+          'No app is installed to open this file type. Would you like to open it in your browser?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open in Browser',
+              onPress: () => Linking.openURL(fileUrl),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Could not open the file.');
+      }
+      console.error('File open error:', err);
+    }
+  };
+
+  if (loading || !details) {
+    return (
+      <SafeAreaView style={styles.detailsContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.detailsContainer}>
@@ -42,100 +161,93 @@ const PerformanceDetailsScreen = ({ route }) => {
           <Text style={styles.backButtonText}>Dashboard</Text>
         </TouchableOpacity>
 
-        {/* Use the PerformanceGraph component */}
-        <PerformanceGraph 
+        <PerformanceGraph
           showTitle={true}
-          // Pass an empty function to disable navigation since we're already on the details screen
-          onBarPress={() => {}} 
+          studentData={studentData}
         />
 
-        {/* Individual Performance */}
         <Text style={styles.sectionTitle}>Individual performance</Text>
 
         <View style={[styles.performanceCard, { padding: 16 }]}>
           <View>
-            <Text style={styles.performanceDate}>{individualPerformanceData.date}</Text>
+            <Text style={styles.performanceDate}>{data.date}</Text>
           </View>
-
           <View style={[styles.performanceCardHeader]}>
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>{individualPerformanceData.level}</Text>
+            <View className={styles.levelBadge}>
+              <Text style={styles.levelText}>Level {details.level}</Text>
             </View>
-
             <View>
-              {individualPerformanceData.ClassType === "Academic" ? (
-                <Text style={[styles.rankText, { color: '#27AE60' }]}>{individualPerformanceData.ClassStatus}</Text>
-              ) : (
-                <Text style={[styles.rankText, { color: '#F7A325' }]}>Rank: {individualPerformanceData.rank}</Text>
-              )}
-            </View>
-
-            <View>
-              <Text style={styles.ClassTypeText}>{individualPerformanceData.ClassType}</Text>
+              <Text style={styles.ClassTypeText}>
+                {details.type === 'Assessment' ? 'Assessment' : 'Academic'}
+              </Text>
             </View>
           </View>
 
-          {/* Performance Details */}
-          {individualPerformanceData.ClassType === "Assessment" && (
-            <View style={[styles.performanceStats, { marginBottom: 12 }]}>
-              <View style={{justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row'}}>
-                <View style={[styles.statsRow, { marginBottom: 4 }]}>
-                  <Text style={styles.statLabel}>Highest Score:</Text>
-                  <Text style={[styles.statValue, { color: '#333' }]}>{individualPerformanceData.highestScore}</Text>
-                </View>
-
-                <View style={[styles.statsRow, { marginBottom: 4 }]}>
-                  <Text style={styles.statLabel}>Score:</Text>
-                  <Text style={[styles.statValue, { color: '#333' }]}>{individualPerformanceData.score}</Text>
-                </View>
+          {details.type === 'Assessment' ? (
+            <>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Rank:</Text>
+                <Text style={styles.statValue}> {details.rank}</Text>
+              </View>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Highest Score:</Text>
+                <Text style={styles.statValue}> {details.highestScore} / 100</Text>
+              </View>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Your Score:</Text>
+                <Text style={styles.statValue}>{details.score} / 100</Text>
               </View>
               <View style={styles.statsRow}>
                 <Text style={styles.statLabel}>Class Average:</Text>
-                <Text style={[styles.statValue, { color: '#333' }]}>{individualPerformanceData.classAverage}</Text>
+                <Text style={styles.statValue}>{details.classAverage} / 100</Text>
               </View>
-            </View>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Discipline:</Text>
+                <Text style={styles.statValue}>{details.disciplinePercent}% / 10%</Text>
+              </View>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Homework:</Text>
+                <Text style={styles.statValue}>{details.homeworkPercent}% / 10%</Text>
+              </View>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Assessment:</Text>
+                <Text style={styles.statValue}>{details.assessmentPercent}% / 80%</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Attentiveness:</Text>
+                <Text style={styles.statValue}> {details.attentiveness}</Text>
+              </View>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Level:</Text>
+                <Text style={styles.statValue}> {details.level}</Text>
+              </View>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Discipline:</Text>
+                <Text style={styles.statValue}>{details.disciplinePercent}% / 10%</Text>
+              </View>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Homework:</Text>
+                <Text style={styles.statValue}>{details.homeworkPercent}% / 10%</Text>
+              </View>
+              <View style={styles.statsRow}>
+                <Text style={styles.statLabel}>Academic:</Text>
+                <Text style={styles.statValue}>{details.academicPercent}% / 80%</Text>
+              </View>
+            </>
           )}
-
-          <View style={styles.assessmentDetails}>
-            <TouchableOpacity>
-              <Text style={[styles.MaterialLink, { color: '#0C36FF', marginBottom: 8 }]}>
-                {individualPerformanceData.MaterialLink}
-              </Text>
-            </TouchableOpacity>
-
-            <View style={[styles.assessmentItem, { marginBottom: 6 }]}>
-              <View style={[styles.assessmentDot, { backgroundColor: '#AEBCFF' }]} />
-              <Text style={styles.assessmentLabel}>Discipline: </Text>
-              <Text style={styles.assessmentValue}>
-                {individualPerformanceData.disciplineScore} <Text style={styles.assessmentTotal}>/{individualPerformanceData.disciplineTotal}%</Text>
-              </Text>
+          {Array.isArray(details.materials) && details.materials.length > 0 && details.materials.map((file, idx) => (
+            <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <TouchableOpacity
+                onPress={() => openFileLikeWhatsApp(`${API_URL}/${file.file_url}`, file.file_name)}
+                style={[styles.pdfButton, { marginRight: 10 }]}
+              >
+                <Text style={styles.MaterialLink}>{(file.file_name).replace(/%/g, ' ')}</Text>
+              </TouchableOpacity>
             </View>
-
-            <View style={[styles.assessmentItem, { marginBottom: 6 }]}>
-              <View style={[styles.assessmentDot, { backgroundColor: '#5D79FF' }]} />
-              <Text style={styles.assessmentLabel}>Home work:</Text>
-              <Text style={styles.assessmentValue}>
-                {individualPerformanceData.homeworkScore} <Text style={styles.assessmentTotal}>/{individualPerformanceData.homeworkTotal}%</Text>
-              </Text>
-            </View>
-
-            <View style={styles.assessmentItem}>
-              <View style={[styles.assessmentDot, { backgroundColor: '#0027E3' }]} />
-              <Text style={styles.assessmentLabel}>{individualPerformanceData.ClassType}:</Text>
-
-              {individualPerformanceData.ClassType === "Academic" ? (
-                <Text style={styles.assessmentValue}>
-                  {individualPerformanceData.academicScore}
-                  <Text style={styles.assessmentTotal}>/{individualPerformanceData.academicTotal}%</Text>
-                </Text>
-              ) : (
-                <Text style={styles.assessmentValue}>
-                  {individualPerformanceData.assessmentScore}
-                  <Text style={styles.assessmentTotal}>/{individualPerformanceData.assessmentTotal}%</Text>
-                </Text>
-              )}
-            </View>
-          </View>
+          ))}
         </View>
       </ScrollView>
     </SafeAreaView>

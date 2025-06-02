@@ -93,11 +93,11 @@ const styles = StyleSheet.create({
   teacherId: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#000', 
+    color: '#000',
   },
   subjectText: {
     fontSize: 14,
-    color: '#3B82F6', 
+    color: '#3B82F6',
   },
   subjectLevel: {
     fontSize: 14,
@@ -129,9 +129,9 @@ const styles = StyleSheet.create({
     tintColor: '#EF4444',
   },
   timeText: {
-     fontSize: 12,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#000', 
+    color: '#000',
   },
 
   actionButtons1: {
@@ -141,18 +141,25 @@ const styles = StyleSheet.create({
   // Button styles
   actionButtons2: {
     flexDirection: 'row',
-    paddingLeft: 200,
-    gap: 10,
+    gap: 5,
   },
   actionButtonCall: {
-    backgroundColor: '#AEBCFF', 
+    backgroundColor: '#AEBCFF',
     borderRadius: 999,
     padding: 10,
+    width: 40,
+    height: 40,
+    alignItems:'center',
+    justifyContent:'center'
   },
   actionButtonMsg: {
-    backgroundColor: '#A4F4E7', 
+    backgroundColor: '#A4F4E7',
     borderRadius: 999,
     padding: 10,
+    width: 40,
+    height: 40,
+    alignItems:'center',
+    justifyContent:'center'
   },
   actionIcon: {
     width: 16,
@@ -161,16 +168,18 @@ const styles = StyleSheet.create({
   },
   assignTaskButton: {
     backgroundColor: '#0C36FF',
-      borderRadius: 28,
-      padding: 16,
-      width: '90%',
-      alignItems: 'center',
-      marginLeft: 'auto',
-      marginRight: 'auto',
-      marginBottom: 16,
-      marginTop: 4,
+    borderRadius: 28,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    width: '90%',
+    // height:40,
+    alignItems: 'center',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    marginBottom: 16,
+    marginTop: 4,
   },
-  buttonText:{
+  buttonText: {
     fontSize: 16,
     fontWeight: '500',
     color: '#FFFFFF',
@@ -183,12 +192,12 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     flex: 1,
     fontWeight: '500',
-    
+
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#3557FF', 
+    color: '#3557FF',
     textAlign: 'center',
   },
   confirmButton: {
@@ -203,7 +212,7 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#FFFFFF', 
+    color: '#FFFFFF',
     textAlign: 'center',
   },
 
@@ -217,7 +226,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   avatar: {
-    backgroundColor: '#E5E7EB', // bg-gray-200
+    backgroundColor: '#E5E7EB',
     borderRadius: 999,
     width: 48,
     height: 48,
@@ -259,6 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
+    justifyContent:'space-between'
   },
   mentorDetails: {
     flexDirection: 'column',
@@ -281,18 +291,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  requestBadgeText:{
+  requestBadgeText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#EEAA16', 
-    },
-    assessmentRequestText:{
+    color: '#EEAA16',
+  },
+  assessmentRequestText: {
     fontSize: 14,
     fontWeight: '500',
     color: '#EEAA16',
     marginTop: 16,
     marginBottom: 16,
-    },
+  },
   teacherInfo: {
     flexDirection: 'row',
   },
@@ -351,9 +361,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  levelTagText:{
-      color: '#3557FF',
-      fontWeight: '500',
+  levelTagText: {
+    color: '#3557FF',
+    fontWeight: '500',
   },
 
   // Past assessment
@@ -375,7 +385,7 @@ const styles = StyleSheet.create({
   },
   issueContent: {
     marginTop: 6,
-    marginBottom:5,
+    marginBottom: 5,
   },
   issueText: {
     fontSize: 14,
@@ -397,7 +407,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 16,
   },
-  
+  sectionHeader: {
+  padding: 15,
+  backgroundColor: '#f5f5f5',
+  borderBottomWidth: 1,
+  borderBottomColor: '#e0e0e0',
+},
+sectionTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: '#333',
+},
+loadingContainer: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
 });
 
 export default styles;

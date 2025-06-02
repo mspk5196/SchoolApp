@@ -145,6 +145,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
       const data = await response.json();
       if (response.ok) {
         setSubjects(data.subjects);
+        fetchVenues();
       } else {
         throw new Error(data.message || 'Failed to fetch subjects');
       }
@@ -162,7 +163,9 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
       );
       const data = await response.json();
       if (data.success) {
-        setVenues(data.venues);
+        setVenues(data.venues); 
+        console.log(data.venues);
+        
       }
     } catch (error) {
       console.error('Error fetching venues:', error);

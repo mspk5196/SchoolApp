@@ -44,7 +44,11 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
   const [saving, setSaving] = useState(false);
   const [readyToSave, setReadyToSave] = useState(false);
   const [sessionCompleted, setSessionCompleted] = useState(false);
-  const [passPercentage, setPassPercentage] = useState(35); // Default pass percentage
+  const [passPercentage, setPassPercentage] = useState(null);
+
+  const [selectedMaterials, setSelectedMaterials] = useState({});
+  const [materialsByLevel, setMaterialsByLevel] = useState({});
+  const [totalMarksByLevel, setTotalMarksByLevel] = useState({});
 
   // Store original student levels for completed assessments
   const [originalLevels, setOriginalLevels] = useState({});
@@ -92,24 +96,24 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       if (now < sessionStart) {
         setSessionStarted(false);
         setLoadingProgress(0);
-      } 
+      }
       else if (now >= sessionStart && now > sessionEnd && sessionDetails?.status === 'In Progress') {
         setSessionOver(true);
         setSessionStarted(true);
-      } 
+      }
       else if (now >= sessionStart && now < sessionEnd && sessionDetails?.status === 'In Progress') {
         setSessionStarted(true);
         const totalDuration = sessionEnd - sessionStart;
         const elapsed = now - sessionStart;
         setLoadingProgress(Math.min((elapsed / totalDuration) * 100, 100));
-      } 
-      else { 
+      }
+      else {
         setLoadingProgress(100);
         setSessionOver(true);
         setSessionStarted(false); // Change to true to show mark update buttons
         clearInterval(interval);
         // if (!materials.length) {
-          fetchMaterials(); // Load materials once session is over
+        fetchMaterials(); // Load materials once session is over
         // }
       }
     }, 1000);
@@ -118,20 +122,34 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
 
   // Check if all students have marks when session is over
   useEffect(() => {
-    if (sessionOver && Object.keys(studentsByLevel).length > 0) {
-      const allStudents = Object.values(studentsByLevel).flat();
-      const allMarked = allStudents.every(student =>
-        marks[student.student_roll] !== undefined ||
-        isStudentAbsent(student.student_roll)
-      );
+  if (sessionOver && Object.keys(studentsByLevel).length > 0) {
+    const allStudents = Object.values(studentsByLevel).flat();
+    const allMarked = allStudents.every(student =>
+      marks[student.student_roll] !== undefined ||
+      isStudentAbsent(student.student_roll)
+    );
 
-      // Also check if material and total marks are selected
-      const materialsReady = selectedMaterial !== null && totalMarks !== '';
+    // Check if at least one material and total marks are set for each level
+    const levelsWithStudents = Object.keys(studentsByLevel);
+    const materialsReady = levelsWithStudents.every(
+      level =>
+        selectedMaterials[level] &&
+        selectedMaterials[level].length > 0 &&
+        totalMarksByLevel[level] &&
+        !isNaN(totalMarksByLevel[level]) &&
+        totalMarksByLevel[level] > 0
+    );
+
+    setCanComplete(allMarked && materialsReady);
+    setReadyToSave(allMarked);
+  }
+}, [sessionOver, marks, studentsByLevel, absentStudents, selectedMaterials, totalMarksByLevel]);
+
+  useEffect(() => {
+    if (sessionOver && readyToSave && !sessionCompleted && Object.keys(materialsByLevel).length === 0) {
       fetchMaterials();
-      setCanComplete(allMarked && materialsReady);
-      setReadyToSave(allMarked);
     }
-  }, [sessionOver, marks, studentsByLevel, absentStudents, selectedMaterial, totalMarks]);
+  }, [sessionOver, readyToSave, sessionCompleted, materialsByLevel]);
 
   const fetchSessionDetails = async () => {
     try {
@@ -307,32 +325,44 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
   };
 
   const fetchMaterials = async () => {
-    // console.log("hi");
-    
     try {
-      const response = await fetch(`${API_URL}/api/mentor/getAssessmentMaterials`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          subjectId: subject_id,
-          sectionId: section,
-          level:selectedLevel.replace(/[^\d]/g, '')
-        }),
-      });
+      const materialsByLevelResult = {};
 
-      const data = await response.json();
-      if (data.success) {
-        setMaterials(data.materials);
-        console.log("hi",data.materials);
-        
+      // Fetch materials for each level
+      for (const level of Object.keys(studentsByLevel)) {
+        const response = await fetch(`${API_URL}/api/mentor/getAssessmentMaterials`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            subjectId: subject_id,
+            sectionId: section,
+            level: level
+          }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          materialsByLevelResult[level] = data.materials;
+        }
       }
+
+      setMaterialsByLevel(materialsByLevelResult);
+
+      // Initialize selected materials with empty arrays for each level
+      const initialSelected = {};
+      Object.keys(materialsByLevelResult).forEach(level => {
+        initialSelected[level] = [];
+      });
+      setSelectedMaterials(initialSelected);
+
     } catch (error) {
       console.error('Error fetching materials:', error);
       Alert.alert('Error', 'Failed to fetch assessment materials');
     }
   };
+
 
   const fetchPassPercentage = async () => {
     try {
@@ -402,6 +432,21 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       console.error('Error starting session:', error);
       Alert.alert('Error', 'Failed to start assessment session');
     }
+  };
+
+  const toggleMaterialSelection = (level, materialId) => {
+    setSelectedMaterials(prev => {
+      const newSelection = { ...prev };
+      if (!newSelection[level]) newSelection[level] = [];
+
+      const index = newSelection[level].indexOf(materialId);
+      if (index === -1) {
+        newSelection[level].push(materialId);
+      } else {
+        newSelection[level].splice(index, 1);
+      }
+      return newSelection;
+    });
   };
 
 
@@ -480,15 +525,19 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
     setMarkInput('');
   };
 
+  // Update the handleCompleteSession function
   const handleCompleteSession = async () => {
-    if (!totalMarks || isNaN(parseInt(totalMarks, 10)) || parseInt(totalMarks, 10) <= 0) {
-      Alert.alert('Invalid Input', 'Please enter valid total marks');
-      return;
-    }
-
-    if (!selectedMaterial) {
-      Alert.alert('Missing Selection', 'Please select an assessment material');
-      return;
+    // Validate that all levels have total marks and at least one material
+    const levelsWithStudents = Object.keys(studentsByLevel);
+    for (const level of levelsWithStudents) {
+      if (!totalMarksByLevel[level] || isNaN(totalMarksByLevel[level]) || totalMarksByLevel[level] <= 0) {
+        Alert.alert('Invalid Input', `Please enter valid total marks for Level ${level}`);
+        return;
+      }
+      if (!selectedMaterials[level] || selectedMaterials[level].length === 0) {
+        Alert.alert('Missing Selection', `Please select at least one material for Level ${level}`);
+        return;
+      }
     }
 
     if (!readyToSave) {
@@ -500,9 +549,11 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
 
     // Prepare student data for submission
     const studentsData = [];
-    const studentLevels = {}; // To store original levels
+    const studentLevels = {};
 
     Object.keys(studentsByLevel).forEach(level => {
+      const levelTotalMarks = totalMarksByLevel[level] || 0;
+
       studentsByLevel[level].forEach(student => {
         const studentMark = marks[student.student_roll] !== undefined ? marks[student.student_roll] : 0;
         const isAbsent = isStudentAbsent(student.student_roll);
@@ -514,8 +565,10 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
           student_roll: student.student_roll,
           mark: studentMark,
           status: isAbsent ? 'Absent' : 'Present',
-          current_level: level, // This is the level at assessment time
-          passed: (studentMark / parseInt(totalMarks, 10) * 100) >= passPercentage
+          current_level: level,
+          passed: (studentMark / levelTotalMarks * 100) >= passPercentage,
+          material_ids: JSON.stringify(selectedMaterials[level]),
+          total_marks: levelTotalMarks
         });
       });
     });
@@ -529,9 +582,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
         body: JSON.stringify({
           sessionId: sessionDetails.id,
           students: studentsData,
-          totalMarks: parseInt(totalMarks, 10),
-          materialId: selectedMaterial,
-          student_levels: studentLevels // Store original levels with assessment
+          student_levels: studentLevels
         }),
       });
 
@@ -728,39 +779,47 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
 
       {/* Material selection (only shown after session ends and all marks are entered) */}
       {sessionOver && readyToSave && !sessionCompleted && (
-        <View style={styles.materialContainer}>
-          <Text style={styles.materialTitle}>Assessment Details</Text>
+        Object.keys(materialsByLevel).map(level => (
+          <View key={level} style={styles.levelMaterialContainer}>
+            <Text style={styles.levelHeader}>Level {level} Materials</Text>
 
-          <Text style={styles.materialLabel}>Total Marks:</Text>
-          <TextInput
-            style={styles.totalMarksInput}
-            placeholder="Enter total marks"
-            keyboardType="numeric"
-            value={totalMarks}
-            onChangeText={setTotalMarks}
-          />
+            <Text style={styles.materialLabel}>Total Marks for Level {level}:</Text>
+            <TextInput
+              style={styles.totalMarksInput}
+              placeholder={`Enter total marks for Level ${level}`}
+              keyboardType="numeric"
+              value={totalMarksByLevel[level]?.toString() || ''}
+              onChangeText={(text) => setTotalMarksByLevel(prev => ({
+                ...prev,
+                [level]: text ? parseInt(text, 10) : 0
+              }))}
+            />
 
-          <Text style={styles.materialLabel}>Select Assessment Material:</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.materialScroll}
-          >
-            {materials.map((material, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.materialItem,
-                  selectedMaterial === material.id && styles.selectedMaterial
-                ]}
-                onPress={() => setSelectedMaterial(material.id)}>
-                <Text style={selectedMaterial === material.id ? styles.selectedMaterialText : styles.materialItemText}>
-                  {material.file_name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.materialScroll}
+            >
+              {materialsByLevel[level]?.map((material, index) => (
+                <TouchableOpacity
+                  key={`${level}-${index}`}
+                  style={[
+                    styles.materialItem,
+                    selectedMaterials[level]?.includes(material.id) && styles.selectedMaterial
+                  ]}
+                  onPress={() => toggleMaterialSelection(level, material.id)}>
+                  <Text style={
+                    selectedMaterials[level]?.includes(material.id) ?
+                      styles.selectedMaterialText :
+                      styles.materialItemText
+                  }>
+                    {material.file_name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        ))
       )}
 
       {/* Display selected material for completed sessions */}

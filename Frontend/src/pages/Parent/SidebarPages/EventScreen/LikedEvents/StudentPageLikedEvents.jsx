@@ -1,88 +1,78 @@
-import React, {useState} from 'react';
-import {View, FlatList, SafeAreaView, StatusBar, TouchableOpacity, Text} from 'react-native';
-import EventList from    '../../../../../components/Parent/Event/EventList';
+import React, { useEffect, useState } from 'react';
+import { View, FlatList, SafeAreaView, StatusBar, TouchableOpacity, Text, Alert } from 'react-native';
+import EventList from '../../../../../components/Parent/Event/EventList';
 import PreviousIcon from '../../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
 import styles from './LikedvevntsStyles';
+import { API_URL } from '@env'
+import Nodata from '../../../../../components/General/Nodata';
 
-const StudentPageLikedEvents = ({navigation}) => {
+const StudentPageLikedEvents = ({ navigation, route }) => {
+  const { studentData } = route.params;
   const [favorites, setFavorites] = useState({});
+  const [events, setEvents] = useState([]);
+  const [refresh, setRefresh] = useState(false)
 
-  const toggleFavorite = id => {
-    setFavorites(prev => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+  // Fetch liked events
+  const fetchLikedEvents = async () => {
+    if (studentData) {
+      try {
+        setRefresh(true)
+        const res = await fetch(`${API_URL}/api/student/getFavouriteEvents?student_roll=${studentData.roll}`);
+        const data = await res.json();
+        if (data.success) {
+          setEvents(data.favouriteEvents);
+          // Set favorites mapping
+          const favMap = {};
+          data.favouriteEvents.forEach(ev => { favMap[ev.id] = true; });
+          setFavorites(favMap);
+          setRefresh(false)
+        }
+      } catch (e) {
+        Alert.alert('Error', 'Failed to load liked events');
+        setRefresh(false)
+      }
+    }
   };
 
-  // Sample event data
-  const events = [
-    {
-      id: '1',
-      title: 'International Band Music',
-      date: '10 JUNE',
-      location: '36 Guild Street London, UK',
-      participants: '20+ participants',
-      category: 'Registered events',
-      image: 'https://via.placeholder.com/150/FFD7D0',
-    },
-    {
-      id: '2',
-      title: 'Jazz Night',
-      date: '15 JUNE',
-      location: '42 Music Avenue London, UK',
-      participants: '30+ participants',
-      category: 'Registered events',
-      image: 'https://via.placeholder.com/150/D0E3FF',
-    },
-    {
-      id: '3',
-      title: 'Art Exhibition',
-      date: '20 JUNE',
-      location: '22 Gallery Road London, UK',
-      participants: '15+ participants',
-      category: 'In-School events',
-      image: 'https://via.placeholder.com/150/FFD0F0',
-    },
-    {
-      id: '4',
-      title: 'Science Fair',
-      date: '25 JUNE',
-      location: '10 Innovation Street London, UK',
-      participants: '25+ participants',
-      category: 'In-School events',
-      image: 'https://via.placeholder.com/150/D0FFD6',
-    },
-    {
-      id: '5',
-      title: 'Food Festival',
-      date: '30 JUNE',
-      location: '5 Culinary Lane London, UK',
-      participants: '50+ participants',
-      category: 'Beyond campus events',
-      image: 'https://via.placeholder.com/150/FFE8D0',
-    },
-    {
-      id: '6',
-      title: 'Charity Marathon',
-      date: '5 JULY',
-      location: 'Central Park London, UK',
-      participants: '100+ participants',
-      category: 'Beyond campus events',
-      image: 'https://via.placeholder.com/150/E0D0FF',
-    },
-  ];
+  useEffect(() => {
+    fetchLikedEvents();
+  }, []);
 
-  // Group events by category
-  const groupedEvents = events.reduce((acc, event) => {
-    if (!acc[event.category]) {
-      acc[event.category] = [];
+  // Toggle favorite/unfavorite
+  const toggleFavorite = async (eventId) => {
+    if (!studentData?.roll) return;
+    const isFav = favorites[eventId];
+    try {
+      if (isFav) {
+        await fetch(`${API_URL}/api/student/removeFavouriteEvent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_roll: studentData.roll, event_id: eventId }),
+        });
+      } else {
+        await fetch(`${API_URL}/api/student/addFavouriteEvent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_roll: studentData.roll, event_id: eventId }),
+        });
+      }
+      // Refresh list after toggle
+      fetchLikedEvents();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update favourite');
     }
-    acc[event.category].push(event);
-    return acc;
-  }, {});
+  };
 
-  // Get all unique categories
-  const categories = Object.keys(groupedEvents);
+  // Map backend event fields to EventList expected fields
+  const mappedEvents = events.map(ev => ({
+    id: ev.id,
+    title: ev.event_name,
+    date: ev.event_date ? new Date(ev.event_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : '',
+    image: ev.banner_url ? `${API_URL}/${ev.banner_url}` : '', // fallback if needed
+    participants: ev.participants_limit ? `${ev.participants_limit} participants` : '',
+    location: ev.location || '',
+    event_type: ev.event_type || '',
+  }));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -96,16 +86,23 @@ const StudentPageLikedEvents = ({navigation}) => {
         <Text style={styles.headerTitle}>Liked Events</Text>
       </View>
       <FlatList
-        data={categories}
-        renderItem={({item, index}) => (
+        data={mappedEvents}
+        refreshing={refresh}
+        onRefresh={fetchLikedEvents}
+        ListEmptyComponent={
+          <View style={{flex: 1, height: 400, justifyContent: 'center', alignItems: 'center'}}>
+            <Nodata/>
+          </View>
+        }
+        renderItem={({ item }) => (
           <EventList
-            categoryName={item}
-            events={groupedEvents[item]}
+            categoryName={item.event_type}
+            events={[item]}
             favorites={favorites}
             toggleFavorite={toggleFavorite}
           />
         )}
-        keyExtractor={item => item}
+        keyExtractor={item => item.id.toString()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.categoryList}
       />

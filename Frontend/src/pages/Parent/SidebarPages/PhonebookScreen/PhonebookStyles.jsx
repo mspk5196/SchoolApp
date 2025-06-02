@@ -5,24 +5,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fafafa',
   },
-  headerContainer: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 32,
     padding: 20,
     paddingBottom: 10,
-    paddingTop: 42,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#00000080',
+  },
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    borderColor: '#00000080',
-    marginBottom: 15,
+
   },
-  headerText: {
+  headerTitle: {
     marginLeft: 6,
     fontSize: 18,
     fontWeight: '700',
-    color: '#2E2E2E',
+    color: '#333333',
   },
   card: {
     backgroundColor: 'white',
@@ -57,6 +60,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 60,
     height: 60,
+    borderRadius: 30,
   },
   info: {
     justifyContent: 'center',

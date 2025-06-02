@@ -1,48 +1,98 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, Modal, FlatList, ScrollView, ActivityIndicator, Alert, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Modal, FlatList, ScrollView, ActivityIndicator, Alert, TouchableWithoutFeedback, TextInput } from 'react-native';
 import BackIcon from "../../../../assets/CoordinatorPage/MentorList/leftarrow";
 import Numdays from '../../../../assets/CoordinatorPage/MentorList/numdays.svg';
 import Clock from '../../../../assets/CoordinatorPage/MentorList/clock.svg';
 import Leaveday from '../../../../assets/CoordinatorPage/MentorList/leaveday.svg';
 import Pen from '../../../../assets/CoordinatorPage/MentorList/pen.svg';
 import Eye from '../../../../assets/CoordinatorPage/MentorList/Group.svg';
+import Assign from '../../../../assets/CoordinatorPage/MentorList/assign.svg';
+import Tickicon from '../../../../assets/CoordinatorPage/MentorList/tickicon.svg';
+import Tick from '../../../../assets/CoordinatorPage/MentorList/tick.svg';
+import Tickbox from '../../../../assets/CoordinatorPage/MentorList/tickbox.svg';
 import Roundhome from '../../../../assets/CoordinatorPage/MentorList/roundhome.svg';
 import { API_URL } from '@env'
 import { Calendar } from 'react-native-calendars';
 import styles from './MentorListDetailsStyles';
+import Nodata from '../../../../components/General/Nodata';
 const Staff = require('../../../../assets/CoordinatorPage/MentorList/staff.png');
 
 const CoordinatorMentorListDetails = ({ route, navigation }) => {
   const { mentor = {} } = route.params || {};
   // console.log(mentor);
 
-  const [showSubjectModal, setShowSubjectModal] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState(mentor.subject || '');
+  const [selectedSessions, setSelectedSessions] = useState([]);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState('23/12/24');
-  const [formattedDate, setFormattedDate] = useState('2024-12-23');
 
+  // New state variables for session and faculty modals
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [showFacultyModal, setShowFacultyModal] = useState(false);
+  const [selectedFaculties, setSelectedFaculties] = useState([]);
+  const [searchText, setSearchText] = useState('');
   const [mentorSchedule, setMentorSchedule] = useState([]);
+  const [availableMentors, setAvailableMentors] = useState([]);
 
-  // Available subjects to choose from
-  const subjects = [
-    "Maths, Social",
-    "Science, English",
-    "English, Social",
-    "Science, Maths",
-    "Hindi, English",
-    "Maths, Science",
-    "Social, Hindi",
-    "English, Maths",
-    "Science, Social",
-    "Hindi, Science"
-  ];
-
-  // Handle subject selection
-  const handleSubjectSelect = (subject) => {
-    setSelectedSubject(subject);
-    setShowSubjectModal(false);
+  // Function to parse date in dd/mm/yy format to a Date object
+  const parseDate = (dateString) => {
+    const [day, month, yearShort] = dateString.split('/');
+    const year = '20' + yearShort; // Assuming 20xx for the year
+    return new Date(year, month - 1, day); // month is 0-indexed in JS Date
   };
+
+  // Function to format Date object to dd/mm/yy
+  const formatDisplayDate = (date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // month is 0-indexed
+    const year = String(date.getFullYear()).slice(2);
+    return `${day}/${month}/${year}`;
+  };
+
+  // Function to format Date object to yyyy-mm-dd for internal use
+  const formatISODate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const today = new Date();
+  const defaultDisplayDate = formatDisplayDate(today); // dd/mm/yy
+  const defaultISODate = formatISODate(today);         // yyyy-mm-dd
+
+  const [selectedDate, setSelectedDate] = useState(defaultDisplayDate);
+  const [formattedDate, setFormattedDate] = useState(defaultISODate);
+
+  // Function to navigate to previous day
+  const goToPreviousDay = () => {
+    const currentDate = parseDate(selectedDate);
+    currentDate.setDate(currentDate.getDate() - 1);
+
+    setSelectedDate(formatDisplayDate(currentDate));
+    setFormattedDate(formatISODate(currentDate));
+
+    fetchScheduleForDate(formatISODate(currentDate));
+  };
+
+  // Function to navigate to next day
+  const goToNextDay = () => {
+    const currentDate = parseDate(selectedDate);
+    currentDate.setDate(currentDate.getDate() + 1);
+
+    setSelectedDate(formatDisplayDate(currentDate));
+    setFormattedDate(formatISODate(currentDate));
+
+    fetchScheduleForDate(formatISODate(currentDate));
+  };
+
+  // Handle faculty selection
+  const toggleFacultySelection = id => {
+    if (selectedFaculties.includes(id)) {
+      setSelectedFaculties(selectedFaculties.filter(item => item !== id));
+    } else {
+      setSelectedFaculties([...selectedFaculties, id]);
+    }
+  };
+
 
   const [attendanceData, setAttendanceData] = useState({
     total_days: 0,
@@ -66,7 +116,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mentorId: mentor.id,
-          date: date // Send the formatted date (YYYY-MM-DD)
+          date: date
         }),
       });
       const data = await response.json();
@@ -103,12 +153,12 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
       const issuesResponse = await fetch(`${API_URL}/api/coordinator/getMentorIssues`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mentorId: mentor.id }),
+        body: JSON.stringify({ phone: mentor.phone }),
       });
 
       const issuesData = await issuesResponse.json();
 
-      console.log("Assignments data", assignmentsData);
+      // console.log("Assignments data", sectionData); 
 
       setMentorDetails({
         subjects: assignmentsData.subjects || [],
@@ -158,6 +208,85 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
     fetchScheduleForDate(formattedDate);
   }, [mentor]);
 
+  //Substitute Mentor
+
+  // Modify the handleAllotSubstitute function
+  const handleAllotSubstitute = async () => {
+    try {
+      if (selectedFaculties.length === 0) {
+        Alert.alert('Error', 'Please select at least one faculty');
+        return;
+      }
+
+      if (selectedSessions.length === 0) {
+        Alert.alert('Error', 'Please select at least one session');
+        return;
+      }
+
+      const newMentorId = selectedFaculties[0];
+
+      for (const session of selectedSessions) {
+        await fetch(`${API_URL}/api/coordinator/substitute-mentor`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scheduleId: session.id,
+            newMentorId: newMentorId
+          }),
+        });
+      }
+
+      Alert.alert('Success', 'Mentor substituted for all selected sessions');
+      setShowFacultyModal(false);
+      setSelectedSessions([]);
+      setSelectedFaculties([]);
+      fetchScheduleForDate(formattedDate);
+
+    } catch (error) {
+      console.error('Error substituting mentor:', error);
+      Alert.alert('Error', 'Failed to substitute mentor');
+    }
+  };
+
+
+  // Update the session selection handler
+  const handleSessionSelect = (selectedSession) => {
+    const alreadySelected = selectedSessions.find(s => s.id === selectedSession.id);
+    if (alreadySelected) {
+      setSelectedSessions(prev => prev.filter(s => s.id !== selectedSession.id));
+    } else {
+      setSelectedSessions(prev => [...prev, selectedSession]);
+    }
+
+    // Fetch available mentors only once (or update if necessary)
+    fetchAvailableMentors(selectedSession);
+  };
+
+
+  // Add the fetchAvailableMentors function
+  const fetchAvailableMentors = async (selectedSession) => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/mentor/available-substitute-mentors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sectionId: mentor.section_id,
+          date: formattedDate,
+          startTime: selectedSession.start_time,
+          endTime: selectedSession.end_time,
+          currentMentorId: mentor.id
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setAvailableMentors(data.availableMentors);
+      }
+    } catch (error) {
+      console.error('Error fetching available mentors:', error);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -177,16 +306,6 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
     // Fetch schedule for the selected date
     fetchScheduleForDate(date.dateString);
   };
-
-  // Render item for subject list
-  const renderSubjectItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.subjectItem}
-      onPress={() => handleSubjectSelect(item)}
-    >
-      <Text style={styles.subjectItemText}>{item}</Text>
-    </TouchableOpacity>
-  );
 
   const formatTime = (timeString) => {
     if (!timeString) return '';
@@ -222,11 +341,10 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
 
       <View style={styles.MentorDayDetails}>
         <View style={styles.profileSection}>
-          {/* <Image source={require('../../../../assets/CoordinatorPage/MentorList/staff.png')} style={styles.avatar} /> */}
           {mentor.photo_url ? (
             <Image source={getProfileImageSource(mentor.photo_url)} style={styles.avatar} />
           ) : (
-            <Image source={Profile} style={styles.avatar} />
+            <Image source={Staff} style={styles.avatar} />
           )}
           <View style={styles.mentorInfo}>
             <Text style={styles.infoLabel}>Name : {mentor.name || 'N/A'}</Text>
@@ -264,12 +382,12 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
           <View style={styles.infoColumn}>
             <Text style={styles.infoTitle}>Subject:</Text>
             <Text style={styles.infoValue}>{formatSubjects(mentorDetails.subjects)}</Text>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={styles.penicon}
               onPress={() => setShowSubjectModal(true)}
             >
-              <Pen width={12} height={15} />
-            </TouchableOpacity>
+              <Assign width={12} height={15} />
+            </TouchableOpacity> */}
           </View>
           <View style={styles.infoColumn}>
             <Text style={styles.infoTitle1}>Mentor For:</Text>
@@ -294,13 +412,30 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
       <View style={styles.shedulesContainer}>
         <View style={styles.scheduleSection}>
           <Text style={styles.sectionTitle}>Schedules</Text>
-          <View style={styles.dateSelector}>
+          <View style={styles.dateNavigation}>
+            <View style={styles.todayIndicator} />
             <Text style={styles.todayText}>Today</Text>
+            <View style={styles.dateNavigationControls}>
+              <TouchableOpacity onPress={goToPreviousDay}>
+                <Text style={styles.dateNavArrow}>{"<"}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowCalendarModal(true)}
+              >
+                <Text style={styles.dateText}>{selectedDate}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={goToNextDay}>
+                <Text style={styles.dateNavArrow}>{">"}</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowCalendarModal(true)}
+              style={styles.assignButton}
+              onPress={() => setShowSessionModal(true)}
             >
-              <Text style={styles.dateText}> {selectedDate} </Text>
+              <Assign width={20} height={20} />
             </TouchableOpacity>
           </View>
         </View>
@@ -310,7 +445,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
               <View key={index} style={styles.classItem}>
                 <View>
                   <Text style={styles.subjectText}>{cls.subject_name}</Text>
-                  <Text style={styles.gradeText}>{cls.grade_name} - {cls.section_name}</Text>
+                  <Text style={styles.gradeText}>Grade {cls.grade_id} - Section {cls.section_name}</Text>
                   <Text style={styles.typeText}>{cls.activity_name}</Text>
                 </View>
                 <Text style={styles.timeText}>
@@ -319,36 +454,10 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
               </View>
             ))
           ) : (
-            <Text style={styles.noClassesText}>No classes scheduled for this day</Text>
+            <Nodata />
           )}
         </ScrollView>
       </View>
-
-      {/* Subject Selection Modal */}
-      <Modal
-        visible={showSubjectModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowSubjectModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Subject</Text>
-            <FlatList
-              data={subjects}
-              renderItem={renderSubjectItem}
-              keyExtractor={(item) => item}
-              style={styles.subjectList}
-            />
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setShowSubjectModal(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Calendar Modal */}
       <Modal
@@ -357,25 +466,144 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
         animationType="fade"
         onRequestClose={() => setShowCalendarModal(false)}
       >
-        <TouchableWithoutFeedback onPress={() => setShowCalendarModal(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.calendarModalContent}>
-              <Text style={styles.modalTitle}>Select Date</Text>
-              <Calendar
-                current={formattedDate}
-                markedDates={{
-                  [formattedDate]: { selected: true, selectedColor: '#0066CC' }
-                }}
-                onDayPress={handleDateSelect}
-                theme={{
-                  selectedDayBackgroundColor: '#0066CC',
-                  todayTextColor: '#0066CC',
-                  arrowColor: '#0066CC',
-                }}
+        <View style={styles.modalOverlay}>
+          <View style={styles.calendarModalContent}>
+            <Text style={styles.modalTitle}>Select Date</Text>
+            <Calendar
+              current={formattedDate}
+              markedDates={{
+                [formattedDate]: { selected: true, selectedColor: '#0066CC' }
+              }}
+              onDayPress={handleDateSelect}
+              theme={{
+                selectedDayBackgroundColor: '#0066CC',
+                todayTextColor: '#0066CC',
+                arrowColor: '#0066CC',
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Session Modal */}
+      <Modal
+        visible={showSessionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSessionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.sessionModalContent}>
+            <View style={styles.sessionModalHeader}>
+              <BackIcon
+                width={20}
+                height={20}
+                onPress={() => setShowSessionModal(false)}
+              />
+              <Text style={styles.sessionModalTitle}>Substitute allocation</Text>
+            </View>
+
+            <ScrollView style={styles.sessionList}>
+              {mentorSchedule.map((session) => (
+                <TouchableOpacity
+                  key={session.id}
+                  style={styles.sessionItem}
+                  onPress={() => handleSessionSelect(session)}
+                >
+                  <View style={styles.checkboxContainer}>
+                    {selectedSessions.some(s => s.id === session.id) ? (
+                      <Tickbox width={20} height={20} />
+                    ) : (
+                      <Tick width={20} height={20} />
+                    )}
+                  </View>
+                  <Text style={styles.sessionText}>
+                    {session.subject_name} ({formatTime(session.start_time)} - {formatTime(session.end_time)})
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.allotButton}
+              onPress={() => {
+                if (selectedSessions.length > 0) {
+                  setShowSessionModal(false);
+                  setShowFacultyModal(true);
+                }
+              }}
+            >
+              <Text style={styles.allotButtonText}>Allot substitute</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Faculty Selection Modal */}
+      <Modal
+        visible={showFacultyModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFacultyModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.facultyModalContent}>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchBox}
+                placeholder="Search faculty"
+                value={searchText}
+                onChangeText={text => setSearchText(text)}
               />
             </View>
+
+            <FlatList
+              data={availableMentors?.filter(mentor =>
+                mentor.name.toLowerCase().includes(searchText.toLowerCase())
+              )}
+              keyExtractor={item => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.facultyItem,
+                    selectedFaculties.includes(item.id) && styles.selectedFacultyItem,
+                  ]}
+                  onPress={() => toggleFacultySelection(item.id)}
+                >
+                  <View style={styles.facultyDetails}>
+                    <View style={styles.staffName}>
+                      <Oneperson width={20} height={20} />
+                      <Text style={styles.facultyName}>{item.name}</Text>
+                    </View>
+                    <View style={styles.hatContainer}>
+                      <Hat width={20} height={20} />
+                      <Text style={styles.facultySpec}>
+                        {item.specification}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.checkboxContainer}>
+                    {selectedFaculties.includes(item.id) ? (
+                      <Tickbox width={20} height={20} />
+                    ) : (
+                      <Tick width={20} height={20} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
+              style={styles.facultyList}
+            />
+
+            <TouchableOpacity
+              style={styles.selectButton}
+              onPress={handleAllotSubstitute}
+            >
+              <Text style={styles.selectButtonText}>
+                Assign Substitute <Tickicon width={16} height={16} />
+              </Text>
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
+        </View>
       </Modal>
 
       <TouchableOpacity style={styles.homeButtonContainer} onPress={() => navigation.navigate('CoordinatorMain')}>

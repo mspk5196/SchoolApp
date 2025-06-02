@@ -9,8 +9,9 @@ import {
     Modal,
     Image,
     StatusBar,
-    Platform, 
-    Alert
+    Platform,
+    Alert,
+    Linking
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DocumentPicker from 'react-native-document-picker';
@@ -24,6 +25,11 @@ import VideoIcon from '../../../../assets/CoordinatorPage/Subjects/video-icon.sv
 import DeleteIcon from '../../../../assets/CoordinatorPage/Subjects/delete-icon.svg';
 import EditIcon from '../../../../assets/CoordinatorPage/Subjects/Edit.svg';
 import { API_URL } from "@env";
+import RNFS from 'react-native-fs';
+import FileViewer from 'react-native-file-viewer';
+import Nodata from '../../../../components/General/Nodata';
+import mime from 'react-native-mime-types';
+import { Link } from '@react-navigation/native';
 
 const SubjectPage = ({ route, navigation }) => {
     const { grade, subject, subjectID, gradeID } = route.params || {};
@@ -45,6 +51,8 @@ const SubjectPage = ({ route, navigation }) => {
 
     // State to store saved materials
     const [materials, setMaterials] = useState([]);
+
+    const [downloadProgress, setDownloadProgress] = useState(null);
 
     // Track active tab per material using material ID
     const [activeTabs, setActiveTabs] = useState({});
@@ -242,7 +250,7 @@ const SubjectPage = ({ route, navigation }) => {
                 type: [DocumentPicker.types.pdf],
                 allowMultiSelection: true,
             });
- 
+
             const newFiles = results.map(file => ({
                 name: file.name,
                 uri: file.uri,
@@ -396,6 +404,79 @@ const SubjectPage = ({ route, navigation }) => {
                 }
             ]
         );
+    };
+
+    const openFileLikeWhatsApp = async (fileUrl, fileName) => {
+
+        const localFile = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+
+        try {
+            Alert.alert('Choice', 'Do you want to open this file in the app or download it?', [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Just View',
+                    onPress: async () => {
+                        try {
+                            await Linking.openURL(fileUrl);
+                        } catch (err) {
+                            console.error('File open error:', err);
+                            Alert.alert('Error', 'Could not open the file in the app.');
+                        }
+                    },
+                },
+                {
+                    text: 'Download',
+                    onPress: async () => {
+                        setDownloadProgress(0);
+                        const downloadResult = await RNFS.downloadFile({
+                            fromUrl: fileUrl,
+                            toFile: localFile,
+                            progress: (res) => {
+                                const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);
+                                setDownloadProgress(percent);
+                            },
+                            progressDivider: 1,
+                        }).promise;
+
+                        setDownloadProgress(null);
+
+                        if (downloadResult.statusCode === 200) {
+                            const mimeType = mime.lookup(fileName) || undefined;
+                            await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
+                        } else {
+                            Alert.alert('Download failed', 'Could not download the file.');
+                        }
+                    },
+                }
+
+            ]
+            )
+        } catch (err) {
+            setDownloadProgress(null);
+            if (
+                err &&
+                (err.message?.includes('No app associated') ||
+                    err.message?.includes('no activity found to handle Intent'))
+            ) {
+                Alert.alert(
+                    'No App Found',
+                    'No app is installed to open this file type. Would you like to open it in your browser?',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Open in Browser',
+                            onPress: () => Linking.openURL(fileUrl),
+                        },
+                    ]
+                );
+            } else {
+                Alert.alert('Error', 'Could not open the file.');
+            }
+            console.error('File open error:', err);
+        }
     };
 
     const renderAddMaterialForm = () => {
@@ -561,7 +642,7 @@ const SubjectPage = ({ route, navigation }) => {
                                                     setEditingLevelId(material.level);
                                                     setEditingDate(new Date(material.expectedDate));
                                                     setShowEditDatePicker(true);
-                                                }} 
+                                                }}
                                             >
                                                 <EditIcon style={styles.editIcon} />
                                                 {showEditDatePicker && (
@@ -592,12 +673,16 @@ const SubjectPage = ({ route, navigation }) => {
                                     </View>
 
                                     {activeTabs[material.id] === 'PDF' ? (
+
                                         <View style={styles.materialFiles}>
                                             {material.pdfs.length > 0 ? (
                                                 material.pdfs.map((pdf, idx) => (
                                                     <View key={`pdf-${pdf.id || pdf.name || idx}`} style={styles.fileRow}>
                                                         <PdfIcon style={styles.pdfIcon} />
-                                                        <Text style={styles.fileName}>{pdf.name}</Text>
+                                                        {/* {  console.log("Active tab for material", pdf, "is PDF")} */}
+                                                        <TouchableOpacity onPress={() => openFileLikeWhatsApp(`${pdf.uri}`, pdf.name)} style={{ flex: 1 }}>
+                                                            <Text style={styles.fileName}>{(pdf.name).replace(/%/g, ' ')}</Text>
+                                                        </TouchableOpacity>
                                                         <TouchableOpacity onPress={() => deleteFile(pdf.id, 'PDF', material.level)}>
                                                             <DeleteIcon style={styles.deleteIcon} />
                                                         </TouchableOpacity>
@@ -613,7 +698,9 @@ const SubjectPage = ({ route, navigation }) => {
                                                 material.videos.map((video, idx) => (
                                                     <View key={`video-${video.id || video.name || idx}`} style={styles.fileRow}>
                                                         <VideoIcon style={styles.videoIcon} />
-                                                        <Text style={styles.fileName}>{video.name}</Text>
+                                                        <TouchableOpacity onPress={() => openFileLikeWhatsApp(`${video.uri}`, video.name)} style={{ flex: 1 }}>
+                                                            <Text style={styles.fileName}>{video.name}</Text>
+                                                        </TouchableOpacity>
                                                         <TouchableOpacity onPress={() => deleteFile(video.id, 'Video', material.level)}>
                                                             <DeleteIcon style={styles.deleteIcon} />
                                                         </TouchableOpacity>
@@ -654,6 +741,35 @@ const SubjectPage = ({ route, navigation }) => {
             </TouchableOpacity>
 
             {renderAddMaterialForm()}
+
+            <Modal
+                visible={downloadProgress !== null}
+                transparent
+                animationType="fade"
+                onRequestClose={() => { }} // disables Android back button
+            >
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
+                    <View style={{
+                        backgroundColor: '#fff',
+                        padding: 30,
+                        borderRadius: 10,
+                        alignItems: 'center'
+                    }}>
+                        <ActivityIndicator size="large" color="#007bff" style={{ marginBottom: 10 }} />
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 5, color: 'black' }}>
+                            Downloading...
+                        </Text>
+                        <Text style={{ fontSize: 16, color: 'black' }}>
+                            {downloadProgress}%
+                        </Text>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };

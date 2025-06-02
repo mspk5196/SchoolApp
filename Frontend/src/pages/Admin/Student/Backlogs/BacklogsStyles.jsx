@@ -1,4 +1,4 @@
-import {StyleSheet} from 'react-native';
+import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
   header: {
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0,
     elevation: 2,
   },
@@ -120,6 +120,51 @@ const styles = StyleSheet.create({
     marginTop: 5,
     textAlign: 'right',
   },
+
+  //Sections
+  scrollContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+  },
+  classnavsection: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  gradeselection: {
+    backgroundColor: '#ffffff',
+    padding: 10,
+    marginLeft: 10,
+    marginTop: 20,
+    width: 90,
+    borderRadius: 30,
+    alignItems: 'center',
+  },
+  gradeselectiontext: {
+    color: 'black',
+    fontWeight: '500',
+  },
+  activeButton: {
+    backgroundColor: '#0C36FF',
+  },
+  activeText: {
+    color: 'white',
+  },
+  img: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  imgtext: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  footer:{
+    position:'absolute'
+  }
 });
 
 export default styles;

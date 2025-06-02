@@ -1,4 +1,4 @@
-import {StyleSheet} from 'react-native';
+import { StyleSheet } from 'react-native';
 
 
 const styles = StyleSheet.create({
@@ -60,6 +60,43 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+  },
+  scrollContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+  },
+  classnavgrade: {
+    flexDirection: 'row',
+    marginTop: 10,
+    marginBottom: 10,
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  classnavsection: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  gradeselection: {
+    backgroundColor: '#ffffff',
+    padding: 10,
+    marginLeft: 10,
+    marginTop: 20,
+    width: 90,
+    borderRadius: 30,
+    alignItems: 'center',
+  },
+  gradeselectiontext: {
+    color: 'black',
+    fontWeight: '500',
+  },
+  activeButton: {
+    backgroundColor: '#0C36FF',
+  },
+  activeText: {
+    color: 'white',
   },
 });
 

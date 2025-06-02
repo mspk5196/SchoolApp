@@ -4,22 +4,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
+    padding: 20,
+    paddingBottom: 10,
+    paddingTop: 25,
     borderBottomWidth: 1,
-    borderBottomColor: '#E3E3E3',
+    borderBottomColor: '#E0E0E0',
+    backgroundColor: '#FAFAFA',
+    flexDirection: 'row',
+    // alignItems: 'center',
+    borderColor: '#00000080',
   },
-  headerTxt: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginLeft: 10,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333333',
   },
-  BackIcon: {
-    width: 20,
-    height: 20,
+  backButton: {
+    paddingRight: 10,
+    // paddingTop: 25,
+    // alignItems:'center'
   },
-  // New container for tabs with fixed height
+
   tabsContainer: {
     height: 60, // Fixed height for the tabs section
     marginTop: 10,
@@ -35,7 +40,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
     borderRadius: 20,
     backgroundColor: '#E0E0E0',
-    width: 120,
+    width: 105,
     alignItems: 'center',
   },
   activeTab: {
@@ -50,7 +55,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   cardsContainer: {
-    padding: 15,
+    padding: 21,
     paddingBottom: 30, // Add extra padding at the bottom for scrolling
   },
   card: {
@@ -71,7 +76,7 @@ const styles = StyleSheet.create({
   cardRightContent: {
     flex: 1,
     alignItems: 'flex-end',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
   profileSection: {
     flexDirection: 'row',
@@ -81,38 +86,86 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 10,
+    marginRight: 13,
   },
   profileInfo: {
     flex: 1,
   },
   nameText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '600',
     color: '#000000',
   },
   idText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#555555',
+    fontWeight: '500',
     marginTop: 2,
   },
   levelText: {
-    fontSize: 14,
-    color: '#FF8C00',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F9932E',
     marginTop: 5,
   },
   subjectText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#333333',
     textAlign: 'right',
   },
   daysText: {
     fontSize: 14,
+    fontWeight: '700',
     color: '#FF8C00',
     marginTop: 5,
     textAlign: 'right',
   },
+
+  //Sections
+  scrollContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+  },
+  classnavsection: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  gradeselection: {
+    backgroundColor: '#ffffff',
+    padding: 10,
+    marginLeft: 10,
+    marginTop: 20,
+    width: 90,
+    borderRadius: 30,
+    alignItems: 'center',
+  },
+  gradeselectiontext: {
+    color: 'black',
+    fontWeight: '500',
+  },
+  activeButton: {
+    backgroundColor: '#0C36FF',
+  },
+  activeText: {
+    color: 'white',
+  },
+  img: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  imgtext: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  footer: {
+    position: 'absolute'
+  }
 });
 
 export default styles;

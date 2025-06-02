@@ -128,7 +128,7 @@ const MentorMaterialHome = ({ navigation, route }) => {
 
       <SectionList
         sections={gradeSubject}
-        style={{marginTop:20}}
+        style={{marginTop:20, flex:2}}
         keyExtractor={(item) => item.key} // Use the unique key we created
         renderItem={({ item }) => (
           <Pressable

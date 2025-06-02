@@ -7,25 +7,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
   },
-                                                                  
+
   // Header
-    activityHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom:5,
-    },
-    homeIcon: {
-      width: 24,
-      height: 24,
-      marginRight: 10,
-      marginTop: 30,
-    },
-    activityText: {
-      fontSize: 22,
-      fontWeight: "bold",
-      color: "#000",
-      marginTop: 30,
-    },
+  activityHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  homeIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 10,
+    marginTop: 30,
+  },
+  activityText: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#000",
+    marginTop: 30,
+  },
 
   // Search Bar
   searchView: {
@@ -57,13 +57,13 @@ const styles = StyleSheet.create({
   historyIcon: {
     width: 24,
     height: 24,
-    marginLeft: 30,
+    // marginLeft: 30,
   },
   historyText: {
-   marginLeft: 23,
+    marginLeft: 23,
     fontSize: 13,
-      fontWeight: "500",
-      color: "#000",
+    fontWeight: "500",
+    color: "#000",
   },
   // Leave Card
   inboxItem: {
@@ -108,8 +108,8 @@ const styles = StyleSheet.create({
   },
   namePhoneContainer: {
     marginLeft: 10,
-    textAlign:"left",
-    marginRight:130,
+    textAlign: "left",
+    marginRight: 130,
   },
 
 
@@ -117,11 +117,11 @@ const styles = StyleSheet.create({
   inboxText: {
     fontWeight: "bold",
     fontSize: 16,
-    color:"#000000",
+    color: "#000000",
   },
   inboxMsg: {
     fontSize: 13,
-    color: "#777", 
+    color: "#777",
   },
 
   status: {
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
-  
+
   modalContainer: {
     width: 300,
     backgroundColor: "#fff",
@@ -226,21 +226,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 5,
   },
-  
+
   modalTitle: {
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 15,
     color: "#000",
-    marginRight:84,
-   },
-  
+    marginRight: 84,
+  },
+
   reasonCard: {
     width: "100%",
     backgroundColor: '#FFFFFF',
     borderRightColor: "#E0E0E0",
-    borderTopColor:'#E0E0E0',
-    borderBottomColor:'#E0E0E0',
+    borderTopColor: '#E0E0E0',
+    borderBottomColor: '#E0E0E0',
     borderWidth: 1,
     borderLeftWidth: 4,
     borderLeftColor: '#CF544F',
@@ -249,19 +249,19 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 20,
   },
-  
+
   reasonText: {
     color: "#333",
     fontSize: 14,
     lineHeight: 20,
   },
-  
+
   modalButtonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
   },
-  
+
   cancelButton: {
     flex: 1,
     marginRight: 10,
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
   },
-  
+
   confirmButton: {
     flex: 1,
     marginLeft: 10,
@@ -279,20 +279,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
   },
-  
+
   cancelButtonText: {
     color: "#234BFF",
     fontWeight: "600",
     fontSize: 14,
   },
-  
+
   confirmButtonText: {
     color: "#fff",
     fontWeight: "600",
     fontSize: 14,
   },
-  
-  
+
+
 });
 
 export default styles;

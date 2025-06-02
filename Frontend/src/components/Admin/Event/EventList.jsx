@@ -3,7 +3,7 @@ import {View, Text, TouchableOpacity, FlatList, Image} from 'react-native';
 import Liked from    '../../../assets/AdminPage/Event/liked.svg';
 import Unliked from  '../../../assets/AdminPage/Event/unliked.svg';
 import Location from '../../../assets/AdminPage/Event/location.svg';
-import styles from   '../../../pages/Admin/Events/eventmain/EventStyle';
+import styles from   '../../../pages/Admin/Events/EventStyle';
 import { useNavigation } from '@react-navigation/native';
 
 const EventList = ({

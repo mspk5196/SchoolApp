@@ -159,6 +159,8 @@ const styles = StyleSheet.create({
   },
   daySelectorScrollView: {
     marginBottom: 15,
+    flex:0,
+    flexGrow:0
   },
   daySelectorContainer: {
     flexDirection: 'row',

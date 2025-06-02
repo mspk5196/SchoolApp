@@ -305,14 +305,14 @@ activeText: {
   },
   actionButtonCall: {
     backgroundColor: '#AEBCFF', 
-    borderRadius: 999,
+    borderRadius: 500,
     padding: 8,
     marginLeft: 'auto',
     marginRight: 10,
   },
   actionButtonMsg: {
     backgroundColor: '#A4F4E7', 
-    borderRadius: 999,
+    borderRadius: 500,
     padding: 8,
   },
   

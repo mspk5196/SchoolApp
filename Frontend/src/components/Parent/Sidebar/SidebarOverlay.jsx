@@ -9,7 +9,7 @@ import {
   TouchableWithoutFeedback,
   Platform,
   FlatList,
-  Alert  
+  Alert
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import ProfileIcon from '../../../assets/ParentPage/SidebarSvg/profile.svg';
@@ -112,16 +112,25 @@ const SidebarOverlay = ({ visible, onClose }) => {
         const storedStudents = await AsyncStorage.getItem("studentData");
         if (storedStudents) {
           const parsedStudents = JSON.parse(storedStudents);
+
+          // Check if activeUser exists in storage
+          let storedActiveUser = await AsyncStorage.getItem("activeUser");
+          if (!storedActiveUser && parsedStudents.length > 0) {
+            // Set first student as active by default
+            storedActiveUser = parsedStudents[0].name;
+            await AsyncStorage.setItem("activeUser", storedActiveUser);
+          }
+
           setStudent(parsedStudents);
-          
+
           // Initialize active users state
           const initialActiveUsers = {};
           parsedStudents.forEach(student => {
-            initialActiveUsers[student.name] = student.name === parsedStudents[0].name;
+            initialActiveUsers[student.name] = student.name === storedActiveUser;
           });
-          
+
           setActiveUsers(initialActiveUsers);
-          setActiveUser(parsedStudents[0].name);
+          setActiveUser(storedActiveUser);
         }
       } catch (error) {
         console.error("Error fetching students:", error);
@@ -133,10 +142,10 @@ const SidebarOverlay = ({ visible, onClose }) => {
 
   const handleMenuItemPress = (menuItem) => {
     // Navigate to the corresponding screen based on the menu item
-    switch (menuItem) { 
+    switch (menuItem) {
       case 'Profile':
         navigation.navigate('StudentPageProfile');
-        break;  
+        break;
       case 'Calendar':
         navigation.navigate('StudentPageCalendar');
         break;
@@ -160,43 +169,43 @@ const SidebarOverlay = ({ visible, onClose }) => {
     }
 
     // Close the sidebar after navigation
-    onClose(); 
+    onClose();
   };
 
   const toggleUser = async (userName) => {
-    // Update the active users state
-    const updatedActiveUsers = {
-      ...activeUsers,
-      [userName]: !activeUsers[userName]
-    };
-    
-    setActiveUsers(updatedActiveUsers);
-    
-    // Check if any user is active
-    const anyActive = Object.values(updatedActiveUsers).some(isActive => isActive);
-    
-    if (!anyActive) {
-      // If no users are active, navigate to Redirect page
+    if (activeUser === userName) {
+      // If the active user is toggled OFF, go to Redirect page
       await AsyncStorage.removeItem("activeUser");
       setActiveUser(null);
-      onClose(); // Close the sidebar
-      navigation.navigate('Redirect',{skipAutoNavigate: true}); // Navigate to Redirect page
+      onClose();
+      navigation.navigate('Redirect', { skipAutoNavigate: true });
       EventBus.emit("noActiveUser");
-    } else {
-      // If the current active user is being toggled off, find another active user
-      if (activeUser === userName && !updatedActiveUsers[userName]) {
-        const newActiveUser = Object.keys(updatedActiveUsers).find(user => updatedActiveUsers[user]);
-        setActiveUser(newActiveUser);
-        await AsyncStorage.setItem("activeUser", newActiveUser);
-      } 
-      // If an inactive user is being toggled on, make it the active user
-      else if (!activeUsers[userName] && updatedActiveUsers[userName]) {
-        setActiveUser(userName);
-        await AsyncStorage.setItem("activeUser", userName);
-      }
-      
-      EventBus.emit("userToggled");
+      return;
     }
+
+    // Set only the selected user as active, others as inactive
+    const updatedActiveUsers = {};
+    studentData.forEach(student => {
+      updatedActiveUsers[student.name] = student.name === userName;
+    });
+    setActiveUsers(updatedActiveUsers);
+    setActiveUser(userName);
+    await AsyncStorage.setItem("activeUser", userName);
+
+    // Fetch and update studentData for the selected student
+    const selectedStudent = studentData.find(student => student.name === userName);
+    if (selectedStudent) {
+      // Optionally, fetch fresh data from API here if needed
+      // Example:
+      // const response = await fetch(`${API_URL}/api/getStudentData`, { ... });
+      // const data = await response.json();
+      // await AsyncStorage.setItem("studentData", JSON.stringify(data.student));
+
+      // For now, just store the selected student as an array (to match your usage)
+      await AsyncStorage.setItem("studentData", JSON.stringify([selectedStudent]));
+    }
+
+    EventBus.emit("userToggled");
   };
 
   if (!shouldRender) return null;
@@ -228,12 +237,12 @@ const SidebarOverlay = ({ visible, onClose }) => {
               keyExtractor={(item) => item.id}
               showsHorizontalScrollIndicator={false}
               renderItem={({ item }) => (
-                <UserToggle 
-                  name={item.name} 
-                  isActive={activeUsers[item.name] || false} 
-                  onToggle={() => toggleUser(item.name)} 
+                <UserToggle
+                  name={item.name}
+                  isActive={activeUsers[item.name] || false}
+                  onToggle={() => toggleUser(item.name)}
                 />
-              )} 
+              )}
             />
           </View>
         </View>

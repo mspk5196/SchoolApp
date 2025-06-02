@@ -5,126 +5,157 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
-  SafeAreaView,
-  StyleSheet
+  SafeAreaView
 } from 'react-native';
-import BackIcon from   "../../../../assets/CoordinatorPage/LeaveApproval/leftarrow.svg";
-import Dateicon from   '../../../../assets/CoordinatorPage/LeaveApproval/date.svg';
-import Reasonicon from '../../../../assets/CoordinatorPage/LeaveApproval/reason.svg';
-import Staff from      "../../../../assets/CoordinatorPage/LeaveApproval/staff.png";
-import Pending from    '../../../../assets/CoordinatorPage/LeaveApproval/pending.svg'
-import Approve from    '../../../../assets/CoordinatorPage/LeaveApproval/approve.svg'
+import BackIcon from "../../../../assets/CoordinatorPage/LeaveApproval/leftarrow.svg";
+import DateIcon from '../../../../assets/CoordinatorPage/LeaveApproval/date.svg';
+import ReasonIcon from '../../../../assets/CoordinatorPage/LeaveApproval/reason.svg';
+import Staff from "../../../../assets/CoordinatorPage/LeaveApproval/staff.png";
+import PendingIcon from '../../../../assets/CoordinatorPage/LeaveApproval/pending.svg';
+import ApprovedIcon from '../../../../assets/CoordinatorPage/LeaveApproval/approve.svg';
+import RejectedIcon from '../../../../assets/CoordinatorPage/LeaveApproval/close.svg';
 import styles from './LeaveDetailsStyle';
+import { API_URL } from '@env';
 
 const CoordinatorLeaveDetails = ({ route, navigation }) => {
-  const { student } = route.params;
-  
-  // Mock leave history data
-  const leaveHistory = [
-    {
-      date: '12/08/23',
-      status: 'Approved',
-      leaveDate: student.leaveDate,
-      leaveType: student.leaveType,
-      leaveReason: student.leaveReason
+  const { leave, history } = route.params;
+
+  const StatusIcon = ({ status }) => {
+    switch (status) {
+      case 'Approved':
+        return <ApprovedIcon height={20} />;
+      case 'Rejected':
+        return <RejectedIcon height={20} />;
+      default:
+        return <PendingIcon height={20} />;
     }
-  ];
+  };
+
+  const statusTextStyle = (status) => {
+    switch (status) {
+      case 'Approved':
+        return styles.approvedStatus;
+      case 'Rejected':
+        return styles.rejectedStatus;
+      default:
+        return styles.pendingStatus;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-     <View style={styles.header}>
+      <View style={styles.header}>
         <BackIcon 
           width={styles.BackIcon.width} 
           height={styles.BackIcon.height} 
           onPress={() => navigation.goBack()}
         />
-        <Text style={styles.headerTxt}>Leave Approval</Text>
+        <Text style={styles.headerTxt}>Leave Details</Text>
       </View>
 
       <ScrollView style={styles.scrollContainer}>
         {/* Current Leave Request */}
-        <View style={styles.leaveCard}>
+        <View style={styles.currentLeaveCard}>
           <View style={styles.userInfo}>
-            <Image source={Staff} style={styles.avatar} />
+            <Image 
+              source={leave.file_path ? { uri: `${API_URL}/${leave.file_path}` } : Staff} 
+              style={styles.avatar} 
+            />
             <View style={styles.nameContainer}>
-              <Text style={styles.name}>{student.name}</Text>
-              <Text style={styles.id}>{student.id}</Text>
+              <Text style={styles.name}>{leave.name}</Text>
+              <Text style={styles.id}>{leave.mentorRoll}</Text>
             </View>
             <View style={styles.statusContainer}>
-                <Pending height={20} />
-              <Text style={[styles.statusText, styles.pendingStatus]}> Pending</Text>
+              <StatusIcon status={leave.status} />
+              <Text style={[styles.statusText, statusTextStyle(leave.status)]}>
+                {leave.status}
+              </Text>
             </View>
           </View>
 
           <View style={styles.leaveDetails}>
-            <View style={styles.dateContainer}>
-              <Dateicon width={16} height={16} style={styles.icon} />
-              <Text style={styles.dateText}>{student.leaveDate}</Text>
+            <View style={styles.detailRow}>
+              <DateIcon width={16} height={16} />
+              <Text style={styles.detailText}>{leave.leaveDate}</Text>
             </View>
-            <View style={styles.leaveTypeContainer}>
-              <View style={styles.leaveTypeIcon}>
-                <Reasonicon  style={styles.leaveTypeText}/>
-              
-              </View>
-              <Text style={styles.leaveType}>{student.leaveType}</Text>
+            <View style={styles.detailRow}>
+              <ReasonIcon width={16} height={16} />
+              <Text style={styles.detailText}>{leave.leaveType}</Text>
             </View>
           </View>
 
           <View style={styles.reasonContainer}>
-            <Text style={styles.reasonText}>{student.leaveReason}</Text>
+            <Text style={styles.reasonTitle}>Reason:</Text>
+            <Text style={styles.reasonText}>{leave.leaveReason}</Text>
           </View>
+
+          {leave.status === 'Approved' && leave.substituteName && (
+            <View style={styles.substituteContainer}>
+              <Text style={styles.substituteTitle}>Substitute:</Text>
+              <Text style={styles.substituteText}>
+                {leave.substituteName} ({leave.substituteRoll})
+              </Text>
+            </View>
+          )}
+
+          {leave.status === 'Rejected' && leave.rejection_reason && (
+            <View style={styles.rejectionContainer}>
+              <Text style={styles.rejectionTitle}>Rejection Reason:</Text>
+              <Text style={styles.rejectionText}>{leave.rejection_reason}</Text>
+            </View>
+          )}
         </View>
 
         {/* Leave History */}
-        <View style={styles.historySection}>
-          <Text style={styles.historyTitle}>Leave history</Text>
-          
-          {leaveHistory.map((item, index) => (
-            <View key={index} style={styles.historyItem}>
-              <Text style={styles.historyDate}>{item.date}</Text>
-              
-              <View style={styles.historyLeaveCard}>
-                <View style={styles.userInfo}>
-                  <Image source={Staff} style={styles.avatar} />
-                  <View style={styles.nameContainer}>
-                    <Text style={styles.name}>{student.name}</Text>
-                    <Text style={styles.id}>{student.id}</Text>
-                  </View>
-                  <View style={styles.statusContainer}>
-                    <Approve height={20}/>
-                    <Text style={[styles.statusText, styles.approvedStatus]}> Approved</Text>
+        {history.length > 0 && (
+          <View style={styles.historySection}>
+            <Text style={styles.historyTitle}>Leave History</Text>
+            
+            {history.map((item, index) => (
+              <View key={index} style={styles.historyItem}>
+                <View style={styles.historyHeader}>
+                  <Text style={styles.historyDate}>
+                    {new Date(item.requested_at).toLocaleDateString()}
+                  </Text>
+                  <View style={styles.historyStatus}>
+                    <StatusIcon status={item.status} />
+                    <Text style={[styles.historyStatusText, statusTextStyle(item.status)]}>
+                      {item.status}
+                    </Text>
                   </View>
                 </View>
-
-                <View style={styles.leaveDetails}>
-                  <View style={styles.dateContainer}>
-                    <Dateicon width={16} height={16} style={styles.icon} />
-                    <Text style={styles.dateText}>{item.leaveDate}</Text>
+                
+                <View style={styles.historyDetails}>
+                  <View style={styles.detailRow}>
+                    <DateIcon width={16} height={16} />
+                    <Text style={styles.detailText}>
+                      {item.start_date} to {item.end_date}
+                    </Text>
                   </View>
-                  <View style={styles.leaveTypeContainer}>
-                    <View style={styles.leaveTypeIcon}>
-                        <Reasonicon style={styles.leaveTypeText}/>
-                     
-                    </View>
-                    <Text style={styles.leaveType}>{item.leaveType}</Text>
+                  <View style={styles.detailRow}>
+                    <ReasonIcon width={16} height={16} />
+                    <Text style={styles.detailText}>{item.leave_type}</Text>
                   </View>
-                </View>
-
-                <View style={styles.reasonContainer}>
-                  <Text style={styles.reasonText}>{item.leaveReason}</Text>
+                  
+                  {item.status === 'Approved' && item.substituteName && (
+                    <Text style={styles.substituteText}>
+                      Substitute: {item.substituteName} ({item.substituteRoll})
+                    </Text>
+                  )}
+                  
+                  {item.status === 'Rejected' && item.rejection_reason && (
+                    <Text style={styles.rejectionText}>
+                      Reason: {item.rejection_reason}
+                    </Text>
+                  )}
                 </View>
               </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
-
-      <TouchableOpacity style={styles.approveButton}>
-        <Text style={styles.approveButtonText}>Approve and allot</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 };
-
 
 export default CoordinatorLeaveDetails;

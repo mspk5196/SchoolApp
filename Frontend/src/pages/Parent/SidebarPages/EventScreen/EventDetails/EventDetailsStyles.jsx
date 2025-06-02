@@ -168,6 +168,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     right: 20,
+    flex:1
   },
   registerButton: {
     backgroundColor: '#4F70FD',

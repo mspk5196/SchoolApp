@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -11,14 +11,49 @@ import BackIcon from '../../../../assets/AdminPage/FreeHour/leftarrow.svg';
 import TimeIcon from '../../../../assets/AdminPage/FreeHour/time.svg';
 import HomeIcon from '../../../../assets/AdminPage/FreeHour/home.svg';
 import styles from './FreehourDetailStyle';
-import staff from    '../../../../assets/AdminPage/SubjectMentor/staff.png';
+import staff from '../../../../assets/AdminPage/SubjectMentor/staff.png';
+import { API_URL } from '@env';
 
-const AdminFreehourDetail = ({navigation, route}) => {
-  // Extract faculty data from route params
-  const { faculty } = route.params || {
-    name: 'Mr.SasiKumar',
-    facultyId: '203384',
-    timeSlot: '10:40AM - 11:20AM',
+const AdminFreehourDetail = ({ navigation, route }) => {
+  const { faculty, timeSlot } = route.params;
+  const [taskDetails, setTaskDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // console.log('Faculty ID:', faculty.id);
+
+    if (faculty.id) {
+      fetchTaskDetails();
+    }
+  }, []);
+
+  // Update the fetchTaskDetails function to match your backend:
+
+  const fetchTaskDetails = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/getSelectedFreeHourActivity?dsId=${faculty.id}`);
+      const data = await response.json();
+      setTaskDetails(data[0]);
+      console.log('Task details:', data);
+
+    } catch (error) {
+      console.error('Error fetching task details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return staff;
+    }
   };
 
   return (
@@ -34,35 +69,50 @@ const AdminFreehourDetail = ({navigation, route}) => {
 
       <ScrollView style={styles.scrollView}>
         <View style={styles.profileCard}>
-          <Image source={staff} style={styles.avatar} />
+          {faculty.file_path ? (
+            <Image source={getProfileImageSource(faculty.file_path)} style={styles.avatar} />
+          ) : (
+            <Image source={staff} style={styles.avatar} />
+          )}
           <View style={styles.profileInfo}>
-          <Text style={styles.name}>{faculty.name}</Text>
-          <Text style={styles.facultyId}>Faculty ID: {faculty.facultyId}</Text>
-          <Text style={styles.timeSlot}>{faculty.timeSlot}</Text>
+            <Text style={styles.name}>{faculty.name}</Text>
+            <Text style={styles.facultyId}>Faculty ID: {faculty.roll}</Text>
+            <Text style={styles.timeSlot}>{timeSlot}</Text>
           </View>
         </View>
 
-        <View style={styles.section}>
-        <View style={styles.timeSection}>
-          <View style={styles.timeIcon}>
-            <TimeIcon width={20} height={20}/>
-          </View>
-          <Text style={styles.timeRange}>9:00 AM to 10:30 PM</Text>
-        </View>
+        {taskDetails ? (
+          <View style={styles.section}>
+            <View style={styles.timeSection}>
+              <View style={styles.timeIcon}>
+                <TimeIcon width={20} height={20} />
+              </View>
+              <Text style={styles.timeRange}>{taskDetails.timeSlot}</Text>
+            </View>
 
-        <View style={styles.detailSection}>
-          <Text style={styles.sectionTitle}>Academic</Text>
-          <View style={styles.contentBox}>
-            <Text style={styles.contentText}>
-              Lorem ipsum se simplemente el texto de relleno de las imprentas y archivos de texto.
-              Lorem ipsum ha sido el texto de relleno estándar de las industrias desde el año 1500,
-              cuando un impresor (N. del T. persona que se dedica a la imprenta) desconocido usó una
-              galería de textos y los mezcló de tal manera que logró hacer un libro de textos especimen.
-              No solo sobrevivió 500 años.
-            </Text>
+            <View style={styles.detailSection}>
+              <Text style={styles.sectionTitle}>Task Details</Text>
+              <View style={styles.contentBox}>
+                <Text style={styles.contentLabel}>Activity:</Text>
+                <Text style={styles.contentText}>{taskDetails.activity_type}</Text>
+
+                <Text style={styles.contentLabel}>Description:</Text>
+                <Text style={styles.contentText}>
+                  {taskDetails.description || 'No description provided'}
+                </Text>
+
+                <Text style={styles.contentLabel}>Status:</Text>
+                <Text style={styles.contentText}>
+                  {taskDetails.status}
+                </Text>
+              </View>
+            </View>
           </View>
-        </View>
-        </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.noTaskText}>No task assigned for this time slot</Text>
+          </View>
+        )}
       </ScrollView>
 
       <TouchableOpacity style={styles.homeButton}>

@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import { TouchableOpacity, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-import ParentDashboard from '../../screens/ParentDashboard/ParentDashboard';
-import MaterialScreen from '../../screens/MaterialScreen/MaterialScreen';
-import ScheduleScreen from '../../screens/ScheduleScreen/ScheduleScreen';
-import SidebarOverlay from '../../components/Sidebar/SidebarOverlay';
+import ParentDashboard from '../../../pages/Parent/ParentDashboard/ParentDashboard';
+import MaterialScreen from '../../../pages/Parent/MaterialScreen/StudentPageMaterialScreen';
+import ScheduleScreen from '../../../pages/Parent/ScheduleScreen/StudentScheduleScreen';
+import SidebarOverlay from '../../../components/Parent/Sidebar/SidebarOverlay';
 
 // Icons
 import HomeIcon from '../../assets/NavImg/home.svg';
@@ -61,7 +61,7 @@ const TabNavigator = () => {
           },
         })}
       >
-        <Tab.Screen name="Home" component={ParentDashboard} />
+        <Tab.Screen name="Home" component={ParentDashboard}/>
         <Tab.Screen name="Schedule" component={ScheduleScreen} />
         <Tab.Screen name="Materials" component={MaterialScreen} />
         <Tab.Screen

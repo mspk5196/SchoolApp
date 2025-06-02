@@ -5,12 +5,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAFAFA',
   },
-  noLeaveContainer:{
-    flex:0,
-    width:'100%',
-    height:'100%',
-    borderColor:'black',
-    borderWidth:1,
+  noLeaveContainer: {
+    flex: 0,
+    width: '100%',
+    height: '100%',
+    borderColor: 'black',
+    borderWidth: 1,
   },
   header: {
     flexDirection: 'row',
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    
+
   },
   headerTitle: {
     marginLeft: 6,
@@ -36,10 +36,10 @@ const styles = StyleSheet.create({
   },
 
   noLeaveTaken: {
-    textAlign:'center',
+    textAlign: 'center',
     fontSize: 18,
-    marginTop:'auto',
-    marginBottom:'auto',
+    marginTop: 'auto',
+    marginBottom: 'auto',
   },
 
   addButton: {
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     padding: 6,
     paddingBottom: 5,
-    overflow: 'hidden',
+    flex: 0.6
   },
   leaveContainer: {
     padding: 12,
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 12,
     paddingBottom: 0,
-    alignItems: 'center',  
+    alignItems: 'center',
     borderBottomColor: '#F0F0F0',
   },
   profileImage: {
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontWeight: '500',
     lineHeight: 17,
-   
+
   },
   floatingButton: {
     position: 'absolute',
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
-  
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
   },
-  
+
 });
 
 export default styles;

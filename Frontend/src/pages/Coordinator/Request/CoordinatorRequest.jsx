@@ -5,6 +5,7 @@ import BackIcon from '../../../assets/CoordinatorPage/Request/Back.svg';
 import styles from './RequestStyle';
 import { API_URL } from "@env";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Nodata from '../../../components/General/Nodata';
 
 const RequestItem = ({ title, subtitle, date, status, onPress }) => {
   return (
@@ -189,7 +190,8 @@ const CoordinatorRequest = ({ navigation }) => {
             ))
           ) : (
             <View style={styles.noRequests}>
-              <Text style={{ color: 'grey', justifyContent: 'center' }}>No Requests</Text>
+              {/* <Text style={{ color: 'grey', justifyContent: 'center' }}>No Requests</Text> */}
+              <Nodata/>
             </View>
           )}
         </ScrollView>

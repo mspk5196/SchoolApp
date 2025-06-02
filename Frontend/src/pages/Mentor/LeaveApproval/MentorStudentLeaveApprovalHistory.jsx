@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, Image } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, FlatList, Image, Alert } from "react-native";
 import styles from "./LeaveApprovalHistorysty";
 import SearchIcon from "../../../assets/MentorPage/search.svg";
 import Home from "../../../assets/MentorPage/backarrow.svg";
 import Approved from "../../../assets/MentorPage/greentick.svg";
 import Rejected from "../../../assets/MentorPage/rejected.svg";
 import { API_URL } from '@env'
+import Nodata from "../../../components/General/Nodata";
 const Staff = require('../../../assets/CoordinatorPage/StudentProfile/staff.png');
 
 const MentorStudentLeaveApprovalHistory = ({ navigation, route }) => {
@@ -106,6 +107,11 @@ const MentorStudentLeaveApprovalHistory = ({ navigation, route }) => {
       <FlatList
         data={sections}
         keyExtractor={(item) => item.date}
+        ListEmptyComponent={
+          <View style={{ height: 350 }}>
+            <Nodata />
+          </View>
+        }
         renderItem={({ item: section }) => (
           <View>
             <Text style={styles.sectionHeader}>{section.date}</Text>

@@ -26,6 +26,7 @@ import Calender from '../../../../components/Calendermodel/Calendermodel';
 import EventBus from "../../../../utils/EventBus";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from "@env";
+import Nodata from '../../../../components/General/Nodata';
 
 const StudentPageLeavedetails = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -100,6 +101,7 @@ const StudentPageLeavedetails = ({ navigation }) => {
   useEffect(() => {
     const getActiveUser = async () => {
       const savedUser = await AsyncStorage.getItem("activeUser");
+      
       if (savedUser && studentData.length > 0) {
         const active = studentData.find(student => student.name === savedUser);
         if (active) {
@@ -270,7 +272,7 @@ const StudentPageLeavedetails = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={styles.header}> 
         <View style={styles.headerLeft}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <PrevIcon width={24} height={24} />
@@ -288,7 +290,7 @@ const StudentPageLeavedetails = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       />) : (
         <View style={styles.leaveCard}>
-          <Text style={styles.noLeaveTaken}>No leaves taken</Text>
+          <Nodata/>
         </View>
       )}
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions, Alert, ActivityIndicator } from "react-native";
+import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions, Alert, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Progress from "react-native-progress";
 import { useNavigation } from "@react-navigation/native";
@@ -9,9 +9,12 @@ import PerformanceGraph from "../../../components/Parent/PerformanceGraph/Perfor
 //Icons
 import ClockIcon from '../../../assets/ParentPage/DashboardIcons/clock.svg';
 import StudentPageSurvey from "../../../components/Parent/Survey/StudentPageSurvey";
+const Profile = require("../../../assets/ParentPage/LeaveIcon/profile.png")
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import EventBus from "../../../utils/EventBus";
 import { API_URL } from '@env'
+import { format } from 'date-fns';
+
 
 const ParentDashboard = () => {
   const navigation = useNavigation();
@@ -22,6 +25,9 @@ const ParentDashboard = () => {
   const [studentData, setStudentData] = useState([]);
   const [phoneNumber, setPhone] = useState(null);
   const [selectedStudentData, setSelectedStudent] = useState([])
+  const [dailyAttendanceState, setDailyAttendance] = useState("0/0");
+
+  const [pendingHomework, setPendingHomework] = useState([]);
 
   // Fetch phone number from AsyncStorage
   useEffect(() => {
@@ -38,6 +44,8 @@ const ParentDashboard = () => {
     };
 
     fetchPhone();
+
+    // fetch(`${API_URL}/api/student/attendanceUpdater`, {method: "POST"})
 
   }, []);
 
@@ -61,51 +69,83 @@ const ParentDashboard = () => {
     };
   }, [studentData]);
 
+  const fetchStudentData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}/api/getStudentData`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber }),
+      });
+
+      const data = await response.json();
+      // console.log("Student Data API Response:", data);  
+
+      if (data.success && data.student) {
+        setStudentData(data.student);
+        setSelectedStudent(data.student[0])
+        // console.log(selectedStudentData);
+
+        await AsyncStorage.setItem("studentData", JSON.stringify(data.student));
+      } else {
+        Alert.alert("No Student Found", "No student is associated with this number");
+      }
+    } catch (error) {
+      console.error("Error fetching student data:", error);
+      Alert.alert("Error", "Failed to fetch student data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!phoneNumber) return;
 
-    const fetchStudentData = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`${API_URL}/api/getStudentData`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber }),
-        });
-
-        const data = await response.json();
-        console.log("Student Data API Response:", data);
-
-        if (data.success && data.student) {
-          setStudentData(data.student);
-          setSelectedStudent(data.student[0])
-          console.log(selectedStudentData);
-
-          await AsyncStorage.setItem("studentData", JSON.stringify(data.student));
-        } else {
-          Alert.alert("No Student Found", "No student is associated with this number");
-        }
-      } catch (error) {
-        console.error("Error fetching student data:", error);
-        Alert.alert("Error", "Failed to fetch student data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStudentData();
   }, [phoneNumber]);
+
+  const fetchDailyAttendance = async () => {
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const response = await fetch(`${API_URL}/api/student/getSessionAttendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: selectedStudentData.student_id,
+          date: today,
+          sectionId: selectedStudentData.section_id,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setDailyAttendance(data.attendance || "0/0");
+        // console.log("Daily Attendance API Response:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching daily attendance:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedStudentData?.roll) return;
+
+    fetchDailyAttendance();
+  }, [selectedStudentData]);
+
+
 
   // Default userData structure if studentData is present
   const userData = studentData
     ? {
       name: selectedStudentData.name || "N/A",
       roll: selectedStudentData.roll,
-      attendance: 50,
-      dailyAttendance: "8/8",
+      profile_photo: selectedStudentData.profile_photo || null,
+      attendance: selectedStudentData.attendance_percentage,
+      dailyAttendance: dailyAttendanceState,
     }
     : {};
+  // console.log("User Data:", dailyAttendanceState);
 
 
   const surveyData = [
@@ -116,10 +156,40 @@ const ParentDashboard = () => {
     { id: 5, name: "Ram Kumar", staffid: "7376232206", duration: "10 mins" },
   ];
 
-  const homeworkData = [
-    { id: 1, subject: "Science", level: "Level 2", date: "22/02/25", duration: "45 mins", details: "Complete exercises 1-5 from Chapter 3" },
-    { id: 2, subject: "Social", level: "Level 2", date: "23/02/25", duration: "45 mins", details: "Read Chapter 4 and answer the questions" },
-  ];
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long', 
+      year: 'numeric'
+    });
+  };
+
+  // Fetch pending homework when selectedStudentData changes 
+  const fetchPendingHomework = async () => {
+    // console.log(selectedStudentData?.roll);
+
+    if (!selectedStudentData?.roll) return;
+    try {
+      const response = await fetch(`${API_URL}/api/student/getPendingHomework`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_roll: selectedStudentData.roll }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPendingHomework(data.homework);
+      } else {
+        setPendingHomework([]);
+      }
+    } catch (error) {
+      setPendingHomework([]);
+      console.error("Error fetching pending homework:", error);
+    }
+  };
+  useEffect(() => {
+    fetchPendingHomework();
+  }, [selectedStudentData]);
 
   const handleSurveyScroll = event => {
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
@@ -128,12 +198,47 @@ const ParentDashboard = () => {
   };
 
   // Calculate attendance ratio for circle chart
-  const attendanceParts = userData.dailyAttendance.split('/');
-  const attendanceRatio = parseInt(attendanceParts[0]) / parseInt(attendanceParts[1]);
+  const [attendanceRatio, setAttendanceRatio] = useState(0);
+  useEffect(() => {
+    if (userData.dailyAttendance) {
+      const [present, total] = userData.dailyAttendance.split('/').map(Number);
+
+      if (!isNaN(present) && !isNaN(total) && total > 0) {
+        setAttendanceRatio(present / total);
+      } else {
+        setAttendanceRatio(0);
+      }
+    }
+  }, [userData.dailyAttendance]);
+
+
+  // console.log("Attendance Ratio:", attendanceRatio);
+
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Profile;
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} refreshControl={
+        <RefreshControl
+          refreshing={loading}
+          onRefresh={() => {
+            setLoading(true);
+            fetchStudentData()
+            fetchPendingHomework()
+          }}
+        />
+      }>
         <Text style={styles.dashboardTitle}>Dashboard</Text>
         {loading ? (
           <ActivityIndicator size="large" color="#0000ff" />
@@ -144,10 +249,7 @@ const ParentDashboard = () => {
               {/* Profile Image in absolute position to overlap the card border */}
               <View style={styles.profileDetails}>
                 <View style={styles.profileImageWrapper}>
-                  <Image
-                    source={require("../../../assets/ParentPage/LeaveIcon/profile.png")}
-                    style={styles.profileImage}
-                  />
+                  <Image source={getProfileImageSource(userData.profile_photo)} style={styles.profileImage} />
                 </View>
 
                 <View style={styles.profileInfo}>
@@ -164,7 +266,7 @@ const ParentDashboard = () => {
                     <Text style={styles.attendancePercentage}>{userData.attendance}%</Text>
                   </View>
                   <Progress.Bar
-                    progress={userData.attendance / 100}
+                    progress={isNaN(parseFloat(userData.attendance)) ? 0 : parseFloat(userData.attendance) / 100}
                     width={150}
                     color="#27AE60"
                     height={8}
@@ -251,40 +353,32 @@ const ParentDashboard = () => {
             </View>
 
             {/* Replace the Performance Graph section with the PerformanceGraph component */}
-            <PerformanceGraph />
+            <PerformanceGraph studentData={selectedStudentData} />
 
             {/* Homework Section */}
             <Text style={styles.sectionTitle}>Homework</Text>
-            {homeworkData.map((item) => (
-              <View key={item.id} style={[styles.homeworkCard, { marginBottom: 12 }]}>
-                <View style={styles.homeworkCardCol1}>
-                  <Text style={styles.subject}>{item.subject}</Text>
-                  <View style={styles.levelBadge}>
-                    <Text style={styles.levelText}>{item.level}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.homeworkCardCol2}>
-                  <Text style={styles.date}>{item.date}</Text>
-                  <View style={styles.homeworkActions}>
-                    <View style={styles.homeworkDuration}>
-                      <View style={styles.durationIconContainer}>
-                        <ClockIcon width={16} height={16} />
-                      </View>
-                      <Text style={styles.timeText}>{item.duration}</Text>
+            {pendingHomework.length === 0 ? (
+              <Text style={{ textAlign: 'center', color: '#888', marginVertical: 12 }}>No pending homework</Text>
+            ) : (
+              pendingHomework.map((item) => (
+                <View key={item.id} style={[styles.homeworkCard, { marginBottom: 12 }]}>
+                  <View style={styles.homeworkCardCol1}>
+                    <Text style={styles.subject}>{item.subject_name}</Text>
+                    <View style={styles.levelBadge}>
+                      <Text style={styles.levelText}>Level {item.level}</Text>
                     </View>
                   </View>
+                  <View style={styles.homeworkCardCol2}>
+                    <Text style={styles.date}>{formatDate(item.date)}</Text>
+                  </View>
+                  <View style={styles.homeworkCardCol3}>
+                    <TouchableOpacity style={styles.viewButtonContainer} onPress={()=>navigation.navigate("Materials")}>
+                      <Text style={styles.viewButton}>View</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-
-                <View style={styles.homeworkCardCol3}>
-                  <TouchableOpacity
-                    style={styles.viewButtonContainer}
-                  >
-                    <Text style={styles.viewButton}>View</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+              ))
+            )}
           </View>
         ) : (<Text style={styles.errorText}>No student data available</Text>
 

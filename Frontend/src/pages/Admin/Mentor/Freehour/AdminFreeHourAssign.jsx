@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -13,114 +13,97 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import BackIcon from '../../../../assets/AdminPage/SubjectMentor/leftarrow.svg';
 import styles from './FreeHourAssignStyle';
-import staff from    '../../../../assets/AdminPage/SubjectMentor/staff.png';
+import staff from '../../../../assets/AdminPage/SubjectMentor/staff.png';
 import HomeIcon from '../../../../assets/AdminPage/FreeHour/home.svg';
+import { API_URL } from '@env';
 
 const AdminFreeHourAssign = ({ navigation, route }) => {
   const { faculty } = route.params;
   const [description, setDescription] = useState('');
   const [activity, setActivity] = useState('');
-  const [fromTime, setFromTime] = useState('10:30 PM');
-  const [toTime, setToTime] = useState('10:30 PM');
-  
-  // Date objects for time pickers
-  const [fromDate, setFromDate] = useState(new Date());
-  const [toDate, setToDate] = useState(new Date());
-  
-  // State for modals
+  const [activities, setActivities] = useState([]);
   const [showActivityModal, setShowActivityModal] = useState(false);
-  const [showFromTimePicker, setShowFromTimePicker] = useState(false);
-  const [showToTimePicker, setShowToTimePicker] = useState(false);
-  const [showIosFromModal, setShowIosFromModal] = useState(false);
-  const [showIosToModal, setShowIosToModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Available activities
-  const activities = [
-    "Substitution",
-    "Additional Class",
-    "Lab Work"
-  ];
+  // Fetch activities on component mount
+  useEffect(() => {
+    fetchActivities();
+  }, []);
 
-  const handleConfirm = () => {
-    // Create task object
-    const task = {
-      id: Date.now().toString(),
-      facultyId: faculty.facultyId,
-      description,
-      activity,
-      fromTime,
-      toTime,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-
-    // Pass task back and navigate
-    navigation.navigate('Freehour', { newTask: task });
-  };
-
-  const formatTime = (date) => {
-    let hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    
-    hours = hours % 12;
-    hours = hours ? hours : 12; // the hour '0' should be '12'
-    hours = hours.toString().padStart(2, '0');
-    
-    return `${hours}:${minutes} ${ampm}`;
-  };
-
-  const onFromTimeChange = (event, selectedDate) => {
-    if (Platform.OS === 'android') {
-      setShowFromTimePicker(false);
-    }
-    
-    if (selectedDate) {
-      setFromDate(selectedDate);
-      setFromTime(formatTime(selectedDate));
+  const fetchActivities = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/getActivity`);
+      const data = await response.json();
+      setActivities(data);
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+      setError('Failed to load activities');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const onToTimeChange = (event, selectedDate) => {
-    if (Platform.OS === 'android') {
-      setShowToTimePicker(false);
+  // Only minor updates needed to match the backend:
+
+  const handleConfirm = async () => {
+    if (!activity) {
+      setError('Please select an activity');
+      return;
     }
-    
-    if (selectedDate) {
-      setToDate(selectedDate);
-      setToTime(formatTime(selectedDate));
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/assignFreeHour`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ds_id: faculty.ds_id,
+          mentorId: faculty.mentorId,
+          description,
+          activity,
+          startTime: faculty.rawStartTime,
+          endTime: faculty.rawEndTime,
+          date: new Date().toISOString().split('T')[0] // Today's date
+        })
+      });
+
+      if (response.ok) {
+        navigation.goBack();
+      } else {
+        setError('Failed to assign task');
+      }
+    } catch (error) {
+      console.error('Error assigning task:', error);
+      setError('An error occurred while assigning the task');
     }
   };
-
-  const showFromPicker = () => {
-    if (Platform.OS === 'android') {
-      setShowFromTimePicker(true);
-    } else {
-      setShowIosFromModal(true);
-    }
-  };
-
-  const showToPicker = () => {
-    if (Platform.OS === 'android') {
-      setShowToTimePicker(true);
-    } else {
-      setShowIosToModal(true);
-    }
-  };
-
-  const confirmIosTime = (type) => {
-    if (type === 'from') {
-      setFromTime(formatTime(fromDate));
-      setShowIosFromModal(false);
-    } else {
-      setToTime(formatTime(toDate));
-      setShowIosToModal(false);
-    }
-  };
-
+  const [displayActivity, setDisplayActivity] = useState('');
   const selectActivity = (selectedActivity) => {
-    setActivity(selectedActivity);
+    setActivity(selectedActivity.id);
+    setDisplayActivity(selectedActivity.activity_type);
     setShowActivityModal(false);
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text>Loading...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return staff;
+    }
   };
 
   return (
@@ -137,7 +120,11 @@ const AdminFreeHourAssign = ({ navigation, route }) => {
       <ScrollView style={styles.content}>
         <View style={styles.profileCard}>
           <View style={styles.blueBorder} />
-          <Image source={staff} style={styles.avatar} />
+          {faculty.file_path ? (
+            <Image source={getProfileImageSource(faculty.file_path)} style={styles.avatar} />
+          ) : (
+            <Image source={staff} style={styles.avatar} />
+          )}
           <View style={styles.profileInfo}>
             <Text style={styles.name}>{faculty.name}</Text>
             <Text style={styles.facultyId}>Faculty ID: {faculty.facultyId}</Text>
@@ -146,6 +133,8 @@ const AdminFreeHourAssign = ({ navigation, route }) => {
         </View>
 
         <View style={styles.formSection}>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
           <Text style={styles.sectionLabel}>Description <Text style={styles.optionalText}>(optional)</Text></Text>
           <TextInput
             style={styles.descriptionInput}
@@ -154,36 +143,26 @@ const AdminFreeHourAssign = ({ navigation, route }) => {
             onChangeText={setDescription}
             multiline
           />
-          
+
           <Text style={styles.sectionLabel}>Activity</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.activitySelector}
             onPress={() => setShowActivityModal(true)}
           >
             <Text style={activity ? styles.activityText : styles.placeholderText}>
-              {activity || "Select Activity"}
+              {displayActivity || "Select Activity"}
             </Text>
           </TouchableOpacity>
-          
+
           <Text style={styles.sectionLabel}>Time</Text>
           <View style={styles.timeContainer}>
             <View style={styles.timeField}>
               <Text style={styles.timeLabel}>From :</Text>
-              <TouchableOpacity 
-                style={styles.timeInput}
-                onPress={showFromPicker}
-              >
-                <Text style={styles.timeText}>{fromTime}</Text>
-              </TouchableOpacity>
+              <Text style={styles.timeText}>{faculty.timeSlot.split(' - ')[0]}</Text>
             </View>
             <View style={styles.timeField}>
               <Text style={styles.timeLabel}>To :</Text>
-              <TouchableOpacity 
-                style={styles.timeInput}
-                onPress={showToPicker}
-              >
-                <Text style={styles.timeText}>{toTime}</Text>
-              </TouchableOpacity>
+              <Text style={styles.timeText}>{faculty.timeSlot.split(' - ')[1]}</Text>
             </View>
           </View>
         </View>
@@ -193,7 +172,7 @@ const AdminFreeHourAssign = ({ navigation, route }) => {
         <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
           <Text style={styles.confirmButtonText}>Confirm</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.homeButton}
           onPress={() => navigation.navigate('AdminPage')}
         >
@@ -208,111 +187,23 @@ const AdminFreeHourAssign = ({ navigation, route }) => {
         animationType="fade"
         onRequestClose={() => setShowActivityModal(false)}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowActivityModal(false)}
         >
           <View style={styles.activityModalContainer}>
             {activities.map(item => (
               <TouchableOpacity
-                key={item}
+                key={item.id}
                 style={styles.activityModalItem}
                 onPress={() => selectActivity(item)}
               >
-                <Text style={styles.activityModalText}>{item}</Text>
+                <Text style={styles.activityModalText}>{item.activity_type}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </TouchableOpacity>
-      </Modal>
-
-      {/* Android Time Pickers */}
-      {Platform.OS === 'android' && showFromTimePicker && (
-        <DateTimePicker
-          value={fromDate}
-          mode="time"
-          is24Hour={false}
-          display="default"
-          onChange={onFromTimeChange}
-        />
-      )}
-
-      {Platform.OS === 'android' && showToTimePicker && (
-        <DateTimePicker
-          value={toDate}
-          mode="time"
-          is24Hour={false}
-          display="default"
-          onChange={onToTimeChange}
-        />
-      )}
-
-      {/* iOS Time Picker Modals */}
-      <Modal
-        transparent={true}
-        visible={showIosFromModal}
-        animationType="slide"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.timeModalContainer}>
-            <Text style={styles.timeModalTitle}>Select From Time</Text>
-            <DateTimePicker
-              value={fromDate}
-              mode="time"
-              display="spinner"
-              onChange={(event, date) => date && setFromDate(date)}
-              style={styles.iosTimePicker}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowIosFromModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.selectButton}
-                onPress={() => confirmIosTime('from')}
-              >
-                <Text style={styles.selectButtonText}>Select</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        transparent={true}
-        visible={showIosToModal}
-        animationType="slide"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.timeModalContainer}>
-            <Text style={styles.timeModalTitle}>Select To Time</Text>
-            <DateTimePicker
-              value={toDate}
-              mode="time"
-              display="spinner"
-              onChange={(event, date) => date && setToDate(date)}
-              style={styles.iosTimePicker}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowIosToModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.selectButton}
-                onPress={() => confirmIosTime('to')}
-              >
-                <Text style={styles.selectButtonText}>Select</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
       </Modal>
     </SafeAreaView>
   );

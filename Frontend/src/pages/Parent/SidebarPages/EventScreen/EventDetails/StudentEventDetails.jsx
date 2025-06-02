@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,18 @@ import {
   ScrollView,
 } from 'react-native';
 import styles from './EventDetailsStyles';
-import Mainimg from      '../../../../../assets/ParentPage/Event/eventdetailsimg.jpeg';
+import Mainimg from '../../../../../assets/ParentPage/Event/eventdetailsimg.jpeg';
 import PreviousIcon from '../../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
-import Liked from        '../../../../../assets/ParentPage/Event/liked.svg';
-import Unliked from      '../../../../../assets/ParentPage/Event/unliked.svg';
-import Location from     '../../../../../assets/ParentPage/Event/Detailslocation.svg';
+import Liked from '../../../../../assets/ParentPage/Event/liked.svg';
+import Unliked from '../../../../../assets/ParentPage/Event/unliked.svg';
+import Location from '../../../../../assets/ParentPage/Event/Detailslocation.svg';
 import Calendericon from '../../../../../assets/ParentPage/Event/Date.svg';
+import { API_URL } from '@env'
 
-const StudentEventDetails = ({navigation}) => {
+const StudentEventDetails = ({ navigation, route }) => {
+  const { event, title } = route.params;
+  // console.log(event);
+
   const [isFavorite, setIsFavorite] = useState(false);
   const [showFullText, setShowFullText] = useState(false);
 
@@ -28,31 +32,55 @@ const StudentEventDetails = ({navigation}) => {
     setIsFavorite(!isFavorite);
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+    });
+  };
+
+  // <CurvedImageBanner imageSource={{ uri: `${API_URL}/${event.banner_url}` }} />
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar />
       <View style={styles.scrollContainer}>
-        
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation && navigation.goBack()}>
-              <PreviousIcon size={24} color="black" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Events</Text>
-          </View>
-          <ScrollView
+
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation && navigation.goBack()}>
+            <PreviousIcon size={24} color="black" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Events</Text>
+        </View>
+        <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent} 
+          contentContainerStyle={styles.scrollContent}
         >
           {/* Event Image */}
           <View style={styles.imageContainer}>
-            <Image
+            {/* <Image
               source={Mainimg}
               style={styles.eventImage}
               resizeMode="cover"
-            />
+            /> */}
+            {event.banner_url ? (
+              <Image source={{ uri: `${API_URL}/${event.banner_url}` }} style={styles.eventImage} resizeMode="cover" />
+            ) : (
+              <View style={[styles.eventImage, { backgroundColor: '#FEE2E2' }]}>
+                <Text style={styles.placeholderText}>{event.event_name}</Text>
+              </View>
+            )}
             <TouchableOpacity
               style={styles.favoriteButton}
               onPress={() => toggleFavorite()}>
@@ -67,8 +95,8 @@ const StudentEventDetails = ({navigation}) => {
 
           {/* Rest of your content... */}
           <View style={styles.eventTitleContainer}>
-            <Text style={styles.eventTitle}>National Chess</Text>
-            <Text style={styles.eventTitle}>Competition</Text>
+            <Text style={styles.eventTitle}>{event.event_name}</Text>
+            <Text style={styles.eventTitle}>{event.event_type}</Text>
           </View>
 
           {/* Event Details */}
@@ -77,9 +105,9 @@ const StudentEventDetails = ({navigation}) => {
             <View style={styles.detailRow}>
               <Calendericon />
               <View style={styles.detailTextContainer}>
-                <Text style={styles.detailTitle}>14 December, 2021</Text>
+                <Text style={styles.detailTitle}>{formatDate(event.event_date)}</Text>
                 <Text style={styles.detailSubtitle}>
-                  Tuesday, 4:00PM - 9:00PM
+                  {formatTime(event.event_date)}
                 </Text>
               </View>
             </View>
@@ -88,10 +116,10 @@ const StudentEventDetails = ({navigation}) => {
             <View style={styles.detailRow}>
               <Location />
               <View style={styles.detailTextContainer}>
-                <Text style={styles.detailTitle}>Gala Convention Center</Text>
-                <Text style={styles.detailSubtitle}>
+                <Text style={styles.detailTitle}>{event.location}</Text>
+                {/* <Text style={styles.detailSubtitle}>
                   36 Guild Street London, UK
-                </Text>
+                </Text> */}
               </View>
             </View>
           </View>
@@ -103,10 +131,7 @@ const StudentEventDetails = ({navigation}) => {
                 style={styles.aboutText}
                 numberOfLines={showFullText ? undefined : 3}
                 ellipsizeMode="tail">
-                Enjoy your favorite dish and a lovely your friends and family
-                and have a great time. Food from local food trucks will be
-                available for purchase. Enjoy your favorite dish and a lovely
-                your friends and family and have a great time.
+                {event.about}
               </Text>
               <TouchableOpacity onPress={toggleShowFullText}>
                 <Text style={styles.readMoreText}>
@@ -129,15 +154,7 @@ const StudentEventDetails = ({navigation}) => {
                 </View>
                 <View style={styles.guidelineItems}>
                   <Text style={styles.guidelineItem}>
-                    • Parents can register via the parent portal by filling out
-                    the required details.
-                  </Text>
-                  <Text style={styles.guidelineItem}>
-                    • Registration closes X days before the event.
-                  </Text>
-                  <Text style={styles.guidelineItem}>
-                    • Confirmation will be sent via email/SMS with entry
-                    details.
+                    • {event.registration_guidelines}
                   </Text>
                 </View>
               </View>
@@ -152,20 +169,13 @@ const StudentEventDetails = ({navigation}) => {
                 </View>
                 <View style={styles.guidelineItems}>
                   <Text style={styles.guidelineItem}>
-                    • Arrive X minutes before the event starts.
-                  </Text>
-                  <Text style={styles.guidelineItem}>
-                    • QR code or ticket (if issued) must be shown at entry.
-                  </Text>
-                  <Text style={styles.guidelineItem}>
-                    • Students must follow event rules; misbehavior may lead to
-                    disqualification.
+                    • {event.participation_guidelines}
                   </Text>
                 </View>
               </View>
 
               {/* Cancellations Guidelines */}
-              <View style={styles.guidelineSection}>
+              {/* <View style={styles.guidelineSection}>
                 <View style={styles.guidelineTitleRow}>
                   <View style={styles.diamondBullet} />
                   <Text style={styles.guidelineSectionTitle}>
@@ -182,7 +192,7 @@ const StudentEventDetails = ({navigation}) => {
                 </View>
               </View>
 
-              {/* Special Rules Guidelines */}
+              // comment - Special Rules Guidelines 
               <View style={styles.guidelineSection}>
                 <View style={styles.guidelineTitleRow}>
                   <View style={styles.diamondBullet} />
@@ -203,18 +213,23 @@ const StudentEventDetails = ({navigation}) => {
                     instructions.
                   </Text>
                 </View>
-              </View>
+              </View> */}
             </View>
           </ScrollView>
         </ScrollView>
       </View>
 
       {/* Fixed Register Button (outside ScrollView) */}
-      <View style={styles.registerButtonContainer}>
-        <TouchableOpacity style={styles.registerButton}>
-          <Text style={styles.registerButtonText}>Register</Text>
-        </TouchableOpacity>
-      </View>
+      {title === 'Registered Events' ? (
+        <View style={{flex:0}}></View>
+      ) : (
+        <View style={styles.registerButtonContainer}>
+          <TouchableOpacity style={styles.registerButton} onPress={() => navigation.navigate("StudentPageEventRegister", { event })}>
+            <Text style={styles.registerButtonText}>Register</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
     </SafeAreaView>
   );
 };

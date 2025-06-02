@@ -6,7 +6,7 @@ const CARD_WIDTH = 220;
 const CARD_MARGIN = 10;
 
 const styles = StyleSheet.create({
-  container: {
+ container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
@@ -31,6 +31,10 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     marginBottom: 24,
+  },
+  imageContainer: {
+    position: 'relative',
+    height: 330,
   },
   sectionTitle: {
     fontSize: 16,
@@ -170,7 +174,7 @@ const styles = StyleSheet.create({
   },
   detailImageContainer: {
     width: '100%',
-    height: 220,
+    height: 300,
     backgroundColor: 'white',
     position: 'relative',
   },
@@ -278,23 +282,6 @@ const styles = StyleSheet.create({
     color: '#3557FF',
   },
 
-  // Registration button styling for event detail
-  registerButtonContainer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  registerButton: {
-    backgroundColor: '#3557FF',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-  },
-  registerButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   noEventsContainer: {
     paddingVertical: 20,
     alignItems: 'center',
@@ -306,6 +293,131 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
+  scrollContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+  },
+  classnavgrade: {
+    flexDirection: 'row',
+    marginTop: 10,
+    marginBottom: 10,
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  classnavsection: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  gradeselection: {
+    backgroundColor: '#ffffff',
+    padding: 10,
+    marginLeft: 10,
+    marginTop: 20,
+    width: 90,
+    borderRadius: 30,
+    alignItems: 'center',
+  },
+  gradeselectiontext: {
+    color: 'black',
+    fontWeight: '500',
+  },
+  activeButton: {
+    backgroundColor: '#0C36FF',
+  },
+  activeText: {
+    color: 'white',
+  },
+
+  //Event Details
+  imageCurve: {
+    position: 'absolute',
+    bottom: -1,
+    width: '100%',
+    height: 24,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  detailTextContainer: {
+    marginLeft: 20,
+    flex: 1,
+  },
+  detailSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  innerscroll: {
+    flex: 1,
+  },
+  aboutContainer: {
+    // paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  aboutTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  aboutText: {
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
+    color: '#120D26',
+  },
+  readMoreText: {
+    fontSize: 14,
+    color: '#4F70FD',
+    marginTop: 4,
+  },
+
+  guidelinesContainer: {
+    marginTop: 24,
+    paddingHorizontal: 2,
+  },
+  guidelinesTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+    color: '#000',
+  },
+  guidelineSection: {
+    marginBottom: 16,
+  },
+  guidelineTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  diamondBullet: {
+    width: 10,
+    height: 10,
+    backgroundColor: '#5669FF',
+    transform: [{ rotate: '45deg' }],
+    marginRight: 8,
+  },
+  guidelineSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  guidelineItems: {
+    paddingLeft: 18,
+  },
+  guidelineItem: {
+    fontSize: 14,
+    color: '#120D26',
+    fontWeight: '500',
+    lineHeight: 22,
+    marginBottom: 6,
+  },
+
+
   sectionTabsContainer: {
     paddingVertical: 10,
     paddingHorizontal: 15,
@@ -319,10 +431,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
     backgroundColor: '#F5F5F5',
     width: 110, // Fixed width from Academic Schedule
-  },
-  noScheduleText: {
-    color: 'grey',
-    alignSelf: 'center'
   },
   activeSectionTab: {
     backgroundColor: '#0C36FF',

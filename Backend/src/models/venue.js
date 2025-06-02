@@ -5,6 +5,7 @@ class Venue {
     let query = 'SELECT v.*, g.grade_name as grade, s.subject_name as subject FROM venues v ';
     query += 'LEFT JOIN grades g ON v.grade_id = g.id ';
     query += 'LEFT JOIN subjects s ON v.subject_id = s.id ';
+    query += 'WHERE v.is_accepted = 1 ';
 
     const whereClauses = [];
     const params = [];
@@ -46,7 +47,7 @@ class Venue {
       LEFT JOIN venue_grades vg ON v.id = vg.venue_id
       LEFT JOIN grades g ON vg.grade_id = g.id
       LEFT JOIN subjects s ON v.subject_id = s.id
-      WHERE v.id = ?
+      WHERE v.id = ? AND v.is_accepted = 1
       GROUP BY v.id`;
 
     db.query(query, [id], (err, results) => {
@@ -187,7 +188,7 @@ class Venue {
       SELECT DISTINCT v.*
       FROM venues v
       LEFT JOIN venue_grades vg ON v.id = vg.venue_id
-      WHERE vg.grade_id = ? OR v.grade_id = ? OR (vg.grade_id IS NULL AND v.grade_id IS NULL)
+      WHERE vg.grade_id = ? OR v.grade_id = ? OR (vg.grade_id IS NULL AND v.grade_id IS NULL) AND v.is_accepted = 1
       ORDER BY v.name`;
 
     db.query(query, [gradeId, gradeId], (err, results) => {
@@ -200,7 +201,7 @@ class Venue {
     const query = `
       SELECT v.* 
       FROM venues v
-      WHERE v.status = 'Active'`;
+      WHERE v.status = 'Active' AND v.is_accepted = 1`;
 
     db.query(query, (err, results) => {
       if (err) return callback(err);
