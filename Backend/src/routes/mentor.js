@@ -64,7 +64,8 @@ router.get('/mentor/survey/:surveyId/students', surveyController.getSurveyStuden
 router.put('/mentor/survey/end/:surveyId', surveyController.endSurvey);
 
 // Submit feedback response
-router.post('/mentor/survey/feedback', surveyController.submitFeedback);
+router.post('/mentor/survey/feedback', surveyController.createSurvey);
+router.get('/mentor/survey/response/:surveyId/:studentId', surveyController.getStudentSurveyResponse);
 
 
 //Assessment

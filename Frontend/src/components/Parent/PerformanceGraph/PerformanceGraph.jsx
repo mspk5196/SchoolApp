@@ -143,6 +143,8 @@ const PerformanceGraph = ({ studentData, showTitle = true }) => {
     });
 
     // Process monthly data
+    console.log(performanceData.monthly);
+    
     const months = Object.keys(performanceData.monthly || {}).sort();
     const last3Months = months.slice(-3);
 

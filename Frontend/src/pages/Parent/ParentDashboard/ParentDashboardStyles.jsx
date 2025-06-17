@@ -192,6 +192,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
+  completedButton: {
+    backgroundColor: '#8E8E93',
+  },
   startNowText: {
     color: 'white',
     fontWeight: '500',
@@ -258,7 +261,7 @@ const styles = StyleSheet.create({
     color: '#E55048',
     fontSize: 14,
     fontWeight: '500',
-    marginVertical:'auto'
+    marginVertical: 'auto'
   },
   homeworkActions: {
     flexDirection: 'row',

@@ -25,6 +25,12 @@ router.post('/student/getAssessmentDetails', studentController.getAssessmentDeta
 router.post('/student/getAcademicDetails', studentController.getAcademicDetails);
 router.post('/student/getExamScheduleBySection', studentController.getExamScheduleBySection);
 
+//Survey
+router.get('/student/getStudentSurveys', studentController.getStudentSurveys);
+router.post('/student/markSurveyAsRead', studentController.markSurveyAsRead);
+router.get('/student/getSurveyQuestions', studentController.getSurveyQuestions);
+router.post('/student/submitSurveyResponse', studentController.submitSurveyResponse);
+
 //Schedule
 router.post('/student/getStudentScheduleByMonth', studentController.getStudentScheduleByMonth);
 

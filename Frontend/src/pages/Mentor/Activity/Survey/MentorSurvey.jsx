@@ -37,6 +37,8 @@ const MentorSurvey = ({ navigation, route }) => {
           time: `${new Date(survey.start_date).toLocaleDateString()} - ${new Date(survey.end_date).toLocaleDateString()}`
         }));
         setSurveys(formattedSurveys);
+        console.log(formattedSurveys);
+        
       })
       .catch(error => {
         console.error('Error fetching surveys:', error);

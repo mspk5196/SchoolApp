@@ -293,50 +293,358 @@ WHERE asa.student_id = ?
 
 
 // Get performance breakdown
+
+// exports.getStudentPerformance = (req, res) => {
+//   const studentId = req.params.studentId;
+
+//   // Get current date and calculate date ranges
+//   const currentDate = new Date();
+//   // const currentMonth = currentDate.getMonth() + 1;
+//   // const currentYear = currentDate.getFullYear();
+
+//   // Calculate date for last 7 days
+//   const last7Days = new Date();
+//   last7Days.setDate(last7Days.getDate() - 7);
+
+//   // 1. Get academic performance data (80%)
+//   const academicQuery = `
+//    SELECT 
+//   s.subject_name,
+//   ds.date,
+//   asa.performance,
+//   asa.attendance_status
+// FROM academic_session_attendance asa
+// JOIN daily_schedule ds ON asa.session_id = ds.id
+// JOIN subjects s ON ds.subject_id = s.id
+// WHERE asa.student_id = ?
+// AND ds.date >= ?
+// ORDER BY ds.date DESC;
+//   `;
+
+//   const assessmentQuery = `
+//   SELECT 
+//     s.subject_name,
+//     a.date,
+//     asm.percentage
+//   FROM assessment_session_marks asm
+//   JOIN assessment_sessions a ON asm.as_id = a.id
+//   JOIN subjects s ON a.subject_id = s.id
+//   WHERE asm.student_roll = (
+//     SELECT roll FROM students WHERE id = ?
+//   )
+//   AND a.date >= ?
+//   AND asm.status = 'Present'
+//   ORDER BY a.date DESC
+// `;
+
+//   // 2. Get homework data (10%)
+//   const homeworkQuery = `
+//     SELECT 
+//       s.subject_name,
+//       h.date,
+//       sh.status,
+//       sh.redo_count
+//     FROM student_homework sh
+//     JOIN homework h ON sh.homework_id = h.id
+//     JOIN subjects s ON h.subject_id = s.id
+//     WHERE sh.student_roll = (
+//       SELECT roll FROM students WHERE id = ?
+//     )
+//     AND h.date >= ?
+//     ORDER BY h.date DESC
+//   `;
+
+//   // 3. Get discipline issues (10%)
+//   const disciplineQuery = `
+//     SELECT 
+//       DATE_FORMAT(registered_at, '%Y-%m-%d') AS date,
+//       complaint
+//     FROM student_dicipline
+//     WHERE roll = (
+//       SELECT roll FROM students WHERE id = ?
+//     )
+//     AND registered_at >= ?
+//     ORDER BY registered_at DESC
+//   `;
+
+//   // Execute all queries
+//   db.query(academicQuery, [studentId, last7Days], (err, academicResults) => {
+//     if (err) return res.status(500).json({ error: err.message });
+
+//     db.query(homeworkQuery, [studentId, last7Days], (err, homeworkResults) => {
+//       if (err) return res.status(500).json({ error: err.message });
+
+//       db.query(disciplineQuery, [studentId, last7Days], (err, disciplineResults) => {
+//         if (err) return res.status(500).json({ error: err.message });
+
+//         db.query(assessmentQuery, [studentId, last7Days], (err, assessmentResults) => {
+//           if (err) return res.status(500).json({ error: err.message });
+
+//           // Now pass assessmentResults to calculatePerformance
+//           const performanceData = calculatePerformance(
+//             academicResults,
+//             homeworkResults,
+//             disciplineResults,
+//             assessmentResults
+//           );
+//           // console.log(performanceData);
+
+//           res.json(performanceData);
+//         });
+//       });
+//     });
+//   });
+// };
+
+// Function to calculate performance metrics
+
+// function calculatePerformance(academicData, homeworkData, disciplineData, assessmentData) {
+//   // Group data by subject and date
+//   const performanceBySubject = {};
+//   const assessmentBySubject = {};
+//   const dates = new Set();
+
+//   // console.log("Academic Data:", academicData);
+//   // Process academic data (80% of score)
+//   academicData.forEach(session => {
+//     const date = session.date instanceof Date
+//       ? session.date.toLocaleDateString('en-CA')
+//       : String(session.date).slice(0, 10);
+//     const subject = session.subject_name;
+//     dates.add(date);
+//     // console.log(date);
+
+
+//     if (!performanceBySubject[subject]) performanceBySubject[subject] = {};
+//     if (!performanceBySubject[subject][date]) {
+//       performanceBySubject[subject][date] = {
+//         academicScore: 0,
+//         homeworkScore: 0,
+//         totalSessions: 0
+//       };
+//     }
+
+//     // Calculate score based on attendance and performance
+//     let sessionScore = 0;
+//     if (session.attendance_status === 'Present') {
+//       switch (session.performance) {
+//         case 'Highly Attentive': sessionScore = 100; break;
+//         case 'Moderately Attentive': sessionScore = 70; break;
+//         case 'Not Attentive': sessionScore = 40; break;
+//         default: sessionScore = 0;
+//       }
+//     }
+//     performanceBySubject[subject][date].academicScore += sessionScore;
+//     performanceBySubject[subject][date].totalSessions++;
+//   });
+
+//   // Process assessment data (if available)
+//   assessmentData.forEach(asmt => {
+//     const date = asmt.date instanceof Date
+//       ? asmt.date.toLocaleDateString('en-CA')
+//       : String(asmt.date).slice(0, 10);
+//     const subject = asmt.subject_name;
+//     dates.add(date);
+
+//     if (!assessmentBySubject[subject]) assessmentBySubject[subject] = {};
+//     assessmentBySubject[subject][date] = Number(asmt.percentage) || 0;
+//   });
+
+//   // Process homework data (10% of score)
+//   homeworkData.forEach(hw => {
+//     // const date = hw.date.toISOString().split('T')[0];
+//     const date = hw.date instanceof Date
+//       ? hw.date.toLocaleDateString('en-CA')
+//       : String(hw.date).slice(0, 10);
+//     const subject = hw.subject_name;
+//     dates.add(date);
+
+//     if (!performanceBySubject[subject]) performanceBySubject[subject] = {};
+//     if (!performanceBySubject[subject][date]) {
+//       performanceBySubject[subject][date] = {
+//         academicScore: 0,
+//         homeworkScore: 0,
+//         totalSessions: 0
+//       };
+//     }
+
+//     let hwScore = 0;
+//     if (hw.status === 'Done') {
+//       hwScore = 100 - (hw.redo_count * 10);
+//       if (hwScore < 0) hwScore = 0;
+//     }
+//     performanceBySubject[subject][date].homeworkScore = hwScore;
+//   });
+
+//   // Process discipline data (count issues per date)
+//   const disciplineByDate = {};
+//   disciplineData.forEach(issue => {
+//     // const date = issue.date;
+//     const date = issue.date instanceof Date
+//       ? issue.date.toLocaleDateString('en-CA')
+//       : String(issue.date).slice(0, 10);
+//     dates.add(date);
+//     if (!disciplineByDate[date]) disciplineByDate[date] = 0;
+//     disciplineByDate[date] += 1;
+//   });
+
+//   // Calculate final scores for each subject and date
+//   const result = {
+//     daily: {},
+//     monthly: {},
+//     overall: {},
+//     subjects: {}
+//   };
+
+//   // Convert dates to array and sort
+//   const sortedDates = Array.from(dates).sort();
+//   // console.log("Sorted Dates:", sortedDates);
+
+
+//   // Calculate daily performance
+//   sortedDates.forEach(date => {
+//     result.daily[date] = {};
+
+//     // Use all subjects from both academic and assessment data
+//     const allSubjects = Array.from(new Set([
+//       ...Object.keys(performanceBySubject),
+//       ...Object.keys(assessmentBySubject)
+//     ]));
+
+//     allSubjects.forEach(subject => {
+//       // Use academic or assessment for 80%
+//       let academicAvg = 0;
+//       if (performanceBySubject[subject]?.[date] && performanceBySubject[subject][date].totalSessions > 0) {
+//         academicAvg = performanceBySubject[subject][date].academicScore / performanceBySubject[subject][date].totalSessions;
+//       } else if (assessmentBySubject[subject] && assessmentBySubject[subject][date] !== undefined) {
+//         academicAvg = assessmentBySubject[subject][date];
+//       }
+
+//       const homeworkScore = performanceBySubject[subject]?.[date]?.homeworkScore || 0;
+
+//       // Discipline calculation (20%)
+//       let disciplineScore = 20;
+//       const issueCount = disciplineByDate[date] || 0;
+//       if (issueCount === 1) disciplineScore = 10;
+//       else if (issueCount >= 2) disciplineScore = 0;
+
+//       // Compose total
+//       const totalScore = (academicAvg * 0.8) + (homeworkScore * 0.1) + disciplineScore;
+
+//       // Only add if there is assessment or academic data for this subject/date
+//       if (
+//         (performanceBySubject[subject]?.[date] && performanceBySubject[subject][date].totalSessions > 0) ||
+//         (assessmentBySubject[subject] && assessmentBySubject[subject][date] !== undefined)
+//       ) {
+//         result.daily[date][subject] = Math.round(totalScore);
+//       }
+//     });
+
+//     // Calculate overall daily performance
+//     const subjects = Object.keys(result.daily[date]).filter(s => s !== 'Overall');
+//     if (subjects.length > 0) {
+//       let dailyTotal = 0;
+//       let count = 0;
+//       subjects.forEach(subject => {
+//         if (result.daily[date][subject] !== undefined) {
+//           dailyTotal += result.daily[date][subject];
+//           count++;
+//         }
+//       });
+//       result.daily[date].Overall = count > 0 ? Math.round(dailyTotal / count) : 0;
+//     }
+//   });
+
+//   // Calculate monthly performance (group by month)
+//   const monthlyTemp = {};
+//   Object.keys(result.daily).forEach(date => {
+//     const month = date.slice(0, 7); // 'YYYY-MM'
+//     if (!monthlyTemp[month]) monthlyTemp[month] = {};
+//     Object.keys(result.daily[date]).forEach(subject => {
+//       if (!monthlyTemp[month][subject]) monthlyTemp[month][subject] = [];
+//       const val = result.daily[date][subject];
+//       if (typeof val === 'number' && !isNaN(val)) {
+//         monthlyTemp[month][subject].push(val);
+//       }
+//     });
+//   });
+
+//   // Calculate monthly averages
+//   Object.keys(monthlyTemp).forEach(month => {
+//     result.monthly[month] = {};
+//     Object.keys(monthlyTemp[month]).forEach(subject => {
+//       const arr = monthlyTemp[month][subject];
+//       result.monthly[month][subject] = arr.length > 0
+//         ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length)
+//         : 0;
+//     });
+//     // Calculate overall monthly performance
+//     const subjectKeys = Object.keys(monthlyTemp[month]).filter(s => s !== 'Overall');
+//     if (subjectKeys.length > 0) {
+//       let sum = 0;
+//       subjectKeys.forEach(subject => {
+//         sum += result.monthly[month][subject];
+//       });
+//       result.monthly[month].Overall = Math.round(sum / subjectKeys.length);
+//     }
+//   });
+
+//   // Add subjectList for frontend subject graph fallback
+//   const allSubjectsSet = new Set([
+//     ...Object.keys(performanceBySubject),
+//     ...Object.keys(assessmentBySubject)
+//   ]);
+//   result.subjectList = Array.from(allSubjectsSet);
+
+//   result.subjectList.forEach(subject => {
+//     result.subjects[subject] = {};
+//     // Fill daily scores for this subject
+//     Object.keys(result.daily).forEach(date => {
+//       if (result.daily[date][subject] !== undefined) {
+//         result.subjects[subject][date] = result.daily[date][subject];
+//       }
+//     });
+//     // Fill overall score for this subject (from result.overall)
+//     if (result.overall && result.overall[subject] !== undefined) {
+//       result.subjects[subject].Overall = result.overall[subject];
+//     }
+//   });
+
+//   return result;
+// }
+
 exports.getStudentPerformance = (req, res) => {
   const studentId = req.params.studentId;
 
-  // Get current date and calculate date ranges
-  const currentDate = new Date();
-  // const currentMonth = currentDate.getMonth() + 1;
-  // const currentYear = currentDate.getFullYear();
-
-  // Calculate date for last 7 days
-  const last7Days = new Date();
-  last7Days.setDate(last7Days.getDate() - 7);
-
-  // 1. Get academic performance data (80%)
+  // 1. Get academic performance data (80%) - REMOVED date filter
   const academicQuery = `
-   SELECT 
-  s.subject_name,
-  ds.date,
-  asa.performance,
-  asa.attendance_status
-FROM academic_session_attendance asa
-JOIN daily_schedule ds ON asa.session_id = ds.id
-JOIN subjects s ON ds.subject_id = s.id
-WHERE asa.student_id = ?
-AND ds.date >= ?
-ORDER BY ds.date DESC;
+    SELECT 
+      s.subject_name,
+      ds.date,
+      asa.performance,
+      asa.attendance_status
+    FROM academic_session_attendance asa
+    JOIN daily_schedule ds ON asa.session_id = ds.id
+    JOIN subjects s ON ds.subject_id = s.id
+    WHERE asa.student_id = ?
+    ORDER BY ds.date DESC;
   `;
 
+  // 2. Get assessment data - REMOVED date filter
   const assessmentQuery = `
-  SELECT 
-    s.subject_name,
-    a.date,
-    asm.percentage
-  FROM assessment_session_marks asm
-  JOIN assessment_sessions a ON asm.as_id = a.id
-  JOIN subjects s ON a.subject_id = s.id
-  WHERE asm.student_roll = (
-    SELECT roll FROM students WHERE id = ?
-  )
-  AND a.date >= ?
-  AND asm.status = 'Present'
-  ORDER BY a.date DESC
-`;
+    SELECT 
+      s.subject_name,
+      a.date,
+      asm.percentage
+    FROM assessment_session_marks asm
+    JOIN assessment_sessions a ON asm.as_id = a.id
+    JOIN subjects s ON a.subject_id = s.id
+    WHERE asm.student_roll = (SELECT roll FROM students WHERE id = ?)
+      AND asm.status = 'Present'
+    ORDER BY a.date DESC
+  `;
 
-  // 2. Get homework data (10%)
+  // 3. Get homework data (10%) - REMOVED date filter
   const homeworkQuery = `
     SELECT 
       s.subject_name,
@@ -346,48 +654,39 @@ ORDER BY ds.date DESC;
     FROM student_homework sh
     JOIN homework h ON sh.homework_id = h.id
     JOIN subjects s ON h.subject_id = s.id
-    WHERE sh.student_roll = (
-      SELECT roll FROM students WHERE id = ?
-    )
-    AND h.date >= ?
+    WHERE sh.student_roll = (SELECT roll FROM students WHERE id = ?)
     ORDER BY h.date DESC
   `;
 
-  // 3. Get discipline issues (10%)
+  // 4. Get discipline issues (10%) - REMOVED date filter
   const disciplineQuery = `
     SELECT 
       DATE_FORMAT(registered_at, '%Y-%m-%d') AS date,
       complaint
     FROM student_dicipline
-    WHERE roll = (
-      SELECT roll FROM students WHERE id = ?
-    )
-    AND registered_at >= ?
+    WHERE roll = (SELECT roll FROM students WHERE id = ?)
     ORDER BY registered_at DESC
   `;
 
-  // Execute all queries
-  db.query(academicQuery, [studentId, last7Days], (err, academicResults) => {
+  // Execute all queries without the 'last7Days' parameter
+  db.query(academicQuery, [studentId], (err, academicResults) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    db.query(homeworkQuery, [studentId, last7Days], (err, homeworkResults) => {
+    db.query(homeworkQuery, [studentId], (err, homeworkResults) => {
       if (err) return res.status(500).json({ error: err.message });
 
-      db.query(disciplineQuery, [studentId, last7Days], (err, disciplineResults) => {
+      db.query(disciplineQuery, [studentId], (err, disciplineResults) => {
         if (err) return res.status(500).json({ error: err.message });
 
-        db.query(assessmentQuery, [studentId, last7Days], (err, assessmentResults) => {
+        db.query(assessmentQuery, [studentId], (err, assessmentResults) => {
           if (err) return res.status(500).json({ error: err.message });
 
-          // Now pass assessmentResults to calculatePerformance
           const performanceData = calculatePerformance(
             academicResults,
             homeworkResults,
             disciplineResults,
             assessmentResults
           );
-          // console.log(performanceData);
-
           res.json(performanceData);
         });
       });
@@ -395,14 +694,13 @@ ORDER BY ds.date DESC;
   });
 };
 
-// Function to calculate performance metrics
+// Function to calculate performance metrics (NO CHANGES NEEDED HERE, it already groups by month)
 function calculatePerformance(academicData, homeworkData, disciplineData, assessmentData) {
   // Group data by subject and date
   const performanceBySubject = {};
   const assessmentBySubject = {};
   const dates = new Set();
 
-  // console.log("Academic Data:", academicData);
   // Process academic data (80% of score)
   academicData.forEach(session => {
     const date = session.date instanceof Date
@@ -410,7 +708,6 @@ function calculatePerformance(academicData, homeworkData, disciplineData, assess
       : String(session.date).slice(0, 10);
     const subject = session.subject_name;
     dates.add(date);
-    // console.log(date);
 
 
     if (!performanceBySubject[subject]) performanceBySubject[subject] = {};
@@ -450,7 +747,6 @@ function calculatePerformance(academicData, homeworkData, disciplineData, assess
 
   // Process homework data (10% of score)
   homeworkData.forEach(hw => {
-    // const date = hw.date.toISOString().split('T')[0];
     const date = hw.date instanceof Date
       ? hw.date.toLocaleDateString('en-CA')
       : String(hw.date).slice(0, 10);
@@ -477,7 +773,6 @@ function calculatePerformance(academicData, homeworkData, disciplineData, assess
   // Process discipline data (count issues per date)
   const disciplineByDate = {};
   disciplineData.forEach(issue => {
-    // const date = issue.date;
     const date = issue.date instanceof Date
       ? issue.date.toLocaleDateString('en-CA')
       : String(issue.date).slice(0, 10);
@@ -496,7 +791,6 @@ function calculatePerformance(academicData, homeworkData, disciplineData, assess
 
   // Convert dates to array and sort
   const sortedDates = Array.from(dates).sort();
-  // console.log("Sorted Dates:", sortedDates);
 
 
   // Calculate daily performance
@@ -1211,4 +1505,128 @@ exports.getPendingHomework = (req, res) => {
     if (err) return res.status(500).json({ success: false, message: "Database error" });
     res.json({ success: true, homework: results });
   });
+};
+
+//Survey
+exports.getStudentSurveys = (req, res) => {
+    const { studentId } = req.query;
+
+    if (!studentId) {
+        return res.status(400).json({ success: false, message: 'Student ID is required' });
+    }
+
+    const sql = `
+        SELECT
+            s.id,
+            s.task_type,
+            s.title,
+            s.description,
+            s.start_date,
+            s.end_date,
+            ss.completed,
+            u.name AS mentor_name,
+            up.file_path AS mentor_photo
+        FROM surveys s
+        JOIN survey_students ss ON s.id = ss.survey_id
+        JOIN mentors m ON s.mentor_id = m.id
+        JOIN users u ON m.phone = u.phone
+        LEFT JOIN user_photos up ON u.phone = up.phone AND up.is_profile_photo = 1
+        WHERE ss.student_id = ? AND s.status = 'Active' AND s.end_date >= CURDATE()
+        ORDER BY s.created_at DESC;
+    `;
+
+    db.query(sql, [studentId], (err, results) => {
+        if (err) {
+            console.error("Error fetching student surveys:", err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        res.json({ success: true, surveys: results });
+    });
+};
+
+// NEW: Get all questions for a specific survey
+exports.getSurveyQuestions = (req, res) => {
+    const { surveyId } = req.query;
+
+    if (!surveyId) {
+        return res.status(400).json({ success: false, message: 'Survey ID is required' });
+    }
+
+    const sql = `
+        SELECT id, question_text, answer_type
+        FROM survey_questions
+        WHERE survey_id = ?
+        ORDER BY question_order;
+    `;
+
+    db.query(sql, [surveyId], (err, results) => {
+        if (err) {
+            console.error("Error fetching survey questions:", err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        res.json({ success: true, questions: results });
+    });
+};
+
+// NEW: Submit answers for a feedback survey
+exports.submitSurveyResponse = async (req, res) => {
+    const { surveyId, studentId, responses } = req.body;
+
+    if (!surveyId || !studentId || !responses || !Array.isArray(responses) || responses.length === 0) {
+        return res.status(400).json({ success: false, message: 'Missing required data' });
+    }
+
+    try {
+        const transaction = await db.beginTransaction();
+
+        const responseValues = responses.map(r => [
+            surveyId,
+            studentId,
+            r.question_id,
+            r.answer,  // Always store answer as text
+            null       // option_answer is null
+        ]);
+
+        const insertSql = `
+            INSERT INTO survey_question_responses 
+            (survey_id, student_id, question_id, text_answer, option_answer) 
+            VALUES ?
+        `;
+
+        await transaction.query(insertSql, [responseValues]);
+
+        const updateSql = `UPDATE survey_students SET completed = 1 WHERE survey_id = ? AND student_id = ?`;
+        await transaction.query(updateSql, [surveyId, studentId]);
+
+        await transaction.commit();
+        res.json({ success: true, message: 'Feedback submitted successfully' });
+
+    } catch (err) {
+        if (err.rollback) await err.rollback();  // custom rollback on transaction object if it's included
+        console.error("Transaction error in submitSurveyResponse:", err);
+        res.status(500).json({ success: false, message: 'Transaction failed: ' + err.message });
+    }
+};
+
+
+// NEW: Mark a non-feedback survey as read
+exports.markSurveyAsRead = (req, res) => {
+    const { surveyId, studentId } = req.body;
+
+    if (!surveyId || !studentId) {
+        return res.status(400).json({ success: false, message: 'Missing required data' });
+    }
+
+    const sql = `UPDATE survey_students SET completed = 1 WHERE survey_id = ? AND student_id = ?`;
+
+    db.query(sql, [surveyId, studentId], (err, result) => {
+        if (err) {
+            console.error("Error marking survey as read:", err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Survey or student not found' });
+        }
+        res.json({ success: true, message: 'Marked as read' });
+    });
 };
