@@ -15,44 +15,45 @@ import Events from '../../../assets/CoordinatorPage/Menu/Events.svg';
 import Calender from '../../../assets/CoordinatorPage/Menu/Calender.svg';
 import Request from '../../../assets/CoordinatorPage/Menu/Request.svg';
 import Enrollment from '../../../assets/CoordinatorPage/Menu/Enrollment.svg';
+import Messages from '../../../assets/Genreal/message.svg';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CommonActions } from "@react-navigation/native";
 
 const CoordinatorMenu = ({ navigation }) => {
-  const [isCoordinator, setIsCoordinator] = useState(true);  
+  const [isCoordinator, setIsCoordinator] = useState(true);
   const [coordinatorData, setCoordinatorData] = useState({});
   const [coordinatorGrades, setCoordinatorGrades] = useState({});
 
   const coordinatorSwitch = () => {
-    if(isCoordinator){
+    if (isCoordinator) {
       setIsCoordinator(false);
-      navigation.navigate('Redirect', {phoneNumber:coordinatorData.phone});
+      navigation.navigate('Redirect', { phoneNumber: coordinatorData.phone });
     }
   }
- 
+
   const handleLogout = async () => {
     try {
       // Remove the user data from AsyncStorage
       await AsyncStorage.removeItem('userPhone');
       await AsyncStorage.removeItem('userRoles');
-      
+
       // You can clear any other data if needed, like admin or coordinator data
       await AsyncStorage.removeItem('adminData');
       await AsyncStorage.removeItem('coordinatorData');
       await AsyncStorage.removeItem('coordinatorGrades');
       await AsyncStorage.removeItem('studentData');
       await AsyncStorage.removeItem('mentorData');
-  
+
       // Show a logout confirmation (optional)
       Alert.alert('Logged Out', 'You have successfully logged out.');
-  
+
       // Redirect to the Welcome or Login screen
-      
+
       navigation.reset({
         index: 0,
         routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
       });
-  
+
     } catch (error) {
       console.error('Error during logout:', error);
       Alert.alert('Error', 'There was an issue logging out. Please try again.');
@@ -85,7 +86,7 @@ const CoordinatorMenu = ({ navigation }) => {
     fetchCoordinatorData();
     fetchCoordinatorGrades();
   }, [])
-  
+
   const handleMenuPress = (menuItem) => {
     console.log(`${menuItem} pressed`);
 
@@ -98,31 +99,34 @@ const CoordinatorMenu = ({ navigation }) => {
         handleLogout();
         break;
       case 'Mentor':
-        navigation.navigate('CoordinatorMentor',{ coordinatorData, coordinatorGrades });
+        navigation.navigate('CoordinatorMentor', { coordinatorData, coordinatorGrades });
         break;
       case 'Student':
-        navigation.navigate('CoordinatorStudent',{ coordinatorData, coordinatorGrades });
+        navigation.navigate('CoordinatorStudent', { coordinatorData, coordinatorGrades });
         break;
       case 'Materials':
         navigation.navigate('CoordinatorMaterialHome', { coordinatorData, coordinatorGrades });
         break;
       case 'Logs':
-        navigation.navigate('CoordinatorLogs',{ coordinatorData, coordinatorGrades });
+        navigation.navigate('CoordinatorLogs', { coordinatorData, coordinatorGrades });
         break;
       case 'Schedule':
-        navigation.navigate('CoordinatorScheduleHome',{ coordinatorData, coordinatorGrades });
+        navigation.navigate('CoordinatorScheduleHome', { coordinatorData, coordinatorGrades });
         break;
       case 'Events':
-        navigation.navigate('CoordinatorEvent',{ coordinatorData, coordinatorGrades });
+        navigation.navigate('CoordinatorEvent', { coordinatorData, coordinatorGrades });
         break;
       case 'Calendar':
-        navigation.navigate('CoordinatorCalendar',{ coordinatorData, coordinatorGrades });
+        navigation.navigate('CoordinatorCalendar', { coordinatorData, coordinatorGrades });
         break;
       case 'Request':
-        navigation.navigate('CoordinatorRequest',{ coordinatorData, coordinatorGrades }); 
+        navigation.navigate('CoordinatorRequest', { coordinatorData, coordinatorGrades });
         break;
       case 'Enrollment':
-        navigation.navigate('CoordinatorEnrollmentHome',{ coordinatorData, coordinatorGrades });
+        navigation.navigate('CoordinatorEnrollmentHome', { coordinatorData, coordinatorGrades });
+        break;
+      case 'Messages':
+        navigation.navigate('CoordinatorMessageHome', { coordinatorData, coordinatorGrades });
         break;
       default:
         console.log('No navigation defined for', menuItem);
@@ -273,7 +277,7 @@ const CoordinatorMenu = ({ navigation }) => {
         </View>
 
         <View style={styles.gridRow}>
-          <Pressable 
+          <Pressable
             style={({ pressed }) => [
               styles.menuItem,
               pressed && styles.menuItemPressed
@@ -283,7 +287,19 @@ const CoordinatorMenu = ({ navigation }) => {
             <Enrollment width={50} height={50} />
             <Text style={styles.menuText}>Enrollment</Text>
           </Pressable>
-          </View>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.menuItem,
+              pressed && styles.menuItemPressed
+            ]}
+            onPress={() => handleMenuPress('Messages')}
+          >
+            <Messages width={50} height={50} />
+            <Text style={styles.menuText}>Messages</Text>
+          </Pressable>
+        </View>
+
       </ScrollView>
     </ScrollView>
   );

@@ -18,6 +18,7 @@ app.use('/api', require('./routes/student'));
 app.use('/api', require('./routes/coordinator'));
 app.use('/api', require('./routes/mentor'));
 app.use('/api', require('./routes/admin'));
+app.use('/api', require('./routes/message'));
 
 
 module.exports = app;

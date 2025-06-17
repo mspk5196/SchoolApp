@@ -137,6 +137,10 @@ import MentorHomeWorkDetail from '../../pages/Mentor/Homework/MentorHomeWorkDeta
 import AdminAddEvent from '../../pages/Admin/Events/AdminAddEvent';
 import StudentPageEventRegister from '../../pages/Parent/SidebarPages/EventScreen/eventRegisterform/StudentPageEventRegister';
 import StudentEventDetails from '../../pages/Parent/SidebarPages/EventScreen/EventDetails/StudentEventDetails';
+import CoordinatorMessageBox from '../../pages/Coordinator/Messages/MessageBox/CoordinatorMessageBox';
+import AdminMessageBox from '../../pages/Admin/Messages/MessageBox/AdminMessageBox';
+import AdminMessageHome from '../../pages/Admin/Messages/MessageHome/AdminMessageHome';
+import CoordinatorMessageHome from '../../pages/Coordinator/Messages/MessageHome/CoordinatorMessageHome';
 
 const Stack = createStackNavigator();
 
@@ -172,6 +176,10 @@ const Routes = () => {
                         <Stack.Screen name="CoordinatorCalendar" component={CoordinatorCalendar} />
                         <Stack.Screen name="CoordinatorRequest" component={CoordinatorRequest} />
                         <Stack.Screen name="CoordinatorEnrollmentHome" component={CoordinatorEnrollmentHome} />
+                        <Stack.Screen name="CoordinatorMessageHome" component={CoordinatorMessageHome} />
+
+                        {/* Coordinator - Message */}
+                        <Stack.Screen name="CoordinatorMessageBox" component={CoordinatorMessageBox} />
 
                         {/* CoordinatorProfile */}
                         <Stack.Screen name="CoordinatorLeaveApply" component={CoordinatorLeaveApply} />
@@ -304,6 +312,10 @@ const Routes = () => {
                         <Stack.Screen name="AdminEvent" component={AdminEvent} />
                         <Stack.Screen name="AdminCalendar" component={AdminCalendar} />
                         <Stack.Screen name="AdminCoordinatorHome" component={AdminCoordinatorHome} />
+                        <Stack.Screen name="AdminMessageHome" component={AdminMessageHome} />
+
+                        {/* Admin - Message */}
+                        <Stack.Screen name="AdminMessageBox" component={AdminMessageBox} />
 
                         {/* Admin - Mentor */}
                         <Stack.Screen name="AdminSubjectMentor" component={AdminSubjectMentor} />

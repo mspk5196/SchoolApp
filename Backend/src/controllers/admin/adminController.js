@@ -299,11 +299,21 @@ exports.getStudentDisciplineLogs = async (req, res) => {
 
   try {
     const [rows] = await db.promise().query(`
-      SELECT sd.*, s.name as student_name, s.profile_photo, sd.roll as student_roll
-      FROM student_dicipline sd
-      JOIN Students s ON sd.roll = s.roll
-      WHERE s.section_id = ?
-      ORDER BY sd.registered_at DESC;
+      SELECT sd.*,
+       s.name as student_name,
+       s.id as student_id,
+       s.profile_photo,
+       sd.roll as student_roll,
+       COALESCE(ad.id, c.id, mn.id) as registered_by_id,
+       up.file_path as registered_by_profile
+FROM student_dicipline sd
+JOIN Students s ON sd.roll = s.roll
+LEFT JOIN Admins ad ON sd.registered_by_phone = ad.phone
+LEFT JOIN Coordinators c ON sd.registered_by_phone = c.phone
+LEFT JOIN Mentors mn ON sd.registered_by_phone = mn.phone
+LEFT JOIN User_photos up ON sd.registered_by_phone = up.phone
+WHERE s.section_id = ?
+ORDER BY sd.registered_at DESC;
     `, [sectionId]);
 
     res.status(200).json({ success: true, issues: rows });

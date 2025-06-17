@@ -35,9 +35,9 @@ import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
 
-const MentorMessageBox = ({ route, navigation }) => {
-  const { contact } = route.params;
-  // console.log("hi",contact);
+const CoordinatorMessageBox = ({ route, navigation }) => {
+  const { contact, coordinator } = route.params;
+  // console.log(contact);
 
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +45,6 @@ const MentorMessageBox = ({ route, navigation }) => {
   const [lastMessageId, setLastMessageId] = useState(0);
   const [isRecording, setRecording] = useState(false);
   const flatListRef = useRef(null);
-  const studentData = useRef(null);
   const socketRef = useRef(null);
 
   const [playingAudioId, setPlayingAudioId] = useState(null);
@@ -57,11 +56,11 @@ const MentorMessageBox = ({ route, navigation }) => {
   const [audioPositions, setAudioPositions] = useState({});
   const [downloadProgress, setDownloadProgress] = useState(null);
 
-  const [currentUser, setCurrentUser] = useState(null);
-
   const audioRecorderPlayer = useRef(null);
   const manualTimerRef = useRef(null);
   const recorderState = useRef({ isRunning: false });
+
+  const [currentUser, setCurrentUser] = useState(null);
 
   const currentUserRef = useRef(null);
 
@@ -69,42 +68,36 @@ const MentorMessageBox = ({ route, navigation }) => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
-  const fetchMentorData = async () => {
-    try {
-      const storedData = await AsyncStorage.getItem('mentorData');
-      if (storedData) {
-        const mentorData = JSON.parse(storedData)[0];
-        setCurrentUser(mentorData);
-        fetchMessages(mentorData)
-      }
+  useEffect(() => {
+    // For Coordinator, data comes from props, not storage
+    if (coordinator) {
+      setCurrentUser({ ...coordinator, type: 'coordinator' });
     }
-    catch (error) {
-      console.error('Error initializing message box:', error);
-    }
-  }
+
+    return () => {
+      audioRecorderPlayer.current.stopPlayer().catch(() => { });
+      audioRecorderPlayer.current.removePlayBackListener();
+    };
+  }, [coordinator]);
 
   useEffect(() => {
+    if (!currentUser) return;
 
-    fetchMentorData();
+    fetchMessages();
 
     socketRef.current = io(API_URL);
-    // Join your own room for real-time messages  
-    console.log("mentor", contact)
-    if (contact && contact.sender_id) {
-      socketRef.current.emit('join', { userId: contact.sender_id });
-    }
+    socketRef.current.emit('join', { userId: currentUser.id });
 
-    // Listen for incoming messages
-    socketRef.current.on('receiveMessage', (data) => {
+    const handleReceiveMessage = (data) => {
       if (data?.message) {
         const msg = data.message;
         // Only add if this message is for THIS conversation
         const isCurrentConversation =
           (
             (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type &&
-              msg.receiver_id === currentUserRef.current?.id && msg.receiver_type === 'mentor')
+              msg.receiver_id === currentUserRef.current?.id && msg.receiver_type === 'coordinator')
             ||
-            (msg.sender_id === currentUserRef.current?.id && msg.sender_type === 'mentor' &&
+            (msg.sender_id === currentUserRef.current?.id && msg.sender_type === 'coordinator' &&
               msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type)
           );
 
@@ -115,24 +108,15 @@ const MentorMessageBox = ({ route, navigation }) => {
           return [...prev, msg];
         });
 
-        setLastMessageId(msg.message_id);
-
-        // Mark as read if needed
-        if (msg.receiver_id === currentUserRef.current?.id && msg.is_read === 0) {
+        if (msg.receiver_id === currentUserRef.current.id) {
           socketRef.current.emit('markAsRead', {
             messageIds: [msg.message_id],
-            receiverId: currentUserRef.current.id,
-            receiverType: 'mentor',
-            senderId: msg.sender_id,
-            senderType: msg.sender_type
+            receiverId: currentUserRef.current.id, receiverType: 'coordinator',
+            senderId: msg.sender_id, senderType: msg.sender_type
           });
         }
-
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
       }
-    });
+    };
 
     socketRef.current.on('messagesRead', (data) => {
       setMessages(prev =>
@@ -144,66 +128,50 @@ const MentorMessageBox = ({ route, navigation }) => {
       );
     });
 
+    socketRef.current.on('receiveMessage', handleReceiveMessage);
+
     return () => {
-      socketRef.current.off('receiveMessage');
-      socketRef.current.off('messagesRead');
-      socketRef.current.disconnect();
-    };
-  }, []);
-
-  const fetchMessages = async (mentorData) => {
-    try {
-      const response = await fetch(`${API_URL}/api/messages/get`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender_id: contact.sender_id,
-          receiver_id: contact.receiver_id,
-          sender_type: 'mentor',
-          last_message_id: lastMessageId,// <-- use student_id
-          receiver_type: contact.receiver_type
-        }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setMessages(data.messages);
-
-        // Mark messages as read via socket 
-        if (socketRef.current && data.messages.length > 0) {
-          // console.log(contact.receiver_id);
-          // console.log(contact.receiver_id);
-          const unreadMessages = data.messages.filter(
-            msg =>
-              msg.receiver_id === mentorData.id &&
-              msg.sender_id === contact.sender_id && // <-- the other user's id
-              msg.is_read === 0
-          );
-
-
-          if (unreadMessages.length > 0) {
-            socketRef.current.emit('markAsRead', {
-              messageIds: unreadMessages.map(msg => msg.message_id),
-              receiverId: mentorData.id,
-              receiverType: 'mentor', // or your current user's type
-              senderId: contact.sender_id,
-              senderType: contact.sender_type
-            });
-          }
-        }
+      if (socketRef.current) {
+        socketRef.current.off('receiveMessage', handleReceiveMessage);
+        socketRef.current.off('messagesRead');
+        socketRef.current.disconnect();
       }
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (currentUser?.id && contact?.id) {
-      fetchMessages();
-    }
+    };
   }, [currentUser, contact]);
 
+  // useEffect(() => {
+  //   socketRef.current = io(API_URL);
+  //   // Join your own room for real-time messages  
+  //   console.log("coordinator", contact)
+  //   if (contact && contact.sender_id) {
+  //     socketRef.current.emit('join', { userId: contact.sender_id });
+  //   }
+
+  //   // Listen for incoming messages
+  //   socketRef.current.on('receiveMessage', (data) => {
+  //     if (data?.message) {
+  //       if (data.message.sender_id === contact.receiver_id && data.message.sender_type === contact.receiver_type) {
+  //         // setMessages(prev => [...prev, data.message]);
+  //         setLastMessageId(data.message.message_id);
+  //         setTimeout(() => {
+  //           flatListRef.current?.scrollToEnd({ animated: true });
+  //         }, 100);
+  //       }
+  //     }
+  //   });
+
+  //   socketRef.current.on('messagesRead', (data) => {
+  //     setMessages(prev => prev.map(msg =>
+  //       data.messageIds.includes(msg.message_id)
+  //         ? { ...msg, is_read: 1 }
+  //         : msg
+  //     ));
+  //   });
+
+  //   return () => {
+  //     socketRef.current.disconnect();
+  //   };
+  // }, []);
 
   // Initialize audio recorder
   useEffect(() => {
@@ -221,6 +189,60 @@ const MentorMessageBox = ({ route, navigation }) => {
         clearInterval(manualTimerRef.current);
       }
     };
+  }, []);
+
+  // Fetch all messages between this mentor and student
+  const fetchMessages = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/messages/get`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sender_id: contact.sender_id,
+          receiver_id: contact.receiver_id,
+          sender_type: 'coordinator',
+          last_message_id: lastMessageId,// <-- use student_id
+          receiver_type: contact.receiver_type,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setMessages(data.messages);
+
+        // Mark messages as read via socket
+        if (socketRef.current && data.messages.length > 0) {
+          // console.log(contact.receiver_id);
+          // console.log(contact.receiver_id);
+          const unreadMessages = data.messages.filter(
+            msg =>
+              msg.receiver_id === coordinator.id &&
+              msg.sender_id === contact.sender_id && // <-- the other user's id
+              msg.is_read === 0
+          );
+
+          // console.log(unreadMessages);
+
+
+          if (unreadMessages.length > 0) {
+            socketRef.current.emit('markAsRead', {
+              messageIds: unreadMessages.map(msg => msg.message_id),
+              receiverId: coordinator.id,
+              receiverType: 'coordinator', // or your current user's type
+              senderId: contact.sender_id,
+              senderType: contact.sender_type
+            });
+          }
+        }
+      }
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMessages();
   }, []);
 
   const [selectedMessages, setSelectedMessages] = useState([]);
@@ -283,28 +305,41 @@ const MentorMessageBox = ({ route, navigation }) => {
     try {
       const response = await fetch(`${API_URL}/api/messages/send`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          sender_id: currentUser.id,
+          sender_id: contact.sender_id,
           receiver_id: contact.receiver_id,
-          sender_type: 'mentor',
-          receiver_type: contact.receiver_type,
+          sender_type: 'coordinator',
           message_text: message,
+          receiver_type: contact.receiver_type
         }),
       });
 
       const data = await response.json();
+
       if (data.success) {
+        setMessage('');
+        const newMsg = data.message;
+
+        // setMessages(prev => [...prev, newMsg]);
+        // setLastMessageId(newMsg.message_id);
+        // console.log(contact.sender_id);
+
         setMessage('');
         setMessages(prev => {
           if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
           return [...prev, data.message];
         });
-        // ✅ Let the socket handle the UI update for both sender and receiver
         socketRef.current.emit('sendMessage', {
           to: contact.receiver_id,
-          message: data.message
+          message: newMsg
         });
+
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
       } else {
         Alert.alert('Error', 'Failed to send message');
       }
@@ -313,7 +348,6 @@ const MentorMessageBox = ({ route, navigation }) => {
       Alert.alert('Error', 'Failed to send message');
     }
   };
-
 
   const startRecording = async () => {
     if (recorderState.current.isRunning || isRecording) {
@@ -601,8 +635,6 @@ const MentorMessageBox = ({ route, navigation }) => {
   };
 
   const uploadAttachment = async (file, fileType) => {
-    // console.log();
-
     let fileUri = file.uri;
 
     try {
@@ -624,10 +656,10 @@ const MentorMessageBox = ({ route, navigation }) => {
             type: file.type || `application/${fileType}`,
             data: RNBlobUtil.wrap(fileUri.replace('file://', ''))
           },
-          { name: 'sender_id', data: String(contact.sender_id) },
-          { name: 'receiver_id', data: String(contact.receiver_id) },
-          { name: 'sender_type', data: 'mentor' },
-          { name: 'receiver_type', data: String(contact.receiver_type) }
+          { name: 'sender_id', data: contact.sender_id.toString() },
+          { name: 'receiver_id', data: contact.receiver_id.toString() },
+          { name: 'sender_type', data: 'coordinator' },
+          { name: 'receiver_type', data: contact.receiver_type.toString() }
         ]
       );
 
@@ -644,7 +676,7 @@ const MentorMessageBox = ({ route, navigation }) => {
         const newMsg = data.message;
 
         socketRef.current.emit('sendMessage', {
-          to: contact.receiver_id,
+          to: contact.sender_id,
           message: newMsg
         });
 
@@ -679,21 +711,9 @@ const MentorMessageBox = ({ route, navigation }) => {
     </TouchableOpacity>
   );
 
-  useEffect(() => {
-    AsyncStorage.getItem('mentorData').then(data => {
-      if (data) {
-        setCurrentUser(JSON.parse(data)[0]);
-      }
-    });
-  }, []);
-
   const renderMessage = ({ item }) => {
-    // const isSent = item.sender_type === 'mentor';
-    const isSent = (
-      currentUser &&
-      item.sender_id === currentUser.id &&
-      item.sender_type === 'mentor'
-    );
+    // const isSent = item.sender_type === 'coordinator';
+    const isSent = currentUser && item.sender_id === currentUser.id && item.sender_type === 'coordinator';
     const isSelected = selectedMessages.includes(item.message_id);
 
     return (
@@ -819,7 +839,7 @@ const MentorMessageBox = ({ route, navigation }) => {
                 </Text>
                 {isSent && (
                   <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
-                    {(item.is_read && item.sender_id == currentUser.id) ? 'Read' : 'Unread'}
+                    {(item.is_read && item.sender_id == coordinator.id) ? 'Read' : 'Unread'}
                   </Text>
                 )}
               </View>
@@ -829,6 +849,7 @@ const MentorMessageBox = ({ route, navigation }) => {
       </TouchableOpacity>
     );
   };
+
 
   // Add your existing document and image download functions here...
   const requestStoragePermission = async (fileType = 'other') => {
@@ -1170,4 +1191,4 @@ const MentorMessageBox = ({ route, navigation }) => {
   );
 };
 
-export default MentorMessageBox;
+export default CoordinatorMessageBox;

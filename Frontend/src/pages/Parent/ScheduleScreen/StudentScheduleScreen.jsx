@@ -251,8 +251,12 @@ const StudentScheduleScreen = () => {
       });
       const data = await response.json();
       if (data.success) {
-        const dayData = Array.isArray(data.schedule[selectedDay]) ? data.schedule[selectedDay] : [];
+        const dayKey = String(Number(selectedDay));
+        const dayData = Array.isArray(data.schedule[dayKey]) ? data.schedule[dayKey] : [];
         setAcademicData(dayData);
+        // console.log(dayData);
+        setRefresh(false);
+
         setRefresh(false);
       }
     } catch (error) {
@@ -476,7 +480,7 @@ const StudentScheduleScreen = () => {
       ) : (
         <View style={styles.academicContainer}>
           {renderDaySelector()}
-          <ScrollView style={{flex:1}} refreshControl={
+          <ScrollView style={{ flex: 1 }} refreshControl={
             <RefreshControl refreshing={refresh} onRefresh={onRefresh} />
           }>
             <FlatList

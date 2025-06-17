@@ -699,7 +699,7 @@ exports.getStudentScheduleByMonth = (req, res) => {
         gradeId: item.grade_id
       });
     });
-    // console.log("Schedule", scheduleByDay);
+    console.log("Schedule", scheduleByDay);
 
 
     res.json({ success: true, schedule: scheduleByDay });

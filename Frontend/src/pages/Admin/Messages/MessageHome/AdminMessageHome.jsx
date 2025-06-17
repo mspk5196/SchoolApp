@@ -1,34 +1,35 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, Text, FlatList, Pressable, TextInput, Image, TouchableOpacity, ActivityIndicator } from "react-native";
 import styles from "./Messagesty";
 import Home from "../../../../assets/MentorPage/entypo_home.svg";
 import SearchIcon from "../../../../assets/MentorPage/search.svg";
 import Add from "../../../../assets/MentorPage/Add.svg";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 import { API_URL } from '@env';
 import io from 'socket.io-client';
-import { useFocusEffect } from "@react-navigation/native";
 
 const Profile = require('../../../../assets/MentorPage/profile.png');
 
-const MentorMessage = ({ navigation }) => {
+const AdminMessageHome = ({ navigation, route }) => {
+    const { adminData } = route.params;
+
     const [selectedTab, setSelectedTab] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
     const [inbox, setInbox] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    const [mentor, setMentor] = useState(null);
+    const [admin, setAdmin] = useState(null);
 
     const socketRef = useRef(null);
 
-    const fetchInbox = async (mentor) => {
-        if (!mentor) return;
+    const fetchInbox = async (adminObj) => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/mentor-inbox`, {
+            const res = await fetch(`${API_URL}/api/admin-inbox`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mentor_id: mentor.id })
+                body: JSON.stringify({ admin_id: adminObj.id })
             });
             const data = await res.json();
             if (data.success) {
@@ -40,76 +41,67 @@ const MentorMessage = ({ navigation }) => {
         setLoading(false);
     };
 
+
     useFocusEffect(
         useCallback(() => {
-            let isActive = true;
+            const parsedAdmin = typeof adminData === 'string' ? JSON.parse(adminData) : adminData;
+            setAdmin(parsedAdmin);
 
-            const setupInbox = async () => {
-                try {
-                    const mentorData = await AsyncStorage.getItem('mentorData');
-                    const parsed = mentorData ? JSON.parse(mentorData)[0] : null;
-                    if (parsed && isActive) {
-                        setMentor(parsed);
-                        fetchInbox(parsed);
+            fetchInbox(parsedAdmin);
 
-                        if (!socketRef.current) {
-                            socketRef.current = io(API_URL, {
-                                transports: ['websocket'],
-                                reconnection: true,
-                            });
+            // Setup socket
+            if (!socketRef.current) {
+                socketRef.current = io(API_URL, {
+                    transports: ['websocket'],
+                    reconnection: true,
+                });
 
-                            socketRef.current.emit('join', { userId: parsed.id });
+                socketRef.current.emit('join', { userId: parsedAdmin.id });
 
-                            socketRef.current.on('receiveMessage', () => {
-                                fetchInbox(parsed);
-                            });
-                        }
-                    }
-                } catch (err) {
-                    console.error('Error loading mentor inbox:', err);
-                }
-            };
-
-            setupInbox();
+                socketRef.current.on('receiveMessage', (data) => {
+                    console.log('📨 Inbox update triggered by socket:', data.message);
+                    fetchInbox(parsedAdmin); // Refetch inbox when new message arrives
+                });
+            }
 
             return () => {
-                isActive = false;
                 if (socketRef.current) {
-                    socketRef.current.off('receiveMessage');
-                    // Optional: disconnect if needed
-                    // socketRef.current.disconnect();
+                    socketRef.current.disconnect();
+                    socketRef.current = null;
                 }
             };
-        }, [])
+        }, [adminData])
     );
 
 
-    // Disconnect socket on component unmount
-    useEffect(() => {
-        return () => {
-            if (socketRef.current) {
-                socketRef.current.disconnect();
-                socketRef.current = null;
-            }
-        };
-    }, []);
-
     const filteredInbox = inbox.filter(item => {
-        if (!mentor) return false;
+        if (!admin) return false;
+
         const name = item.contact_name || '';
         const msg = item.message_text || '';
         const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             msg.toLowerCase().includes(searchQuery.toLowerCase());
 
-        if (!matchesSearch) return false;
-
-        const hasUnreadReceivedMessages = item.unread_received_count > 0;
-        switch (selectedTab) {
-            case 1: return true;
-            case 2: return hasUnreadReceivedMessages;
-            case 3: return !hasUnreadReceivedMessages;
-            default: return true;
+        if (!matchesSearch) {
+            return false;
         }
+
+        // --- START OF CHANGES ---
+        // A conversation is "unread" if it has one or more unread messages received by the admin.
+        const hasUnreadReceivedMessages = item.unread_received_count > 0;
+
+        // Tab filtering logic based on the new, accurate unread status
+        switch (selectedTab) {
+            case 1: // All
+                return true;
+            case 2: // Unread
+                return hasUnreadReceivedMessages;
+            case 3: // Read
+                return !hasUnreadReceivedMessages;
+            default:
+                return true;
+        }
+        // --- END OF CHANGES ---
     });
 
     return (
@@ -134,14 +126,18 @@ const MentorMessage = ({ navigation }) => {
                 </View>
             </View>
             <View style={styles.tabContainer}>
-                {[{ id: 1, title: "All" }, { id: 2, title: "Unread" }, { id: 3, title: "Read" }].map((tab) => (
+                {[
+                    { id: 1, title: "All" },
+                    { id: 2, title: "Unread" },
+                    { id: 3, title: "Read" }
+                ].map((item) => (
                     <Pressable
-                        key={tab.id}
-                        style={[styles.tabItem, selectedTab === tab.id && styles.selectedTab]}
-                        onPress={() => setSelectedTab(tab.id)}
+                        key={item.id}
+                        style={[styles.tabItem, selectedTab === item.id && styles.selectedTab]}
+                        onPress={() => setSelectedTab(item.id)}
                     >
-                        <Text style={[styles.tabText, selectedTab === tab.id && styles.selectedTabText]}>
-                            {tab.title}
+                        <Text style={[styles.tabText, selectedTab === item.id && styles.selectedTabText]}>
+                            {item.title}
                         </Text>
                     </Pressable>
                 ))}
@@ -149,29 +145,25 @@ const MentorMessage = ({ navigation }) => {
             {loading ? (
                 <ActivityIndicator size="large" color="#4169E1" style={{ marginTop: 40 }} />
             ) : (
-                // console.log(filteredInbox),
-
                 <FlatList
                     data={filteredInbox}
-                    // --- START OF CHANGE ---
-                    // Use a more robust key that works for items with and without messages
-                    keyExtractor={(item) => item.message_id ? item.message_id.toString() : `${item.contact_type}_${item.contact_id}`}
-                    // --- END OF CHANGE ---
+                    keyExtractor={(item) => item.message_id}
                     renderItem={({ item }) => {
-                        console.log(item);
-
+                        // --- START OF CHANGES ---
+                        // This flag is now our single source of truth for showing unread indicators.
                         const hasUnreadReceivedMessages = item.unread_received_count > 0;
+                        // --- END OF CHANGES ---
+
                         return (
                             <TouchableOpacity
-                                onPress={() => navigation.navigate("MentorMessageBox", {
+                                onPress={() => navigation.navigate("AdminMessageBox", {
                                     contact: {
-                                        receiver_id: item.contact_id,  //receiver_id
+                                        receiver_id: item.contact_id,
                                         receiver_name: item.contact_name,
                                         receiver_type: item.contact_type,
-                                        subject: item.subject || '',
-                                        profile: item.contact_profile,
-                                        sender_id: mentor.id, // <-- pass mentor id  //sender_id
-                                        sender_name: mentor.name, // optional, for header
+                                        profile: item.contact_profile || Profile,
+                                        sender_id: admin.id,
+                                        sender_name: admin.name,
                                     }
                                 })}
                             >
@@ -184,14 +176,22 @@ const MentorMessage = ({ navigation }) => {
                                         <View>
                                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                                 <View>
-                                                    <Text style={{color:'green', fontSize:13.5}}>{String(item.contact_type).charAt(0).toUpperCase() + String(item.contact_type).slice(1)}</Text>
-                                                    <Text style={styles.inboxText}>{item.contact_type === ('coordinator'||'admin') ? `${item.contact_name}` : `${item.contact_name} (Grade ${item.grade_id} - Section ${item.section_name})`}</Text>
+                                                    <Text style={{ color: 'green', fontSize: 13.5 }}>{String(item.contact_type).charAt(0).toUpperCase() + String(item.contact_type).slice(1)}</Text>
+                                                    <Text style={styles.inboxText}>{item.contact_type === ('coordinator' || 'admin') ? `${item.contact_name}` : `${item.contact_name} (Grade ${item.grade_id} - Section ${item.section_name})`}</Text>
                                                 </View>
+                                                {/* Show unread indicator only if there are unread messages from this contact */}
                                                 {hasUnreadReceivedMessages && (
-                                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#4169E1', marginLeft: 5 }} />
+                                                    <View style={{
+                                                        width: 8, height: 8, borderRadius: 4,
+                                                        backgroundColor: '#4169E1', marginLeft: 5
+                                                    }} />
                                                 )}
                                             </View>
-                                            <Text style={[styles.inboxMsg, hasUnreadReceivedMessages && { fontWeight: 'bold' }]} numberOfLines={1}>
+                                            <Text style={[
+                                                styles.inboxMsg,
+                                                // Style as bold if there are unread messages
+                                                hasUnreadReceivedMessages && { fontWeight: 'bold' }
+                                            ]} numberOfLines={1}>
                                                 {item.attachment_type === 'image' ? '📷 Photo' :
                                                     item.attachment_type === 'audio' ? '🎤 Audio' :
                                                         item.attachment_type === 'pdf' ? '📄 PDF' :
@@ -205,15 +205,15 @@ const MentorMessage = ({ navigation }) => {
                                         <Text style={styles.inboxTime}>
                                             {item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                         </Text>
+                                        {/* Show "New" only if there are unread messages */}
                                         {hasUnreadReceivedMessages && (
                                             <Text style={{ fontSize: 12, color: '#4169E1' }}>New</Text>
                                         )}
                                     </View>
                                 </View>
                             </TouchableOpacity>
-                        )
-                    }
-                    }
+                        );
+                    }}
                     ListEmptyComponent={
                         <View style={{ alignItems: 'center', marginTop: 40 }}>
                             <Text style={{ color: '#888' }}>No messages found</Text>
@@ -221,13 +221,14 @@ const MentorMessage = ({ navigation }) => {
                     }
                 />
             )}
-            <View>
-                <TouchableOpacity style={styles.addIcon} onPress={() => navigation.navigate("MentorSendMessage")}>
+            {/* I've commented out the Add icon as it navigates to "MentorSendMessage", which might be incorrect for an Admin. You can adjust this as needed. */}
+            {/* <View>
+                <TouchableOpacity style={styles.addIcon} onPress={() => navigation.navigate("AdminNewMessage")}>
                     <Add />
                 </TouchableOpacity>
-            </View>
+            </View> */}
         </View>
     )
 };
 
-export default MentorMessage;
+export default AdminMessageHome;

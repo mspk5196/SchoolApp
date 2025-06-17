@@ -12,6 +12,7 @@ import Coordinator from '../../../assets/AdminPage/Menu/coordinator.svg';
 import Schedule from '../../../assets/AdminPage/Menu/Schedule.svg';
 import Events from '../../../assets/AdminPage/Menu/Events.svg';
 import Calender from '../../../assets/AdminPage/Menu/Calender.svg';
+import Messages from '../../../assets/Genreal/message.svg';
 import { Switch } from 'react-native-switch';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -61,6 +62,9 @@ const AdminHomePage = ({ navigation, route }) => {
         break;
       case 'Coordinator':
         navigation.navigate('AdminCoordinatorHome');
+        break;
+      case 'Messages':
+        navigation.navigate('AdminMessageHome', {adminData:adminData});
         break;
       default:
         console.log('No navigation defined for', menuItem);
@@ -234,6 +238,16 @@ const AdminHomePage = ({ navigation, route }) => {
             onPress={() => handleMenuPress('Events')}>
             <Events width={60} height={60} />
             <Text style={styles.menuText}>Events</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.menuItem,
+              pressed && styles.menuItemPressed,
+            ]}
+            onPress={() => handleMenuPress('Messages')}>
+            <Messages width={40} height={60} />
+            <Text style={styles.menuText}>Messages</Text>
           </Pressable>
 
         </View>

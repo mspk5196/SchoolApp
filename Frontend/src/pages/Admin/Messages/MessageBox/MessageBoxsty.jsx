@@ -335,6 +335,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     margin: 4,
   },
+
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4169E1',
+    marginLeft: 5
+  },
+  unreadLabel: {
+    fontSize: 12,
+    color: '#4169E1'
+  },
+  readStatus: {
+    fontSize: 10,
+    marginLeft: 4,
+    color: '#888'
+  },
+  unreadStatus: {
+    fontSize: 10,
+    marginLeft: 4,
+    color: '#4169E1'
+  }
 });
 
 export default styles;

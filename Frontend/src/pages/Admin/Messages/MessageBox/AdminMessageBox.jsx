@@ -28,14 +28,25 @@ import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import DocumentPicker from 'react-native-document-picker';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { API_URL } from '@env';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import RNFS from 'react-native-fs';
 import RNBlobUtil from 'react-native-blob-util';
 import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  getSharedSecretAESKey,
+  generateKeys,
+  encryptText,
+  // encryptAttachment,
+  decryptText,
+  // decryptAttachment
+} from '../../../../utils/messageEncryption';
+import {
+  generateAndStoreKeys, getPrivateKey
+} from '../../../../utils/keyManager';
 
-const MentorMessageBox = ({ route, navigation }) => {
+const AdminMessageBox = ({ route, navigation }) => {
   const { contact } = route.params;
   // console.log("hi",contact);
 
@@ -45,7 +56,6 @@ const MentorMessageBox = ({ route, navigation }) => {
   const [lastMessageId, setLastMessageId] = useState(0);
   const [isRecording, setRecording] = useState(false);
   const flatListRef = useRef(null);
-  const studentData = useRef(null);
   const socketRef = useRef(null);
 
   const [playingAudioId, setPlayingAudioId] = useState(null);
@@ -65,144 +75,71 @@ const MentorMessageBox = ({ route, navigation }) => {
 
   const currentUserRef = useRef(null);
 
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
-
-  const fetchMentorData = async () => {
+  const ensurePrivateKeyExists = async (userId) => {
     try {
-      const storedData = await AsyncStorage.getItem('mentorData');
-      if (storedData) {
-        const mentorData = JSON.parse(storedData)[0];
-        setCurrentUser(mentorData);
-        fetchMessages(mentorData)
-      }
-    }
-    catch (error) {
-      console.error('Error initializing message box:', error);
-    }
-  }
-
-  useEffect(() => {
-
-    fetchMentorData();
-
-    socketRef.current = io(API_URL);
-    // Join your own room for real-time messages  
-    console.log("mentor", contact)
-    if (contact && contact.sender_id) {
-      socketRef.current.emit('join', { userId: contact.sender_id });
-    }
-
-    // Listen for incoming messages
-    socketRef.current.on('receiveMessage', (data) => {
-      if (data?.message) {
-        const msg = data.message;
-        // Only add if this message is for THIS conversation
-        const isCurrentConversation =
-          (
-            (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type &&
-              msg.receiver_id === currentUserRef.current?.id && msg.receiver_type === 'mentor')
-            ||
-            (msg.sender_id === currentUserRef.current?.id && msg.sender_type === 'mentor' &&
-              msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type)
-          );
-
-        if (!isCurrentConversation) return;
-
-        setMessages(prev => {
-          if (prev.some(m => m.message_id === msg.message_id)) return prev;
-          return [...prev, msg];
+      console.log(userId);
+      let privateKey = await getPrivateKey(); 
+      
+      if (!privateKey) {
+        // Generate new keys and upload public key to server
+        console.log(publicKeyHex);
+        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
+        
+        await fetch(`${API_URL}/api/messages/keys/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            user_type: 'admin',
+            public_key: publicKeyHex
+          })
         });
 
-        setLastMessageId(msg.message_id);
-
-        // Mark as read if needed
-        if (msg.receiver_id === currentUserRef.current?.id && msg.is_read === 0) {
-          socketRef.current.emit('markAsRead', {
-            messageIds: [msg.message_id],
-            receiverId: currentUserRef.current.id,
-            receiverType: 'mentor',
-            senderId: msg.sender_id,
-            senderType: msg.sender_type
-          });
-        }
-
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
+        return privateKeyHex;
       }
-    });
 
-    socketRef.current.on('messagesRead', (data) => {
-      setMessages(prev =>
-        prev.map(msg =>
-          data.messageIds.includes(msg.message_id)
-            ? { ...msg, is_read: 1 }
-            : msg
-        )
-      );
-    });
-
-    return () => {
-      socketRef.current.off('receiveMessage');
-      socketRef.current.off('messagesRead');
-      socketRef.current.disconnect();
-    };
-  }, []);
-
-  const fetchMessages = async (mentorData) => {
-    try {
-      const response = await fetch(`${API_URL}/api/messages/get`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender_id: contact.sender_id,
-          receiver_id: contact.receiver_id,
-          sender_type: 'mentor',
-          last_message_id: lastMessageId,// <-- use student_id
-          receiver_type: contact.receiver_type
-        }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setMessages(data.messages);
-
-        // Mark messages as read via socket 
-        if (socketRef.current && data.messages.length > 0) {
-          // console.log(contact.receiver_id);
-          // console.log(contact.receiver_id);
-          const unreadMessages = data.messages.filter(
-            msg =>
-              msg.receiver_id === mentorData.id &&
-              msg.sender_id === contact.sender_id && // <-- the other user's id
-              msg.is_read === 0
-          );
-
-
-          if (unreadMessages.length > 0) {
-            socketRef.current.emit('markAsRead', {
-              messageIds: unreadMessages.map(msg => msg.message_id),
-              receiverId: mentorData.id,
-              receiverType: 'mentor', // or your current user's type
-              senderId: contact.sender_id,
-              senderType: contact.sender_type
-            });
-          }
-        }
-      }
-      setIsLoading(false);
+      return privateKey;
     } catch (error) {
-      console.error('Error fetching messages:', error);
-      setIsLoading(false);
+      console.error('Error ensuring private key exists:', error);
+      throw error;
     }
   };
 
+  // Keep ref in sync with state
   useEffect(() => {
-    if (currentUser?.id && contact?.id) {
-      fetchMessages();
-    }
-  }, [currentUser, contact]);
+    currentUserRef.current = currentUser;
+
+    const setupKey = async () => {
+      if (currentUser) {
+        console.log("Private Key Set:",currentUser.id);
+        const privKey = await ensurePrivateKeyExists(currentUser.id);
+        console.log("Private Key Set:", typeof privKey, privKey);
+      }
+    };
+    setupKey();
+  }, [currentUser]);
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        const storedData = await AsyncStorage.getItem('adminData');
+        if (storedData) {
+          const adminData = JSON.parse(storedData);
+          setCurrentUser({ ...adminData, type: 'admin' }); // Add type for consistency
+        }
+      } catch (error) {
+        console.error('Error fetching admin data:', error);
+        setIsLoading(false);
+      }
+    };
+    fetchAdminData();
+
+    // Cleanup audio player
+    return () => {
+      audioRecorderPlayer.current.stopPlayer().catch(() => { });
+      audioRecorderPlayer.current.removePlayBackListener();
+    };
+  }, []);
 
 
   // Initialize audio recorder
@@ -222,6 +159,137 @@ const MentorMessageBox = ({ route, navigation }) => {
       }
     };
   }, []);
+
+  // Fetch all messages between this mentor and student
+  const fetchMessages = async () => {
+    if (!currentUser) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/messages/get`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sender_id: currentUser.id,
+          sender_type: 'admin',
+          receiver_id: contact.receiver_id,
+          receiver_type: contact.receiver_type,
+          last_message_id: 0,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Decrypt all messages before setting state
+        // const myPrivateKey = await AsyncStorage.getItem('ecdhPrivateKey');
+        // const decryptedMessages = await Promise.all(
+        //   data.messages.map(async (msg) => {
+        //     // Get sender's public key for each message
+        //     const senderPublicKey = await fetch(`${API_URL}/api/keys/${msg.sender_type}/${msg.sender_id}`)
+        //       .then(res => res.json())
+        //       .then(data => data.public_key);
+
+        //     if (!myPrivateKey || !senderPublicKey) {
+        //       console.warn('Missing key for message:', msg.message_id);
+        //       return { ...msg, message_text: '[Unable to decrypt message]' };
+        //     }
+
+        //     try {
+        //       console.log(myPrivateKey,',');
+
+        //       const aesKey = getSharedSecretAESKey(myPrivateKey, senderPublicKey);
+        //       // console.log('AES Key:', aesKey);
+        //       console.log("Admin page",msg.message_text);
+        //       return {
+        //         ...msg,
+        //         message_text: decryptText(msg.message_text, aesKey)
+        //       };
+        //     } catch (err) {
+        //       console.error('Decryption error:', err);
+        //       return { ...msg, message_text: '[Unable to decrypt message]' };
+        //     }
+        //   })
+        // );
+        setMessages(data.messages);
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+    setIsLoading(false);
+  };
+
+
+  // 2. Setup messages and sockets after user is fetched
+  useEffect(() => {
+    if (!currentUser) return;
+
+    fetchMessages();
+
+    socketRef.current = io(API_URL);
+    socketRef.current.emit('join', { userId: currentUser.id });
+
+    const handleReceiveMessage = async (data) => {
+      if (data?.message) {
+        const msg = data.message;
+
+        const myPrivateKey = await AsyncStorage.getItem('ecdhPrivateKey');
+
+        const senderPublicKey = await fetch(`${API_URL}/api/keys/${data.message.sender_type}/${data.message.sender_id}`)
+          .then(res => res.json())
+          .then(data => data.public_key);
+
+        const aesKey = getSharedSecretAESKey(myPrivateKey, senderPublicKey);
+
+        // data.message.message_text = decryptText(data.message.message_text, aesKey);
+        // console.log(data.message.message_text);
+        
+        // if (data.message.attachment_path)
+        //   data.message.attachment_path = decryptAttachment(data.message.attachment_path, aesKey);
+
+        // Only add if this message is for THIS conversation
+        const isCurrentConversation =
+          (
+            (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type &&
+              msg.receiver_id === currentUserRef.current?.id && msg.receiver_type === 'admin')
+            ||
+            (msg.sender_id === currentUserRef.current?.id && msg.sender_type === 'admin' &&
+              msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type)
+          );
+
+        if (!isCurrentConversation) return;
+
+        setMessages(prev => {
+          if (prev.some(m => m.message_id === msg.message_id)) return prev;
+          return [...prev, msg];
+        });
+
+        if (msg.receiver_id === currentUserRef.current.id) {
+          socketRef.current.emit('markAsRead', {
+            messageIds: [msg.message_id],
+            receiverId: currentUserRef.current.id, receiverType: 'admin',
+            senderId: msg.sender_id, senderType: msg.sender_type
+          });
+        }
+      }
+    };
+
+    const handleMessagesRead = (data) => {
+      setMessages(prev =>
+        prev.map(msg =>
+          data.messageIds.includes(msg.message_id) ? { ...msg, is_read: 1 } : msg
+        )
+      );
+    };
+
+    socketRef.current.on('receiveMessage', handleReceiveMessage);
+    socketRef.current.on('messagesRead', handleMessagesRead);
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off('receiveMessage', handleReceiveMessage);
+        socketRef.current.off('messagesRead', handleMessagesRead);
+        socketRef.current.disconnect();
+      }
+    };
+  }, [currentUser]);
 
   const [selectedMessages, setSelectedMessages] = useState([]);
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -278,27 +346,52 @@ const MentorMessageBox = ({ route, navigation }) => {
 
 
   const sendMessage = async () => {
-    if (message.trim() === '') return;
+    if (message.trim() === '' || !currentUser) return;
+
+    const myPrivateKey = await ensurePrivateKeyExists(currentUser.id);
+    if (!myPrivateKey) {
+      throw new Error('Failed to get encryption keys');
+    }
+
+    const theirPublicKeyResponse = await fetch(`${API_URL}/api/keys/${contact.receiver_type}/${contact.receiver_id}`);
+    const theirPublicKeyData = await theirPublicKeyResponse.json();
+
+    if (!theirPublicKeyData.public_key) {
+      throw new Error('Failed to get recipient public key');
+    }
+
+    const aesKey = getSharedSecretAESKey(myPrivateKey, theirPublicKeyData.public_key);
+    const encryptedText = encryptText(message, aesKey);
+
+    // Optimistically create message data
+    const tempMessage = {
+      sender_id: currentUser.id,
+      receiver_id: contact.receiver_id,
+      sender_type: 'admin',
+      receiver_type: contact.receiver_type,
+      // message_text: encryptedText,
+      message_text: message,
+    };
 
     try {
       const response = await fetch(`${API_URL}/api/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender_id: currentUser.id,
-          receiver_id: contact.receiver_id,
-          sender_type: 'mentor',
-          receiver_type: contact.receiver_type,
-          message_text: message,
-        }),
+        body: JSON.stringify(tempMessage),
       });
 
       const data = await response.json();
       if (data.success) {
         setMessage('');
+        // Decrypt before adding to state
+        const decryptedMsg = { ...data.message };
+        
+        // decryptedMsg.message_text = decryptText(decryptedMsg.message_text, aesKey);
+        
+        // console.log('AES Key:', aesKey);
         setMessages(prev => {
-          if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
-          return [...prev, data.message];
+          if (prev.some(msg => msg.message_id === decryptedMsg.message_id)) return prev;
+          return [...prev, decryptedMsg];
         });
         // ✅ Let the socket handle the UI update for both sender and receiver
         socketRef.current.emit('sendMessage', {
@@ -310,10 +403,8 @@ const MentorMessageBox = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
     }
   };
-
 
   const startRecording = async () => {
     if (recorderState.current.isRunning || isRecording) {
@@ -601,16 +692,13 @@ const MentorMessageBox = ({ route, navigation }) => {
   };
 
   const uploadAttachment = async (file, fileType) => {
-    // console.log();
-
+    if (!currentUser) return;
     let fileUri = file.uri;
-
     try {
       if (Platform.OS === 'android' && fileUri.startsWith('content://')) {
-        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${file.name}`;
+        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${file.name || 'tempfile'}`;
         await RNBlobUtil.fs.cp(fileUri, destPath);
         fileUri = 'file://' + destPath;
-        console.log('✔ File copied to temp:', fileUri);
       }
 
       const res = await RNBlobUtil.fetch(
@@ -618,43 +706,28 @@ const MentorMessageBox = ({ route, navigation }) => {
         `${API_URL}/api/messages/send-attachment`,
         { 'Content-Type': 'multipart/form-data' },
         [
-          {
-            name: 'file',
-            filename: file.name || 'file',
-            type: file.type || `application/${fileType}`,
-            data: RNBlobUtil.wrap(fileUri.replace('file://', ''))
-          },
-          { name: 'sender_id', data: String(contact.sender_id) },
+          { name: 'file', filename: file.name || 'attachment', type: file.type, data: RNBlobUtil.wrap(fileUri.replace('file://', '')) },
+          { name: 'sender_id', data: String(currentUser.id) },
           { name: 'receiver_id', data: String(contact.receiver_id) },
-          { name: 'sender_type', data: 'mentor' },
+          { name: 'sender_type', data: 'admin' },
           { name: 'receiver_type', data: String(contact.receiver_type) }
         ]
       );
 
       const data = JSON.parse(res.data);
-
-      if (!data.success) {
-        Alert.alert('Error', 'Failed to send attachment');
-      } else if (data.success) {
+      if (data.success) {
+        // ✅ Let the socket handle the UI update
         setMessage('');
         setMessages(prev => {
           if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
           return [...prev, data.message];
         });
-        const newMsg = data.message;
-
-        socketRef.current.emit('sendMessage', {
-          to: contact.receiver_id,
-          message: newMsg
-        });
-
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
+        socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
+      } else {
+        Alert.alert('Error', 'Failed to send attachment');
       }
     } catch (error) {
       console.error('Error uploading attachment:', error);
-      Alert.alert('Error', 'Failed to send attachment');
     }
   };
 
@@ -680,20 +753,15 @@ const MentorMessageBox = ({ route, navigation }) => {
   );
 
   useEffect(() => {
-    AsyncStorage.getItem('mentorData').then(data => {
+    AsyncStorage.getItem('adminData').then(data => {
       if (data) {
-        setCurrentUser(JSON.parse(data)[0]);
+        setCurrentUser(JSON.parse(data));
       }
     });
   }, []);
 
   const renderMessage = ({ item }) => {
-    // const isSent = item.sender_type === 'mentor';
-    const isSent = (
-      currentUser &&
-      item.sender_id === currentUser.id &&
-      item.sender_type === 'mentor'
-    );
+    const isSent = currentUser && item.sender_id === currentUser.id && item.sender_type === 'admin';
     const isSelected = selectedMessages.includes(item.message_id);
 
     return (
@@ -813,15 +881,18 @@ const MentorMessageBox = ({ route, navigation }) => {
                 </>
               )}
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 9 }}>
-                <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
-                  {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-                {isSent && (
+              <View>
+                {/* The important part to check is the read receipt */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 9 }}>
                   <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
-                    {(item.is_read && item.sender_id == currentUser.id) ? 'Read' : 'Unread'}
+                    {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
-                )}
+                  {isSent && (
+                    <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
+                      {item.is_read ? 'Read' : 'Unread'}
+                    </Text>
+                  )}
+                </View>
               </View>
             </View>
           </View>
@@ -829,6 +900,7 @@ const MentorMessageBox = ({ route, navigation }) => {
       </TouchableOpacity>
     );
   };
+
 
   // Add your existing document and image download functions here...
   const requestStoragePermission = async (fileType = 'other') => {
@@ -1170,4 +1242,4 @@ const MentorMessageBox = ({ route, navigation }) => {
   );
 };
 
-export default MentorMessageBox;
+export default AdminMessageBox;

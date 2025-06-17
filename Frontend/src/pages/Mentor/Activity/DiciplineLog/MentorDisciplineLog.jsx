@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TextInput, FlatList, TouchableOpacity, Image, Modal, TouchableWithoutFeedback, KeyboardAvoidingView, Keyboard } from "react-native";
+import { View, Text, TextInput, FlatList, TouchableOpacity, Image, Modal, TouchableWithoutFeedback, KeyboardAvoidingView, Keyboard, Alert, Linking } from "react-native";
 import styles from "./DisciplineLogsty";
 import Back from "../../../../assets/MentorPage/entypo_home.svg";
 import Add from "../../../../assets/MentorPage/Add.svg";
@@ -37,7 +37,7 @@ const MentorDisciplineLog = ({ navigation, route }) => {
     }
 
     try {
-      console.log(mentorData[0].phone);
+      // console.log(mentorData[0].phone);
       const response = await fetch(`${API_URL}/api/coordinator/student/addStudentComplaint`, {
         method: 'POST',
         headers: {
@@ -95,9 +95,12 @@ const MentorDisciplineLog = ({ navigation, route }) => {
   }, [mentorData]);
 
   useEffect(() => {
+    // console.log(disciplineData);
+
     const filtered = disciplineData.filter(item =>
       item.student_name?.toLowerCase().includes(searchText.toLowerCase()) ||
       item.roll?.toLowerCase().includes(searchText.toLowerCase())
+
     );
     setFilteredData(filtered);
   }, [searchText, disciplineData]);
@@ -142,7 +145,22 @@ const MentorDisciplineLog = ({ navigation, route }) => {
     Linking.openURL(`tel:${phone}`);
   };
 
-
+  const handleMessagePress = (item) => {
+    // console.log(mentorData[0].id);
+    
+    navigation.navigate("MentorMessageBox", {
+      contact: { 
+        receiver_id: item.registered_by_id,  //receiver_id
+        receiver_name: item.registered_by_name,
+        subject: item.subject || '',
+        profile: item.registered_by_profile,
+        sender_id: mentorData[0].id, // <-- pass mentor id  //sender_id
+        sender_name: mentorData[0].name, // optional, for header
+        receiver_type:'coordinator'
+      }
+    }
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -196,12 +214,12 @@ const MentorDisciplineLog = ({ navigation, route }) => {
               <Text style={styles.registeredText}>Registered by {item.registered_by_name}</Text>
               <View style={{ flexDirection: 'row' }}>
                 <View width={40} height={40} style={styles.callButton}>
-                  <TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleCallPress(item.registered_by_phone)}>
                     <Call />
                   </TouchableOpacity>
                 </View>
                 <View width={40} height={40} style={styles.chatButton}>
-                  <TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleMessagePress(item)}>
                     <Message />
                   </TouchableOpacity>
                 </View>
@@ -213,7 +231,7 @@ const MentorDisciplineLog = ({ navigation, route }) => {
 
       <View style={styles.activityIcons}>
         <View style={styles.AddIcon}>
-          <TouchableOpacity onPress={() => setModalVisible(true)}><Add/></TouchableOpacity>
+          <TouchableOpacity onPress={() => setModalVisible(true)}><Add /></TouchableOpacity>
         </View>
       </View>
 
