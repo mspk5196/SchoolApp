@@ -18,11 +18,13 @@ import Enrollment from '../../../assets/CoordinatorPage/Menu/Enrollment.svg';
 import Messages from '../../../assets/Genreal/message.svg';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CommonActions } from "@react-navigation/native";
+import LogoutModal from "../../../components/Logout/LogoutModal";
 
 const CoordinatorMenu = ({ navigation }) => {
   const [isCoordinator, setIsCoordinator] = useState(true);
   const [coordinatorData, setCoordinatorData] = useState({});
   const [coordinatorGrades, setCoordinatorGrades] = useState({});
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const coordinatorSwitch = () => {
     if (isCoordinator) {
@@ -30,35 +32,6 @@ const CoordinatorMenu = ({ navigation }) => {
       navigation.navigate('Redirect', { phoneNumber: coordinatorData.phone });
     }
   }
-
-  const handleLogout = async () => {
-    try {
-      // Remove the user data from AsyncStorage
-      await AsyncStorage.removeItem('userPhone');
-      await AsyncStorage.removeItem('userRoles');
-
-      // You can clear any other data if needed, like admin or coordinator data
-      await AsyncStorage.removeItem('adminData');
-      await AsyncStorage.removeItem('coordinatorData');
-      await AsyncStorage.removeItem('coordinatorGrades');
-      await AsyncStorage.removeItem('studentData');
-      await AsyncStorage.removeItem('mentorData');
-
-      // Show a logout confirmation (optional)
-      Alert.alert('Logged Out', 'You have successfully logged out.');
-
-      // Redirect to the Welcome or Login screen
-
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
-      });
-
-    } catch (error) {
-      console.error('Error during logout:', error);
-      Alert.alert('Error', 'There was an issue logging out. Please try again.');
-    }
-  };
 
   useEffect(() => {
     const fetchCoordinatorData = async () => {
@@ -95,8 +68,7 @@ const CoordinatorMenu = ({ navigation }) => {
         navigation.navigate('CoordinatorProfile', { coordinatorData, coordinatorGrades });
         break;
       case 'Logout':
-        // navigation.navigate('Login');
-        handleLogout();
+        setShowLogoutModal(true);
         break;
       case 'Mentor':
         navigation.navigate('CoordinatorMentor', { coordinatorData, coordinatorGrades });
@@ -300,6 +272,11 @@ const CoordinatorMenu = ({ navigation }) => {
           </Pressable>
         </View>
 
+        <LogoutModal
+          visible={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          navigation={navigation}
+        />
       </ScrollView>
     </ScrollView>
   );

@@ -6,7 +6,7 @@ import Location from '../../../assets/AdminPage/Event/location.svg';
 import styles from   '../../../pages/Admin/Events/EventStyle';
 import { useNavigation } from '@react-navigation/native';
 
-const EventList = ({
+const EventList1 = ({
   categoryName,
   events,
   favorites,
@@ -92,4 +92,4 @@ const EventList = ({
   );
 };
 
-export default EventList;
+export default EventList1;

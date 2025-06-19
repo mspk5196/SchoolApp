@@ -15,16 +15,17 @@ import Calender from '../../../assets/AdminPage/Menu/Calender.svg';
 import Messages from '../../../assets/Genreal/message.svg';
 import { Switch } from 'react-native-switch';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LogoutModal from '../../../components/Logout/LogoutModal';
 
-const AdminHomePage = ({ navigation, route }) => {
-  // const {adminData} = route.params;
+const AdminHomePage = ({ navigation }) => {
+
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(true);
   const [adminData, setAdminData] = useState()
 
-  useEffect(()=>{
+  useEffect(() => {
     fetchAdminData();
-  },[])
+  }, [])
   const fetchAdminData = async () => {
     const storedData = await AsyncStorage.getItem('adminData');
     if (storedData) {
@@ -49,13 +50,13 @@ const AdminHomePage = ({ navigation, route }) => {
         navigation.navigate('AdminStudentHome');
         break;
       case 'Logs':
-        navigation.navigate('AdminLogs', {adminData});
+        navigation.navigate('AdminLogs', { adminData });
         break;
       case 'Schedule':
         navigation.navigate('AdminScheduleHome');
         break;
       case 'Events':
-        navigation.navigate('AdminEvent', {adminData});
+        navigation.navigate('AdminEvent', { adminData });
         break;
       case 'Calendar':
         navigation.navigate('AdminCalendar');
@@ -64,7 +65,7 @@ const AdminHomePage = ({ navigation, route }) => {
         navigation.navigate('AdminCoordinatorHome');
         break;
       case 'Messages':
-        navigation.navigate('AdminMessageHome', {adminData:adminData});
+        navigation.navigate('AdminMessageHome', { adminData: adminData });
         break;
       default:
         console.log('No navigation defined for', menuItem);
@@ -75,44 +76,44 @@ const AdminHomePage = ({ navigation, route }) => {
     if (isAdmin) {
       setIsAdmin(false);
       // Add skipAutoNavigate flag to prevent auto redirection
-      navigation.navigate('Redirect', { 
+      navigation.navigate('Redirect', {
         phoneNumber: adminData.phone,
-        skipAutoNavigate: true 
+        skipAutoNavigate: true
       });
     }
   }
 
-  const handleLogout = async () => {
-    try {
-      // Remove the user data from AsyncStorage
-      await AsyncStorage.removeItem('userPhone');
-      await AsyncStorage.removeItem('userRoles');
-      
-      // You can clear any other data if needed, like admin or coordinator data
-      await AsyncStorage.removeItem('adminData');
-      await AsyncStorage.removeItem('coordinatorData');
-      await AsyncStorage.removeItem('studentData');
-      await AsyncStorage.removeItem('mentorData');
-  
-      // Show a logout confirmation (optional)
-      Alert.alert('Logged Out', 'You have successfully logged out.');
-  
-      // Redirect to the Welcome or Login screen
-      
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
-      });
-  
-    } catch (error) {
-      console.error('Error during logout:', error);
-      Alert.alert('Error', 'There was an issue logging out. Please try again.');
-    }
-  };
+  // const handleLogout = async () => {
+  //   try {
+  //     // Remove the user data from AsyncStorage
+  //     await AsyncStorage.removeItem('userPhone');
+  //     await AsyncStorage.removeItem('userRoles');
 
-  const cancelLogout = () => {
-    setShowLogoutModal(false);
-  };
+  //     // You can clear any other data if needed, like admin or coordinator data
+  //     await AsyncStorage.removeItem('adminData');
+  //     await AsyncStorage.removeItem('coordinatorData');
+  //     await AsyncStorage.removeItem('studentData');
+  //     await AsyncStorage.removeItem('mentorData');
+
+  //     // Show a logout confirmation (optional)
+  //     Alert.alert('Logged Out', 'You have successfully logged out.');
+
+  //     // Redirect to the Welcome or Login screen
+
+  //     navigation.reset({
+  //       index: 0,
+  //       routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
+  //     });
+
+  //   } catch (error) {
+  //     console.error('Error during logout:', error);
+  //     Alert.alert('Error', 'There was an issue logging out. Please try again.');
+  //   }
+  // };
+
+  // const cancelLogout = () => {
+  //   setShowLogoutModal(false);
+  // };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -250,31 +251,13 @@ const AdminHomePage = ({ navigation, route }) => {
             <Text style={styles.menuText}>Messages</Text>
           </Pressable>
 
-        </View>
-
-
+        </View> 
+        <LogoutModal
+          visible={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          navigation={navigation}
+        />
       </ScrollView>
-
-      {/* Logout Confirmation Modal */}
-      <Modal visible={showLogoutModal} transparent={true} animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>
-              Are you sure to log out from this device?
-            </Text>
-
-            <View style={styles.modalButtonsContainer}>
-              <Pressable style={styles.cancelButton} onPress={cancelLogout}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </Pressable>
-
-              <Pressable style={styles.confirmButton} onPress={handleLogout}>
-                <Text style={styles.confirmButtonText}>Confirm</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };

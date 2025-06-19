@@ -2659,15 +2659,57 @@ exports.addFacultyComplaint = async (req, res) => {
 exports.getDisciplineLogs = async (req, res) => {
   try {
     const [rows] = await db.promise().query(`
-      SELECT fd.*, u.name as faculty_name, up.file_path as profile_photo, m.roll as mentor_roll, c.roll as coordinator_roll
-      FROM faculty_dicipline fd
-      JOIN users u ON fd.phone = u.phone
-      LEFT JOIN user_photos up ON u.phone = up.phone AND up.is_profile_photo = 1
-      LEFT JOIN Mentors m ON fd.phone = m.phone
-      LEFT JOIN Coordinators c ON fd.phone = c.phone
-      ORDER BY fd.registered_at DESC
-    `);
+      SELECT 
+  fd.*, 
+  u.name AS faculty_name, 
+  up.file_path AS profile_photo, 
+  m.roll AS mentor_roll, 
+  c.roll AS coordinator_roll,
 
+  -- ID of the person who registered (mentor/coordinator/admin)
+  CASE
+    WHEN rm.id IS NOT NULL THEN rm.id
+    WHEN rc.id IS NOT NULL THEN rc.id
+    WHEN ra.id IS NOT NULL THEN ra.id
+    ELSE NULL
+  END AS registered_by_id,
+
+  -- Type of the person who registered
+  CASE
+    WHEN rm.id IS NOT NULL THEN 'mentor'
+    WHEN rc.id IS NOT NULL THEN 'coordinator'
+    WHEN ra.id IS NOT NULL THEN 'admin'
+    ELSE 'unknown'
+  END AS registered_by_type,
+
+  CASE
+    WHEN rm.id IS NOT NULL THEN ups.file_path
+    WHEN rc.id IS NOT NULL THEN ups.file_path
+    WHEN ra.id IS NOT NULL THEN ups.file_path
+    ELSE 'unknown'
+  END AS registered_by_profile
+
+FROM faculty_dicipline fd
+JOIN users u ON fd.phone = u.phone
+LEFT JOIN user_photos up ON u.phone = up.phone
+
+-- Current faculty's own mentor/coordinator data
+LEFT JOIN Mentors m ON fd.phone = m.phone
+LEFT JOIN Coordinators c ON fd.phone = c.phone
+
+-- Registered-by join based on registered_by_phone
+LEFT JOIN Mentors rm ON fd.registered_by_phone = rm.phone
+LEFT JOIN Coordinators rc ON fd.registered_by_phone = rc.phone
+LEFT JOIN Admins ra ON fd.registered_by_phone = ra.phone
+
+-- Registered-profile join based on registered_by_phone
+LEFT JOIN User_photos ups ON fd.registered_by_phone = ups.phone
+
+ORDER BY fd.registered_at DESC;
+
+
+    `);    
+      
     res.status(200).json({ success: true, logs: rows });
   } catch (error) {
     console.error("Error fetching discipline logs:", error);

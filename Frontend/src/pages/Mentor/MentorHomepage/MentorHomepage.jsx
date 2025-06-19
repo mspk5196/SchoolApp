@@ -13,14 +13,15 @@ import Activity from '../../../assets/MentorPage/activity.svg';
 import AssessmentRequest from '../../../assets/MentorPage/newspaper.svg';
 import { CommonActions, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import LogoutModal from "../../../components/Logout/LogoutModal";
 
 const MentorHomepage = ({ navigation, route }) => {
-  const {mentorData} = route.params;
+  const { mentorData } = route.params;
   const [isMentor, setIsMentor] = useState(true);
   const [phone, setPhone] = useState(null)
-  // const [mentor, setMentor] = useState([])
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const fetchPhone = async () => {  
+  const fetchPhone = async () => {
     try {
       const storedPhone = await AsyncStorage.getItem('userPhone');
       if (storedPhone) {
@@ -32,58 +33,29 @@ const MentorHomepage = ({ navigation, route }) => {
     }
   };
 
-  useEffect(()=>{
+  useEffect(() => {
     fetchPhone();
-  },[])
+  }, [])
 
   const mentorSwitch = () => {
-    if(isMentor){
+    if (isMentor) {
       setIsMentor(false);
-      navigation.navigate('Redirect',{phoneNumber:phone});
+      navigation.navigate('Redirect', { phoneNumber: phone });
     }
   }
-
-  const handleLogout = async () => {
-    try {
-      // Remove the user data from AsyncStorage
-      await AsyncStorage.removeItem('userPhone');
-      await AsyncStorage.removeItem('userRoles');
-      
-      // You can clear any other data if needed, like admin or coordinator data
-      await AsyncStorage.removeItem('adminData');
-      await AsyncStorage.removeItem('coordinatorData');
-      await AsyncStorage.removeItem('studentData');
-      await AsyncStorage.removeItem('mentorData');
-  
-      // Show a logout confirmation (optional)
-      Alert.alert('Logged Out', 'You have successfully logged out.');
-  
-      // Redirect to the Welcome or Login screen
-      
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
-      });
-  
-    } catch (error) {
-      console.error('Error during logout:', error);
-      Alert.alert('Error', 'There was an issue logging out. Please try again.');
-    }
-  };
-
 
   return (
     <View style={styles.container}>
 
       <View style={styles.page}>
-      <TouchableOpacity onPress={()=> navigation.goBack()}>
-        <Logo style={styles.backIcon} />
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Logo style={styles.backIcon} />
         </TouchableOpacity>
         <Text style={styles.title}>Menu</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('MentorProfileDetails', {mentorData})}>
+        <TouchableOpacity onPress={() => navigation.navigate('MentorProfileDetails', { mentorData })}>
           <Iconlogo style={styles.profile} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleLogout}>
+        <TouchableOpacity onPress={() => setShowLogoutModal(true)}>
           <Icon style={styles.logout} />
         </TouchableOpacity>
       </View>
@@ -119,48 +91,52 @@ const MentorHomepage = ({ navigation, route }) => {
 
       <View style={styles.mainpage}>
         <View style={styles.menus}>
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorDashboard', {mentorData})}>
+          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorDashboard', { mentorData })}>
             <Dashboard style={styles.icons} />
             <Text style={styles.menutitle}>Dashboard</Text>
           </Pressable>
 
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorStudentLeaveApproval', {mentorData})}>
+          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorStudentLeaveApproval', { mentorData })}>
             <Approve style={styles.icons} />
             <Text style={styles.menutitle}>Approval</Text>
           </Pressable>
         </View>
 
         <View style={styles.menus}>
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorHomeworkList', {mentorData})}>
+          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorHomeworkList', { mentorData })}>
             <Homework style={styles.icons} />
             <Text style={styles.menutitle}>Homework</Text>
           </Pressable>
 
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorMessages', {mentorData})}>
+          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorMessages', { mentorData })}>
             <Message style={styles.icons} />
             <Text style={styles.menutitle}>Messages</Text>
           </Pressable>
         </View>
 
         <View style={styles.menus}>
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorActivity', {mentorData})}>
+          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorActivity', { mentorData })}>
             <Activity style={styles.icons1} />
             <Text style={styles.menutitle1}>Activity</Text>
           </Pressable>
 
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorAssesmentRequest', {mentorData})}>
+          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorAssesmentRequest', { mentorData })}>
             <AssessmentRequest style={styles.icons1} />
             <Text style={styles.menutitle1}>Assessment Request</Text>
           </Pressable>
         </View>
 
         <View style={styles.menus}>
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorMaterialHome', {mentorData})}>
+          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorMaterialHome', { mentorData })}>
             <Homework style={styles.icons} />
             <Text style={styles.menutitle}>Materials</Text>
           </Pressable>
         </View>
-
+        <LogoutModal
+          visible={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          navigation={navigation}
+        />
       </View>
     </View>
   );

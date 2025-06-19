@@ -141,25 +141,26 @@ const MentorDisciplineLog = ({ navigation, route }) => {
   };
 
   const handleCallPress = (phone) => {
+    console.log(phone);
+    
     // Open phone dialer with the contact's phone number
     Linking.openURL(`tel:${phone}`);
   };
 
   const handleMessagePress = (item) => {
     // console.log(mentorData[0].id);
-    
+
     navigation.navigate("MentorMessageBox", {
-      contact: { 
+      contact: {
         receiver_id: item.registered_by_id,  //receiver_id
         receiver_name: item.registered_by_name,
         subject: item.subject || '',
         profile: item.registered_by_profile,
         sender_id: mentorData[0].id, // <-- pass mentor id  //sender_id
         sender_name: mentorData[0].name, // optional, for header
-        receiver_type:'coordinator'
+        receiver_type: item.registered_by_type
       }
-    }
-    )
+    })
   }
 
   return (

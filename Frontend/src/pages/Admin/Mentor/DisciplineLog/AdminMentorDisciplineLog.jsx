@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  TextInput, 
-  Image, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  Image,
+  ScrollView,
   Modal,
   TouchableWithoutFeedback,
   Keyboard,
@@ -16,19 +16,19 @@ import {
   Linking,
   ActivityIndicator
 } from 'react-native';
-import BackIcon from      '../../../../assets/AdminPage/DisciplineLog/leftarrow.svg';
-import AddIcon from       '../../../../assets/AdminPage/DisciplineLog/Add.svg';
-import Phone from         '../../../../assets/AdminPage/DisciplineLog/Phone.svg';
+import BackIcon from '../../../../assets/AdminPage/DisciplineLog/leftarrow.svg';
+import AddIcon from '../../../../assets/AdminPage/DisciplineLog/Add.svg';
+import Phone from '../../../../assets/AdminPage/DisciplineLog/Phone.svg';
 import SearchIcon from '../../../../assets/AdminPage/MentorHome/search.svg';
 import MessageSquare from '../../../../assets/AdminPage/DisciplineLog/MessageSquare.svg';
 import styles from './DisciplineLogStyles';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
-import {API_URL} from '@env'
+import { API_URL } from '@env'
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const AdminMentorDisciplineLog = ({ navigation, route }) => {
-  const {selectedGrade, adminData} = route.params;
-  
+  const { selectedGrade, adminData } = route.params;
+
   const [modalVisible, setModalVisible] = useState(false);
   const [reason, setReason] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState(null);
@@ -50,7 +50,7 @@ const AdminMentorDisciplineLog = ({ navigation, route }) => {
       if (response.ok) {
         setFacultyList(data.faculty);
         // console.log(data.faculty);
-         
+
       } else {
         console.error('Failed to fetch faculty:', data.message);
       }
@@ -69,7 +69,7 @@ const AdminMentorDisciplineLog = ({ navigation, route }) => {
         setDisciplineData(data.logs);
         setFilteredData(data.logs);
         // console.log(data.logs);
-        
+
       } else {
         console.error('Failed to fetch logs:', data.message);
       }
@@ -156,9 +156,27 @@ const AdminMentorDisciplineLog = ({ navigation, route }) => {
   };
 
   const handleCallPress = (phone) => {
+    console.log(phone);
+    
     // Open phone dialer with the contact's phone number
     Linking.openURL(`tel:${phone}`);
   };
+
+  const handleMessagePress = (item) => {
+    // console.log(item);
+
+    navigation.navigate("AdminMessageBox", {
+      contact: {
+        receiver_id: item.registered_by_id,  //receiver_id
+        receiver_name: item.registered_by_name,
+        subject: item.subject || '',
+        profile: item.registered_by_profile,
+        sender_id: adminData.id, // <-- pass mentor id  //sender_id
+        sender_name: adminData.name, // optional, for header
+        receiver_type: item.registered_by_type
+      }
+    })
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -211,10 +229,10 @@ const AdminMentorDisciplineLog = ({ navigation, route }) => {
                   </View>
                   <View style={styles.regBar}>
                     <Text style={styles.registeredBy}>Registered by {item.registered_by_name}</Text>
-                    <TouchableOpacity style={styles.actionButtonCall} onPress={()=>handleCallPress(item.phone)}>
+                    <TouchableOpacity style={styles.actionButtonCall} onPress={() => handleCallPress(item.registered_by_phone)}>
                       <Phone width={20} height={20} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButtonMsg}>
+                    <TouchableOpacity style={styles.actionButtonMsg} onPress={() => handleMessagePress(item)}>
                       <MessageSquare width={20} height={20} />
                     </TouchableOpacity>
                   </View>

@@ -156,6 +156,22 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
     Linking.openURL(`tel:${phone}`);
   };
 
+  const handleMessagePress = (item) => {
+    // console.log(mentorData[0].id);
+
+    navigation.navigate("CoordinatorMessageBox", {
+      contact: {
+        receiver_id: item.registered_by_id,  //receiver_id
+        receiver_name: item.registered_by_name,
+        subject: item.subject || '',
+        profile: item.registered_by_profile,
+        sender_id: coordinatorData.id, // <-- pass mentor id  //sender_id
+        sender_name: coordinatorData.name, // optional, for header
+        receiver_type: item.registered_by_type
+      }
+    })
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -207,10 +223,10 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
                   </View>
                   <View style={styles.regBar}>
                     <Text style={styles.registeredBy}>Registered by {item.registered_by_name}</Text>
-                    <TouchableOpacity style={styles.actionButtonCall} onPress={()=>handleCallPress(item.phone)}>
+                    <TouchableOpacity style={styles.actionButtonCall} onPress={() => handleCallPress(item.registered_by_phone)}>
                       <Phone width={20} height={20} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButtonMsg}>
+                    <TouchableOpacity style={styles.actionButtonMsg} onPress={() => handleMessagePress(item)}>
                       <MessageSquare width={20} height={20} />
                     </TouchableOpacity>
                   </View>
