@@ -4,9 +4,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 
 const LogoutModal = ({ visible, onClose, navigation }) => {
+    const clearAllExcept = async (exceptKey) => {
+        const keys = await AsyncStorage.getAllKeys();
+        const keysToRemove = keys.filter(key => key !== exceptKey);
+        await AsyncStorage.multiRemove(keysToRemove);
+    };
     const handleLogout = async () => {
         try {
-            await AsyncStorage.clear();
+            // await clearAllExcept('ecdhPrivateKey');
+            await AsyncStorage.clear(); // Clear all data
             // Alert.alert('Logged Out', 'You have successfully logged out.');
             onClose && onClose();
             navigation.reset({
@@ -66,7 +72,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '500',
         // textAlign: 'center',
-        lineHeight:28,
+        lineHeight: 28,
         marginBottom: 5,
         color: '#000',
     },

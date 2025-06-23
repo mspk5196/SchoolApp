@@ -4,17 +4,18 @@ import { CommonActions, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Switch } from 'react-native-switch';
 import { API_URL } from '@env';
- 
+import { backupPrivateKey } from '../../../utils/backupPrivateKey';
+import { restorePrivateKey } from '../../../utils/restorePrivateKey';
+import { generateAndStoreKeys, getPrivateKey } from '../../../utils/keyManager';
+
 const Redirect = ({ route }) => {
   const navigation = useNavigation();
-  const [roles, setRoles] = useState([]); 
-  const [selectedRole, setSelectedRole] = useState(null); 
-  const [user, setUser] = useState(null); 
-  const [exitApp, setExitApp] = useState(false); 
- 
-  const routeParams = route.params;
-  const [phoneNumber, setPhone] = useState(routeParams?.phoneNumber);
-  const [skipAutoNavigate, setSkipAutoNavigate] = useState(!!routeParams?.skipAutoNavigate);
+  const [roles, setRoles] = useState([]);
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [exitApp, setExitApp] = useState(false);
+
+  const { phoneNumber, password } = route.params;
+  const [skipAutoNavigate, setSkipAutoNavigate] = useState(!!route.params?.skipAutoNavigate);
 
   useEffect(() => {
     const backAction = () => {
@@ -29,21 +30,20 @@ const Redirect = ({ route }) => {
         }
       }
       return false;
-    }; 
+    };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
   }, [exitApp, navigation]);
 
   useEffect(() => {
-    const fetchRoles = async () => {  
+    const fetchRoles = async () => {
       try {
         const storedRoles = await AsyncStorage.getItem('userRoles');
         if (storedRoles) {
           const parsedRoles = JSON.parse(storedRoles);
           setRoles(parsedRoles);
 
-          // Auto navigate if only one role and not skipping auto-navigation
           if (parsedRoles.length === 1 && !skipAutoNavigate) {
             handleRoleSelect(parsedRoles[0]);
           }
@@ -52,22 +52,36 @@ const Redirect = ({ route }) => {
         console.error('Error fetching roles:', error);
       }
     };
-    const fetchPhone = async () => {  
-      try {
-        const storedPhone = await AsyncStorage.getItem('userPhone');
-        if (storedPhone) {
-          const parsedPhone = JSON.parse(storedPhone);
-          setPhone(parsedPhone);
-        }
-      } catch (error) {
-        console.error('Error fetching phone:', error);
-      }
-    };
-
     fetchRoles();
-    fetchPhone();
-  }, []); 
- 
+  }, []);
+
+  const manageKeys = async (userId, userType) => {
+    let privateKeyHex = await getPrivateKey();
+    if (privateKeyHex) {
+      console.log('Private key found locally.');
+      return; // Key exists, we are done
+    }
+
+    console.log('No local private key. Attempting to restore from server...');
+    try {
+      const restoredKey = await restorePrivateKey(userId, userType, password);
+      if (restoredKey) {
+        console.log('Private key successfully restored from server.');
+        return; // Key restored and stored in AsyncStorage, we are done
+      }
+    } catch (error) {
+      // This will catch 404s or other fetch errors, which is expected for a new user.
+      console.log('Could not restore key (this is normal for a first-time login):', error.message);
+    }
+
+    console.log('Generating new key pair as no key was found locally or on the server...');
+    const { privateKeyHex: newPrivateKey, publicKeyHex } = await generateAndStoreKeys();
+
+    console.log('Backing up new private key to server...');
+    await backupPrivateKey(newPrivateKey, userId, userType, password, publicKeyHex);
+    console.log('Key backup complete.');
+  };
+
   const fetchStudentData = async () => {
     try {
       const response = await fetch(`${API_URL}/api/getStudentData`, {
@@ -77,12 +91,10 @@ const Redirect = ({ route }) => {
       });
 
       const data = await response.json();
-      console.log('Student Data API Response:', data);
-
-      if (data.success && data.student) {    
+      if (data.success && data.student) {
+        await manageKeys(data.student.id, 'student');
         await AsyncStorage.setItem('studentData', JSON.stringify(data.student));
         navigation.navigate('ParentRoute', { studentData: data.student });
-        // , { studentData: data.student }  
       } else {
         Alert.alert('No Student Found', 'No student is associated with this number');
       }
@@ -97,19 +109,19 @@ const Redirect = ({ route }) => {
       const response = await fetch(`${API_URL}/api/coordinator/getCoordinatorData`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber }), 
+        body: JSON.stringify({ phoneNumber }),
       });
       const data = await response.json();
-      const response2 = await fetch(`${API_URL}/api/coordinator/getCoordinatorGrades`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coordinatorId:data.coordinatorData.id }), 
-      });
-      const data2 = await response2.json();
       
-      console.log('Coordinator Data API Response:', data);
-
       if (data.success && data.coordinatorData) {
+        const response2 = await fetch(`${API_URL}/api/coordinator/getCoordinatorGrades`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ coordinatorId: data.coordinatorData.id }),
+        });
+        const data2 = await response2.json();
+
+        await manageKeys(data.coordinatorData.id, 'coordinator');
         await AsyncStorage.setItem('coordinatorData', JSON.stringify(data.coordinatorData));
         await AsyncStorage.setItem('coordinatorGrades', JSON.stringify(data2.coordinatorGrades));
         navigation.navigate('CoordinatorMain', { coordinatorData: data.coordinatorData });
@@ -127,21 +139,20 @@ const Redirect = ({ route }) => {
       const response = await fetch(`${API_URL}/api/mentor/getMentorData`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber }), 
+        body: JSON.stringify({ phoneNumber }),
       });
-  
-      const data = await response.json();
-      console.log('Mentor Data API Response:', data);
 
+      const data = await response.json();
       if (data.success && data.mentorData) {
+        await manageKeys(data.mentorData[0].id, 'mentor');
         await AsyncStorage.setItem('mentorData', JSON.stringify(data.mentorData));
         navigation.navigate('MentorMain', { mentorData: data.mentorData });
       } else {
         Alert.alert('No Mentor Found', 'No Mentor is associated with this number');
       }
     } catch (error) {
-      console.error('Error fetching coordinator data:', error);
-      Alert.alert('Error', 'Failed to fetch coordinator data');
+      console.error('Error fetching mentor data:', error);
+      Alert.alert('Error', 'Failed to fetch mentor data');
     }
   };
 
@@ -150,13 +161,13 @@ const Redirect = ({ route }) => {
       const response = await fetch(`${API_URL}/api/admin/getAdminData`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber }), 
+        body: JSON.stringify({ phoneNumber }),
       });
-  
+
       const data = await response.json();
-      console.log('Admin Data API Response:', data);
 
       if (data.success && data.adminData) {
+        await manageKeys(data.adminData.id, 'admin');
         await AsyncStorage.setItem('adminData', JSON.stringify(data.adminData));
         navigation.navigate('AdminMain', { adminData: data.adminData });
       } else {
@@ -171,45 +182,25 @@ const Redirect = ({ route }) => {
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
     switch (role) {
-      case 'Admin':
-        fetchAdminData();
-        break;
-      case 'Coordinator':
-        fetchCoordinatorData();
-        break;
-      case 'Mentor':
-        fetchMentorData();
-        break;
-      case 'Student':
-        fetchStudentData();
-        break;
-      default:
-        break;
+      case 'Admin': fetchAdminData(); break;
+      case 'Coordinator': fetchCoordinatorData(); break;
+      case 'Mentor': fetchMentorData(); break;
+      case 'Student': fetchStudentData(); break;
+      default: break;
     }
   };
 
   const handleLogout = async () => {
     try {
-      // Remove the user data from AsyncStorage
-      await AsyncStorage.removeItem('userPhone');
-      await AsyncStorage.removeItem('userRoles');
-      
-      // You can clear any other data if needed, like admin or coordinator data
-      await AsyncStorage.removeItem('adminData');
-      await AsyncStorage.removeItem('coordinatorData');
-      await AsyncStorage.removeItem('studentData');
-      await AsyncStorage.removeItem('mentorData');
-  
-      // Show a logout confirmation (optional)
+      await AsyncStorage.multiRemove([
+        'userPhone', 'userRoles', 'adminData', 'coordinatorData', 
+        'studentData', 'mentorData', 'ecdhPrivateKey' // Clear the private key on logout
+      ]);
       Alert.alert('Logged Out', 'You have successfully logged out.');
-  
-      // Redirect to the Welcome or Login screen
-      
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
+        routes: [{ name: 'Welcome' }],
       });
-  
     } catch (error) {
       console.error('Error during logout:', error);
       Alert.alert('Error', 'There was an issue logging out. Please try again.');
@@ -230,28 +221,20 @@ const Redirect = ({ route }) => {
           <View key={role} style={styles.roleItem}>
             <Text style={styles.roleText}>{displayRole}</Text>
             <Switch
-                  value={selectedRole === role}
-                  onValueChange={() => handleRoleSelect(role)}
-            
-                  // Track Colors
-                  backgroundActive="#2962ff"
-                  backgroundInactive="#dcdcdc"
-            
-                  // Thumb (circle)
-                  circleActiveColor="#ffffff"
-                  circleInActiveColor="#ffffff"
-            
-                  // Sizes
-                  barHeight={30}
-                  circleSize={24}
-                  switchWidthMultiplier={2.3}
-            
-                  // Style tweaks
-                  renderActiveText={false}
-                  renderInActiveText={false}
-                  changeValueImmediately={true}
-                  innerCircleStyle={{ elevation: 4, borderColor: 'white' }}
-                />
+              value={selectedRole === role}
+              onValueChange={() => handleRoleSelect(role)}
+              backgroundActive="#2962ff"
+              backgroundInactive="#dcdcdc"
+              circleActiveColor="#ffffff"
+              circleInActiveColor="#ffffff"
+              barHeight={30}
+              circleSize={24}
+              switchWidthMultiplier={2.3}
+              renderActiveText={false}
+              renderInActiveText={false}
+              changeValueImmediately={true}
+              innerCircleStyle={{ elevation: 4, borderColor: 'white' }}
+            />
           </View>
         );
       })}

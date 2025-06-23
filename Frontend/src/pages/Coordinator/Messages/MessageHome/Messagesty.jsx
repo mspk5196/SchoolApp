@@ -13,7 +13,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 15,
-    flex: 1
+    flex: 0
   },
   homeIcon: {
     width: 24,

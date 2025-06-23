@@ -35,6 +35,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CheckBox } from 'react-native-elements';
 import mime from 'react-native-mime-types';
 
+// E2EE Imports
+import { generateAndStoreKeys, getPrivateKey } from '../../../../utils/keyManager';
+import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
+
 const StudentPageMessage = ({ route, navigation }) => {
   const { contact } = route.params;
   const [message, setMessage] = useState('');
@@ -45,6 +49,7 @@ const StudentPageMessage = ({ route, navigation }) => {
   const flatListRef = useRef(null);
   const studentData = useRef(null);
   const socketRef = useRef(null);
+  const sharedSecretRef = useRef(null); // To cache the AES key
 
   const [playingAudioId, setPlayingAudioId] = useState(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
@@ -58,6 +63,57 @@ const StudentPageMessage = ({ route, navigation }) => {
   const audioRecorderPlayer = useRef(null);
   const manualTimerRef = useRef(null);
   const recorderState = useRef({ isRunning: false });
+
+  // E2EE Key and Shared Secret Setup
+  const setupEncryption = async (currentUser, otherUser) => {
+    console.log("Setting up encryption for user:", currentUser.student_id, "with contact:", otherUser);
+    
+    try {
+      let myPrivateKey = await getPrivateKey();
+      if (!myPrivateKey) {
+        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
+        myPrivateKey = privateKeyHex;
+        await fetch(`${API_URL}/api/messages/keys/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: currentUser.student_id,
+            user_type: 'student',
+            public_key: publicKeyHex,
+          }),
+        });
+      }
+
+      const res = await fetch(`${API_URL}/api/keys/${'mentor'}/${otherUser.mentor_id}`);
+      if (!res.ok) {
+        Alert.alert('Encryption Error', 'Could not get recipient\'s key. They may need to open the app once to generate it.');
+        return false;
+      }
+      const theirKeyData = await res.json();
+      const theirPublicKey = theirKeyData.public_key;
+
+      const aesKey = getSharedSecretAESKey(myPrivateKey, theirPublicKey);
+      sharedSecretRef.current = aesKey;
+      return true;
+    } catch (error) {
+      console.error('Encryption setup failed:', error);
+      Alert.alert('Error', 'Could not establish a secure connection.');
+      return false;
+    }
+  };
+
+  const decryptMessages = async (messageList) => {
+    if (!sharedSecretRef.current) {
+      console.warn("No shared secret available for decryption.");
+      return messageList.map(msg => ({ ...msg, message_text: msg.message_text ? "[Decryption Key Error]" : null }));
+    }
+    return messageList.map(msg => {
+      if (msg.message_text) {
+        return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
+      }
+      return msg;
+    });
+  };
 
   // Initialize audio recorder
   useEffect(() => {
@@ -77,146 +133,105 @@ const StudentPageMessage = ({ route, navigation }) => {
     };
   }, []);
 
-  // Fetch student data and initialize socket
+
   useEffect(() => {
-    const fetchStudentData = async () => {
+    const initialize = async () => {
       try {
         const storedData = await AsyncStorage.getItem('studentData');
-        if (storedData) {
-          studentData.current = JSON.parse(storedData)[0];
+        if (!storedData) throw new Error('Student data not found');
+        const currentUser = JSON.parse(storedData)[0];
+        studentData.current = currentUser;
 
-          // Initialize socket connection
-          socketRef.current = io(`${API_URL}`, {
-            transports: ['websocket'],
-            reconnection: true,
-          });
-
-          socketRef.current.emit('join', {
-            userId: studentData.current.student_id,
-          });
-
-          socketRef.current.on('receiveMessage', (data) => {
-            if (data?.message) {
-              const msg = data.message;
-              // Only add if this message is for THIS conversation
-              const isCurrentConversation =
-                (
-                  (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type &&
-                    msg.receiver_id === studentData.current.student_id && msg.receiver_type === 'student')
-                  ||
-                  (msg.sender_id === studentData.current.student_id && msg.sender_type === 'student' &&
-                    msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type)
-                );
-
-              if (!isCurrentConversation) return;
-
-              setMessages(prev => {
-                if (prev.some(m => m.message_id === msg.message_id)) return prev;
-                return [...prev, msg];
-              });
-
-              setLastMessageId(msg.message_id);
-
-              // Mark as read if needed
-              if (msg.receiver_id === studentData.current.student_id && msg.is_read === 0) {
-                socketRef.current.emit('markAsRead', {
-                  messageIds: [msg.message_id],
-                  receiverId: studentData.current.student_id,
-                  receiverType: 'student',
-                  senderId: msg.sender_id,
-                  senderType: msg.sender_type
-
-                  // messageIds: [data.message.message_id],
-                  //           receiverId: studentData.current.student_id,
-                  //           receiverType: 'student', // 'admin', 'mentor', etc.
-                  //           senderId: data.message.sender_id,
-                  //           senderType: data.message.sender_type
-                });
-              }
-
-              setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
-              }, 100);
-            }
-          });
-
-          socketRef.current.on('messagesRead', (data) => {
-            setMessages(prev => prev.map(msg =>
-              data.messageIds.includes(msg.message_id)
-                ? { ...msg, is_read: 1 }
-                : msg
-            ));
-          });
-
-          fetchMessages();
+        const encryptionReady = await setupEncryption(currentUser, contact);
+        if (!encryptionReady) {
+          setIsLoading(false);
+          return;
         }
+
+        socketRef.current = io(API_URL, { transports: ['websocket'] });
+        socketRef.current.emit('join', { userId: currentUser.student_id });
+
+        await fetchMessages();
+
+
+        socketRef.current.on('receiveMessage', async (data) => {
+          const msg = data.message;
+          const isCurrentConversation =
+            (msg.sender_id === contact.mentor_id && msg.sender_type === 'mentor') ||
+            (msg.receiver_id === contact.mentor_id && msg.receiver_type === 'mentor');
+
+          if (!isCurrentConversation) return;
+
+          const [decryptedMsg] = await decryptMessages([msg]);
+
+          setMessages(prev => [...prev, decryptedMsg]);
+
+          if (msg.receiver_id === currentUser.student_id) {
+            socketRef.current.emit('markAsRead', {
+              messageIds: [msg.message_id],
+              receiverId: currentUser.student_id, receiverType: 'student',
+              senderId: msg.sender_id, senderType: msg.sender_type
+            });
+          }
+        });
+
+        socketRef.current.on('messagesRead', (data) => {
+          setMessages(prev => prev.map(m => data.messageIds.includes(m.message_id) ? { ...m, is_read: 1 } : m));
+        });
+
       } catch (error) {
-        console.error('Error fetching student data:', error);
+        console.error('Initialization failed:', error);
         setIsLoading(false);
       }
     };
 
-    fetchStudentData();
+    initialize();
 
-    // Cleanup socket on unmount
     return () => {
       if (socketRef.current) {
-        socketRef.current.off('receiveMessage');
-        socketRef.current.off('messagesRead');
         socketRef.current.disconnect();
       }
+      audioRecorderPlayer.current.stopPlayer().catch(() => { });
     };
-  }, []);
+  }, [contact]);
 
   const fetchMessages = async () => {
+    if (!studentData.current || !sharedSecretRef.current) return;
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/messages/get`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sender_id: studentData.current?.student_id,
-          receiver_id: contact.mentor_id,
+          sender_id: studentData.current.student_id,
           sender_type: 'student',
-          last_message_id: lastMessageId,
-          receiver_type: 'mentor'
+          receiver_id: contact.mentor_id,
+          receiver_type: 'mentor',
+          last_message_id: 0,
         }),
       });
-
-      const text = await response.text();
-      const data = JSON.parse(text);
-
+      const data = await response.json();
       if (data.success) {
-        setMessages(data.messages);
+        const decrypted = await decryptMessages(data.messages);
+        setMessages(decrypted);
 
-        // Mark messages as read via socket 
-        if (socketRef.current && data.messages.length > 0) {
-          // console.log(contact.receiver_id);
-          // console.log(contact.receiver_id);
-          const unreadMessages = data.messages.filter(
-            msg =>
-              msg.receiver_id === studentData.current?.student_id &&
-              msg.sender_id === contact.sender_id && // <-- the other user's id
-              msg.is_read === 0
-          );
+        const unreadIds = data.messages
+          .filter(m => m.is_read === 0 && m.receiver_id === studentData.current.student_id)
+          .map(m => m.message_id);
 
-
-          if (unreadMessages.length > 0) {
-            socketRef.current.emit('markAsRead', {
-              messageIds: unreadMessages.map(msg => msg.message_id),
-              receiverId: studentData.current?.student_id,
-              receiverType: 'student', // or your current user's type
-              senderId: contact.sender_id,
-              senderType: contact.sender_type
-            });
-          }
+        if (unreadIds.length > 0) {
+          socketRef.current.emit('markAsRead', {
+            messageIds: unreadIds,
+            receiverId: studentData.current?.student_id, 
+            receiverType: 'student',
+            senderId: contact.sender_id, 
+            senderType: contact.sender_type
+          });
         }
       }
-
-      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching messages:', error);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -280,45 +295,35 @@ const StudentPageMessage = ({ route, navigation }) => {
     }
   };
 
-
   const sendMessage = async () => {
-    if (message.trim() === '') return;
+    if (message.trim() === '' || !sharedSecretRef.current) return;
+
+    const encryptedMessage = encryptText(message, sharedSecretRef.current);
 
     try {
       const response = await fetch(`${API_URL}/api/messages/send`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sender_id: studentData.current.student_id,
           receiver_id: contact.mentor_id,
           sender_type: 'student',
-          message_text: message,
-          receiver_type: 'mentor'
+          receiver_type: 'mentor',
+          message_text: encryptedMessage,
         }),
       });
 
       const data = await response.json();
-
       if (data.success) {
         setMessage('');
-        const newMsg = data.message;
-
-        socketRef.current.emit('sendMessage', {
-          to: contact.receiver_id,
-          message: newMsg
-        });
-
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
+        // const newMsg = { ...data.message, message_text: message }; // Optimistic update with plain text
+        // setMessages(prev => [...prev, newMsg]);
+        socketRef.current.emit('sendMessage', { to: contact.mentor_id, message: data.message });
       } else {
         Alert.alert('Error', 'Failed to send message');
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
     }
   };
 
@@ -607,15 +612,74 @@ const StudentPageMessage = ({ route, navigation }) => {
     }
   };
 
-  const uploadAttachment = async (file, fileType) => {
-    let fileUri = file.uri;
+  // const uploadAttachment = async (file, fileType) => {
+  //   let fileUri = file.uri;
 
+  //   try {
+  //     if (Platform.OS === 'android' && fileUri.startsWith('content://')) {
+  //       const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${file.name}`;
+  //       await RNBlobUtil.fs.cp(fileUri, destPath);
+  //       fileUri = 'file://' + destPath;
+  //       console.log('✔ File copied to temp:', fileUri);
+  //     }
+
+  //     const res = await RNBlobUtil.fetch(
+  //       'POST',
+  //       `${API_URL}/api/messages/send-attachment`,
+  //       { 'Content-Type': 'multipart/form-data' },
+  //       [
+  //         {
+  //           name: 'file',
+  //           filename: file.name || 'file',
+  //           type: file.type || `application/${fileType}`,
+  //           data: RNBlobUtil.wrap(fileUri.replace('file://', ''))
+  //         },
+  //         { name: 'sender_id', data: studentData.current.student_id.toString() },
+  //         { name: 'receiver_id', data: contact.mentor_id.toString() },
+  //         { name: 'sender_type', data: 'student' },
+  //         { name: 'receiver_type', data: 'mentor' }
+  //       ]
+  //     );
+
+  //     const data = JSON.parse(res.data);
+
+  //     if (!data.success) {
+  //       Alert.alert('Error', 'Failed to send attachment');
+  //     } else if (data.message) {
+  //       setMessage('');
+  //       setMessages(prev => {
+  //         if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
+  //         return [...prev, data.message];
+  //       });
+  //       setLastMessageId(data.message.message_id);
+
+  //       // Emit socket event if needed
+  //       if (socketRef.current) {
+  //         socketRef.current.emit('sendMessage', {
+  //           to: contact.receiver_id,
+  //           message: data.message
+  //         });
+  //       }
+
+  //       setTimeout(() => {
+  //         flatListRef.current?.scrollToEnd({ animated: true });
+  //       }, 100);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error uploading attachment:', error);
+  //     Alert.alert('Error', 'Failed to send attachment');
+  //   }
+  // };
+
+
+  const uploadAttachment = async (file, fileType) => {
+    if (!studentData.current) return;
+    let fileUri = file.uri;
     try {
       if (Platform.OS === 'android' && fileUri.startsWith('content://')) {
-        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${file.name}`;
+        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${file.name || 'tempfile'}`;
         await RNBlobUtil.fs.cp(fileUri, destPath);
         fileUri = 'file://' + destPath;
-        console.log('✔ File copied to temp:', fileUri);
       }
 
       const res = await RNBlobUtil.fetch(
@@ -623,46 +687,23 @@ const StudentPageMessage = ({ route, navigation }) => {
         `${API_URL}/api/messages/send-attachment`,
         { 'Content-Type': 'multipart/form-data' },
         [
-          {
-            name: 'file',
-            filename: file.name || 'file',
-            type: file.type || `application/${fileType}`,
-            data: RNBlobUtil.wrap(fileUri.replace('file://', ''))
-          },
-          { name: 'sender_id', data: studentData.current.student_id.toString() },
-          { name: 'receiver_id', data: contact.mentor_id.toString() },
+          { name: 'file', filename: file.name || 'attachment', type: file.type, data: RNBlobUtil.wrap(fileUri.replace('file://', '')) },
+          { name: 'sender_id', data: String(studentData.current.student_id) },
+          { name: 'receiver_id', data: String(contact.mentor_id) },
           { name: 'sender_type', data: 'student' },
           { name: 'receiver_type', data: 'mentor' }
         ]
       );
 
       const data = JSON.parse(res.data);
-
-      if (!data.success) {
+      if (data.success) {
+        // setMessages(prev => [...prev, data.message]);
+        socketRef.current.emit('sendMessage', { to: contact.mentor_id, message: data.message });
+      } else {
         Alert.alert('Error', 'Failed to send attachment');
-      } else if (data.message) {
-        setMessage('');
-        setMessages(prev => {
-          if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
-          return [...prev, data.message];
-        });
-        setLastMessageId(data.message.message_id);
-
-        // Emit socket event if needed
-        if (socketRef.current) {
-          socketRef.current.emit('sendMessage', {
-            to: contact.receiver_id,
-            message: data.message
-          });
-        }
-
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
       }
     } catch (error) {
       console.error('Error uploading attachment:', error);
-      Alert.alert('Error', 'Failed to send attachment');
     }
   };
 

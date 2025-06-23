@@ -35,6 +35,9 @@ import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
 
+import { generateAndStoreKeys, getPrivateKey } from '../../../../utils/keyManager';
+import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
+
 const CoordinatorMessageBox = ({ route, navigation }) => {
   const { contact, coordinator } = route.params;
   // console.log(contact);
@@ -46,6 +49,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
   const [isRecording, setRecording] = useState(false);
   const flatListRef = useRef(null);
   const socketRef = useRef(null);
+  const sharedSecretRef = useRef(null);
 
   const [playingAudioId, setPlayingAudioId] = useState(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
@@ -69,10 +73,6 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
   }, [currentUser]);
 
   useEffect(() => {
-    // For Coordinator, data comes from props, not storage
-    if (coordinator) {
-      setCurrentUser({ ...coordinator, type: 'coordinator' });
-    }
 
     return () => {
       audioRecorderPlayer.current.stopPlayer().catch(() => { });
@@ -80,98 +80,91 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
     };
   }, [coordinator]);
 
+  const setupEncryption = async (currentUser, otherUser) => {
+    try {
+
+      let myPrivateKey = await getPrivateKey();
+      console.log(myPrivateKey);
+      if (!myPrivateKey) {
+        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
+        myPrivateKey = privateKeyHex;
+        await fetch(`${API_URL}/api/messages/keys/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: currentUser.id,
+            user_type: 'coordinator',
+            public_key: publicKeyHex,
+          }),
+        });
+      }
+      const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
+      if (!res.ok) {
+        Alert.alert('Encryption Error', "Could not get recipient's key.");
+        return false;
+      }
+      const theirKeyData = await res.json();
+      sharedSecretRef.current = getSharedSecretAESKey(myPrivateKey, theirKeyData.public_key);
+      return true;
+    } catch (error) {
+      Alert.alert('Error', 'Could not establish a secure connection.');
+      return false;
+    }
+  };
+
+  const decryptMessages = async (messageList) => {
+    if (!sharedSecretRef.current) return messageList;
+    return messageList.map(msg => {
+      if (msg.message_text) {
+        return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
+      }
+      return msg;
+    });
+  };
+
   useEffect(() => {
-    if (!currentUser) return;
+    const initialize = async () => {
+      if (!coordinator) return;
+      const coordinatorUser = { ...coordinator, type: 'coordinator' };
+      setCurrentUser(coordinatorUser);
 
-    fetchMessages();
+      const encryptionReady = await setupEncryption(coordinatorUser, contact);
+      if (!encryptionReady) {
+        setIsLoading(false);
+        return;
+      }
+      socketRef.current = io(API_URL, { transports: ['websocket'] });
+      socketRef.current.emit('join', { userId: coordinator.id });
+      await fetchMessages(coordinator);
 
-    socketRef.current = io(API_URL);
-    socketRef.current.emit('join', { userId: currentUser.id });
 
-    const handleReceiveMessage = (data) => {
-      if (data?.message) {
+      socketRef.current.on('receiveMessage', async (data) => {
         const msg = data.message;
-        // Only add if this message is for THIS conversation
         const isCurrentConversation =
-          (
-            (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type &&
-              msg.receiver_id === currentUserRef.current?.id && msg.receiver_type === 'coordinator')
-            ||
-            (msg.sender_id === currentUserRef.current?.id && msg.sender_type === 'coordinator' &&
-              msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type)
-          );
+          (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type && msg.receiver_id === coordinator.id && msg.receiver_type === 'coordinator') ||
+          (msg.sender_id === coordinator.id && msg.sender_type === 'coordinator' && msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type);
 
         if (!isCurrentConversation) return;
 
-        setMessages(prev => {
-          if (prev.some(m => m.message_id === msg.message_id)) return prev;
-          return [...prev, msg];
-        });
+        const [decryptedMsg] = await decryptMessages([msg]);
+        setMessages(prev => [...prev, decryptedMsg]);
 
-        if (msg.receiver_id === currentUserRef.current.id) {
+        if (msg.receiver_id === coordinator.id) {
           socketRef.current.emit('markAsRead', {
             messageIds: [msg.message_id],
-            receiverId: currentUserRef.current.id, receiverType: 'coordinator',
+            receiverId: coordinator.id, receiverType: 'coordinator',
             senderId: msg.sender_id, senderType: msg.sender_type
           });
         }
-      }
+      });
+
+      socketRef.current.on('messagesRead', (data) => {
+        setMessages(prev => prev.map(m => data.messageIds.includes(m.message_id) ? { ...m, is_read: 1 } : m));
+      });
     };
-
-    socketRef.current.on('messagesRead', (data) => {
-      setMessages(prev =>
-        prev.map(msg =>
-          data.messageIds.includes(msg.message_id)
-            ? { ...msg, is_read: 1 }
-            : msg
-        )
-      );
-    });
-
-    socketRef.current.on('receiveMessage', handleReceiveMessage);
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.off('receiveMessage', handleReceiveMessage);
-        socketRef.current.off('messagesRead');
-        socketRef.current.disconnect();
-      }
-    };
-  }, [currentUser, contact]);
-
-  // useEffect(() => {
-  //   socketRef.current = io(API_URL);
-  //   // Join your own room for real-time messages  
-  //   console.log("coordinator", contact)
-  //   if (contact && contact.sender_id) {
-  //     socketRef.current.emit('join', { userId: contact.sender_id });
-  //   }
-
-  //   // Listen for incoming messages
-  //   socketRef.current.on('receiveMessage', (data) => {
-  //     if (data?.message) {
-  //       if (data.message.sender_id === contact.receiver_id && data.message.sender_type === contact.receiver_type) {
-  //         // setMessages(prev => [...prev, data.message]);
-  //         setLastMessageId(data.message.message_id);
-  //         setTimeout(() => {
-  //           flatListRef.current?.scrollToEnd({ animated: true });
-  //         }, 100);
-  //       }
-  //     }
-  //   });
-
-  //   socketRef.current.on('messagesRead', (data) => {
-  //     setMessages(prev => prev.map(msg =>
-  //       data.messageIds.includes(msg.message_id)
-  //         ? { ...msg, is_read: 1 }
-  //         : msg
-  //     ));
-  //   });
-
-  //   return () => {
-  //     socketRef.current.disconnect();
-  //   };
-  // }, []);
+    initialize();
+    return () => socketRef.current?.disconnect();
+  }, [coordinator, contact]);
 
   // Initialize audio recorder
   useEffect(() => {
@@ -192,51 +185,86 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
   }, []);
 
   // Fetch all messages between this mentor and student
-  const fetchMessages = async () => {
+  // const fetchMessages = async () => {
+  //   try {
+  //     const response = await fetch(`${API_URL}/api/messages/get`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({
+  //         sender_id: contact.sender_id,
+  //         receiver_id: contact.receiver_id,
+  //         sender_type: 'coordinator',
+  //         last_message_id: lastMessageId,// <-- use student_id
+  //         receiver_type: contact.receiver_type,
+  //       }),
+  //     });
+  //     const data = await response.json();
+  //     if (data.success) {
+  //       setMessages(data.messages);
+
+  //       // Mark messages as read via socket
+  //       if (socketRef.current && data.messages.length > 0) {
+  //         // console.log(contact.receiver_id);
+  //         // console.log(contact.receiver_id);
+  //         const unreadMessages = data.messages.filter(
+  //           msg =>
+  //             msg.receiver_id === coordinator.id &&
+  //             msg.sender_id === contact.sender_id && // <-- the other user's id
+  //             msg.is_read === 0
+  //         );
+
+  //         // console.log(unreadMessages);
+
+
+  //         if (unreadMessages.length > 0) {
+  //           socketRef.current.emit('markAsRead', {
+  //             messageIds: unreadMessages.map(msg => msg.message_id),
+  //             receiverId: coordinator.id,
+  //             receiverType: 'coordinator', // or your current user's type
+  //             senderId: contact.sender_id,
+  //             senderType: contact.sender_type
+  //           });
+  //         }
+  //       }
+  //     }
+  //     setIsLoading(false);
+  //   } catch (error) {
+  //     console.error('Error fetching messages:', error);
+  //     setIsLoading(false);
+  //   }
+  // };
+
+  const fetchMessages = async (coordData) => {
+    if (!coordData || !sharedSecretRef.current) return;
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/messages/get`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sender_id: contact.sender_id,
-          receiver_id: contact.receiver_id,
-          sender_type: 'coordinator',
-          last_message_id: lastMessageId,// <-- use student_id
-          receiver_type: contact.receiver_type,
+          sender_id: coordData.id, sender_type: 'coordinator',
+          receiver_id: contact.receiver_id, receiver_type: contact.receiver_type,
         }),
       });
       const data = await response.json();
       if (data.success) {
-        setMessages(data.messages);
+        const decrypted = await decryptMessages(data.messages);
+        setMessages(decrypted);
 
-        // Mark messages as read via socket
-        if (socketRef.current && data.messages.length > 0) {
-          // console.log(contact.receiver_id);
-          // console.log(contact.receiver_id);
-          const unreadMessages = data.messages.filter(
-            msg =>
-              msg.receiver_id === coordinator.id &&
-              msg.sender_id === contact.sender_id && // <-- the other user's id
-              msg.is_read === 0
-          );
-
-          // console.log(unreadMessages);
-
-
-          if (unreadMessages.length > 0) {
-            socketRef.current.emit('markAsRead', {
-              messageIds: unreadMessages.map(msg => msg.message_id),
-              receiverId: coordinator.id,
-              receiverType: 'coordinator', // or your current user's type
-              senderId: contact.sender_id,
-              senderType: contact.sender_type
-            });
-          }
+        const unreadIds = data.messages
+          .filter(m => m.is_read === 0 && m.receiver_id === coordData.id)
+          .map(m => m.message_id);
+        if (unreadIds.length > 0) {
+          socketRef.current.emit('markAsRead', {
+            messageIds: unreadIds,
+            receiverId: coordData.id, receiverType: 'coordinator',
+            senderId: contact.receiver_id, senderType: contact.receiver_type
+          });
         }
       }
-      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching messages:', error);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -298,54 +326,35 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
     }
   };
 
-
   const sendMessage = async () => {
-    if (message.trim() === '') return;
+    if (message.trim() === '' || !sharedSecretRef.current || !currentUser) return;
+
+    const encryptedMessage = encryptText(message, sharedSecretRef.current);
 
     try {
       const response = await fetch(`${API_URL}/api/messages/send`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sender_id: contact.sender_id,
+          sender_id: currentUser.id,
           receiver_id: contact.receiver_id,
           sender_type: 'coordinator',
-          message_text: message,
-          receiver_type: contact.receiver_type
+          receiver_type: contact.receiver_type,
+          message_text: encryptedMessage,
         }),
       });
 
       const data = await response.json();
-
       if (data.success) {
-        setMessage('');
-        const newMsg = data.message;
-
+        // const newMsg = { ...data.message, message_text: message };
         // setMessages(prev => [...prev, newMsg]);
-        // setLastMessageId(newMsg.message_id);
-        // console.log(contact.sender_id);
-
+        socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
         setMessage('');
-        setMessages(prev => {
-          if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
-          return [...prev, data.message];
-        });
-        socketRef.current.emit('sendMessage', {
-          to: contact.receiver_id,
-          message: newMsg
-        });
-
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
       } else {
         Alert.alert('Error', 'Failed to send message');
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
     }
   };
 
@@ -669,14 +678,14 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
         Alert.alert('Error', 'Failed to send attachment');
       } else if (data.success) {
         setMessage('');
-        setMessages(prev => {
-          if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
-          return [...prev, data.message];
-        });
+        // setMessages(prev => {
+        //   if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
+        //   return [...prev, data.message];
+        // });
         const newMsg = data.message;
 
         socketRef.current.emit('sendMessage', {
-          to: contact.sender_id,
+          to: contact.receiver_id,
           message: newMsg
         });
 

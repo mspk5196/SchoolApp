@@ -34,17 +34,9 @@ import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  getSharedSecretAESKey,
-  generateKeys,
-  encryptText,
-  // encryptAttachment,
-  decryptText,
-  // decryptAttachment
-} from '../../../../utils/messageEncryption';
-import {
-  generateAndStoreKeys, getPrivateKey
-} from '../../../../utils/keyManager';
+
+import { generateAndStoreKeys, getPrivateKey } from '../../../../utils/keyManager';
+import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
 
 const AdminMessageBox = ({ route, navigation }) => {
   const { contact } = route.params;
@@ -57,6 +49,7 @@ const AdminMessageBox = ({ route, navigation }) => {
   const [isRecording, setRecording] = useState(false);
   const flatListRef = useRef(null);
   const socketRef = useRef(null);
+  const sharedSecretRef = useRef(null);
 
   const [playingAudioId, setPlayingAudioId] = useState(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
@@ -75,49 +68,6 @@ const AdminMessageBox = ({ route, navigation }) => {
 
   const currentUserRef = useRef(null);
 
-  const ensurePrivateKeyExists = async (userId) => {
-    try {
-      console.log(userId);
-      let privateKey = await getPrivateKey(); 
-      
-      if (!privateKey) {
-        // Generate new keys and upload public key to server
-        console.log(publicKeyHex);
-        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
-        
-        await fetch(`${API_URL}/api/messages/keys/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: userId,
-            user_type: 'admin',
-            public_key: publicKeyHex
-          })
-        });
-
-        return privateKeyHex;
-      }
-
-      return privateKey;
-    } catch (error) {
-      console.error('Error ensuring private key exists:', error);
-      throw error;
-    }
-  };
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-
-    const setupKey = async () => {
-      if (currentUser) {
-        console.log("Private Key Set:",currentUser.id);
-        const privKey = await ensurePrivateKeyExists(currentUser.id);
-        console.log("Private Key Set:", typeof privKey, privKey);
-      }
-    };
-    setupKey();
-  }, [currentUser]);
 
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -161,15 +111,116 @@ const AdminMessageBox = ({ route, navigation }) => {
   }, []);
 
   // Fetch all messages between this mentor and student
-  const fetchMessages = async () => {
-    if (!currentUser) return;
+
+  const setupEncryption = async (currentUser, otherUser) => {
+    try {
+      let myPrivateKey = await getPrivateKey();
+      if (!myPrivateKey) {
+        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
+        myPrivateKey = privateKeyHex;
+        await fetch(`${API_URL}/api/messages/keys/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: currentUser.id,
+            user_type: 'admin',
+            public_key: publicKeyHex,
+          }),
+        });
+      }
+
+      const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
+      if (!res.ok) {
+        Alert.alert('Encryption Error', "Could not get recipient's key. They may need to open the app once to generate it.");
+        return false;
+      }
+      const theirKeyData = await res.json();
+      const theirPublicKey = theirKeyData.public_key;
+
+      const aesKey = getSharedSecretAESKey(myPrivateKey, theirPublicKey);
+      sharedSecretRef.current = aesKey;
+      return true;
+    } catch (error) {
+      console.error('Encryption setup failed:', error);
+      Alert.alert('Error', 'Could not establish a secure connection.');
+      return false;
+    }
+  };
+
+  const decryptMessages = async (messageList) => {
+    if (!sharedSecretRef.current) {
+      return messageList.map(msg => ({ ...msg, message_text: msg.message_text ? "[Decryption Key Error]" : null }));
+    }
+    return messageList.map(msg => {
+      if (msg.message_text) {
+        return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
+      }
+      return msg;
+    });
+  };
+
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        const storedData = await AsyncStorage.getItem('adminData');
+        if (!storedData) throw new Error('Admin data not found');
+        const adminData = JSON.parse(storedData);
+        setCurrentUser(adminData);
+
+        const encryptionReady = await setupEncryption(adminData, contact);
+        if (!encryptionReady) {
+          setIsLoading(false);
+          return;
+        }
+
+        socketRef.current = io(API_URL, { transports: ['websocket'] });
+        socketRef.current.emit('join', { userId: adminData.id });
+        await fetchMessages(adminData);
+
+
+        socketRef.current.on('receiveMessage', async (data) => {
+          const msg = data.message;
+          const isCurrentConversation =
+            (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type && msg.receiver_id === adminData.id && msg.receiver_type === 'admin') ||
+            (msg.sender_id === adminData.id && msg.sender_type === 'admin' && msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type);
+
+          if (!isCurrentConversation) return;
+
+          const [decryptedMsg] = await decryptMessages([msg]);
+          setMessages(prev => [...prev, decryptedMsg]);
+
+          if (msg.receiver_id === adminData.id) {
+            socketRef.current.emit('markAsRead', {
+              messageIds: [msg.message_id],
+              receiverId: adminData.id, receiverType: 'admin',
+              senderId: msg.sender_id, senderType: msg.sender_type
+            });
+          }
+        });
+
+        socketRef.current.on('messagesRead', (data) => {
+          setMessages(prev => prev.map(m => data.messageIds.includes(m.message_id) ? { ...m, is_read: 1 } : m));
+        });
+
+      } catch (error) {
+        console.error('Initialization failed:', error);
+        setIsLoading(false);
+      }
+    };
+
+    initialize();
+    return () => socketRef.current?.disconnect();
+  }, [contact]);
+
+  const fetchMessages = async (adminData) => {
+    if (!adminData || !sharedSecretRef.current) return;
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/messages/get`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sender_id: currentUser.id,
+          sender_id: adminData.id,
           sender_type: 'admin',
           receiver_id: contact.receiver_id,
           receiver_type: contact.receiver_type,
@@ -178,118 +229,27 @@ const AdminMessageBox = ({ route, navigation }) => {
       });
       const data = await response.json();
       if (data.success) {
-        // Decrypt all messages before setting state
-        // const myPrivateKey = await AsyncStorage.getItem('ecdhPrivateKey');
-        // const decryptedMessages = await Promise.all(
-        //   data.messages.map(async (msg) => {
-        //     // Get sender's public key for each message
-        //     const senderPublicKey = await fetch(`${API_URL}/api/keys/${msg.sender_type}/${msg.sender_id}`)
-        //       .then(res => res.json())
-        //       .then(data => data.public_key);
+        const decrypted = await decryptMessages(data.messages);
+        setMessages(decrypted);
 
-        //     if (!myPrivateKey || !senderPublicKey) {
-        //       console.warn('Missing key for message:', msg.message_id);
-        //       return { ...msg, message_text: '[Unable to decrypt message]' };
-        //     }
+        const unreadIds = data.messages
+          .filter(m => m.is_read === 0 && m.receiver_id === adminData.id)
+          .map(m => m.message_id);
 
-        //     try {
-        //       console.log(myPrivateKey,',');
-
-        //       const aesKey = getSharedSecretAESKey(myPrivateKey, senderPublicKey);
-        //       // console.log('AES Key:', aesKey);
-        //       console.log("Admin page",msg.message_text);
-        //       return {
-        //         ...msg,
-        //         message_text: decryptText(msg.message_text, aesKey)
-        //       };
-        //     } catch (err) {
-        //       console.error('Decryption error:', err);
-        //       return { ...msg, message_text: '[Unable to decrypt message]' };
-        //     }
-        //   })
-        // );
-        setMessages(data.messages);
-      }
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    }
-    setIsLoading(false);
-  };
-
-
-  // 2. Setup messages and sockets after user is fetched
-  useEffect(() => {
-    if (!currentUser) return;
-
-    fetchMessages();
-
-    socketRef.current = io(API_URL);
-    socketRef.current.emit('join', { userId: currentUser.id });
-
-    const handleReceiveMessage = async (data) => {
-      if (data?.message) {
-        const msg = data.message;
-
-        const myPrivateKey = await AsyncStorage.getItem('ecdhPrivateKey');
-
-        const senderPublicKey = await fetch(`${API_URL}/api/keys/${data.message.sender_type}/${data.message.sender_id}`)
-          .then(res => res.json())
-          .then(data => data.public_key);
-
-        const aesKey = getSharedSecretAESKey(myPrivateKey, senderPublicKey);
-
-        // data.message.message_text = decryptText(data.message.message_text, aesKey);
-        // console.log(data.message.message_text);
-        
-        // if (data.message.attachment_path)
-        //   data.message.attachment_path = decryptAttachment(data.message.attachment_path, aesKey);
-
-        // Only add if this message is for THIS conversation
-        const isCurrentConversation =
-          (
-            (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type &&
-              msg.receiver_id === currentUserRef.current?.id && msg.receiver_type === 'admin')
-            ||
-            (msg.sender_id === currentUserRef.current?.id && msg.sender_type === 'admin' &&
-              msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type)
-          );
-
-        if (!isCurrentConversation) return;
-
-        setMessages(prev => {
-          if (prev.some(m => m.message_id === msg.message_id)) return prev;
-          return [...prev, msg];
-        });
-
-        if (msg.receiver_id === currentUserRef.current.id) {
+        if (unreadIds.length > 0 && socketRef.current) {
           socketRef.current.emit('markAsRead', {
-            messageIds: [msg.message_id],
-            receiverId: currentUserRef.current.id, receiverType: 'admin',
-            senderId: msg.sender_id, senderType: msg.sender_type
+            messageIds: unreadIds,
+            receiverId: adminData.id, receiverType: 'admin',
+            senderId: contact.receiver_id, senderType: contact.receiver_type
           });
         }
       }
-    };
-
-    const handleMessagesRead = (data) => {
-      setMessages(prev =>
-        prev.map(msg =>
-          data.messageIds.includes(msg.message_id) ? { ...msg, is_read: 1 } : msg
-        )
-      );
-    };
-
-    socketRef.current.on('receiveMessage', handleReceiveMessage);
-    socketRef.current.on('messagesRead', handleMessagesRead);
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.off('receiveMessage', handleReceiveMessage);
-        socketRef.current.off('messagesRead', handleMessagesRead);
-        socketRef.current.disconnect();
-      }
-    };
-  }, [currentUser]);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const [selectedMessages, setSelectedMessages] = useState([]);
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -344,60 +304,30 @@ const AdminMessageBox = ({ route, navigation }) => {
     }
   };
 
-
   const sendMessage = async () => {
-    if (message.trim() === '' || !currentUser) return;
+    if (message.trim() === '' || !sharedSecretRef.current || !currentUser) return;
 
-    const myPrivateKey = await ensurePrivateKeyExists(currentUser.id);
-    if (!myPrivateKey) {
-      throw new Error('Failed to get encryption keys');
-    }
-
-    const theirPublicKeyResponse = await fetch(`${API_URL}/api/keys/${contact.receiver_type}/${contact.receiver_id}`);
-    const theirPublicKeyData = await theirPublicKeyResponse.json();
-
-    if (!theirPublicKeyData.public_key) {
-      throw new Error('Failed to get recipient public key');
-    }
-
-    const aesKey = getSharedSecretAESKey(myPrivateKey, theirPublicKeyData.public_key);
-    const encryptedText = encryptText(message, aesKey);
-
-    // Optimistically create message data
-    const tempMessage = {
-      sender_id: currentUser.id,
-      receiver_id: contact.receiver_id,
-      sender_type: 'admin',
-      receiver_type: contact.receiver_type,
-      // message_text: encryptedText,
-      message_text: message,
-    };
+    const encryptedMessage = encryptText(message, sharedSecretRef.current);
 
     try {
       const response = await fetch(`${API_URL}/api/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(tempMessage),
+        body: JSON.stringify({
+          sender_id: currentUser.id,
+          receiver_id: contact.receiver_id,
+          sender_type: 'admin',
+          receiver_type: contact.receiver_type,
+          message_text: encryptedMessage,
+        }),
       });
 
       const data = await response.json();
       if (data.success) {
+        // const newMsg = { ...data.message, message_text: message };
+        // setMessages(prev => [...prev, newMsg]);
+        socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
         setMessage('');
-        // Decrypt before adding to state
-        const decryptedMsg = { ...data.message };
-        
-        // decryptedMsg.message_text = decryptText(decryptedMsg.message_text, aesKey);
-        
-        // console.log('AES Key:', aesKey);
-        setMessages(prev => {
-          if (prev.some(msg => msg.message_id === decryptedMsg.message_id)) return prev;
-          return [...prev, decryptedMsg];
-        });
-        // ✅ Let the socket handle the UI update for both sender and receiver
-        socketRef.current.emit('sendMessage', {
-          to: contact.receiver_id,
-          message: data.message
-        });
       } else {
         Alert.alert('Error', 'Failed to send message');
       }
@@ -718,10 +648,10 @@ const AdminMessageBox = ({ route, navigation }) => {
       if (data.success) {
         // ✅ Let the socket handle the UI update
         setMessage('');
-        setMessages(prev => {
-          if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
-          return [...prev, data.message];
-        });
+        // setMessages(prev => {
+        //   if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
+        //   return [...prev, data.message];
+        // });
         socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
       } else {
         Alert.alert('Error', 'Failed to send attachment');

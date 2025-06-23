@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, FlatList, Pressable, TextInput, Image, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, Pressable, TextInput, Image, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import styles from "./Messagesty";
 import Home from "../../../../assets/MentorPage/entypo_home.svg";
 import SearchIcon from "../../../../assets/MentorPage/search.svg";
 import { API_URL } from '@env';
 import { useFocusEffect } from "@react-navigation/native";
 import io from 'socket.io-client';
+import { generateAndStoreKeys, getPrivateKey } from "../../../../utils/keyManager";
+import { decryptText, getSharedSecretAESKey } from "../../../../utils/messageEncryption";
 
 const Profile = require('../../../../assets/MentorPage/profile.png');
 
@@ -17,6 +19,58 @@ const CoordinatorMessageHome = ({ navigation, route }) => {
     const [loading, setLoading] = useState(true);
     const [coordinator, setCoordinator] = useState(null);
     const socketRef = useRef(null);
+    const sharedSecretRef = useRef(null);
+
+    // const setupEncryption = async (currentUser, otherUser) => {
+    //     try {
+    //         let myPrivateKey = await getPrivateKey();
+    //         if (!myPrivateKey) {
+    //             const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
+    //             myPrivateKey = privateKeyHex;
+    //             await fetch(`${API_URL}/api/messages/keys/upload`, {
+    //                 method: 'POST',
+    //                 headers: { 'Content-Type': 'application/json' },
+    //                 body: JSON.stringify({
+    //                     user_id: currentUser.id,
+    //                     user_type: 'coordinator',
+    //                     public_key: publicKeyHex,
+    //                 }),
+    //             });
+    //         }
+    //         const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
+    //         if (!res.ok) {
+    //             Alert.alert('Encryption Error', "Could not get recipient's key.");
+    //             return false;
+    //         }
+    //         const theirKeyData = await res.json();
+    //         sharedSecretRef.current = getSharedSecretAESKey(myPrivateKey, theirKeyData.public_key);
+    //         return true;
+    //     } catch (error) {
+    //         Alert.alert('Error', 'Could not establish a secure connection.');
+    //         return false;
+    //     }
+    // };
+
+
+    function isEncryptedMessage(text) {
+        if (!text) return false;
+        try {
+            const obj = JSON.parse(text);
+            return obj && obj.iv && obj.encrypted;
+        } catch {
+            return false;
+        }
+    }
+
+    const decryptMessages = async (messageList) => {
+        if (!sharedSecretRef.current) return messageList;
+        return messageList.map(msg => {
+            if (msg.message_text && isEncryptedMessage(msg.message_text)) {
+                return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
+            }
+            return msg;
+        });
+    };
 
     const fetchInbox = async (currentCoordinator) => {
         if (!currentCoordinator) return;
@@ -29,7 +83,9 @@ const CoordinatorMessageHome = ({ navigation, route }) => {
             });
             const data = await res.json();
             if (data.success) {
-                setInbox(data.inbox);
+                console.log("Fetched inbox data:", data.inbox);
+                const decrypted = await decryptMessages(data.inbox);
+                setInbox(decrypted);
             }
         } catch (e) {
             console.error(e);
@@ -158,7 +214,7 @@ const CoordinatorMessageHome = ({ navigation, route }) => {
                                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                                     <View>
                                                         <Text style={{ color: 'green', fontSize: 13.5 }}>{String(item.contact_type).charAt(0).toUpperCase() + String(item.contact_type).slice(1)}</Text>
-                                                        <Text style={styles.inboxText}>{item.contact_type === ('coordinator'||'admin') ? `${item.contact_name}` : `${item.contact_name} (Grade ${item.grade_id} - Section ${item.section_name})`}</Text>
+                                                        <Text style={styles.inboxText}>{item.contact_type === ('coordinator' || 'admin') ? `${item.contact_name}` : `${item.contact_name} (Grade ${item.grade_id} - Section ${item.section_name})`}</Text>
                                                     </View>
                                                     {hasUnreadReceivedMessages && (
                                                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#4169E1', marginLeft: 5 }} />
@@ -170,7 +226,7 @@ const CoordinatorMessageHome = ({ navigation, route }) => {
                                                             item.attachment_type === 'pdf' ? '📄 PDF' :
                                                                 item.attachment_type === 'doc' || item.attachment_type === 'docx' ? '📄 Document' :
                                                                     item.attachment_type === 'xls' || item.attachment_type === 'xlsx' ? '📊 Spreadsheet' :
-                                                                        item.message_text || ''}
+                                                                        isEncryptedMessage(item.message_text) ? 'Text Message, Click to view..' : (item.message_text || '')}
                                                 </Text>
                                             </View>
                                         </View>

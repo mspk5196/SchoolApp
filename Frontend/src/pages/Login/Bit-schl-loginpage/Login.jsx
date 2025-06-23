@@ -22,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@env';
 import { encryptPassword } from '../../../components/Login/encrypt/encryptPassword';
+import { generateAndStoreKeys } from '../../../utils/keyManager';
 
 
 const Login = () => {
@@ -49,10 +50,11 @@ const Login = () => {
                     Alert.alert(data.message || 'Invalid credentials');
                     return;
                 }
+                // const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
 
                 await AsyncStorage.setItem('userRoles', JSON.stringify(data.user.roles));
                 await AsyncStorage.setItem('userPhone', JSON.stringify(data.user.phone));
-                navigation.navigate('Redirect', { phoneNumber });
+                navigation.navigate('Redirect', { phoneNumber, password });
             }
             else {
                 Alert.alert("Please accept the Privacy Policy");

@@ -13,18 +13,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 15,
+    gap:10
   },
   homeIcon: {
     width: 24,
     height: 24,
-    marginRight: 10,
+    // marginRight: 20,
     marginTop: 30,
   },
   activityText: {
     fontSize: 22,
     fontWeight: "bold",
     color: "#000",
-    marginTop: 30,
+    // marginTop: 30,
   },
 
   // Underline

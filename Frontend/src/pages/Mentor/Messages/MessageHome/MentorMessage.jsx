@@ -112,6 +112,16 @@ const MentorMessage = ({ navigation }) => {
         }
     });
 
+    function isEncryptedMessage(text) {
+        if (!text) return false;
+        try {
+            const obj = JSON.parse(text);
+            return obj && obj.iv && obj.encrypted;
+        } catch {
+            return false;
+        }
+    }
+
     return (
         <View style={styles.container}>
             <View style={styles.activityHeader}>
@@ -184,8 +194,8 @@ const MentorMessage = ({ navigation }) => {
                                         <View>
                                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                                 <View>
-                                                    <Text style={{color:'green', fontSize:13.5}}>{String(item.contact_type).charAt(0).toUpperCase() + String(item.contact_type).slice(1)}</Text>
-                                                    <Text style={styles.inboxText}>{item.contact_type === ('coordinator'||'admin') ? `${item.contact_name}` : `${item.contact_name} (Grade ${item.grade_id} - Section ${item.section_name})`}</Text>
+                                                    <Text style={{ color: 'green', fontSize: 13.5 }}>{String(item.contact_type).charAt(0).toUpperCase() + String(item.contact_type).slice(1)}</Text>
+                                                    <Text style={styles.inboxText}>{item.contact_type === ('coordinator' || 'admin') ? `${item.contact_name}` : `${item.contact_name} (Grade ${item.grade_id} - Section ${item.section_name})`}</Text>
                                                 </View>
                                                 {hasUnreadReceivedMessages && (
                                                     <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#4169E1', marginLeft: 5 }} />
@@ -197,7 +207,7 @@ const MentorMessage = ({ navigation }) => {
                                                         item.attachment_type === 'pdf' ? '📄 PDF' :
                                                             item.attachment_type === 'doc' || item.attachment_type === 'docx' ? '📄 Document' :
                                                                 item.attachment_type === 'xls' || item.attachment_type === 'xlsx' ? '📊 Spreadsheet' :
-                                                                    item.message_text || ''}
+                                                                    isEncryptedMessage(item.message_text) ? 'Text Message, Click to view..' : (item.message_text || '')}
                                             </Text>
                                         </View>
                                     </View>

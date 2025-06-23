@@ -86,6 +86,3 @@ app.json
 Gemfile
 index.js
 jest.config.js
-
-keyManager.js
-messageEncryption.js
