@@ -24,7 +24,8 @@ router.post('/coordinator-inbox', getCoordinatorInbox);
 router.post('/admin-inbox', getAdminInbox);
 router.post('/messages/send-attachment', uploadAttachment.single('file'), sendAttachment);
 
-router.get('/keys/:user_type/:user_id', keys);
+// New routes for E2EE key management
 router.post('/messages/keys/upload', keysUpload);
+router.get('/keys/:user_type/:user_id', keys);
 
 module.exports = router;

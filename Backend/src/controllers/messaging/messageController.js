@@ -18,14 +18,9 @@ const attachmentStorage = multer.diskStorage({
   filename: (req, file, cb) => {
     let ext = path.extname(file.originalname);
     if (!ext) {
-      // fallback: guess from mimetype
       const mimeMap = {
-        'image/jpeg': '.jpg',
-        'image/png': '.png',
-        'image/gif': '.gif',
-        'application/pdf': '.pdf',
-        'audio/mp3': '.mp3',
-        // add more as needed
+        'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif',
+        'application/pdf': '.pdf', 'audio/mp3': '.mp3', 'audio/mpeg': '.mp3',
       };
       ext = mimeMap[file.mimetype] || '';
     }
@@ -38,71 +33,70 @@ const uploadAttachment = multer({
   limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit
 });
 
-// Get messages between two users
-// In messageController.js, update the getMessages function
-
 // exports.getMessages = async (req, res) => {
 //   try {
 //     const { sender_id, receiver_id, sender_type, last_message_id = 0, receiver_type } = req.body;
 
-//     // Then fetch the messages
+//     // First, fetch the messages
 //     const [messages] = await db.promise().query(`
 //       SELECT m.*, 
 //         CASE 
-//           WHEN m.sender_type = 'student' THEN s.name
-//           WHEN m.sender_type = 'mentor' THEN u.name
-//           WHEN m.sender_type = 'coordinator' THEN u.name
-//           WHEN m.sender_type = 'admin' THEN u.name
+//             WHEN m.sender_type = 'student' THEN st.name
+//             WHEN m.sender_type = 'mentor' THEN u_sender.name
+//             WHEN m.sender_type = 'coordinator' THEN u_sender.name
+//             WHEN m.sender_type = 'admin' THEN ad_sender.name
 //         END as sender_name,
 //         CASE 
-//           WHEN m.sender_type = 'student' THEN s.profile_photo
-//           WHEN m.sender_type = 'mentor' THEN up.file_path
-//           WHEN m.sender_type = 'coordinator' THEN up.file_path
-//           WHEN m.sender_type = 'admin' THEN up.file_path
+//             WHEN m.sender_type = 'student' THEN st.profile_photo
+//             WHEN m.sender_type IN ('mentor', 'coordinator', 'admin') THEN up_sender.file_path
 //         END as sender_profile
 //       FROM messages m
-//       LEFT JOIN students s ON m.sender_id = s.id AND m.sender_type = 'student'
-//       LEFT JOIN mentors mt ON m.sender_id = mt.id AND m.sender_type = 'mentor'
-//       LEFT JOIN coordinators c ON m.sender_id = c.id AND m.sender_type = 'coordinator'
-//       LEFT JOIN admins adn ON m.sender_id = adn.id AND m.sender_type = 'admin'
-//       LEFT JOIN Users u ON mt.phone = u.phone
-//       LEFT JOIN User_photos up ON mt.phone = up.phone
+//       -- Joins for sender's details
+//       LEFT JOIN students st ON m.sender_id = st.id AND m.sender_type = 'student'
+//       LEFT JOIN mentors ment ON m.sender_id = ment.id AND m.sender_type = 'mentor'
+//       LEFT JOIN coordinators co ON m.sender_id = co.id AND m.sender_type = 'coordinator'
+//       LEFT JOIN admins ad_sender ON m.sender_id = ad_sender.id AND m.sender_type = 'admin'
+//       LEFT JOIN Users u_sender ON (ment.phone = u_sender.phone OR co.phone = u_sender.phone OR ad_sender.phone = u_sender.phone)
+//       LEFT JOIN User_photos up_sender ON u_sender.phone = up_sender.phone
 //       WHERE (
 //           (m.sender_id = ? AND m.sender_type = ? AND m.receiver_id = ? AND m.receiver_type = ?)
-//       OR (m.sender_id = ? AND m.sender_type = ? AND m.receiver_id = ? AND m.receiver_type = ?)
+//           OR 
+//           (m.sender_id = ? AND m.sender_type = ? AND m.receiver_id = ? AND m.receiver_type = ?)
 //       )
 //       AND m.message_id > ?
 //       ORDER BY m.created_at ASC
-//     `, [sender_id, sender_type, receiver_id, receiver_type,
+//     `, [
+//       sender_id, sender_type, receiver_id, receiver_type,
 //       receiver_id, receiver_type, sender_id, sender_type,
-//       last_message_id]);
+//       last_message_id
+//     ]);
 
+//     // Then, mark the messages as read
 //     const [messageRows] = await db.promise().query(`
-//     SELECT message_id
-//   FROM messages 
-//   WHERE receiver_id = ? AND receiver_type = ?
-//     AND sender_id = ? AND sender_type = ?
-//     AND is_read = 0
-// `, [sender_id, sender_type, receiver_id, receiver_type]);
+//       SELECT message_id
+//       FROM messages 
+//       WHERE receiver_id = ? AND receiver_type = ?
+//         AND sender_id = ? AND sender_type = ?
+//         AND is_read = 0
+//     `, [sender_id, sender_type, receiver_id, receiver_type]);
 
-//     const messageIds = messageRows.map(row => row.message_id);
+//     const messageIdsToMarkAsRead = messageRows.map(row => row.message_id);
 
-//     // Then perform the update (even if messageIds is empty, this is safe)
-//     if (messageIds.length > 0) {
+//     if (messageIdsToMarkAsRead.length > 0) {
 //       await db.promise().query(`
-//     UPDATE messages
-//     SET is_read = 1
-//     WHERE message_id IN (?)
-//   `, [messageIds]);
+//         UPDATE messages
+//         SET is_read = 1
+//         WHERE message_id IN (?)
+//       `, [messageIdsToMarkAsRead]);
 
-//       // Emit read event to sender
+//       // Emit read event back to the original sender
 //       const { io } = require('../../../server.js');
-//       io.to(sender_id.toString()).emit('messagesRead', {
-//         messageIds,
-//         receiverId: receiver_id,
-//         receiverType: receiver_type
+//       io.to(receiver_id.toString()).emit('messagesRead', { 
+//           messageIds: messageIdsToMarkAsRead,
+//           // These fields identify who read the message, not strictly needed but good practice
+//           readerId: sender_id, 
+//           readerType: sender_type
 //       });
-
 //     }
 
 //     res.json({ success: true, messages });
@@ -112,30 +106,28 @@ const uploadAttachment = multer({
 //   }
 // };
 
+// Get messages between two users
 exports.getMessages = async (req, res) => {
   try {
     const { sender_id, receiver_id, sender_type, last_message_id = 0, receiver_type } = req.body;
 
-    // First, fetch the messages
+    // Fetch the messages
     const [messages] = await db.promise().query(`
       SELECT m.*, 
         CASE 
             WHEN m.sender_type = 'student' THEN st.name
-            WHEN m.sender_type = 'mentor' THEN u_sender.name
-            WHEN m.sender_type = 'coordinator' THEN u_sender.name
-            WHEN m.sender_type = 'admin' THEN ad_sender.name
+            WHEN m.sender_type IN ('mentor', 'coordinator', 'admin') THEN u_sender.name
         END as sender_name,
         CASE 
             WHEN m.sender_type = 'student' THEN st.profile_photo
             WHEN m.sender_type IN ('mentor', 'coordinator', 'admin') THEN up_sender.file_path
         END as sender_profile
       FROM messages m
-      -- Joins for sender's details
       LEFT JOIN students st ON m.sender_id = st.id AND m.sender_type = 'student'
       LEFT JOIN mentors ment ON m.sender_id = ment.id AND m.sender_type = 'mentor'
       LEFT JOIN coordinators co ON m.sender_id = co.id AND m.sender_type = 'coordinator'
-      LEFT JOIN admins ad_sender ON m.sender_id = ad_sender.id AND m.sender_type = 'admin'
-      LEFT JOIN Users u_sender ON (ment.phone = u_sender.phone OR co.phone = u_sender.phone OR ad_sender.phone = u_sender.phone)
+      LEFT JOIN admins ad ON m.sender_id = ad.id AND m.sender_type = 'admin'
+      LEFT JOIN Users u_sender ON (ment.phone = u_sender.phone OR co.phone = u_sender.phone OR ad.phone = u_sender.phone)
       LEFT JOIN User_photos up_sender ON u_sender.phone = up_sender.phone
       WHERE (
           (m.sender_id = ? AND m.sender_type = ? AND m.receiver_id = ? AND m.receiver_type = ?)
@@ -150,34 +142,7 @@ exports.getMessages = async (req, res) => {
       last_message_id
     ]);
 
-    // Then, mark the messages as read
-    const [messageRows] = await db.promise().query(`
-      SELECT message_id
-      FROM messages 
-      WHERE receiver_id = ? AND receiver_type = ?
-        AND sender_id = ? AND sender_type = ?
-        AND is_read = 0
-    `, [sender_id, sender_type, receiver_id, receiver_type]);
-
-    const messageIdsToMarkAsRead = messageRows.map(row => row.message_id);
-
-    if (messageIdsToMarkAsRead.length > 0) {
-      await db.promise().query(`
-        UPDATE messages
-        SET is_read = 1
-        WHERE message_id IN (?)
-      `, [messageIdsToMarkAsRead]);
-
-      // Emit read event back to the original sender
-      const { io } = require('../../../server.js');
-      io.to(receiver_id.toString()).emit('messagesRead', { 
-          messageIds: messageIdsToMarkAsRead,
-          // These fields identify who read the message, not strictly needed but good practice
-          readerId: sender_id, 
-          readerType: sender_type
-      });
-    }
-
+    // The client will mark messages as read via socket for real-time updates
     res.json({ success: true, messages });
   } catch (error) {
     console.error(error);
@@ -185,6 +150,28 @@ exports.getMessages = async (req, res) => {
   }
 };
 
+// exports.getMentorMessages = async (req, res) => {
+//   try {
+//     const { mentor_id, student_id } = req.body;
+//     if (!mentor_id || !student_id) {
+//       return res.status(400).json({ success: false, message: 'mentor_id and student_id required' });
+//     }
+//     const [rows] = await db.promise().query(`
+//       SELECT * FROM messages
+//       WHERE 
+//         (sender_id = ? AND receiver_id = ? AND sender_type = 'mentor' AND receiver_type = 'student')
+//         OR
+//         (sender_id = ? AND receiver_id = ? AND sender_type = 'student' AND receiver_type = 'mentor')
+//       ORDER BY created_at ASC
+//     `, [mentor_id, student_id, student_id, mentor_id]);
+//     res.json({ success: true, messages: rows });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ success: false, message: 'Error fetching messages' });
+//   }
+// };
+
+// Send a text message
 
 exports.getMentorMessages = async (req, res) => {
   try {
@@ -207,7 +194,51 @@ exports.getMentorMessages = async (req, res) => {
   }
 };
 
-// Send a text message
+// exports.sendMessage = async (req, res) => {
+//   try {
+//     const { sender_id, receiver_id, sender_type, message_text, receiver_type } = req.body;
+
+//     const [result] = await db.promise().query(`
+//       INSERT INTO messages (sender_id, receiver_id, sender_type, receiver_type, message_text, created_at)
+//       VALUES (?, ?, ?, ?, ?, NOW())
+//     `, [sender_id, receiver_id, sender_type, receiver_type, message_text]);
+
+//     const [newMessage] = await db.promise().query(`
+//       SELECT m.*, 
+//         CASE 
+//           WHEN m.sender_type = 'student' THEN s.name
+//           WHEN m.sender_type = 'mentor' THEN u.name
+//           WHEN m.sender_type = 'coordinator' THEN u.name
+//           WHEN m.sender_type = 'admin' THEN u.name
+//         END as sender_name,
+//         CASE 
+//           WHEN m.sender_type = 'student' THEN s.profile_photo
+//           WHEN m.sender_type = 'mentor' THEN up.file_path
+//           WHEN m.sender_type = 'coordinator' THEN up.file_path
+//           WHEN m.sender_type = 'admin' THEN up.file_path
+//         END as sender_profile
+//       FROM messages m
+//       LEFT JOIN students s ON m.sender_id = s.id AND m.sender_type = 'student'
+//       LEFT JOIN mentors mt ON m.sender_id = mt.id AND m.sender_type = 'mentor'
+//       LEFT JOIN coordinators c ON m.sender_id = c.id AND m.sender_type = 'coordinator'
+//       LEFT JOIN admins adn ON m.sender_id = adn.id AND m.sender_type = 'admin'
+//       LEFT JOIN Users u ON mt.phone = u.phone
+//       LEFT JOIN User_photos up ON mt.phone = up.phone
+//       WHERE m.message_id = ?
+//     `, [result.insertId]);
+
+//     res.json({ success: true, message: newMessage[0] });
+
+//     // Notify receiver via WebSocket or push notification
+//     notifyReceiver(receiver_id, receiver_type, newMessage[0]);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ success: false, message: 'Error sending message' });
+//   }
+// };
+
+// Send an attachment
+
 exports.sendMessage = async (req, res) => {
   try {
     const { sender_id, receiver_id, sender_type, message_text, receiver_type } = req.body;
@@ -218,45 +249,75 @@ exports.sendMessage = async (req, res) => {
     `, [sender_id, receiver_id, sender_type, receiver_type, message_text]);
 
     const [newMessage] = await db.promise().query(`
-      SELECT m.*, 
-        CASE 
-          WHEN m.sender_type = 'student' THEN s.name
-          WHEN m.sender_type = 'mentor' THEN u.name
-          WHEN m.sender_type = 'coordinator' THEN u.name
-          WHEN m.sender_type = 'admin' THEN u.name
-        END as sender_name,
-        CASE 
-          WHEN m.sender_type = 'student' THEN s.profile_photo
-          WHEN m.sender_type = 'mentor' THEN up.file_path
-          WHEN m.sender_type = 'coordinator' THEN up.file_path
-          WHEN m.sender_type = 'admin' THEN up.file_path
-        END as sender_profile
-      FROM messages m
-      LEFT JOIN students s ON m.sender_id = s.id AND m.sender_type = 'student'
-      LEFT JOIN mentors mt ON m.sender_id = mt.id AND m.sender_type = 'mentor'
-      LEFT JOIN coordinators c ON m.sender_id = c.id AND m.sender_type = 'coordinator'
-      LEFT JOIN admins adn ON m.sender_id = adn.id AND m.sender_type = 'admin'
-      LEFT JOIN Users u ON mt.phone = u.phone
-      LEFT JOIN User_photos up ON mt.phone = up.phone
-      WHERE m.message_id = ?
+      SELECT * FROM messages WHERE message_id = ?
     `, [result.insertId]);
 
     res.json({ success: true, message: newMessage[0] });
-
-    // Notify receiver via WebSocket or push notification
-    notifyReceiver(receiver_id, receiver_type, newMessage[0]);
+    
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Error sending message' });
   }
 };
 
-// Send an attachment
+// exports.sendAttachment = async (req, res) => {
+//   try {
+//     const { sender_id, receiver_id, sender_type, receiver_type } = req.body;
+//     const file = req.file;
+//     console.log(file);
+
+//     if (!file) {
+//       return res.status(400).json({ success: false, message: 'No file uploaded' });
+//     }
+
+//     const fileType = getFileType(file.mimetype);
+//     const filePath = `/message_attachments/${file.filename}`;
+
+
+
+//     const [result] = await db.promise().query(`
+//       INSERT INTO messages (sender_id, receiver_id, sender_type, receiver_type, attachment_path, attachment_type, created_at)
+//       VALUES (?, ?, ?, ?, ?, ?, NOW())
+//     `, [sender_id, receiver_id, sender_type, receiver_type, filePath, fileType]);
+
+//     const [newMessage] = await db.promise().query(`
+//       SELECT m.*, 
+//         CASE 
+//           WHEN m.sender_type = 'student' THEN s.name
+//           WHEN m.sender_type = 'mentor' THEN u.name
+//           WHEN m.sender_type = 'coordinator' THEN u.name
+//           WHEN m.sender_type = 'admin' THEN u.name
+//         END as sender_name,
+//         CASE 
+//           WHEN m.sender_type = 'student' THEN s.profile_photo
+//           WHEN m.sender_type = 'mentor' THEN up.file_path
+//           WHEN m.sender_type = 'coordinator' THEN up.file_path
+//           WHEN m.sender_type = 'admin' THEN up.file_path
+//         END as sender_profile
+//       FROM messages m
+//       LEFT JOIN students s ON m.sender_id = s.id AND m.sender_type = 'student'
+//       LEFT JOIN mentors mt ON m.sender_id = mt.id AND m.sender_type = 'mentor'
+//       LEFT JOIN coordinators c ON m.sender_id = c.id AND m.sender_type = 'coordinator'
+//       LEFT JOIN admins adn ON m.sender_id = adn.id AND m.sender_type = 'admin'
+//       LEFT JOIN Users u ON mt.phone = u.phone
+//       LEFT JOIN User_photos up ON mt.phone = up.phone
+//       WHERE m.message_id = ?
+//     `, [result.insertId]);
+
+//     res.json({ success: true, message: newMessage[0] });
+
+//     // Notify receiver via WebSocket or push notification
+//     notifyReceiver(receiver_id, receiver_type, newMessage[0]);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ success: false, message: 'Error sending attachment' });
+//   }
+// };
+
 exports.sendAttachment = async (req, res) => {
   try {
     const { sender_id, receiver_id, sender_type, receiver_type } = req.body;
     const file = req.file;
-    console.log(file);
 
     if (!file) {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -265,48 +326,23 @@ exports.sendAttachment = async (req, res) => {
     const fileType = getFileType(file.mimetype);
     const filePath = `/message_attachments/${file.filename}`;
 
-
-
     const [result] = await db.promise().query(`
       INSERT INTO messages (sender_id, receiver_id, sender_type, receiver_type, attachment_path, attachment_type, created_at)
       VALUES (?, ?, ?, ?, ?, ?, NOW())
     `, [sender_id, receiver_id, sender_type, receiver_type, filePath, fileType]);
 
     const [newMessage] = await db.promise().query(`
-      SELECT m.*, 
-        CASE 
-          WHEN m.sender_type = 'student' THEN s.name
-          WHEN m.sender_type = 'mentor' THEN u.name
-          WHEN m.sender_type = 'coordinator' THEN u.name
-          WHEN m.sender_type = 'admin' THEN u.name
-        END as sender_name,
-        CASE 
-          WHEN m.sender_type = 'student' THEN s.profile_photo
-          WHEN m.sender_type = 'mentor' THEN up.file_path
-          WHEN m.sender_type = 'coordinator' THEN up.file_path
-          WHEN m.sender_type = 'admin' THEN up.file_path
-        END as sender_profile
-      FROM messages m
-      LEFT JOIN students s ON m.sender_id = s.id AND m.sender_type = 'student'
-      LEFT JOIN mentors mt ON m.sender_id = mt.id AND m.sender_type = 'mentor'
-      LEFT JOIN coordinators c ON m.sender_id = c.id AND m.sender_type = 'coordinator'
-      LEFT JOIN admins adn ON m.sender_id = adn.id AND m.sender_type = 'admin'
-      LEFT JOIN Users u ON mt.phone = u.phone
-      LEFT JOIN User_photos up ON mt.phone = up.phone
-      WHERE m.message_id = ?
+      SELECT * FROM messages WHERE message_id = ?
     `, [result.insertId]);
 
     res.json({ success: true, message: newMessage[0] });
 
-    // Notify receiver via WebSocket or push notification
-    notifyReceiver(receiver_id, receiver_type, newMessage[0]);
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Error sending attachment' });
   }
 };
 
-// Helper function to determine file type
 function getFileType(mimetype) {
   if (mimetype.startsWith('image/')) return 'image';
   if (mimetype.startsWith('audio/')) return 'audio';
@@ -319,25 +355,90 @@ function getFileType(mimetype) {
 }
 
 // Delete messages
+// exports.deleteMessages = async (req, res) => {
+//   try {
+//     const { message_ids } = req.body;
+
+//     if (!message_ids || !Array.isArray(message_ids)) {
+//       return res.status(400).json({ success: false, message: 'Invalid message IDs' });
+//     }
+
+//     // Delete messages from database
+//     await db.promise().query(`
+//       DELETE FROM messages 
+//       WHERE message_id IN (?)
+//     `, [message_ids]);
+
+//     res.json({ success: true });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ success: false, message: 'Error deleting messages' });
+//   }
+// };
+
 exports.deleteMessages = async (req, res) => {
   try {
     const { message_ids } = req.body;
-
-    if (!message_ids || !Array.isArray(message_ids)) {
+    if (!message_ids || !Array.isArray(message_ids) || message_ids.length === 0) {
       return res.status(400).json({ success: false, message: 'Invalid message IDs' });
     }
-
-    // Delete messages from database
-    await db.promise().query(`
-      DELETE FROM messages 
-      WHERE message_id IN (?)
-    `, [message_ids]);
-
+    await db.promise().query(`DELETE FROM messages WHERE message_id IN (?)`, [message_ids]);
     res.json({ success: true });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Error deleting messages' });
   }
+};
+
+const getInboxQuery = (user_type, user_id, grade_ids = []) => {
+    const is_mentor_or_coord = ['mentor', 'coordinator'].includes(user_type);
+
+    return `
+    WITH conversations AS (
+        SELECT 
+            m1.*,
+            IF(m1.sender_id = ? AND m1.sender_type = ?, m1.receiver_id, m1.sender_id) AS contact_id,
+            IF(m1.sender_id = ? AND m1.sender_type = ?, m1.receiver_type, m1.sender_type) AS contact_type
+        FROM messages m1
+        INNER JOIN (
+            SELECT MAX(message_id) AS max_id
+            FROM messages
+            WHERE (sender_id = ? AND sender_type = ?) OR (receiver_id = ? AND receiver_type = ?)
+            GROUP BY LEAST(CONCAT(sender_id, sender_type), CONCAT(receiver_id, receiver_type)),
+                     GREATEST(CONCAT(sender_id, sender_type), CONCAT(receiver_id, receiver_type))
+        ) m2 ON m1.message_id = m2.max_id
+    ),
+    unread_counts AS (
+        SELECT sender_id, sender_type, COUNT(*) AS unread_count
+        FROM messages
+        WHERE receiver_id = ? AND receiver_type = ? AND is_read = 0
+        GROUP BY sender_id, sender_type
+    )
+    SELECT 
+        c.*,
+        COALESCE(uc.unread_count, 0) AS unread_received_count,
+        st.name as student_name, st.profile_photo as student_profile,
+        u.name as user_name, up.file_path as user_profile,
+        s.grade_id, s.section_name,
+        CASE
+            WHEN c.contact_type = 'student' THEN st.name
+            ELSE u.name
+        END AS contact_name,
+        CASE
+            WHEN c.contact_type = 'student' THEN st.profile_photo
+            ELSE up.file_path
+        END AS contact_profile
+    FROM conversations c
+    LEFT JOIN unread_counts uc ON c.contact_id = uc.sender_id AND c.contact_type = uc.sender_type
+    LEFT JOIN students st ON c.contact_id = st.id AND c.contact_type = 'student'
+    LEFT JOIN mentors m ON c.contact_id = m.id AND c.contact_type = 'mentor'
+    LEFT JOIN coordinators co ON c.contact_id = co.id AND c.contact_type = 'coordinator'
+    LEFT JOIN admins ad ON c.contact_id = ad.id AND c.contact_type = 'admin'
+    LEFT JOIN Users u ON u.phone IN (m.phone, co.phone, ad.phone)
+    LEFT JOIN User_photos up ON up.phone = u.phone
+    LEFT JOIN Sections s ON s.id IN (st.section_id, m.section_id)
+    ORDER BY c.created_at DESC
+    `;
 };
 
 // Get all conversations for a mentor (inbox)
@@ -718,69 +819,40 @@ function notifyReceiver(receiver_id, receiver_type, message) {
 
 
 //encrypt
+// E2EE Key Management
 exports.keysUpload = async (req, res) => {
   const { user_id, user_type, public_key } = req.body;
-  console.log(user_id, user_type, public_key);
-  
-
   if (!user_id || !user_type || !public_key) {
     return res.status(400).json({ success: false, message: 'Missing fields' });
   }
-
   try {
     await db.promise().query(
       `REPLACE INTO user_keys (user_id, user_type, public_key) VALUES (?, ?, ?)`,
       [user_id, user_type, public_key]
     );
-    res.json({ success: true });
+    res.json({ success: true, message: 'Key uploaded successfully' });
   } catch (error) {
     console.error('Key upload error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// GET /api/keys/:user_type/:user_id
 exports.keys = async (req, res) => {
   const { user_type, user_id } = req.params;
-
   try {
     const [rows] = await db.promise().query(
       `SELECT public_key FROM user_keys WHERE user_id = ? AND user_type = ?`,
       [user_id, user_type]
     );
-
     if (rows.length > 0) {
-      // Ensure the key is in hex format (not Base64)
-      const publicKey = rows[0].public_key;
-      if (!/^[0-9a-fA-F]+$/.test(publicKey)) {
-        // If stored as Base64, convert to hex (temporary fix)
-        const hexKey = Buffer.from(publicKey, 'base64').toString('hex');
-        return res.json({ success: true, public_key: hexKey });
-      }
-      return res.json({ success: true, public_key: publicKey });
+      return res.json({ success: true, public_key: rows[0].public_key });
     }
-
-    // 🔐 No key found – generate one
-    const ecdh = crypto.createECDH('secp256k1');
-    ecdh.generateKeys();
-    const publicKey = ecdh.getPublicKey('hex');
-    const privateKey = ecdh.getPrivateKey('hex');
-
-    // Save public key
-    await db.promise().query(
-      `INSERT INTO user_keys (user_id, user_type, public_key) VALUES (?, ?, ?)`,
-      [user_id, user_type, publicKey]
-    );
-
-    // Save privateKey to file system or separate encrypted store (not DB for security)
-    const fs = require('fs');
-    const keyDir = path.join(__dirname, '../../../keys');
-    if (!fs.existsSync(keyDir)) fs.mkdirSync(keyDir);
-    fs.writeFileSync(`${keyDir}/${user_type}_${user_id}_priv.key`, privateKey);
-
-    return res.json({ success: true, public_key: publicKey });
+    // IMPORTANT: In a real-world scenario, the client MUST upload a key first.
+    // Returning a 404 is the correct behavior if no key is found.
+    // The client-side logic is now responsible for handling this.
+    res.status(404).json({ success: false, message: 'Public key not found for this user.' });
   } catch (error) {
-    console.error('Key fetch or generation error:', error);
+    console.error('Key fetch error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
