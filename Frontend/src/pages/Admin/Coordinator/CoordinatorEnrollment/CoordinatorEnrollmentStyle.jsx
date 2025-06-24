@@ -157,12 +157,15 @@ const styles = StyleSheet.create({
   },
   
   // Checkbox styles
-  checkboxContainer: {
+    checkboxContainer: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 6,
     padding: 12,
     backgroundColor: '#fff',
+    flexDirection: 'row',
+    flexWrap: 'wrap',  
+    gap: 10,                
   },
   gradeHeaderText: {
     fontSize: 14,

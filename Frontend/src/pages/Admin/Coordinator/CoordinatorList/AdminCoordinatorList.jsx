@@ -125,7 +125,7 @@ const AdminCoordinatorList = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.contentContainer}>
         {(searchText ? filteredCoordinators : coordinators).map((coordinator, index) => (
           <TouchableOpacity
-            key={coordinator.id}
+            key={index}
             style={styles.listItem}
             onPress={() => handleCoordinatorPress(coordinator)}
           >
@@ -135,7 +135,7 @@ const AdminCoordinatorList = ({ navigation }) => {
               <Image source={Staff} style={styles.studentAvatar} />
             )}
             <View style={styles.listContent}>
-              <Text style={styles.listName}>{coordinator.name}</Text>
+              <Text style={styles.listName}>{coordinator.name}</Text> 
               <Text style={styles.listId}>{coordinator.roll}</Text>
             </View>
             <View style={styles.removeButton}>

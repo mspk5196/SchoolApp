@@ -425,7 +425,7 @@ const MentorEnrollment = ({ navigation, route }) => {
               activeOpacity={1}
               onPress={() => setShowGradeModal(false)}
             >
-              <View style={styles.listModalContainer}>
+              <ScrollView style={styles.listModalContainer}>
                 {gradeOptions.map(item => (
                   <TouchableOpacity
                     key={item.id}
@@ -438,7 +438,7 @@ const MentorEnrollment = ({ navigation, route }) => {
                     <Text style={styles.listModalItemText}>{item.grade_name}</Text>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
             </TouchableOpacity>
           </Modal>
         </View>

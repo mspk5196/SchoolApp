@@ -29,7 +29,9 @@ const AdminHomePage = ({ navigation }) => {
   const fetchAdminData = async () => {
     const storedData = await AsyncStorage.getItem('adminData');
     if (storedData) {
-      setAdminData(storedData)
+      const parsedData = JSON.parse(storedData); // Parse the JSON string
+      setAdminData(parsedData);
+      // console.log('Admin data fetched:', parsedData.phone);
     }
   }
 
@@ -82,38 +84,6 @@ const AdminHomePage = ({ navigation }) => {
       });
     }
   }
-
-  // const handleLogout = async () => {
-  //   try {
-  //     // Remove the user data from AsyncStorage
-  //     await AsyncStorage.removeItem('userPhone');
-  //     await AsyncStorage.removeItem('userRoles');
-
-  //     // You can clear any other data if needed, like admin or coordinator data
-  //     await AsyncStorage.removeItem('adminData');
-  //     await AsyncStorage.removeItem('coordinatorData');
-  //     await AsyncStorage.removeItem('studentData');
-  //     await AsyncStorage.removeItem('mentorData');
-
-  //     // Show a logout confirmation (optional)
-  //     Alert.alert('Logged Out', 'You have successfully logged out.');
-
-  //     // Redirect to the Welcome or Login screen
-
-  //     navigation.reset({
-  //       index: 0,
-  //       routes: [{ name: 'Welcome' }],  // Navigate to the Welcome screen after logout
-  //     });
-
-  //   } catch (error) {
-  //     console.error('Error during logout:', error);
-  //     Alert.alert('Error', 'There was an issue logging out. Please try again.');
-  //   }
-  // };
-
-  // const cancelLogout = () => {
-  //   setShowLogoutModal(false);
-  // };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -251,7 +221,7 @@ const AdminHomePage = ({ navigation }) => {
             <Text style={styles.menuText}>Messages</Text>
           </Pressable>
 
-        </View> 
+        </View>
         <LogoutModal
           visible={showLogoutModal}
           onClose={() => setShowLogoutModal(false)}

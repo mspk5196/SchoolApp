@@ -37,6 +37,8 @@ const Redirect = ({ route }) => {
   }, [exitApp, navigation]);
 
   useEffect(() => {
+    // console.log(phoneNumber);   
+    
     const fetchRoles = async () => {
       try {
         const storedRoles = await AsyncStorage.getItem('userRoles');

@@ -283,7 +283,8 @@ const AdminEvent = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/admin/grades`);
       const data = await response.json();
       if (data.success) {
-        setGrades(data.grades);
+        const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);
+        setGrades(sortedGrades);
         if (data.grades.length > 0) {
           setActiveGrade(data.grades[0].id);
         }

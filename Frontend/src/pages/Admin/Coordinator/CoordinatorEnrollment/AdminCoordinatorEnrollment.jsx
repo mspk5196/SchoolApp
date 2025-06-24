@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Alert, Modal } from 'react-native';
 import DocumentPicker from 'react-native-document-picker';
 import { launchImageLibrary } from 'react-native-image-picker';
 import CalenderIcon from '../../../../assets/AdminPage/CoordinatorEnrollment/Calender.svg';
-import BackIcon from     '../../../../assets/AdminPage/CoordinatorEnrollment/Back.svg';
-import PlusIcon from     '../../../../assets/AdminPage/CoordinatorEnrollment/Plus.svg';
+import BackIcon from '../../../../assets/AdminPage/CoordinatorEnrollment/Back.svg';
+import PlusIcon from '../../../../assets/AdminPage/CoordinatorEnrollment/Plus.svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import styles from './CoordinatorEnrollmentStyle';
-import {API_URL} from '../../../../utils/env.js'
+import { API_URL } from '../../../../utils/env.js'
+import { log } from 'console';
 
 const AdminCoordinatorEnrollment = ({ navigation }) => {
   const [coordinator, setCoordinator] = useState({
@@ -37,23 +38,23 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
 
   const handleGradeCheckbox = (grade) => {
     const currentSelected = [...coordinator.selectedGrades];
-    
+
     if (currentSelected.includes(grade)) {
       // Remove grade if already selected
       const newSelected = currentSelected.filter(g => g !== grade);
-      setCoordinator({ 
-        ...coordinator, 
+      setCoordinator({
+        ...coordinator,
         selectedGrades: newSelected
       });
     } else {
       // Add grade if not selected
       const newSelected = [...currentSelected, grade];
-      setCoordinator({ 
-        ...coordinator, 
+      setCoordinator({
+        ...coordinator,
         selectedGrades: newSelected
       });
     }
-    
+
     // Clear error if at least one grade is selected
     if (errors.grade && currentSelected.length > 0) {
       setErrors({ ...errors, grade: null });
@@ -85,7 +86,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
 
     try {
       const response = await launchImageLibrary(options);
-      
+
       if (response.didCancel) {
         console.log('User cancelled image picker');
       } else if (response.errorCode) {
@@ -143,6 +144,38 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
     return isValid;
   };
 
+  const [grades, setGrades] = useState([]);
+  const [maxGrade, setMaxGrade] = useState([]);
+
+  const fetchGrades = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/grades`);
+      const data = await response.json();
+      if (response.ok) {
+        // Sort grades by id before setting state
+        const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);
+        setGrades(sortedGrades);
+        getMaxGradeId(sortedGrades);
+      } else {
+        console.error('Failed to fetch grades:', data.message);
+        Alert.alert('Error', 'Failed to fetch grades. Please try again later.');
+      }
+    } catch (error) {
+      console.error('Fetch error:', error);
+      Alert.alert('Error', 'Failed to fetch grades. Please check your internet connection.');
+    }
+  };
+
+  function getMaxGradeId(grades) {
+    if (!grades || grades.length === 0) return null;
+    setMaxGrade(Math.max(...grades.map(g => g.id)))
+    return Math.max(...grades.map(g => g.id));
+  }
+
+  useEffect(() => {
+    fetchGrades();
+  }, []);
+
   const handleSubmit = async () => {
     if (!validateForm()) {
       Alert.alert('Incomplete Form', 'Please fill all required fields before submitting.');
@@ -156,7 +189,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
       formData.append('gender', coordinator.gender);
       formData.append('mobileNumber', coordinator.mobileNumber);
       formData.append('specification', coordinator.specification);
-      
+
       // Add each selected grade
       coordinator.selectedGrades.forEach(grade => {
         formData.append('grades', grade);
@@ -170,7 +203,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
         });
       }
       console.log(formData);
-      
+
       const response = await fetch(`${API_URL}/api/admin/enrollCoordinator`, {
         method: 'POST',
         body: formData,
@@ -197,36 +230,11 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
     navigation.goBack();
   };
 
-  const renderCheckboxRow = (startIndex, count) => {
-    const rowItems = [];
-    for (let i = 0; i < count; i++) {
-      const grade = startIndex + i;
-      if (grade <= 9) { // Only show grades 1-9
-        rowItems.push(
-          <View key={grade} style={styles.checkboxItem}>
-            <TouchableOpacity
-              style={[styles.checkbox, coordinator.selectedGrades.includes(grade) && styles.checkboxChecked]}
-              onPress={() => handleGradeCheckbox(grade)}
-            >
-              {coordinator.selectedGrades.includes(grade) && <Text style={styles.checkmark}>✓</Text>}
-            </TouchableOpacity>
-            <Text style={styles.checkboxLabel}>Grade {grade}</Text>
-          </View>
-        );
-      }
-    }
-    return (
-      <View style={styles.checkboxRow}>
-        {rowItems}
-      </View>
-    );
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
+        <TouchableOpacity
+          style={styles.backButton} 
           onPress={() => navigation && navigation.goBack()}
         >
           <BackIcon color="black" />
@@ -355,9 +363,22 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Select grade(s)<Text style={styles.requiredAsterisk}>*</Text></Text>
           <View style={[styles.checkboxContainer, errors.grade ? styles.inputError : null]}>
-            {renderCheckboxRow(1, 3)}
-            {renderCheckboxRow(4, 3)}
-            {renderCheckboxRow(7, 3)}
+            {grades.map((grade) => (
+              <View key={grade.id} style={styles.checkboxItem}>
+                <TouchableOpacity
+                  style={[
+                    styles.checkbox,
+                    coordinator.selectedGrades.includes(grade.id) && styles.checkboxChecked,
+                  ]}
+                  onPress={() => handleGradeCheckbox(grade.id)}
+                >
+                  {coordinator.selectedGrades.includes(grade.id) && (
+                    <Text style={styles.checkmark}>✓</Text>
+                  )}
+                </TouchableOpacity>
+                <Text style={styles.checkboxLabel}>{grade.grade_name}</Text>
+              </View>
+            ))}
           </View>
           {errors.grade && <Text style={styles.errorText}>{errors.grade}</Text>}
         </View>

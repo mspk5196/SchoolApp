@@ -1173,15 +1173,24 @@ exports.enrollMentor = async (req, res) => {
     const gradeNumber = typeof grade === 'string' ? grade.match(/\d+/)?.[0] : grade;
 
     // Get current student count for this grade
-    const countResult = await con.query(
-      `SELECT COUNT(*) as mentor_count 
-       FROM Mentors m`,
-    );
+    // 1. Get mentor count safely
+    const [countResult] = await con.query(`SELECT COUNT(*) AS mentor_count FROM Mentors`);
 
-    const mentorCount = countResult.length > 0 ? countResult[0].mentor_count + 1 : 1;
-    // console.log(countResult);
-    // Generate roll number in S1001 format
-    const newRoll = `M${String(mentorCount).padStart(3, '0')}`;
+    const mentorCountRaw = countResult?.[0]?.mentor_count;
+    const mentorCount = Number(mentorCountRaw);
+
+    if (isNaN(mentorCount)) {
+      console.error('❌ Invalid mentor count:', mentorCountRaw);
+      throw new Error('Mentor count is invalid, cannot generate roll');
+    }
+
+    // 2. Add 1 to get new roll number
+    const nextMentorNumber = mentorCount + 1;
+
+    // 3. Generate formatted roll
+    const newRoll = `M${String(nextMentorNumber).padStart(3, '0')}`;
+
+    console.log('✅ New mentor roll:', newRoll);
     const photoPath = profilePhoto.path;
 
     // Start transaction
@@ -2708,8 +2717,8 @@ LEFT JOIN User_photos ups ON fd.registered_by_phone = ups.phone
 ORDER BY fd.registered_at DESC;
 
 
-    `);    
-      
+    `);
+
     res.status(200).json({ success: true, logs: rows });
   } catch (error) {
     console.error("Error fetching discipline logs:", error);
