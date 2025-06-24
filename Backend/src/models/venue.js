@@ -42,7 +42,7 @@ class Venue {
       SELECT v.*, 
         GROUP_CONCAT(DISTINCT g.grade_name) as grade_names,
         GROUP_CONCAT(DISTINCT g.id) as grade_ids,
-        s.subject_name as subject
+        ANY_VALUE(s.subject_name) as subject
       FROM venues v
       LEFT JOIN venue_grades vg ON v.id = vg.venue_id
       LEFT JOIN grades g ON vg.grade_id = g.id

@@ -2525,7 +2525,6 @@ exports.assignMentorToSection = async (req, res) => {
 };
 
 
-
 exports.createSection = async (req, res) => {
   const { name, grade_id } = req.body;
   try {
