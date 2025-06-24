@@ -9,6 +9,7 @@ import { API_URL } from '../../../../utils/env.js';
 
 const AddInfraEnrollment = ({ navigation, route }) => {
   const editVenue = route.params?.venue;
+  const phoneNo = route.params?.phone;
   const isEditing = !!editVenue;
   const [loading, setLoading] = useState(false);
 
@@ -167,7 +168,8 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       grade_ids: selectedGrades.length > 0 ? selectedGrades : [],
       subject_id: formData.subject ? parseInt(formData.subject, 10) : null,
       type: formData.type,
-      status: formData.status
+      status: formData.status,
+      created_by: phoneNo || '9876543201' // Default to 'admin' if phoneNo is not provided
     };
 
     try {

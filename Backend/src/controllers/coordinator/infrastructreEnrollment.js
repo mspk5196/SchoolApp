@@ -56,7 +56,8 @@ exports.createVenue = async (req, res) => {
       capacity: parseInt(venueData.capacity, 10),
       subject_id: venueData.subject_id || null,
       type: venueData.type,
-      status: venueData.status || 'InActive'
+      status: venueData.status || 'InActive',
+      created_by: venueData.created_by || '9876543201', // Default to 'admin' if not provided
     };
     
     // Add the grades array separately to be handled in the model

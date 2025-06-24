@@ -81,6 +81,7 @@ const Block = ({ title, classrooms, onEdit, onToggleStatus, onDelete }) => {
 };
 
 const InfrastructureEnrollment = ({ navigation, route }) => {
+  const { coordinatorData } = route.params || {};
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -283,7 +284,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
         {/* Floating Action Button */}
         <TouchableOpacity
           style={styles.floatingButton}
-          onPress={() => navigation.navigate('AddInfraEnrollment')}
+          onPress={() => navigation.navigate('AddInfraEnrollment',{ phone:coordinatorData.phone })}
         >
           <AddIcon width={20} height={20} />
         </TouchableOpacity>
