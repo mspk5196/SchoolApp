@@ -194,7 +194,7 @@ router.post('/coordinator/mentor/assignSubjectToMentorSection', coordinatorContr
 router.post('/coordinator/mentor/getEnroledSubjectMentors', coordinatorController.getEnroledSubjectMentors);
 router.post('/coordinator/mentor/getEnroledGradeSubjectMentor', coordinatorController.getEnroledGradeSubjectMentor);
 router.post('/coordinator/mentor/getMentorSchedule', coordinatorController.getMentorSchedule);
-router.post('/coordinator/mentor/available-substitute-mentors', coordinatorController.getAvailableMentors);
+router.post('/coordinator/mentor/available-substitute-mentors', coordinatorController.getAvailableMentorsForSubstitution);
 router.post('/coordinator/mentor/substitute-mentor', coordinatorController.updateMentorSubstitution);
 //Discipline
 router.post('/coordinator/mentor/addFacultyComplaint', coordinatorController.addFacultyComplaint);

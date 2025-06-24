@@ -302,7 +302,7 @@ exports.getMentorSchedule = (req, res) => {
 
 //MentorSubstitution
 // Get available mentors for substitution
-exports.getAvailableMentors = async (req, res) => {
+exports.getAvailableMentorsForSubstitution = async (req, res) => {
   try {
     const { sectionId, date, startTime, endTime, currentMentorId } = req.body;
 
