@@ -2402,12 +2402,73 @@ exports.getGradeNonEnroledMentors = (req, res) => {
   });
 };
 // Assign mentor to section
+// exports.assignMentorToSection = async (req, res) => {
+//   const { mentor_id, grade_id } = req.body;
+
+//   try {
+//     // Step 1: Get all sections for the grade
+//     const sections = await db.promise().query(
+//       'SELECT id FROM Sections WHERE grade_id = ?',
+//       [grade_id]
+//     );
+
+//     let assignedSectionId = null;
+
+//     // Step 2: Check for an unassigned section
+//     for (const section of sections) {
+//       const mentorCheck = await db.promise().query(
+//         'SELECT id FROM Mentors WHERE section_id = ?',
+//         [section.id]
+//       );
+//       if (mentorCheck.length === 0) {
+//         assignedSectionId = section.id;
+//         break;
+//       }
+//     }
+
+//     // Step 3: If no unassigned section found, create a new one
+//     if (!assignedSectionId) {
+//       const newSectionName = `Section ${String.fromCharCode(65 + sections.length)}`; // A, B, C, ...
+//       const createResult = await db.promise().query(
+//         'INSERT INTO Sections (section_name, grade_id) VALUES (?, ?)',
+//         [newSectionName, grade_id]
+//       );
+//       assignedSectionId = createResult.insertId;
+//     }
+
+//     // Step 4: Assign mentor to the section
+//     await db.promise().query(
+//       'UPDATE Mentors SET section_id = ?, grade_id = ? WHERE id = ?',
+//       [assignedSectionId, grade_id, mentor_id]
+//     );
+
+//     // Step 5: Update students in the section
+//     await db.promise().query(
+//       'UPDATE Students SET mentor_id = ? WHERE section_id = ?',
+//       [mentor_id, assignedSectionId]
+//     );
+
+//     res.json({
+//       success: true,
+//       message: 'Mentor assigned to section successfully',
+//       section_id: assignedSectionId
+//     });
+
+//   } catch (error) {
+//     console.error('Error assigning mentor:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Database error'
+//     });
+//   }
+// };
+
 exports.assignMentorToSection = async (req, res) => {
   const { mentor_id, grade_id } = req.body;
 
   try {
     // Step 1: Get all sections for the grade
-    const sections = await db.promise().query(
+    const [sections] = await db.promise().query(
       'SELECT id FROM Sections WHERE grade_id = ?',
       [grade_id]
     );
@@ -2416,7 +2477,7 @@ exports.assignMentorToSection = async (req, res) => {
 
     // Step 2: Check for an unassigned section
     for (const section of sections) {
-      const mentorCheck = await db.promise().query(
+      const [mentorCheck] = await db.promise().query(
         'SELECT id FROM Mentors WHERE section_id = ?',
         [section.id]
       );
@@ -2429,7 +2490,7 @@ exports.assignMentorToSection = async (req, res) => {
     // Step 3: If no unassigned section found, create a new one
     if (!assignedSectionId) {
       const newSectionName = `Section ${String.fromCharCode(65 + sections.length)}`; // A, B, C, ...
-      const createResult = await db.promise().query(
+      const [createResult] = await db.promise().query(
         'INSERT INTO Sections (section_name, grade_id) VALUES (?, ?)',
         [newSectionName, grade_id]
       );
@@ -2462,6 +2523,7 @@ exports.assignMentorToSection = async (req, res) => {
     });
   }
 };
+
 
 
 exports.createSection = async (req, res) => {
