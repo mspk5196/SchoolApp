@@ -2,7 +2,7 @@ import React, { useState, useEffect, act } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import styles from './PerformanceGraphStyles';
 import { useNavigation } from '@react-navigation/native';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 
 const PerformanceGraph = ({ studentData, showTitle = true }) => {
   const [activeTab, setActiveTab] = useState('Overall');

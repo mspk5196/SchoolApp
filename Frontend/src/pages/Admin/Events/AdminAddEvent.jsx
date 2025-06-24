@@ -14,7 +14,7 @@ import {
 import styles from './AddEventStyle';
 import PreviousIcon from '../../../assets/AdminPage/Basicimg/PrevBtn.svg';
 import CalendarIcon from '../../../assets/AdminPage/Event/Date.svg';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DocumentPicker from 'react-native-document-picker';
 

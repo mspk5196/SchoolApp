@@ -4,7 +4,7 @@ import styles from "./BufferActivitysty";
 import Back from "../../../../assets/MentorPage/backarrow.svg";
 import Add from "../../../../assets/MentorPage/Add.svg";
 import Home from "../../../../assets/MentorPage/Home2.svg";
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 
 const MentorBufferActivity = ({ navigation, route }) => {
     const { mentorData } = route.params;

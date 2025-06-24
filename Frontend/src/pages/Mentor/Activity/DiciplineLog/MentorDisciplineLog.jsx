@@ -6,7 +6,7 @@ import Add from "../../../../assets/MentorPage/Add.svg";
 import SearchIcon from "../../../../assets/MentorPage/search.svg";
 import Call from "../../../../assets/MentorPage/call.svg";
 import Message from "../../../../assets/MentorPage/text.svg";
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 const Staff = '../../../../assets/AdminPage/StudentHome/Issuelog/staff.png'
 
 const MentorDisciplineLog = ({ navigation, route }) => {

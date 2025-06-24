@@ -7,7 +7,7 @@ import MentorListIcon from '../../../../assets/AdminPage/MentorHome/mentorlist.s
 import DisciplineIcon from '../../../../assets/AdminPage/MentorHome/mapping.svg';
 import Freehour from '../../../../assets/AdminPage/MentorHome/Freehour.svg';
 import HomeIcon from '../../../../assets/AdminPage/MentorHome/home.svg';
-import {API_URL} from '@env'
+import {API_URL} from '../../../../utils/env.js'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const data = [

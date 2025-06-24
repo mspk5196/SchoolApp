@@ -4,7 +4,7 @@ import styles from './EmergencyLeavesty';
 import Back from '../../../../assets/MentorPage/backarrow.svg';
 import SearchIcon from '../../../../assets/MentorPage/search.svg';
 import History from '../../../../assets/MentorPage/history3.svg';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 
 const MentorEmergencyLeave = ({ navigation, route }) => {
   const { mentorData } = route.params;

@@ -7,7 +7,7 @@ import Add from "../../../../assets/MentorPage/Add.svg";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import io from 'socket.io-client';
 
 const Profile = require('../../../../assets/MentorPage/profile.png');

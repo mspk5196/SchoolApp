@@ -7,7 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Home from '../../../../assets/MentorPage/home.svg';
 import LottieView from 'lottie-react-native';
 import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const MentorBufferActivityRegister = ({ navigation, route }) => {
   const { mentorData } = route.params;

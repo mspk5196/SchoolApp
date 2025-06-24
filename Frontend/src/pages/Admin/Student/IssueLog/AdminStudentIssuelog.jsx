@@ -16,7 +16,7 @@ import styles from './IssuelogStyls';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Search from '../../../../assets/AdminPage/StudentHome/studentprofile/search.svg';
 import Homeicon from '../../../../assets/AdminPage/Basicimg/Home.svg';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 const Staff = '../../../../assets/AdminPage/StudentHome/Issuelog/staff.png'
 
 const AdminStudentIssuelog = ({ navigation, route }) => {

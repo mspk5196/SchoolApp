@@ -4,7 +4,7 @@ import Arrow from '../../../../assets/MentorPage/arrow.svg';
 import styles from './Attentionssty';
 import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import Profile from '../../../../assets/MentorPage/User.svg';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const MentorDashboardAttentions = ({ navigation, route }) => {
   const { mentorData } = route.params;

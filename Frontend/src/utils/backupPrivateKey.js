@@ -1,5 +1,5 @@
 import CryptoJS from 'crypto-js';
-import { API_URL } from '@env';
+import { API_URL } from '../utils/env.js';
 
 export const backupPrivateKey = async (privateKeyHex, userId, userType, password, publicKeyHex) => {
     // Derive a key from the password

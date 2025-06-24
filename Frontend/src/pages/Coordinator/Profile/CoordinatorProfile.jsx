@@ -9,7 +9,7 @@ import Home from '../../../assets/CoordinatorPage/Profile/home.svg';
 import Leave2 from '../../../assets/CoordinatorPage/Profile/leave2.svg';
 import Grade from '../../../assets/CoordinatorPage/Profile/grade.svg';
 import styles from './ProfileStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 
 const CoordinatorProfile = ({ navigation, route }) => {
   const { coordinatorData, coordinatorGrades } = route.params;

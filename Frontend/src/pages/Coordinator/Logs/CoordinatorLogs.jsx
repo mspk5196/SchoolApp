@@ -7,7 +7,7 @@ import MessageSquare from '../../../assets/CoordinatorPage/Logs/MessageSquare.sv
 import Clock from '../../../assets/CoordinatorPage/Logs/Clock.svg';
 const Staff = require('../../../assets/CoordinatorPage/MentorList/staff.png');
 import styles from './LogsStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import { formatDate } from 'date-fns';
 
 const CoordinatorLogs = ({ navigation, route }) => {

@@ -20,7 +20,7 @@ import Holiday from      '../../../assets/AdminPage/Calendar/holiday.svg';
 import ChevronDown from  '../../../assets/AdminPage/Calendar/chevron-down.svg';
 import ChevronRight from '../../../assets/AdminPage/Calendar/chevron-right.svg';
 import styles from './CalendarStyles';
-import {API_URL} from '@env';
+import {API_URL} from '../../../utils/env.js';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const AdminCalendar = ({navigation}) => {

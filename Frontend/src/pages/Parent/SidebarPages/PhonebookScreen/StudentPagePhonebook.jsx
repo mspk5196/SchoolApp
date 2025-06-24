@@ -14,7 +14,7 @@ import CallIcon from '../../../../assets/ParentPage/phonebook/call';
 import PrevIcon from '../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
 import MsgIcon from '../../../../assets/ParentPage/phonebook/msg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 
 const ContactCard = ({ name, facultyId, subject, phoneNumber, onMessagePress, profile }) => {
   const handleCallPress = () => {

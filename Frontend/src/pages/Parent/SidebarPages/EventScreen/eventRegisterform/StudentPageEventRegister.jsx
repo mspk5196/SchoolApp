@@ -14,7 +14,7 @@ import DownIcon from '../../../../../assets/ParentPage/LeaveIcon/downline.svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import styles from './EventRegistrtStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../../utils/env.js'
 
 const StudentPageEventRegister = ({ navigation, route }) => {
   const { event } = route.params;

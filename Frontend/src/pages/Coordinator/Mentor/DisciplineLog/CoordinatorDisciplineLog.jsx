@@ -23,7 +23,7 @@ import MessageSquare from '../../../../assets/CoordinatorPage/DisciplineLog/msg.
 import SearchIcon from '../../../../assets/CoordinatorPage/DisciplineLog/search.svg';
 import styles from './DisciplineLogStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 const Staff = '../../../../assets/CoordinatorPage/DisciplineLog/staff.png';
 
 const CoordinatorDisciplineLog = ({ navigation, route }) => {

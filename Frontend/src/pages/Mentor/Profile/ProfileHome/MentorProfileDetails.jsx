@@ -10,7 +10,7 @@ import Home from '../../../../assets/MentorPage/home.svg';
 import Leave2 from '../../../../assets/MentorPage/leave2.svg';
 import Grade from '../../../../assets/MentorPage/grade.svg';
 import styles from './mentordetailssty';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 
 const MentorProfileDetails = ({ navigation, route }) => {
   const { mentorData } = route.params;

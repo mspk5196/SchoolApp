@@ -1,5 +1,5 @@
 import CryptoJS from 'crypto-js';
-import { API_URL } from '@env';
+import { API_URL } from '../utils/env.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const restorePrivateKey = async (userId, userType, password) => {

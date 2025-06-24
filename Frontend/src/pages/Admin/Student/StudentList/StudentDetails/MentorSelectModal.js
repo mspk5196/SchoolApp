@@ -11,7 +11,7 @@ import {
     ActivityIndicator,
     Alert,
 } from 'react-native';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../../utils/env.js';
 import { set } from 'date-fns';
 const Staff = require('../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/staff.png');
 

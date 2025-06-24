@@ -21,7 +21,7 @@ import HomeIcon from '../../../../assets/AdminPage/MentorList/roundhome.svg';
 import styles from './StudentProfileDetailStyle';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useState } from 'react';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 import PerformanceGraph from '../../../../components/Admin/performancegraph/Performancegraph';
 import MentorSelectModal from '../../../Admin/Student/StudentList/StudentDetails/MentorSelectModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';

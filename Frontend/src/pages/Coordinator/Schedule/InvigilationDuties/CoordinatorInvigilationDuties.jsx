@@ -22,7 +22,7 @@ import Tick from '../../../../assets/CoordinatorPage/InvigilationDuties/tick.svg
 import Tick2 from '../../../../assets/CoordinatorPage/InvigilationDuties/tick2.svg';
 import EditIcon from '../../../../assets/CoordinatorPage/InvigilationDuties/Edit.svg';
 import styles from './InvigilationDutiesStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import { format, parseISO } from 'date-fns';
 
 const CoordinatorInvigilationDuties = ({navigation, route}) => {

@@ -2,7 +2,7 @@ import { Text, View, TouchableOpacity, FlatList, ScrollView, Image, Modal, SafeA
 import PreviousIcon from '../../../assets/ParentPage/basic-img/Backicon.svg';
 import styles from './ScheduleScreenStyles';
 import ProfileImg from '../../../assets/ParentPage/ScheduleSvg/profile.png';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
 import { useEffect, useState } from 'react';

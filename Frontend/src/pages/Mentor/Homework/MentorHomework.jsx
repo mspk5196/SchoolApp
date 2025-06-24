@@ -5,7 +5,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Arrow from '../../../assets/MentorPage/arrow.svg';
 import styles from './homeworksty';
 import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
-import { API_URL } from '@env'
+import { API_URL } from '../../../utils/env.js'
 
 const MentorHomework = ({ navigation, route }) => {
   const { mentorId } = route.params;

@@ -20,7 +20,7 @@ import Tickbox from   '../../../../assets/AdminPage/SubjectMentor/tickbox.svg';
 import Tick from      '../../../../assets/AdminPage/SubjectMentor/tick.svg';
 import Oneperson from '../../../../assets/AdminPage/SubjectMentor/oneperson.svg';
 import Hat from       '../../../../assets/AdminPage/SubjectMentor/hat.svg';
-import {API_URL} from '@env'
+import {API_URL} from '../../../../utils/env.js'
 
 const AdminSubjectMentor = ({navigation, route}) => {
   const {selectedGrade} = route.params;

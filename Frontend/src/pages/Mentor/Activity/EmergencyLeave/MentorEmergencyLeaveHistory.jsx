@@ -5,7 +5,7 @@ import Back from '../../../../assets/MentorPage/backarrow.svg';
 import SearchIcon from '../../../../assets/MentorPage/search.svg';
 import CallParent from '../../../../assets/MentorPage/callparent.svg';
 import Clock from '../../../../assets/MentorPage/clock.svg';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 
 const MentorEmergencyLeaveHistory = ({ navigation, route }) => {
     const { mentorData } = route.params;

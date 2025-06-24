@@ -3,7 +3,7 @@ import { View, FlatList, SafeAreaView, StatusBar, TouchableOpacity, Text, Alert 
 import EventList from '../../../../../components/Parent/Event/EventList';
 import PreviousIcon from '../../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
 import styles from './LikedvevntsStyles';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../../utils/env.js'
 import Nodata from '../../../../../components/General/Nodata';
 
 const StudentPageLikedEvents = ({ navigation, route }) => {

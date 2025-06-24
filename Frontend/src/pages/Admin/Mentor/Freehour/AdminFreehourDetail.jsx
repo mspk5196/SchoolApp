@@ -12,7 +12,7 @@ import TimeIcon from '../../../../assets/AdminPage/FreeHour/time.svg';
 import HomeIcon from '../../../../assets/AdminPage/FreeHour/home.svg';
 import styles from './FreehourDetailStyle';
 import staff from '../../../../assets/AdminPage/SubjectMentor/staff.png';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const AdminFreehourDetail = ({ navigation, route }) => {
   const { faculty, timeSlot } = route.params;

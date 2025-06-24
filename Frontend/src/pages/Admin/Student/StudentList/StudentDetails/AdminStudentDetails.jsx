@@ -26,7 +26,7 @@ import Homeicon from '../../../../../assets/AdminPage/Basicimg/Home.svg';
 import EditIcon from '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/edit.svg'
 import PenIcon from '../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/pen.svg';
 const Staff = require('../../../../../assets/AdminPage/StudentHome/StudentProfileDetails/staff.png');
-import { API_URL } from '@env'
+import { API_URL } from '../../../../../utils/env.js'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MentorSelectModal from './MentorSelectModal';
 

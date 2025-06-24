@@ -6,7 +6,7 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-nat
 import Arrow from '../../../assets/MentorPage/arrow.svg';
 import Checkbox from '../../../assets/MentorPage/checkbox.svg';
 import Userlogo from '../../../assets/MentorPage/userlogo.svg';
-import {API_URL} from '@env'
+import {API_URL} from '../../../utils/env.js'
 import styles from './assessmentfoldersty';
 
 const MentorAssessmentRequestRegister = ({ navigation, route }) => {

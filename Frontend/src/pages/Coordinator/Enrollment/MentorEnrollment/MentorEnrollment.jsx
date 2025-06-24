@@ -8,7 +8,7 @@ import PlusIcon from '../../../../assets/CoordinatorPage/StudentMentorEnrollment
 import DeleteIcon from '../../../../assets/CoordinatorPage/StudentMentorEnrollment/delete-icon.svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import styles from './MentorEnrollmentStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const MentorEnrollment = ({ navigation, route }) => {
 

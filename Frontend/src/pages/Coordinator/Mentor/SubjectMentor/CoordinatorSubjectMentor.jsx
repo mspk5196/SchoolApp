@@ -11,7 +11,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import Modal from 'react-native-modal';
 import BackIcon from '../../../../assets/CoordinatorPage/SubjectMentor/leftarrow.svg';
 import staff from '../../../../assets/CoordinatorPage/SubjectMentor/staff.png';

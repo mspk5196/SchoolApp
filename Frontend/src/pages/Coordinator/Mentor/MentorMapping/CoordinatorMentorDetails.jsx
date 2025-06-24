@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView, Modal, Alert } from 'react-native';
 import styles from './MentorDetailsStyles';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import BackIcon from '../../../../assets/CoordinatorPage/MentorMapping/leftarrow.svg';
 import Person from '../../../../assets/CoordinatorPage/MentorMapping/person.svg';
 import Staff from '../../../../assets/CoordinatorPage/MentorMapping/staff.png';

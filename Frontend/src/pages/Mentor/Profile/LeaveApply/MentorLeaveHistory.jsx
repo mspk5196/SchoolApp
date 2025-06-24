@@ -10,7 +10,7 @@ import Rejected from '../../../../assets/MentorPage/rejected.svg';
 import Pending from '../../../../assets/MentorPage/pending.svg';
 import { fetchWithTimeout } from '../../../utils/fetchWithTimeout';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 
 const MentorLeaveHistory = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');

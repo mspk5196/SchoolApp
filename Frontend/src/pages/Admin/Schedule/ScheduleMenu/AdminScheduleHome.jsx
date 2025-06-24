@@ -7,7 +7,7 @@ import { Calendar } from 'react-native-calendars'
 import PreviousIcon from '../../../../assets/AdminPage/Basicimg/PrevBtn.svg'
 import HomeIcon from '../../../../assets/AdminPage/ScheduleMenu/Home.svg'
 import DeleteIcon from '../../../../assets/AdminPage/ScheduleMenu/Delete.svg'
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 
 const AdminScheduleHome = ({ navigation }) => {
   const [showCalendarModal, setShowCalendarModal] = useState(false);

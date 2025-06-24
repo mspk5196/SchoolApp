@@ -12,7 +12,7 @@ import AddIcon from '../../../../assets/CoordinatorPage/ExamSchedule/Add.svg';
 import MenuIcon from '../../../../assets/CoordinatorPage/ExamSchedule/Menu.svg';
 import styles, { modalStyles, frequencyStyles } from './ExamScheduleStyle';
 import { ExamProvider, useExams } from './ExamContext';
-import { API_URL } from "@env";
+import { API_URL } from "../../../../utils/env.js";
    
 const CoordinatorExamSchedule = ({ navigation, route }) => {
   const { activeGrade } = route.params;

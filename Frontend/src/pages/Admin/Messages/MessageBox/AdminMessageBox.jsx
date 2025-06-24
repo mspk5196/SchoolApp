@@ -27,7 +27,7 @@ import AudioIcon from '../../../../assets/Genreal/messages/audio-svgrepo-com.svg
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import DocumentPicker from 'react-native-document-picker';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import RNFS from 'react-native-fs';
 import RNBlobUtil from 'react-native-blob-util';
 import FileViewer from 'react-native-file-viewer';

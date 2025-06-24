@@ -20,9 +20,10 @@ import Tickbox from '../../../assets/ParentPage/basic-img/tickbox.svg'
 
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import { encryptPassword } from '../../../components/Login/encrypt/encryptPassword';
 import { generateAndStoreKeys } from '../../../utils/keyManager';
+import Config from 'react-native-config';
 
 
 const Login = () => {
@@ -32,6 +33,7 @@ const Login = () => {
     const [checked, setChecked] = useState(false);
 
     const handleLogin = async () => {
+        // console.log("API URL:", Config.API_URL);
         console.log("API URL:", API_URL);
         try {
 

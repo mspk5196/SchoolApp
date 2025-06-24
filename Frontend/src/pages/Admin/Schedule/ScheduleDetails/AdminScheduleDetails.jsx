@@ -19,7 +19,7 @@ import LocationIcon from '../../../../assets/AdminPage/ScheduleDetails/Location.
 import Tick2Icon from    '../../../../assets/AdminPage/ScheduleDetails/tick2.svg';
 import DeleteIcon from   '../../../../assets/AdminPage/ScheduleDetails/delete-icon.svg';
 import Add2Icon from     '../../../../assets/AdminPage/ScheduleDetails/Add.svg';
-import {API_URL} from '@env'
+import {API_URL} from '../../../../utils/env.js'
 import styles from './ScheduleDetailsStyle';
 
 const AdminScheduleDetails = ({ navigation, route }) => {

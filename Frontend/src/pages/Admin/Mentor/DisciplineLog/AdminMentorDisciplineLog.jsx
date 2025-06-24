@@ -23,7 +23,7 @@ import SearchIcon from '../../../../assets/AdminPage/MentorHome/search.svg';
 import MessageSquare from '../../../../assets/AdminPage/DisciplineLog/MessageSquare.svg';
 import styles from './DisciplineLogStyles';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const AdminMentorDisciplineLog = ({ navigation, route }) => {

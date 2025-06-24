@@ -14,7 +14,7 @@ import BackIcon from '../../../assets/CoordinatorPage/Request/Back.svg';
 import PdfIcon from '../../../assets/CoordinatorPage/Request/pdf-icon.svg';
 import TickIcon from '../../../assets/CoordinatorPage/Request/tick.svg';
 import styles from './RequestUploadStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 
 const CoordinatorRequestUpload = ({ route, navigation }) => {
   const { reqData } = route.params || {};

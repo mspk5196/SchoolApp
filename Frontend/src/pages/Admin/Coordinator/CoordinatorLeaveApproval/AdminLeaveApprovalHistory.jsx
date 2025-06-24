@@ -7,7 +7,7 @@ import Date from '../../../../assets/AdminPage/LeaveApproval/date.svg';
 import Home from '../../../../assets/AdminPage/LeaveApproval/Back.svg';
 import Approved from '../../../../assets/AdminPage/LeaveApproval/greentick.svg';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import Nodata from "../../../../components/General/Nodata";
 
 const AdminLeaveApprovalHistory = ({ navigation }) => {

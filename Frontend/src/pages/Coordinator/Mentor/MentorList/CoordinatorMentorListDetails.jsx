@@ -11,7 +11,7 @@ import Tickicon from '../../../../assets/CoordinatorPage/MentorList/tickicon.svg
 import Tick from '../../../../assets/CoordinatorPage/MentorList/tick.svg';
 import Tickbox from '../../../../assets/CoordinatorPage/MentorList/tickbox.svg';
 import Roundhome from '../../../../assets/CoordinatorPage/MentorList/roundhome.svg';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 import { Calendar } from 'react-native-calendars';
 import styles from './MentorListDetailsStyles';
 import Nodata from '../../../../components/General/Nodata';

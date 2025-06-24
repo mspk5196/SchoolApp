@@ -23,7 +23,7 @@ import PreviousIcon from '../../../assets/MentorPage/PrevBtn.svg';
 import Checked from '../../../assets/MentorPage/checked.svg';
 import Unchecked from '../../../assets/MentorPage/unchecked.svg';
 const Staff = '../../../assets/MentorPage/staff.png';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 
 const MentorHomeWorkDetail = ({ navigation, route }) => {
 

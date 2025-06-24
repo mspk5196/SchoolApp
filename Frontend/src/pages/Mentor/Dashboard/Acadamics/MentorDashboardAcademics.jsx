@@ -14,7 +14,7 @@ import Checkbox from '../../../../assets/MentorPage/checkbox2.svg';
 import Pencil from '../../../../assets/MentorPage/edit.svg';
 import styles from './Academicssty';
 import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 const Staff = require('../../../../assets/MentorPage/User.svg');
 
 const MentorDashboardAcademics = ({ navigation, route }) => {

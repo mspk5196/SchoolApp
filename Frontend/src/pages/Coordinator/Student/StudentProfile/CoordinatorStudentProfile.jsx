@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Pressable, Alert } from 'react-native';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 import BackIcon from "../../../../assets/CoordinatorPage/StudentProfile/leftarrow.svg";
 import styles from './StudentProfileStyles';
 const Staff = require('../../../../assets/CoordinatorPage/StudentProfile/staff.png');

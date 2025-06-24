@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View, Pressable, SectionList, Alert, FlatList } from 'react-native';
 import styles from './MaterialHomeStyle';
 import HomeIcon from '../../../../assets/CoordinatorPage/MaterialHome/Home.svg';
-import { API_URL } from "@env";
+import { API_URL } from "../../../../utils/env.js";
 
 const MentorMaterialHome = ({ navigation, route }) => {
   const { mentorData } = route.params || {};

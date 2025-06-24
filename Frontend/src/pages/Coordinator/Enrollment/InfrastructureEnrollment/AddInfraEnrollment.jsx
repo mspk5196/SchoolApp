@@ -4,7 +4,7 @@ import BackIcon from '../../../../assets/CoordinatorPage/InfrastructureEnrollmen
 import CheckboxOff from '../../../../assets/CoordinatorPage/InfrastructureEnrollment/CheckBoxOff.svg';
 import CheckboxON from '../../../../assets/CoordinatorPage/InfrastructureEnrollment/CheckBoxOn.svg';
 import styles from './AddInfraEnrollmentStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 
 const AddInfraEnrollment = ({ navigation, route }) => {

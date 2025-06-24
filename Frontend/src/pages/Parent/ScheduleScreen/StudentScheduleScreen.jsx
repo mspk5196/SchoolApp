@@ -9,7 +9,7 @@ import TimeIcon from '../../../assets/ParentPage/ScheduleSvg/clock.svg';
 import RepeatIcon from '../../../assets/ParentPage/ScheduleSvg/repeat.svg';
 import ProfileImg from '../../../assets/ParentPage/ScheduleSvg/profile.png';
 import ClassDetailScreen from './Classdetails';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import Nodata from '../../../components/General/Nodata';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

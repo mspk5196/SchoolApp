@@ -19,7 +19,7 @@ import CompletedIcon from '../../../../assets/AdminPage/FreeHour/completed.svg';
 import HomeIcon from '../../../../assets/AdminPage/FreeHour/home.svg';
 import styles from './FreehourStyle';
 import staff from '../../../../assets/AdminPage/SubjectMentor/staff.png';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const AdminFreehour = ({ navigation, route }) => {
   const { selectedGrade } = route.params;

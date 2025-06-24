@@ -6,7 +6,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import styles from './leaveapplysty';
 import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 
 const MentorLeaveApply = ({ navigation, route }) => {
   const { mentorData } = route.params;

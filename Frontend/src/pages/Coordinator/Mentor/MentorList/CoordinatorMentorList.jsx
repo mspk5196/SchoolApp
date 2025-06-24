@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Alert } from 'react-native';
 import BackIcon from "../../../../assets/CoordinatorPage/MentorList/leftarrow.svg";
 import styles from './MentorListStyles';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 const Staff = require('../../../../assets/CoordinatorPage/MentorList/staff.png');
 import Search from '../../../../assets/CoordinatorPage/MentorList/search.svg'
 

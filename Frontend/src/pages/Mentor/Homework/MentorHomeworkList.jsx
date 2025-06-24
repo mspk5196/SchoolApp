@@ -4,7 +4,7 @@ import Arrow from '../../../assets/MentorPage/arrow.svg';
 import Book from '../../../assets/MentorPage/book.svg';
 import Plus from '../../../assets/MentorPage/plus.svg';
 import styles from './homeworkliststy';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 
 const MentorHomeworkList = ({ navigation, route }) => {
   const { mentorData } = route.params;

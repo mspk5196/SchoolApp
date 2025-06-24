@@ -18,7 +18,7 @@ import Date from '../../../../assets/AdminPage/LeaveApproval/date.svg';
 import DateIcon from '../../../../assets/AdminPage/LeaveApproval/date.svg';
 import Pending from '../../../../assets/AdminPage/LeaveApproval/pending.svg';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import Nodata from '../../../../components/General/Nodata';
 
 const AdminLeaveApproval = ({ navigation }) => {

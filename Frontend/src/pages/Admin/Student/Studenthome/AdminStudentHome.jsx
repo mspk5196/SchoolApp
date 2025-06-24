@@ -9,7 +9,7 @@ import Progressicon from '../../../../assets/AdminPage/StudentHome/Progressicon.
 import Gradcap from '../../../../assets/AdminPage/StudentHome/Gradcap.svg';
 import Homeicon from '../../../../assets/AdminPage/Basicimg/Home.svg';
 import styles from './StudentHomeStyles';
-import {API_URL} from '@env'
+import {API_URL} from '../../../../utils/env.js'
 
 const AdminStudentHome = ({ navigation }) => { 
   const [activeSection, setActiveSection] = useState(null);

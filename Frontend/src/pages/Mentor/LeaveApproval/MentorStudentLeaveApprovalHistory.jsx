@@ -5,7 +5,7 @@ import SearchIcon from "../../../assets/MentorPage/search.svg";
 import Home from "../../../assets/MentorPage/backarrow.svg";
 import Approved from "../../../assets/MentorPage/greentick.svg";
 import Rejected from "../../../assets/MentorPage/rejected.svg";
-import { API_URL } from '@env'
+import { API_URL } from '../../../utils/env.js'
 import Nodata from "../../../components/General/Nodata";
 const Staff = require('../../../assets/CoordinatorPage/StudentProfile/staff.png');
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import styles from "./Surveysty";
 import Back from "../../../../assets/MentorPage/backarrow.svg";
 import Add from "../../../../assets/MentorPage/Add.svg";

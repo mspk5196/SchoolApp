@@ -17,7 +17,7 @@ import CalendarIcon from '../../../assets/CoordinatorPage/Event/Calender.svg';
 import styles from './AddEventFormStyle';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DocumentPicker from 'react-native-document-picker';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 
 const AddEventForm = ({ navigation, route }) => {
   const { coordinatorData } = route.params;

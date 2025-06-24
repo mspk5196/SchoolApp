@@ -15,7 +15,7 @@ import PendingIcon from '../../../../assets/CoordinatorPage/LeaveApproval/pendin
 import ApprovedIcon from '../../../../assets/CoordinatorPage/LeaveApproval/approve.svg';
 import RejectedIcon from '../../../../assets/CoordinatorPage/LeaveApproval/close.svg';
 import styles from './LeaveDetailsStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const CoordinatorLeaveDetails = ({ route, navigation }) => {
   const { leave, history } = route.params;

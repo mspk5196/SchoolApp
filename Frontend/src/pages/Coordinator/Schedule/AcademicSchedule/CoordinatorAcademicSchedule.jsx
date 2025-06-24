@@ -16,7 +16,7 @@ import Time2Icon from '../../../../assets/CoordinatorPage/AcademicSchedule/Time2
 import Book2Icon from '../../../../assets/CoordinatorPage/AcademicSchedule/Book2.svg';
 import EditIcon from '../../../../assets/CoordinatorPage/AcademicSchedule/Edit.svg';
 import styles from './AcademicScheduleStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   const [activeSection, setActiveSection] = useState('');

@@ -5,7 +5,7 @@ import styles from './StudentListStyles';
 const Staff = require('../../../../../assets/AdminPage/StudentHome/studentprofile/staff.png');
 import Search from '../../../../../assets/AdminPage/StudentHome/studentprofile/search.svg';
 import Homeicon from '../../../../../assets/AdminPage/Basicimg/Home.svg';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../../utils/env.js'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Nodata from '../../../../../components/General/Nodata';
 

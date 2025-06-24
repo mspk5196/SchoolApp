@@ -16,7 +16,7 @@ import {
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import styles from "./surveyfoldersty";
 
 // Import SVG components

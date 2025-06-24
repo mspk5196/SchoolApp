@@ -7,7 +7,7 @@ import BackIcon from     '../../../../assets/AdminPage/CoordinatorEnrollment/Bac
 import PlusIcon from     '../../../../assets/AdminPage/CoordinatorEnrollment/Plus.svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import styles from './CoordinatorEnrollmentStyle';
-import {API_URL} from '@env'
+import {API_URL} from '../../../../utils/env.js'
 
 const AdminCoordinatorEnrollment = ({ navigation }) => {
   const [coordinator, setCoordinator] = useState({

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import BackIcon from '../../../assets/CoordinatorPage/Request/Back.svg';
 import styles from './GeneralActivityStyle';
-import { API_URL } from "@env";
+import { API_URL } from "../../../utils/env.js";
 
 const SectionItem = ({ title }) => {
   return (

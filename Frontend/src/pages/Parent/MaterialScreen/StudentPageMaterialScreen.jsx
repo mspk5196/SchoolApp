@@ -15,7 +15,7 @@ import PDFicon from '../../../assets/ParentPage/Materials-img/pdf.svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import VideoIcon from '../../../assets/ParentPage/Materials-img/video-icon.svg'
 import Download from '../../../assets/ParentPage/Materials-img/download.svg'
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
 import Nodata from '../../../components/General/Nodata';

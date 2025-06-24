@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { API_URL } from "@env";
+import { API_URL } from "../../../../utils/env.js";
 
 // Create the context
 const ExamContext = createContext();

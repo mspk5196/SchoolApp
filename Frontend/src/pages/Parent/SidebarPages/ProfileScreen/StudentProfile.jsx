@@ -22,7 +22,7 @@ import Profile from '../../../../assets/ParentPage/Profilepageicons/profile.png'
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useState } from 'react';
 import styles from './ProfileStyles'; // Import your styles
-import {API_URL} from '@env'
+import {API_URL} from '../../../../utils/env.js'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Nodata from '../../../../components/General/Nodata';
 import PerformanceGraph from '../../../../components/Admin/performancegraph/Performancegraph';

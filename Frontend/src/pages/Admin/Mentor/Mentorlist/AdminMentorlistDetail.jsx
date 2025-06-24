@@ -15,7 +15,7 @@ import Hat from '../../../../assets/AdminPage/MentorList/hat.svg';
 // Import the calendar component
 import { Calendar } from 'react-native-calendars';
 import styles from './MentorlistDetailStyle';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 import Nodata from '../../../../components/General/Nodata';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
 

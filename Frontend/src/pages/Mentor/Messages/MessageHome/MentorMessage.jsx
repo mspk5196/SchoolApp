@@ -5,7 +5,7 @@ import Home from "../../../../assets/MentorPage/entypo_home.svg";
 import SearchIcon from "../../../../assets/MentorPage/search.svg";
 import Add from "../../../../assets/MentorPage/Add.svg";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import io from 'socket.io-client';
 import { useFocusEffect } from "@react-navigation/native";
 

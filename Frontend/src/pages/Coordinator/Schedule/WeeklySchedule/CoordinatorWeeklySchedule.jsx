@@ -20,7 +20,7 @@ import Tick2Icon from '../../../../assets/CoordinatorPage/WeeklySchedule/tick2.s
 import DeleteIcon from '../../../../assets/CoordinatorPage/WeeklySchedule/delete-icon.svg';
 import Add2Icon from '../../../../assets/CoordinatorPage/WeeklySchedule/Add.svg';
 import styles from './WeeklyScheduleStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const CoordinatorWeeklySchedule = ({ navigation, route }) => {
   const [activeSection, setActiveSection] = useState(null);

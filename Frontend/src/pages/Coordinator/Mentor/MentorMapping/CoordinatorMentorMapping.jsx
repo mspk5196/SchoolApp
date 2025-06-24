@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import Modal from 'react-native-modal';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import BackIcon from '../../../../assets/CoordinatorPage/MentorMapping/leftarrow.svg';
 import staff from '../../../../assets/CoordinatorPage/MentorMapping/staff.png';
 import Tickicon from '../../../../assets/CoordinatorPage/MentorMapping/tickicon.svg';

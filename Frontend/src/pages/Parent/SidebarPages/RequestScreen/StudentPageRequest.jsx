@@ -5,7 +5,7 @@ import DownloadIcon from '../../../../assets/ParentPage/RequestSvg/downloadicon.
 import { styles } from './RequestStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import EventBus from "../../../../utils/EventBus";
-import { API_URL } from "@env";
+import { API_URL } from "../../../../utils/env.js";
 import { ActivityIndicator } from 'react-native-paper';
 import Nodata from '../../../../components/General/Nodata';
 

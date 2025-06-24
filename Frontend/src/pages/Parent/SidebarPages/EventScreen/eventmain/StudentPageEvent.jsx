@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Liked from '../../../../../assets/ParentPage/Event/liked.svg';
 import Unliked from '../../../../../assets/ParentPage/Event/unliked.svg';
 import CurvedImageBanner from '../../../../../components/CurvedImage/CurvedImageBanner';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../../utils/env.js'
 import { useNavigation } from '@react-navigation/native';
 
 const EventCard = ({ event, navigation, title, isFavourite, onToggleFavourite }) => {

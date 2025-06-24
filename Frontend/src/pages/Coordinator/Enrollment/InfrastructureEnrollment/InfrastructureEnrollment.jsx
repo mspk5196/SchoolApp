@@ -8,7 +8,7 @@ import FilterIcon from '../../../../assets/CoordinatorPage/InfrastructureEnrollm
 import MenuIcon from '../../../../assets/CoordinatorPage/InfrastructureEnrollment/Menu.svg';
 import FilterPopup from './FilterPopup';
 import styles from './InfrastructureEnrollmentStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const ClassroomCard = ({ classroom, onEdit, onToggleStatus, onDelete }) => {
   const getStatusColor = (status) => {

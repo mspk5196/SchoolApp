@@ -4,7 +4,7 @@ import Leftarrow from "../../../../assets/AdminPage/Basicimg/PrevBtn.svg";
 import styles from './CoordinatorListStyle';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
 import Search from '../../../../assets/AdminPage/MentorHome/search.svg';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 
 
 const AdminCoordinatorList = ({ navigation }) => {

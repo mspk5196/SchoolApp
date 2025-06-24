@@ -4,7 +4,7 @@ import DropdownIcon from '../../../assets/CoordinatorPage/Profile/DropDown.svg';
 import React, {useState, useEffect} from 'react';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import styles from './LeaveApplyStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CoordinatorLeaveApply = ({ navigation, route }) => {

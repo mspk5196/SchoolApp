@@ -9,7 +9,7 @@ import {
   Alert,
   Pressable,
 } from 'react-native';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../utils/env.js'
 import PreviousIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
 import styles from './BackLogsStyle';
 import Nodata from '../../../../components/General/Nodata';

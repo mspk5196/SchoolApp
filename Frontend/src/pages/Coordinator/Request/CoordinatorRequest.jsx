@@ -3,7 +3,7 @@ import { SafeAreaView, View, Text, ScrollView, TouchableOpacity } from 'react-na
 import { useRoute } from '@react-navigation/native';
 import BackIcon from '../../../assets/CoordinatorPage/Request/Back.svg';
 import styles from './RequestStyle';
-import { API_URL } from "@env";
+import { API_URL } from "../../../utils/env.js";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Nodata from '../../../components/General/Nodata';
 

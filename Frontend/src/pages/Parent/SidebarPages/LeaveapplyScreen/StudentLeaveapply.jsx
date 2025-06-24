@@ -14,7 +14,7 @@ import styles from './LeaveapplyStyles';
 
 import EventBus from "../../../../utils/EventBus";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from "@env"; 
+import { API_URL } from "../../../../utils/env.js"; 
 
 const StudentLeaveapply = ({ navigation }) => {
 

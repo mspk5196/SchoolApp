@@ -16,7 +16,7 @@ import Holiday from '../../../../assets/ParentPage/Calendar/holiday.svg';
 import ChevronDown from '../../../../assets/ParentPage/Calendar/chevron-down.svg';
 import ChevronRight from '../../../../assets/ParentPage/Calendar/chevron-right.svg';
 import styles from './CalendarStyles';
-import {API_URL} from '@env' 
+import {API_URL} from '../../../../utils/env.js' 
 
 const StudentCalendar = ({navigation}) => {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());

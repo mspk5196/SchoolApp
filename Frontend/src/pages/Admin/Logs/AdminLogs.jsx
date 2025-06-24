@@ -7,7 +7,7 @@ import Bell from '../../../assets/AdminPage/Logs/bell.svg';
 import Call from '../../../assets/AdminPage/Logs/callicon.svg';
 import Message from '../../../assets/AdminPage/Logs/msgicon.svg';
 import Home from '../../../assets/AdminPage/Logs/home.svg';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import Nodata from '../../../components/General/Nodata';
 const Staff = require('../../../assets/AdminPage/Logs/staff.png');
 

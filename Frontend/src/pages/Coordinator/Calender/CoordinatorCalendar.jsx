@@ -20,7 +20,7 @@ import BackIcon from '../../../assets/CoordinatorPage/Calender/leftarrow.svg';
 import Calendar from '../../../assets/CoordinatorPage/Calender/calendar.svg';
 import Addicon from '../../../assets/CoordinatorPage/Calender/addicon.svg';
 import styles from './CalendarStyles';
-import { API_URL } from '@env'
+import { API_URL } from '../../../utils/env.js'
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const CoordinatorCalendar = ({ navigation }) => {

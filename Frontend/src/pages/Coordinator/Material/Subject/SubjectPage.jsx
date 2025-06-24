@@ -24,7 +24,7 @@ import PdfIcon from '../../../../assets/CoordinatorPage/Subjects/pdf-icon.svg';
 import VideoIcon from '../../../../assets/CoordinatorPage/Subjects/video-icon.svg';
 import DeleteIcon from '../../../../assets/CoordinatorPage/Subjects/delete-icon.svg';
 import EditIcon from '../../../../assets/CoordinatorPage/Subjects/Edit.svg';
-import { API_URL } from "@env";
+import { API_URL } from "../../../../utils/env.js";
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
 import Nodata from '../../../../components/General/Nodata';

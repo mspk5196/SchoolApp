@@ -13,7 +13,7 @@ import Tick from '../../../../assets/AdminPage/MentorList/tick.svg';
 import Oneperson from '../../../../assets/AdminPage/MentorList/oneperson.svg';
 import Hat from '../../../../assets/AdminPage/MentorList/hat.svg';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 // Import the calendar component
 import { Calendar } from 'react-native-calendars';
 import styles from './CoordinatorlistDetailsStyle';

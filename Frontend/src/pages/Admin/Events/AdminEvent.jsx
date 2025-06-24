@@ -5,7 +5,7 @@ import CalendarIcon from '../../../assets/AdminPage/Calendar/calendar.svg';
 import DeleteIcon from '../../../assets/AdminPage/Event/delete-icon.svg';
 import LocationIcon from '../../../assets/AdminPage/Event/location.svg';
 import styles from './EventStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import CurvedImageBanner from '../../../components/CurvedImage/CurvedImageBanner';
 
 const EventCard = ({ event, onPress, onDelete }) => {

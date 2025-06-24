@@ -15,7 +15,7 @@ import Liked from '../../../../../assets/ParentPage/Event/liked.svg';
 import Unliked from '../../../../../assets/ParentPage/Event/unliked.svg';
 import Location from '../../../../../assets/ParentPage/Event/Detailslocation.svg';
 import Calendericon from '../../../../../assets/ParentPage/Event/Date.svg';
-import { API_URL } from '@env'
+import { API_URL } from '../../../../../utils/env.js'
 
 const StudentEventDetails = ({ navigation, route }) => {
   const { event, title } = route.params;

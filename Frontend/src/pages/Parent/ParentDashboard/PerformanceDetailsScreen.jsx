@@ -5,7 +5,7 @@ import PreviousIcon from '../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
 import { useNavigation, useRoute } from "@react-navigation/native";
 import styles from "./ParentDashboardStyles";
 import PerformanceGraph from "../../../components/Parent/PerformanceGraph/PerformanceGraph";
-import { API_URL } from "@env";
+import { API_URL } from "../../../utils/env.js";
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';

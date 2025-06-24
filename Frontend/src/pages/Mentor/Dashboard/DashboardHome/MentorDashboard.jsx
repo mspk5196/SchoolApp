@@ -21,7 +21,7 @@ import VenueIcon from "../../../../assets/MentorPage/venue.svg";
 import FacultyIcon from "../../../../assets/MentorPage/faculty2.svg";
 import SubjectIcon from "../../../../assets/MentorPage/subject.svg";
 import ActivityIcon from "../../../../assets/MentorPage/activity2.svg";
-import { API_URL } from "@env";
+import { API_URL } from "../../../../utils/env.js";
 
 const MentorDashboard = ({ route }) => {
   const { mentorData } = route.params;

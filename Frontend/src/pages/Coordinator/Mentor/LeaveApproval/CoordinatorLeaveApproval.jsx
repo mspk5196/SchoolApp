@@ -18,7 +18,7 @@ import HistoryIcon from '../../../../assets/CoordinatorPage/LeaveApproval/histor
 import DateIcon from '../../../../assets/CoordinatorPage/LeaveApproval/date.svg';
 import ReasonIcon from '../../../../assets/CoordinatorPage/LeaveApproval/reason.svg';
 import styles from './LeaveApprovalStyles';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const CoordinatorLeaveApproval = ({ navigation, route }) => {
   const { activeGrade } = route.params;

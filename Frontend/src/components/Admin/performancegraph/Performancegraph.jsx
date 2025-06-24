@@ -8,7 +8,7 @@ import {
   ScrollView
 } from 'react-native';
 import styles from './Performancegraphsty';
-import { API_URL } from '@env'
+import { API_URL } from '../../../utils/env.js'
 
 const PerformanceGraph = ({ student }) => {
   const [loading, setLoading] = useState(true);

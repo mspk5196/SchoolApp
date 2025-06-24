@@ -12,7 +12,7 @@ import React, {useState, useEffect} from 'react';
 import styles from './Genactsty';
 import Home from '../../../../assets/MentorPage/Home2.svg';
 import {widthPercentageToDP as wp} from 'react-native-responsive-screen';
-import {API_URL} from '@env'
+import {API_URL} from '../../../../utils/env.js'
 
 const MentorGenrealActivityRegister = ({navigation, route}) => {
   const {mentorData} = route.params;

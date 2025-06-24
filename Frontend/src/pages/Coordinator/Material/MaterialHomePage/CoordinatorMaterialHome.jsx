@@ -4,7 +4,7 @@ import { Text, View, ScrollView, Pressable, SectionList, Alert, TouchableOpacity
 import styles from './MaterialHomeStyle';
 import HomeIcon from '../../../../assets/CoordinatorPage/MaterialHome/Home.svg';
 import LevelPromotionIcon from '../../../../assets/CoordinatorPage/MaterialHome/LevelPromotion.svg';
-import { API_URL } from "@env";
+import { API_URL } from "../../../../utils/env.js";
 
 const CoordinatorMaterialHome = ({ navigation, route }) => {
   const { coordinatorData, coordinatorGrades } = route.params || {};

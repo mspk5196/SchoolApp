@@ -15,7 +15,7 @@ import BackIcon from '../../../../assets/AdminPage/SubjectMentor/leftarrow.svg';
 import styles from './FreeHourAssignStyle';
 import staff from '../../../../assets/AdminPage/SubjectMentor/staff.png';
 import HomeIcon from '../../../../assets/AdminPage/FreeHour/home.svg';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const AdminFreeHourAssign = ({ navigation, route }) => {
   const { faculty } = route.params;

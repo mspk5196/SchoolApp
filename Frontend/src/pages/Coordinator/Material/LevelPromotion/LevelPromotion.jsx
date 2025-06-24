@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, View, ScrollView, Pressable, TouchableOpacity, FlatList, Alert, ActivityIndicator } from 'react-native';
 import BackIcon from '../../../../assets/CoordinatorPage/Subjects/Back.svg';
 import styles from './LevelPromotionStyle';
-import { API_URL } from "@env";
+import { API_URL } from "../../../../utils/env.js";
 
 const LevelPromotion = ({ navigation, route }) => {
   const { gradeID, gradeSubject } = route.params;

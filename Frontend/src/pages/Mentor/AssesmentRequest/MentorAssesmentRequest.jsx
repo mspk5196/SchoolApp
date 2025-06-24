@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, FlatList, Alert, Image } from "react-native";
 import styles from "./AssessmentRequeststy";
-import { API_URL } from "@env";
+import { API_URL } from "../../../utils/env.js";
 import Back from "../../../assets/MentorPage/entypo_home.svg";
 import Add from "../../../assets/MentorPage/Add.svg";
 import Clock from "../../../assets/MentorPage/formkit_time.svg";

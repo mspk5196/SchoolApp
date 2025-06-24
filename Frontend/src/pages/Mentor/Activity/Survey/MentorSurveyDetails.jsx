@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView, View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar, Modal, ActivityIndicator,
 } from 'react-native';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import BackArrow from '../../../../assets/MentorPage/backarrow.svg';
 import Home from '../../../../assets/MentorPage/Home2.svg';
 import Profile from '../../../../assets/MentorPage/userlogo.svg';

@@ -8,7 +8,7 @@ import LeaveType from '../../../assets/MentorPage/leavetype.svg';
 import DateIcon from '../../../assets/MentorPage/date.svg';
 const Staff = require('../../../assets/CoordinatorPage/StudentProfile/staff.png');
 import Pending from '../../../assets/MentorPage/pendingstatus.svg';
-import { API_URL } from '@env'
+import { API_URL } from '../../../utils/env.js'
 import Nodata from "../../../components/General/Nodata";
 
 const MentorLeaveApproval = ({ navigation, route }) => {

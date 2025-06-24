@@ -23,7 +23,7 @@ import PdfIcon from '../../../../assets/CoordinatorPage/Subjects/pdf-icon.svg';
 import VideoIcon from '../../../../assets/CoordinatorPage/Subjects/video-icon.svg';
 import DownloadIcon from '../../../../assets/MentorPage/download.svg';
 import EditIcon from '../../../../assets/CoordinatorPage/Subjects/Edit.svg';
-import { API_URL } from "@env";
+import { API_URL } from "../../../../utils/env.js";
 import { requestStoragePermission } from '../../../../components/StoragePermission/requestStoragePermission';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';

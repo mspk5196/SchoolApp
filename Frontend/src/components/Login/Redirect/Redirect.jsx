@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, BackHandler, ToastAndr
 import { CommonActions, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Switch } from 'react-native-switch';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import { backupPrivateKey } from '../../../utils/backupPrivateKey';
 import { restorePrivateKey } from '../../../utils/restorePrivateKey';
 import { generateAndStoreKeys, getPrivateKey } from '../../../utils/keyManager';

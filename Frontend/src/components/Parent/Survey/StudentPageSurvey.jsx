@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator, Alert } from 'react-native';
 import { RadioButton } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import BackIcon from '../../../assets/ParentPage/basic-img/Backicon.svg';
 
 const StudentPageSurvey = () => {

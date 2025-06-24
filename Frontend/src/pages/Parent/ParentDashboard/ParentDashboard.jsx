@@ -9,7 +9,7 @@ import ClockIcon from '../../../assets/ParentPage/DashboardIcons/clock.svg';
 const Profile = require("../../../assets/ParentPage/LeaveIcon/profile.png");
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import EventBus from "../../../utils/EventBus";
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 import { format } from 'date-fns';
 
 const ParentDashboard = () => {

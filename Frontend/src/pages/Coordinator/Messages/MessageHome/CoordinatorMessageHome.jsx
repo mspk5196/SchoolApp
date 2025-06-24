@@ -3,7 +3,7 @@ import { View, Text, FlatList, Pressable, TextInput, Image, TouchableOpacity, Ac
 import styles from "./Messagesty";
 import Home from "../../../../assets/MentorPage/entypo_home.svg";
 import SearchIcon from "../../../../assets/MentorPage/search.svg";
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 import { useFocusEffect } from "@react-navigation/native";
 import io from 'socket.io-client';
 import { generateAndStoreKeys, getPrivateKey } from "../../../../utils/keyManager";

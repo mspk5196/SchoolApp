@@ -6,7 +6,7 @@ import DeleteIcon from '../../../../assets/CoordinatorPage/SubjectActivityEnroll
 import CancelIcon from '../../../../assets/CoordinatorPage/SubjectActivityEnrollment/Cancel.svg';
 import AddIcon2 from '../../../../assets/CoordinatorPage/SubjectActivityEnrollment/Add2.svg';
 import { styles } from './SubjectAllotmentStyle';
-import { API_URL } from '@env';
+import { API_URL } from '../../../../utils/env.js';
 
 const SubjectAllotment = ({ navigation, route }) => { 
   const { coordinatorData, activeGrade } = route.params;
