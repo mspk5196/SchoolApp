@@ -1082,7 +1082,7 @@ exports.enrollStudent = async (req, res) => {
         );
 
         await trx.query(
-          `INSERT INTO studentattendance (roll, total_days, on_duty_days, leave_days)
+          `INSERT INTO studentattendance (roll, total_days, on_duty, leave_days)
            VALUES (?, '1', '0', '0')`,
           [rollNumber]
         );
@@ -1113,7 +1113,7 @@ exports.enrollStudent = async (req, res) => {
         );
 
         await trx.query(
-          `INSERT INTO studentattendance (roll, total_days, on_duty_days, leave_days)
+          `INSERT INTO studentattendance (roll, total_days, on_duty, leave_days)
            VALUES (?, '1', '0', '0')`,
           [rollNumber]
         );
