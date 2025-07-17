@@ -14,6 +14,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api', require('./routes/auth'));
+
 app.use('/api', require('./routes/student'));
 app.use('/api', require('./routes/coordinator'));
 app.use('/api', require('./routes/mentor'));

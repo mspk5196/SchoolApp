@@ -22,11 +22,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    flex: 1,
+    // flex: 1,
   },
-  messagesContainer: {
-    flex: 1,
-  },
+  // messagesContainer: {
+  //   flex: 1,
+  // },
   messagesList: {
     padding: 16,
     paddingBottom: 80,
@@ -41,19 +41,19 @@ const styles = StyleSheet.create({
     position: 'relative',// Position it relative to its normal position
     left: 0,            // Reset any left positioning
   },
-  messageContainer: {
-    marginBottom: 8,
-    maxWidth: '80%',
-  },
+  // messageContainer: {
+  //   marginBottom: 8,
+  //   maxWidth: '80%',
+  // },
   sentMessage: {
     alignSelf: 'flex-end',
   },
-  messageBubble: {
-    borderRadius: 16,
-    padding: 12,
-    marginVertical: 2,
-    maxWidth: '100%',
-  },
+  // messageBubble: {
+  //   borderRadius: 16,
+  //   padding: 12,
+  //   marginVertical: 2,
+  //   maxWidth: '100%',
+  // },
   sentBubble: {
     backgroundColor: '#4169E1', // Royal blue for sent messages, matching reference image
     borderTopRightRadius: 2,
@@ -96,8 +96,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     fontSize: 14,
-    color: '#333',
+    color: '#000',
     maxHeight: 100,
+    marginHorizontal: 8,
   },
   sendButton: {
     marginLeft: 8,
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
   },
   messageContainer: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 45,
     alignItems: 'flex-end',
   },
   sentMessage: {
@@ -178,25 +179,6 @@ const styles = StyleSheet.create({
     color: '#999',
     marginVertical: 8,
     textAlign: 'center',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 120,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 20,
-    marginHorizontal: 8,
-    fontSize: 16,
   },
   attachButton: {
     padding: 8,

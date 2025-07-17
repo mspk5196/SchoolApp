@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: '#ddd',
-    marginRight: 10,
+    // marginRight: 10,
   },
 
   name: {
@@ -109,16 +109,14 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   details: {
     flex: 1,
   },
 
-
-
   rightSection: {
     alignItems: 'flex-end',
-    justifyContent: 'space-between',
     height: 40,
   },
 

@@ -22,14 +22,3 @@ const styles = StyleSheet.create({
 });
 
 export default App;
-
-{/* <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen name="Login" component={Login} options={{ headerLeft: () => null }} />
-        <Stack.Screen name="Redirect" component={Redirect} options={{ headerLeft: () => null }} />
-        <Stack.Screen name="Admin" component={Admin} />
-        <Stack.Screen name="Coordinator" component={Coordinator} />
-        <Stack.Screen name="Mentor" component={Mentor} />
-        <Stack.Screen name="Parent" component={Parent} />
-      </Stack.Navigator>
-    </NavigationContainer> */}

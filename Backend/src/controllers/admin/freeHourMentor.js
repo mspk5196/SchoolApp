@@ -85,7 +85,7 @@ exports.assignFreeHour = async (req, res) => {
         await db.promise().query(
             `INSERT INTO free_hour_tasks 
              (mentor_id, date, start_time, end_time, activity_type_id, description, status, ds_id)
-             VALUES (?, ?, ?, ?, ?, ?, 'Pending')`,
+             VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?)`,
             [mentorId, date, startTime, endTime, activity, description, ds_id]
         );
 

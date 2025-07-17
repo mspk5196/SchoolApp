@@ -184,56 +184,6 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
     };
   }, []);
 
-  // Fetch all messages between this mentor and student
-  // const fetchMessages = async () => {
-  //   try {
-  //     const response = await fetch(`${API_URL}/api/messages/get`, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({
-  //         sender_id: contact.sender_id,
-  //         receiver_id: contact.receiver_id,
-  //         sender_type: 'coordinator',
-  //         last_message_id: lastMessageId,// <-- use student_id
-  //         receiver_type: contact.receiver_type,
-  //       }),
-  //     });
-  //     const data = await response.json();
-  //     if (data.success) {
-  //       setMessages(data.messages);
-
-  //       // Mark messages as read via socket
-  //       if (socketRef.current && data.messages.length > 0) {
-  //         // console.log(contact.receiver_id);
-  //         // console.log(contact.receiver_id);
-  //         const unreadMessages = data.messages.filter(
-  //           msg =>
-  //             msg.receiver_id === coordinator.id &&
-  //             msg.sender_id === contact.sender_id && // <-- the other user's id
-  //             msg.is_read === 0
-  //         );
-
-  //         // console.log(unreadMessages);
-
-
-  //         if (unreadMessages.length > 0) {
-  //           socketRef.current.emit('markAsRead', {
-  //             messageIds: unreadMessages.map(msg => msg.message_id),
-  //             receiverId: coordinator.id,
-  //             receiverType: 'coordinator', // or your current user's type
-  //             senderId: contact.sender_id,
-  //             senderType: contact.sender_type
-  //           });
-  //         }
-  //       }
-  //     }
-  //     setIsLoading(false);
-  //   } catch (error) {
-  //     console.error('Error fetching messages:', error);
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const fetchMessages = async (coordData) => {
     if (!coordData || !sharedSecretRef.current) return;
     setIsLoading(true);
@@ -1078,6 +1028,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
             onChangeText={setMessage}
             placeholderTextColor="#999"
             multiline
+            // numberOfLines={4}
           />
 
           {isRecording ? (
@@ -1127,13 +1078,13 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
             borderTopRightRadius: 16,
           }}>
             <TouchableOpacity style={{ padding: 12 }} onPress={() => { setAttachmentModalVisible(false); pickImage(); }}>
-              <Text style={{ fontSize: 16 }}>Photo from Gallery</Text>
+              <Text style={{ fontSize: 16, color:'black' }}>Photo from Gallery</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{ padding: 12 }} onPress={() => { setAttachmentModalVisible(false); takePhoto(); }}>
-              <Text style={{ fontSize: 16 }}>Take Photo</Text>
+              <Text style={{ fontSize: 16, color:'black' }}>Take Photo</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{ padding: 12 }} onPress={() => { setAttachmentModalVisible(false); pickDocument(); }}>
-              <Text style={{ fontSize: 16 }}>Document</Text>
+              <Text style={{ fontSize: 16, color:'black' }}>Document</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{ padding: 12 }} onPress={() => setAttachmentModalVisible(false)}>
               <Text style={{ fontSize: 16, color: 'red' }}>Cancel</Text>
