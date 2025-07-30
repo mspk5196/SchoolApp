@@ -3305,8 +3305,8 @@ exports.getEvents = (req, res) => {
 FROM events e
 LEFT JOIN grades g ON e.grade_id = g.id
 LEFT JOIN event_participants ep ON e.id = ep.event_id
-WHERE e.grade_id = '1'
-GROUP BY e.id, e.event_date, e.title, e.description, g.grade_name
+WHERE e.grade_id = ?
+GROUP BY e.id
 ORDER BY e.event_date DESC;
   `;
 
