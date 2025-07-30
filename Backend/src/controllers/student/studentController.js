@@ -1381,7 +1381,7 @@ exports.getRegisteredEvents = (req, res) => {
   const sql = `
     SELECT 
   e.*,
-  g.grade_name,
+  ANY_VALUE(g.grade_name) as grade_name,
   (SELECT COUNT(*) FROM event_participants WHERE event_id = e.id) AS participants_count
 FROM events e
 JOIN event_participants ep ON e.id = ep.event_id
