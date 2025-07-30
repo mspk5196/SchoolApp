@@ -3299,15 +3299,19 @@ exports.getEvents = (req, res) => {
 
   const sql = `
     SELECT 
-  e.*,
+  ANY_VALUE(e.id) AS id,
+  ANY_VALUE(e.event_date) AS event_date,
+  ANY_VALUE(e.title) AS title,
+  ANY_VALUE(e.description) AS description,
+  ANY_VALUE(e.grade_id) AS grade_id,
   ANY_VALUE(g.grade_name) AS grade_name,
   COUNT(ep.id) AS participants_count
 FROM events e
+JOIN event_participants ep ON e.id = ep.event_id
 LEFT JOIN grades g ON e.grade_id = g.id
-LEFT JOIN event_participants ep ON e.id = ep.event_id
-WHERE e.grade_id = '1'
+WHERE ep.student_id = '60001'
 GROUP BY e.id
-ORDER BY e.event_date DESC;
+ORDER BY event_date DESC;
   `;
 
   db.query(sql, [phone], (err, results) => {
