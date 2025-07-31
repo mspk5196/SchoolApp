@@ -16,17 +16,10 @@ const uploadToCloudinary = async (buffer, options = {}) => {
       ...options, // ✅ Spread first
       resource_type: options.resource_type || 'auto' // ✅ Set default if missing
     };
-    
-    console.log('Final Upload Options to Cloudinary:', uploadOptions);
 
     cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
-      if (error) {
-        console.error('Cloudinary Upload Error:', error);
-        reject(error);
-      } else {
-        console.log('Cloudinary Upload Success - URL:', result.secure_url);
-        resolve(result);
-      }
+      if (error) reject(error);
+      else resolve(result);
     }).end(buffer);
   });
 };
@@ -60,23 +53,15 @@ const uploadDocument = async (buffer, originalName, folder = "documents") => {
 // Upload study materials
 const uploadStudyMaterial = async (buffer, originalName, gradeId, subjectId) => {
   const ext = originalName.split('.').pop().toLowerCase();
-  
-  console.log('Upload Study Material Debug:');
-  console.log('Original Name:', originalName);
-  console.log('Extension:', ext);
 
-  // Force raw for all document types including PDF
-  const resourceType = ['pdf', 'docx', 'xlsx', 'xls', 'zip', 'doc', 'ppt', 'pptx', 'txt'].includes(ext) ? 'raw' : 'auto';
-  
-  console.log('Resource Type:', resourceType);
+  const resourceType =
+    ['pdf', 'docx', 'xlsx', 'xls', 'zip'].includes(ext) ? 'raw' : 'auto';
 
   const options = {
     folder: `study_materials/grade_${gradeId}/subject_${subjectId}`,
     public_id: `${Date.now()}_${originalName.split('.')[0]}`,
-    resource_type: resourceType,
+    resource_type: resourceType, // ✅ Fix
   };
-  
-  console.log('Upload Options:', options);
 
   return uploadToCloudinary(buffer, options);
 };
