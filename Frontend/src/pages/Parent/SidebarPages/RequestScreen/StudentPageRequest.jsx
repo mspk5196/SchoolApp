@@ -282,7 +282,8 @@ const StudentPageRequest = ({ navigation }) => {
       return;
     }
 
-    const fullUrl = `${API_URL}/${filePath}`;
+    // Check if it's already a full URL (Cloudinary URL)
+    const fullUrl = filePath.startsWith('http') ? filePath : `${API_URL}/${filePath}`;
     Linking.openURL(fullUrl).catch(err => {
       console.error("Failed to open URL:", err);
       Alert.alert("Error", "Could not open the document");

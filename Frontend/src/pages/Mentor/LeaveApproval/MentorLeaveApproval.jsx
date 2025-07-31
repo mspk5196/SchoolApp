@@ -128,9 +128,12 @@ const MentorLeaveApproval = ({ navigation, route }) => {
 
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
-      // 1. Replace backslashes with forward slashes
+      // Check if it's a Cloudinary URL (starts with http/https)
+      if (profilePath.startsWith('http://') || profilePath.startsWith('https://')) {
+        return { uri: profilePath };
+      }
+      // Local file path - normalize and construct URL
       const normalizedPath = profilePath.replace(/\\/g, '/');
-      // 2. Construct the full URL
       const fullImageUrl = `${API_URL}/${normalizedPath}`;
       return { uri: fullImageUrl };
     } else {

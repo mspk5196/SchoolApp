@@ -182,7 +182,10 @@ const StudentPageMaterialScreen = () => {
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', flex: 1 }}>
           <Text style={styles.pdfName}>{(item.name).replace(/%/g, ' ')}</Text>
-          <TouchableOpacity onPress={() => openFileLikeWhatsApp(`${API_URL}/${item.url}`, item.name)}>
+          <TouchableOpacity onPress={() => {
+            const fileUrl = item.url.startsWith('http') ? item.url : `${API_URL}/${item.url}`;
+            openFileLikeWhatsApp(fileUrl, item.name);
+          }}>
             <Download />
           </TouchableOpacity>
         </View>
@@ -197,7 +200,10 @@ const StudentPageMaterialScreen = () => {
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', flex: 1 }}>
           <Text style={styles.pdfName}>{(item.name).replace(/%/g, ' ')}</Text>
-          <TouchableOpacity onPress={() => openFileLikeWhatsApp(`${API_URL}/${item.url}`, item.name)}>
+          <TouchableOpacity onPress={() => {
+            const fileUrl = item.url.startsWith('http') ? item.url : `${API_URL}/${item.url}`;
+            openFileLikeWhatsApp(fileUrl, item.name);
+          }}>
             <Download />
           </TouchableOpacity>
         </View>

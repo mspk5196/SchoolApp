@@ -790,7 +790,10 @@ const StudentPageMessage = ({ route, navigation }) => {
                   {item.attachment_type === 'image' ? (
                     <TouchableOpacity
                       onPress={async () => {
-                        const uri = `${API_URL}/uploads${item.attachment_path}`;
+                        // Handle both local paths and Cloudinary URLs
+                        const uri = item.attachment_path.startsWith('http') 
+                          ? item.attachment_path 
+                          : `${API_URL}/uploads${item.attachment_path}`;
                         const hasPermission = await requestSaveImagePermission();
                         if (!hasPermission) {
                           Alert.alert('Permission Denied', 'Cannot save image without permission.');
@@ -801,7 +804,11 @@ const StudentPageMessage = ({ route, navigation }) => {
                       }}
                     >
                       <Image
-                        source={{ uri: `${API_URL}/uploads${item.attachment_path}` }}
+                        source={{ 
+                          uri: item.attachment_path.startsWith('http') 
+                            ? item.attachment_path 
+                            : `${API_URL}/uploads${item.attachment_path}` 
+                        }}
                         style={styles.messageImage}
                         resizeMode="contain"
                       />
@@ -813,7 +820,12 @@ const StudentPageMessage = ({ route, navigation }) => {
                         playingAudioId === item.message_id && !audioPaused && { backgroundColor: '#e0f7fa' }
                       ]}
                       activeOpacity={0.7}
-                      onPress={() => playAudio(`${API_URL}/uploads${item.attachment_path}`, item.message_id)}
+                      onPress={() => {
+                        const audioUri = item.attachment_path.startsWith('http') 
+                          ? item.attachment_path 
+                          : `${API_URL}/uploads${item.attachment_path}`;
+                        playAudio(audioUri, item.message_id);
+                      }}
                     >
                       {playingAudioId === item.message_id ? (
                         audioPaused ? (
@@ -841,14 +853,21 @@ const StudentPageMessage = ({ route, navigation }) => {
                   ) : (
                     <TouchableOpacity
                       style={styles.documentAttachment}
-                      onPress={() => downloadAndOpenDocument(
-                        `${API_URL}/uploads${item.attachment_path}`,
-                        item.attachment_path.split('/').pop()
-                      )}
+                      onPress={() => {
+                        const docUri = item.attachment_path.startsWith('http') 
+                          ? item.attachment_path 
+                          : `${API_URL}/uploads${item.attachment_path}`;
+                        const fileName = item.attachment_path.startsWith('http')
+                          ? item.attachment_path.split('/').pop().split('?')[0] // Remove query params from Cloudinary URL
+                          : item.attachment_path.split('/').pop();
+                        downloadAndOpenDocument(docUri, fileName);
+                      }}
                     >
                       <DocumentIcon width={24} height={24} />
                       <Text style={styles.documentText}>
-                        {item.attachment_path.split('/').pop()}
+                        {item.attachment_path.startsWith('http')
+                          ? item.attachment_path.split('/').pop().split('?')[0] // Remove query params
+                          : item.attachment_path.split('/').pop()}
                       </Text>
                     </TouchableOpacity>
                   )}

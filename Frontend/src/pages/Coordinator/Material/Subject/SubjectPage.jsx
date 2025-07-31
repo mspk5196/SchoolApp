@@ -122,7 +122,7 @@ const SubjectPage = ({ route, navigation }) => {
                     const fileObj = {
                         id: item.id, // Include the unique file ID from database
                         name: item.file_name,
-                        uri: `${API_URL}/${item.file_url}`,
+                        uri: item.file_url.startsWith('http') ? item.file_url : `${API_URL}/${item.file_url}`,
                         type: item.material_type // 'PDF' or 'Video'
                     };
 

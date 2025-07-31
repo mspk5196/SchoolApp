@@ -6,17 +6,11 @@ const performanceGraph = require('../controllers/admin/performanceGraph')
 const freeHourMentor = require('../controllers/admin/freeHourMentor');
 const multer = require('multer');
 
-const profileCoordinatorPhotoStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, './uploads/profileImages/coordinator');
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}_${file.originalname}`;
-    cb(null, uniqueName);
-  }
+// Configure multer for memory storage (files will be uploaded to Cloudinary)
+const uploadCoordinatorProfile = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit for profile photos
 });
-
-const uploadCoordinatorProfile = multer({ storage: profileCoordinatorPhotoStorage });
 
 router.post('/admin/getAdminData', adminController.getAdminData);
 
