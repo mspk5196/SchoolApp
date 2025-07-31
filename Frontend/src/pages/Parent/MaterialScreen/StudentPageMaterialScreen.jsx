@@ -116,9 +116,17 @@ const StudentPageMaterialScreen = () => {
         grouped[item.level] = { level: item.level, pdfs: [], videos: [] };
       }
       if (item.material_type === 'PDF') {
-        grouped[item.level].pdfs.push({ name: item.file_name, url: item.file_url });
+        grouped[item.level].pdfs.push({ 
+          name: item.file_name, 
+          url: item.file_url, 
+          type: 'PDF' 
+        });
       } else if (item.material_type === 'Video') {
-        grouped[item.level].videos.push({ name: item.file_name, url: item.file_url });
+        grouped[item.level].videos.push({ 
+          name: item.file_name, 
+          url: item.file_url, 
+          type: 'Video' 
+        });
       }
     });
     // Convert to sorted array by level
@@ -131,8 +139,24 @@ const StudentPageMaterialScreen = () => {
     // Clean the URL first to fix any /https:// issues
     const cleanUrl = cleanImageUrl(fileUrl);
     
-    // Extract proper filename with extension from URL
-    const properFileName = getFileNameFromUrl(cleanUrl, fileName);
+    // For Cloudinary raw files, use the provided fileName with proper extension
+    // If fileName doesn't have an extension, extract it from the URL or add default
+    let properFileName = fileName;
+    if (cleanUrl.includes('cloudinary.com') && cleanUrl.includes('/raw/')) {
+      // For raw files from Cloudinary, ensure proper filename with extension
+      if (!properFileName.includes('.')) {
+        // Try to get extension from URL, default to pdf if not found
+        const urlExtension = cleanUrl.split('.').pop();
+        if (urlExtension && urlExtension.length <= 4) {
+          properFileName = `${properFileName}.${urlExtension}`;
+        } else {
+          properFileName = `${properFileName}.pdf`; // Default for raw files
+        }
+      }
+    } else {
+      // For other URLs, use the getFileNameFromUrl utility
+      properFileName = getFileNameFromUrl(cleanUrl, fileName);
+    }
     
     const localFile = `${RNFS.DownloadDirectoryPath}/${properFileName}`;
 
@@ -194,7 +218,14 @@ const StudentPageMaterialScreen = () => {
             // Clean the URL first to fix any /https:// issues
             const cleanUrl = cleanImageUrl(item.url);
             const fileUrl = cleanUrl.startsWith('http') ? cleanUrl : `${API_URL}/${cleanUrl}`;
-            openFileLikeWhatsApp(fileUrl, item.name);
+            
+            // Create proper filename with PDF extension
+            let fileName = item.name;
+            if (!fileName.toLowerCase().endsWith('.pdf')) {
+              fileName = fileName + '.pdf';
+            }
+            
+            openFileLikeWhatsApp(fileUrl, fileName);
           }}>
             <Download />
           </TouchableOpacity>
@@ -214,7 +245,15 @@ const StudentPageMaterialScreen = () => {
             // Clean the URL first to fix any /https:// issues
             const cleanUrl = cleanImageUrl(item.url);
             const fileUrl = cleanUrl.startsWith('http') ? cleanUrl : `${API_URL}/${cleanUrl}`;
-            openFileLikeWhatsApp(fileUrl, item.name);
+            
+            // Create proper filename with video extension
+            let fileName = item.name;
+            const hasVideoExt = /\.(mp4|avi|mov|wmv|flv|webm)$/i.test(fileName);
+            if (!hasVideoExt) {
+              fileName = fileName + '.mp4'; // Default to mp4 if no extension
+            }
+            
+            openFileLikeWhatsApp(fileUrl, fileName);
           }}>
             <Download />
           </TouchableOpacity>

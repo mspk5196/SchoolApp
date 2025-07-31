@@ -23,7 +23,7 @@ const EventCard = ({ event, onPress, onDelete }) => {
     <TouchableOpacity style={styles.eventCard} onPress={() => onPress(event)}>
       <View style={styles.eventImageContainer}>
         {banner_url ? (
-          <Image source={{ uri: `${API_URL}/${banner_url}` }} style={styles.eventImage} resizeMode="cover" />
+          <Image source={{ uri: `${banner_url}` }} style={styles.eventImage} resizeMode="cover" />
         ) : (
           <View style={[styles.eventImage, { backgroundColor: '#FEE2E2' }]}>
             <Text style={styles.placeholderText}>{event_name.substring(0, 1)}</Text>

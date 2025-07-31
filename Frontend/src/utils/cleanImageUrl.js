@@ -44,10 +44,28 @@ export const getFileNameFromUrl = (url, fallbackName = 'download') => {
       const lastPart = urlParts[urlParts.length - 1];
       const nameWithoutQuery = lastPart.split('?')[0];
       
-      // If it has an extension, return it
+      // For Cloudinary raw files, the extension is automatically added by Cloudinary
+      // The URL structure is: .../raw/upload/v.../folder/filename.extension
+      // So we can extract the filename with extension directly
       if (nameWithoutQuery.includes('.')) {
         return nameWithoutQuery;
       }
+      
+      // If no extension in URL, try to determine from the URL path
+      // Look for file type in the URL structure
+      if (url.includes('/raw/')) {
+        // For raw files, try to determine extension from common patterns
+        const pathParts = url.split('/');
+        const filename = pathParts[pathParts.length - 1];
+        
+        // If no extension, assume PDF for raw files (most common case)
+        if (!filename.includes('.')) {
+          return `${filename}.pdf`;
+        }
+        return filename;
+      }
+      
+      return nameWithoutQuery;
     }
     
     // For local paths or other URLs

@@ -14,7 +14,7 @@ const uploadToCloudinary = async (buffer, options = {}) => {
   return new Promise((resolve, reject) => {
     const uploadOptions = {
       ...options, // ✅ Spread first
-      resource_type: options.resource_type || 'auto' // ✅ Set default if missing
+      resource_type: options.resource_type || 'raw' // ✅ Default to 'raw' instead of 'auto'
     };
 
     cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
@@ -40,13 +40,12 @@ const uploadProfilePhoto = async (buffer, userId, userType) => {
 
 // Upload documents (PDFs, DOCs, etc.)
 const uploadDocument = async (buffer, originalName, folder = "documents") => {
-  // Preserve the full filename with extension in public_id
+  // For raw files, don't include extension in public_id
   const fileNameWithoutExt = originalName.split(".")[0];
-  const extension = originalName.split('.').pop().toLowerCase();
   
   const options = {
     folder,
-    public_id: `${Date.now()}_${fileNameWithoutExt}.${extension}`,
+    public_id: `${Date.now()}_${fileNameWithoutExt}`, // No extension in public_id for raw files
     resource_type: "raw", // ✅ Needed for PDF/DOCX/XLSX/MP3
   };
 
@@ -57,15 +56,27 @@ const uploadDocument = async (buffer, originalName, folder = "documents") => {
 const uploadStudyMaterial = async (buffer, originalName, gradeId, subjectId) => {
   const ext = originalName.split('.').pop().toLowerCase();
   
-  // Preserve the full filename with extension in public_id
+  // Get filename without extension
   const fileNameWithoutExt = originalName.split(".")[0];
 
-  const resourceType =
-    ['pdf', 'docx', 'xlsx', 'xls', 'zip'].includes(ext) ? 'raw' : 'auto';
+  // Determine resource type based on file extension
+  let resourceType = 'raw'; // Default for documents/PDFs
+  let publicId = `${Date.now()}_${fileNameWithoutExt}`;
+  
+  if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
+    resourceType = 'image';
+    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for images either
+  } else if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(ext)) {
+    resourceType = 'video';
+    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for videos either
+  } else if (['mp3', 'wav', 'ogg', 'aac'].includes(ext)) {
+    resourceType = 'video'; // Audio files use 'video' resource type in Cloudinary
+    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for audio either
+  }
 
   const options = {
     folder: `study_materials/grade_${gradeId}/subject_${subjectId}`,
-    public_id: `${Date.now()}_${fileNameWithoutExt}.${ext}`,
+    public_id: publicId,
     resource_type: resourceType,
   };
 
@@ -88,7 +99,7 @@ const uploadEventBanner = async (buffer, eventName) => {
 
 // Upload message attachments
 const uploadMessageAttachment = async (buffer, originalName, messageId) => {
-  // Preserve the full filename with extension in public_id
+  // Get filename without extension
   const fileNameWithoutExt = originalName.split(".")[0];
   const extension = originalName.split('.').pop().toLowerCase();
   
@@ -102,7 +113,7 @@ const uploadMessageAttachment = async (buffer, originalName, messageId) => {
   
   const options = {
     folder: 'message_attachments',
-    public_id: `msg_${messageId}_${Date.now()}_${fileNameWithoutExt}.${extension}`,
+    public_id: `msg_${messageId}_${Date.now()}_${fileNameWithoutExt}`, // No extension in public_id
     resource_type: resourceType
   };
   return uploadToCloudinary(buffer, options);
