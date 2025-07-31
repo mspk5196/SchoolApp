@@ -10,6 +10,7 @@ import Home from '../../../../assets/MentorPage/home.svg';
 import Leave2 from '../../../../assets/MentorPage/leave2.svg';
 import Grade from '../../../../assets/MentorPage/grade.svg';
 import styles from './mentordetailssty';
+import robustProfileImageHandler from '../../../../utils/robustProfileImageHandler';
 import { API_URL } from '../../../../utils/env.js'
 
 const MentorProfileDetails = ({ navigation, route }) => {
@@ -112,18 +113,7 @@ const MentorProfileDetails = ({ navigation, route }) => {
   };
 
   const getProfileImageSource = (profilePath) => {
-    if (profilePath) {
-      // Check if it's a Cloudinary URL (starts with http/https)
-      if (profilePath.startsWith('http://') || profilePath.startsWith('https://')) {
-        return { uri: profilePath };
-      }
-      // Local file path - normalize and construct URL
-      const normalizedPath = profilePath.replace(/\\/g, '/');
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
-    } else {
-      return Profile;
-    }
+    return robustProfileImageHandler(profilePath, Profile, API_URL);
   };
 
   return (

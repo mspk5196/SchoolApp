@@ -18,6 +18,7 @@ import Download from '../../../assets/ParentPage/Materials-img/download.svg'
 import { API_URL } from '../../../utils/env.js';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
+import { cleanImageUrl } from '../../../utils/cleanImageUrl';
 import Nodata from '../../../components/General/Nodata';
 import mime from 'react-native-mime-types';
 
@@ -126,11 +127,15 @@ const StudentPageMaterialScreen = () => {
 
   const openFileLikeWhatsApp = async (fileUrl, fileName) => {
     setDownloadProgress(0);
+    
+    // Clean the URL first to fix any /https:// issues
+    const cleanUrl = cleanImageUrl(fileUrl);
+    
     const localFile = `${RNFS.DownloadDirectoryPath}/${fileName}`;
 
     try {
       const downloadResult = await RNFS.downloadFile({
-        fromUrl: fileUrl,
+        fromUrl: cleanUrl,
         toFile: localFile,
         progress: (res) => {
           const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);
@@ -161,7 +166,7 @@ const StudentPageMaterialScreen = () => {
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Open in Browser',
-              onPress: () => Linking.openURL(fileUrl),
+              onPress: () => Linking.openURL(cleanUrl),
             },
           ]
         );
@@ -183,7 +188,9 @@ const StudentPageMaterialScreen = () => {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', flex: 1 }}>
           <Text style={styles.pdfName}>{(item.name).replace(/%/g, ' ')}</Text>
           <TouchableOpacity onPress={() => {
-            const fileUrl = item.url.startsWith('http') ? item.url : `${API_URL}/${item.url}`;
+            // Clean the URL first to fix any /https:// issues
+            const cleanUrl = cleanImageUrl(item.url);
+            const fileUrl = cleanUrl.startsWith('http') ? cleanUrl : `${API_URL}/${cleanUrl}`;
             openFileLikeWhatsApp(fileUrl, item.name);
           }}>
             <Download />
@@ -201,7 +208,9 @@ const StudentPageMaterialScreen = () => {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', flex: 1 }}>
           <Text style={styles.pdfName}>{(item.name).replace(/%/g, ' ')}</Text>
           <TouchableOpacity onPress={() => {
-            const fileUrl = item.url.startsWith('http') ? item.url : `${API_URL}/${item.url}`;
+            // Clean the URL first to fix any /https:// issues
+            const cleanUrl = cleanImageUrl(item.url);
+            const fileUrl = cleanUrl.startsWith('http') ? cleanUrl : `${API_URL}/${cleanUrl}`;
             openFileLikeWhatsApp(fileUrl, item.name);
           }}>
             <Download />

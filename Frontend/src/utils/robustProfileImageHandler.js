@@ -3,23 +3,26 @@
  * This handles all edge cases for both Cloudinary URLs and local file paths
  */
 
+import { cleanImageUrl } from './cleanImageUrl';
+
 export const getProfileImageSource = (profilePath, defaultImage, API_URL) => {
   // Return default if no profile path
   if (!profilePath || profilePath === '' || profilePath === null || profilePath === undefined) {
     return defaultImage;
   }
 
+  // Clean the URL first to fix any malformed URLs like /https://
+  const cleanUrl = cleanImageUrl(profilePath);
+  
   // Handle Cloudinary URLs (complete URLs)
-  if (profilePath.startsWith('http://') || profilePath.startsWith('https://')) {
-    // Remove any leading slash that might have been accidentally added
-    const cleanUrl = profilePath.startsWith('/http') ? profilePath.substring(1) : profilePath;
+  if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
     return { uri: cleanUrl };
   }
 
   // Handle local file paths
   if (API_URL) {
     // Normalize the path (replace backslashes with forward slashes)
-    let normalizedPath = profilePath.replace(/\\/g, '/');
+    let normalizedPath = cleanUrl.replace(/\\/g, '/');
     
     // Remove leading slash from path to avoid double slashes
     if (normalizedPath.startsWith('/')) {
@@ -35,7 +38,7 @@ export const getProfileImageSource = (profilePath, defaultImage, API_URL) => {
   }
 
   // Fallback to treating it as a local file path relative to current location
-  return { uri: profilePath };
+  return { uri: cleanUrl };
 };
 
 export default getProfileImageSource;

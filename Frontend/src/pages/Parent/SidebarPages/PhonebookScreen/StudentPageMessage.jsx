@@ -33,6 +33,7 @@ import RNFS from 'react-native-fs';
 import RNBlobUtil from 'react-native-blob-util';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CheckBox } from 'react-native-elements';
+import { cleanImageUrl } from '../../../../utils/cleanImageUrl';
 import mime from 'react-native-mime-types';
 
 // E2EE Imports
@@ -769,7 +770,10 @@ const StudentPageMessage = ({ route, navigation }) => {
 
             {!isSent && (
               <Image
-                source={item.sender_profile ? { uri: `${API_URL}/${item.sender_profile}` } : Profile}
+                source={item.sender_profile ? (() => {
+                  const cleanUrl = cleanImageUrl(item.sender_profile);
+                  return { uri: cleanUrl.startsWith('http') ? cleanUrl : `${API_URL}/${cleanUrl}` };
+                })() : Profile}
                 style={styles.profileImage}
               />
             )}
@@ -790,10 +794,11 @@ const StudentPageMessage = ({ route, navigation }) => {
                   {item.attachment_type === 'image' ? (
                     <TouchableOpacity
                       onPress={async () => {
-                        // Handle both local paths and Cloudinary URLs
-                        const uri = item.attachment_path.startsWith('http') 
-                          ? item.attachment_path 
-                          : `${API_URL}/uploads${item.attachment_path}`;
+                        // Handle both local paths and Cloudinary URLs with cleaning
+                        const cleanedPath = cleanImageUrl(item.attachment_path);
+                        const uri = cleanedPath.startsWith('http') 
+                          ? cleanedPath 
+                          : `${API_URL}/uploads${cleanedPath}`;
                         const hasPermission = await requestSaveImagePermission();
                         if (!hasPermission) {
                           Alert.alert('Permission Denied', 'Cannot save image without permission.');
@@ -804,11 +809,14 @@ const StudentPageMessage = ({ route, navigation }) => {
                       }}
                     >
                       <Image
-                        source={{ 
-                          uri: item.attachment_path.startsWith('http') 
-                            ? item.attachment_path 
-                            : `${API_URL}/uploads${item.attachment_path}` 
-                        }}
+                        source={(() => {
+                          const cleanedPath = cleanImageUrl(item.attachment_path);
+                          return { 
+                            uri: cleanedPath.startsWith('http') 
+                              ? cleanedPath 
+                              : `${API_URL}/uploads${cleanedPath}` 
+                          };
+                        })()}
                         style={styles.messageImage}
                         resizeMode="contain"
                       />
@@ -821,9 +829,10 @@ const StudentPageMessage = ({ route, navigation }) => {
                       ]}
                       activeOpacity={0.7}
                       onPress={() => {
-                        const audioUri = item.attachment_path.startsWith('http') 
-                          ? item.attachment_path 
-                          : `${API_URL}/uploads${item.attachment_path}`;
+                        const cleanedPath = cleanImageUrl(item.attachment_path);
+                        const audioUri = cleanedPath.startsWith('http') 
+                          ? cleanedPath 
+                          : `${API_URL}/uploads${cleanedPath}`;
                         playAudio(audioUri, item.message_id);
                       }}
                     >
@@ -854,12 +863,13 @@ const StudentPageMessage = ({ route, navigation }) => {
                     <TouchableOpacity
                       style={styles.documentAttachment}
                       onPress={() => {
-                        const docUri = item.attachment_path.startsWith('http') 
-                          ? item.attachment_path 
-                          : `${API_URL}/uploads${item.attachment_path}`;
-                        const fileName = item.attachment_path.startsWith('http')
-                          ? item.attachment_path.split('/').pop().split('?')[0] // Remove query params from Cloudinary URL
-                          : item.attachment_path.split('/').pop();
+                        const cleanedPath = cleanImageUrl(item.attachment_path);
+                        const docUri = cleanedPath.startsWith('http') 
+                          ? cleanedPath 
+                          : `${API_URL}/uploads${cleanedPath}`;
+                        const fileName = cleanedPath.startsWith('http')
+                          ? cleanedPath.split('/').pop().split('?')[0] // Remove query params from Cloudinary URL
+                          : cleanedPath.split('/').pop();
                         downloadAndOpenDocument(docUri, fileName);
                       }}
                     >
@@ -922,6 +932,9 @@ const StudentPageMessage = ({ route, navigation }) => {
   };
 
   const downloadAndOpenDocument = async (fileUrl, fileName) => {
+    // Clean the URL first to fix any /https:// issues
+    const cleanUrl = cleanImageUrl(fileUrl);
+    
     const ext = fileName.split('.').pop().toLowerCase();
     const isPdf = ext === 'pdf';
     const localFile = `${RNFS.DocumentDirectoryPath}/${fileName}`;
@@ -935,7 +948,7 @@ const StudentPageMessage = ({ route, navigation }) => {
       setDownloadProgress(0);
       try {
         const downloadResult = await RNFS.downloadFile({
-          fromUrl: fileUrl,
+          fromUrl: cleanUrl,
           toFile: localFile,
           progress: (res) => {
             const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cleanUrlsMiddleware = require('./middleware/cleanUrlsMiddleware');
 
 // Load environment variables
 require('dotenv').config();
@@ -7,6 +8,9 @@ require('dotenv').config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Apply URL cleaning middleware to all responses
+app.use(cleanUrlsMiddleware);
 
 // Only serve static files for actual local uploads, not Cloudinary URLs
 app.use('/uploads', (req, res, next) => {

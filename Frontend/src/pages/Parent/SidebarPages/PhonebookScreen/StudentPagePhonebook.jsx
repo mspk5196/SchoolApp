@@ -14,6 +14,7 @@ import CallIcon from '../../../../assets/ParentPage/phonebook/call';
 import PrevIcon from '../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
 import MsgIcon from '../../../../assets/ParentPage/phonebook/msg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import robustProfileImageHandler from '../../../../utils/robustProfileImageHandler';
 import { API_URL } from '../../../../utils/env.js'
 
 const ContactCard = ({ name, facultyId, subject, phoneNumber, onMessagePress, profile }) => {
@@ -23,18 +24,7 @@ const ContactCard = ({ name, facultyId, subject, phoneNumber, onMessagePress, pr
   };
 
   const getProfileImageSource = (profilePath) => {
-    if (profilePath) {
-      // Check if it's a Cloudinary URL (starts with http/https)
-      if (profilePath.startsWith('http://') || profilePath.startsWith('https://')) {
-        return { uri: profilePath };
-      }
-      // Local file path - normalize and construct URL
-      const normalizedPath = profilePath.replace(/\\/g, '/');
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
-    } else {
-      return Profile;
-    }
+    return robustProfileImageHandler(profilePath, Profile, API_URL);
   };
 
   return (
