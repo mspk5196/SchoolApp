@@ -1,5 +1,20 @@
 const { v2: cloudinary } = require('cloudinary');
 
+// Load environment variables
+require('dotenv').config();
+
+// Debug: Log environment variables (remove in production)
+console.log('Cloudinary Config Check:', {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? 'Set' : 'Missing',
+  api_key: process.env.CLOUDINARY_API_KEY ? 'Set' : 'Missing',
+  api_secret: process.env.CLOUDINARY_API_SECRET ? 'Set' : 'Missing'
+});
+
+// Validate required environment variables
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+  throw new Error('Missing required Cloudinary environment variables. Please check CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.');
+}
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
