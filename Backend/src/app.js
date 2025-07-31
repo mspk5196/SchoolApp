@@ -7,7 +7,15 @@ require('dotenv').config();
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static('uploads'));
+
+// Only serve static files for actual local uploads, not Cloudinary URLs
+app.use('/uploads', (req, res, next) => {
+  // Don't serve Cloudinary URLs through static middleware
+  if (req.url.includes('cloudinary.com') || req.url.startsWith('/http')) {
+    return res.status(404).send('Not found');
+  }
+  next();
+}, express.static('uploads'));
 
 // Log requests
 app.use((req, res, next) => {
