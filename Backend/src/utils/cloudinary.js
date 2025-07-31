@@ -42,10 +42,11 @@ const uploadProfilePhoto = async (buffer, userId, userType) => {
 const uploadDocument = async (buffer, originalName, folder = "documents") => {
   // For raw files, don't include extension in public_id
   const fileNameWithoutExt = originalName.split(".")[0];
+  const ext = originalName.split(".").pop().toLowerCase();
   
   const options = {
     folder,
-    public_id: `${Date.now()}_${fileNameWithoutExt}`, // No extension in public_id for raw files
+    public_id: `${Date.now()}_${fileNameWithoutExt}.${ext}`, // Include extension in public_id for raw files
     resource_type: "raw", // ✅ Needed for PDF/DOCX/XLSX/MP3
   };
 
@@ -61,7 +62,7 @@ const uploadStudyMaterial = async (buffer, originalName, gradeId, subjectId) => 
 
   // Determine resource type based on file extension
   let resourceType = 'raw'; // Default for documents/PDFs
-  let publicId = `${Date.now()}_${fileNameWithoutExt}`;
+  let publicId = `${Date.now()}_${fileNameWithoutExt}.${ext}`; // Include extension in public_id for study materials
   
   if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
     resourceType = 'image';
