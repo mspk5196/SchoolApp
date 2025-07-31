@@ -92,24 +92,57 @@ const uploadMessageAttachment = async (buffer, originalName, messageId) => {
   const fileNameWithoutExt = originalName.split(".")[0];
   const extension = originalName.split('.').pop().toLowerCase();
   
+  // Determine resource type based on file extension
+  let resourceType = 'raw'; // Default for documents
+  if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(extension)) {
+    resourceType = 'image';
+  } else if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(extension)) {
+    resourceType = 'video';
+  }
+  
   const options = {
     folder: 'message_attachments',
     public_id: `msg_${messageId}_${Date.now()}_${fileNameWithoutExt}.${extension}`,
-    resource_type: 'auto'
+    resource_type: resourceType
   };
   return uploadToCloudinary(buffer, options);
 };
 
 // Delete file from Cloudinary
-const deleteFromCloudinary = async (publicId, resourceType = 'auto') => {
-  try {
-    const result = await cloudinary.uploader.destroy(publicId, {
-      resource_type: resourceType
-    });
-    return result;
-  } catch (error) {
-    throw error;
+const deleteFromCloudinary = async (publicId, resourceType = null) => {
+  // If resource type is specified, use it directly
+  if (resourceType && resourceType !== 'auto') {
+    try {
+      const result = await cloudinary.uploader.destroy(publicId, {
+        resource_type: resourceType
+      });
+      return result;
+    } catch (error) {
+      throw error;
+    }
   }
+
+  // If no resource type specified or 'auto', try different types
+  const resourceTypes = ['image', 'video', 'raw'];
+  
+  for (const type of resourceTypes) {
+    try {
+      const result = await cloudinary.uploader.destroy(publicId, {
+        resource_type: type
+      });
+      
+      // If deletion was successful (result indicates success)
+      if (result.result === 'ok' || result.result === 'not found') {
+        return result;
+      }
+    } catch (error) {
+      // Continue to next resource type if this one fails
+      console.log(`Failed to delete with resource_type '${type}', trying next...`);
+    }
+  }
+  
+  // If all attempts failed, throw an error
+  throw new Error(`Failed to delete file with publicId: ${publicId} - tried all resource types`);
 };
 
 module.exports = {

@@ -667,6 +667,8 @@ exports.getGradeSubject = (req, res) => {
 
 exports.uploadStudyMaterial = async (req, res) => {
   const { grade_id, subject_id, level, expected_date } = req.body;
+  console.log(expected_date);
+  
   let connection;
 
   try {
@@ -766,8 +768,8 @@ exports.deleteMaterial = async (req, res) => {
   const { fileId } = req.body;
 
   try {
-    // First get the file URL
-    const getFileQuery = 'SELECT file_url FROM Materials WHERE id = ?';
+    // First get the file URL and material type
+    const getFileQuery = 'SELECT file_url, material_type FROM Materials WHERE id = ?';
     const [results] = await db.promise().query(getFileQuery, [fileId]);
     
     if (results.length === 0) {
@@ -775,6 +777,7 @@ exports.deleteMaterial = async (req, res) => {
     }
 
     const fileUrl = results[0].file_url;
+    const materialType = results[0].material_type;
 
     // Delete from database first
     const sql = 'DELETE FROM materials WHERE id = ?';
@@ -790,7 +793,15 @@ exports.deleteMaterial = async (req, res) => {
         // Remove file extension
         publicId = publicId.substring(0, publicId.lastIndexOf('.'));
 
-        await deleteFromCloudinary(publicId);
+        // Determine resource type based on material type
+        let resourceType = 'raw'; // Default for PDFs and documents
+        if (materialType === 'Image') {
+          resourceType = 'image';
+        } else if (materialType === 'Video') {
+          resourceType = 'video';
+        }
+
+        await deleteFromCloudinary(publicId, resourceType);
       } catch (cloudinaryError) {
         console.error('Cloudinary deletion error:', cloudinaryError);
         // Continue execution - file was deleted from DB
@@ -809,7 +820,7 @@ exports.deleteLevel = async (req, res) => {
   const { level, gradeID, subjectID } = req.body;
 
   try {
-    const getFileQuery = 'SELECT file_url FROM Materials WHERE level = ? AND grade_id = ? AND subject_id = ?';
+    const getFileQuery = 'SELECT file_url, material_type FROM Materials WHERE level = ? AND grade_id = ? AND subject_id = ?';
     const [results] = await db.promise().query(getFileQuery, [level, gradeID, subjectID]);
 
     if (results.length === 0) {
@@ -819,6 +830,8 @@ exports.deleteLevel = async (req, res) => {
     // Delete all matching files from Cloudinary
     for (const row of results) {
       const fileUrl = row.file_url;
+      const materialType = row.material_type;
+      
       if (fileUrl && fileUrl.includes('cloudinary.com')) {
         try {
           // Extract public_id from Cloudinary URL
@@ -828,7 +841,15 @@ exports.deleteLevel = async (req, res) => {
           // Remove file extension
           publicId = publicId.substring(0, publicId.lastIndexOf('.'));
 
-          await deleteFromCloudinary(publicId);
+          // Determine resource type based on material type
+          let resourceType = 'raw'; // Default for PDFs and documents
+          if (materialType === 'Image') {
+            resourceType = 'image';
+          } else if (materialType === 'Video') {
+            resourceType = 'video';
+          }
+
+          await deleteFromCloudinary(publicId, resourceType);
           console.log(`✅ Deleted file from Cloudinary: ${publicId}`);
         } catch (cloudinaryError) {
           console.error(`❌ Error deleting file from Cloudinary:`, cloudinaryError.message);
@@ -1044,6 +1065,7 @@ exports.getActivities = (req, res) => {
 const bcrypt = require('bcrypt');
 const { createTodayAcademicSessions } = require('../mentor/mentorController');
 const { log } = require('console');
+const e = require('express');
 
 // Student Enrollment
 
