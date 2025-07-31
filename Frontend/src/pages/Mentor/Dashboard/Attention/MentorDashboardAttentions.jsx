@@ -4,6 +4,7 @@ import Arrow from '../../../../assets/MentorPage/arrow.svg';
 import styles from './Attentionssty';
 import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import Profile from '../../../../assets/MentorPage/User.svg';
+import { cleanImageUrl } from '../../../../utils/cleanImageUrl';
 import { API_URL } from '../../../../utils/env.js';
 
 const MentorDashboardAttentions = ({ navigation, route }) => {
@@ -77,12 +78,17 @@ const MentorDashboardAttentions = ({ navigation, route }) => {
   };
 
   const getProfileImageSource = (profilePath) => {
-
     if (profilePath) {
-      // 1. Replace backslashes with forward slashes
-      const normalizedPath = profilePath.replace(/\\/g, '/');
-      // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`
+      // Clean the URL to fix any malformed issues
+      const cleanPath = cleanImageUrl(profilePath);
+      
+      // Check if it's already a full URL (Cloudinary URL)
+      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+        return { uri: cleanPath };
+      }
+      // For local paths, normalize and construct URL with API_URL
+      const normalizedPath = cleanPath.replace(/\\/g, '/');
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
       return { uri: fullImageUrl };
     } else {
       return Profile;

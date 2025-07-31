@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Liked from '../../../../../assets/ParentPage/Event/liked.svg';
 import Unliked from '../../../../../assets/ParentPage/Event/unliked.svg';
 import CurvedImageBanner from '../../../../../components/CurvedImage/CurvedImageBanner';
+import { cleanImageUrl } from '../../../../../utils/cleanImageUrl';
 import { API_URL } from '../../../../../utils/env.js'
 import { useNavigation } from '@react-navigation/native';
 
@@ -43,7 +44,10 @@ const EventCard = ({ event, navigation, title, isFavourite, onToggleFavourite })
     <TouchableOpacity style={styles.eventCard} onPress={() => handlePressEvent(event)}>
       <View style={styles.eventImageContainer}>
         {banner_url ? (
-          <Image source={{ uri: `${API_URL}/${banner_url}` }} style={styles.eventImage} resizeMode="cover" />
+          <Image source={{ uri: (() => {
+            const cleanUrl = cleanImageUrl(banner_url);
+            return cleanUrl.startsWith('http') ? cleanUrl : `${API_URL}/${cleanUrl}`;
+          })() }} style={styles.eventImage} resizeMode="cover" />
         ) : (
           <View style={[styles.eventImage, { backgroundColor: '#FEE2E2' }]}>
             <Text style={styles.placeholderText}>{event_name.substring(0, 1)}</Text>

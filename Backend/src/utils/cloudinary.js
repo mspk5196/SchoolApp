@@ -13,20 +13,21 @@ cloudinary.config({
 const uploadToCloudinary = async (buffer, options = {}) => {
   return new Promise((resolve, reject) => {
     const uploadOptions = {
-      resource_type: 'auto', // Automatically detect file type
-      ...options
+      ...options, // ✅ Spread first
+      resource_type: options.resource_type || 'auto' // ✅ Set default if missing
     };
+    
+    console.log('Final Upload Options to Cloudinary:', uploadOptions);
 
-    cloudinary.uploader.upload_stream(
-      uploadOptions,
-      (error, result) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
-        }
+    cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
+      if (error) {
+        console.error('Cloudinary Upload Error:', error);
+        reject(error);
+      } else {
+        console.log('Cloudinary Upload Success - URL:', result.secure_url);
+        resolve(result);
       }
-    ).end(buffer);
+    }).end(buffer);
   });
 };
 
@@ -45,22 +46,38 @@ const uploadProfilePhoto = async (buffer, userId, userType) => {
 };
 
 // Upload documents (PDFs, DOCs, etc.)
-const uploadDocument = async (buffer, originalName, folder = 'documents') => {
+
+const uploadDocument = async (buffer, originalName, folder = "documents") => {
   const options = {
-    folder: folder,
-    public_id: `${Date.now()}_${originalName.split('.')[0]}`,
-    resource_type: 'raw' // For non-image files
+    folder,
+    public_id: `${Date.now()}_${originalName.split(".")[0]}`,
+    resource_type: "raw", // ✅ Needed for PDF/DOCX/XLSX/MP3
   };
+
   return uploadToCloudinary(buffer, options);
 };
 
 // Upload study materials
 const uploadStudyMaterial = async (buffer, originalName, gradeId, subjectId) => {
+  const ext = originalName.split('.').pop().toLowerCase();
+  
+  console.log('Upload Study Material Debug:');
+  console.log('Original Name:', originalName);
+  console.log('Extension:', ext);
+
+  // Force raw for all document types including PDF
+  const resourceType = ['pdf', 'docx', 'xlsx', 'xls', 'zip', 'doc', 'ppt', 'pptx', 'txt'].includes(ext) ? 'raw' : 'auto';
+  
+  console.log('Resource Type:', resourceType);
+
   const options = {
     folder: `study_materials/grade_${gradeId}/subject_${subjectId}`,
     public_id: `${Date.now()}_${originalName.split('.')[0]}`,
-    resource_type: 'auto'
+    resource_type: resourceType,
   };
+  
+  console.log('Upload Options:', options);
+
   return uploadToCloudinary(buffer, options);
 };
 

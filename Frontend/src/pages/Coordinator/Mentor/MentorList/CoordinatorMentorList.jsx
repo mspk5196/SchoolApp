@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Alert } from 'react-native';
 import BackIcon from "../../../../assets/CoordinatorPage/MentorList/leftarrow.svg";
 import styles from './MentorListStyles';
+import { cleanImageUrl } from '../../../../utils/cleanImageUrl';
 import { API_URL } from '../../../../utils/env.js'
 const Staff = require('../../../../assets/CoordinatorPage/MentorList/staff.png');
 import Search from '../../../../assets/CoordinatorPage/MentorList/search.svg'
@@ -58,10 +59,18 @@ const CoordinatorMentorList = ({ navigation, route }) => {
   };
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
-      // 1. Replace backslashes with forward slashes
-      const normalizedPath = profilePath.replace(/\\/g, '/');
-      // 2. Construct the full URL
+      // Clean the URL to fix any malformed issues
+      const cleanPath = cleanImageUrl(profilePath);
+      
+      // Check if it's already a full URL (Cloudinary URL)
+      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+        return { uri: cleanPath };
+      }
+      // For local paths, construct full URL with API_URL
+      const normalizedPath = cleanPath.replace(/\\/g, '/');
       const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      console.log('Full Image URL:', fullImageUrl);
+      
       return { uri: fullImageUrl };
     } else {
       return Staff;

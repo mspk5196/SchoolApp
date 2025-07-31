@@ -12,6 +12,7 @@ import Tick from '../../../../assets/CoordinatorPage/MentorList/tick.svg';
 import Tickbox from '../../../../assets/CoordinatorPage/MentorList/tickbox.svg';
 import Roundhome from '../../../../assets/CoordinatorPage/MentorList/roundhome.svg';
 import { API_URL } from '../../../../utils/env.js'
+import { cleanImageUrl } from '../../../../utils/cleanImageUrl';
 import { Calendar } from 'react-native-calendars';
 import styles from './MentorListDetailsStyles';
 import Nodata from '../../../../components/General/Nodata';
@@ -318,9 +319,16 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
 
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
-      // 1. Replace backslashes with forward slashes
-      const normalizedPath = profilePath.replace(/\\/g, '/');
-      // 2. Construct the full URL
+      // Clean the URL to fix any malformed issues
+      const cleanPath = cleanImageUrl(profilePath);
+      
+      // Check if it's already a complete URL (Cloudinary)
+      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+        return { uri: cleanPath };
+      }
+      
+      // For local paths, construct with API_URL
+      const normalizedPath = cleanPath.replace(/\\/g, '/');
       const fullImageUrl = `${API_URL}/${normalizedPath}`;
       return { uri: fullImageUrl };
     } else {
