@@ -39,11 +39,14 @@ const uploadProfilePhoto = async (buffer, userId, userType) => {
 };
 
 // Upload documents (PDFs, DOCs, etc.)
-
 const uploadDocument = async (buffer, originalName, folder = "documents") => {
+  // Preserve the full filename with extension in public_id
+  const fileNameWithoutExt = originalName.split(".")[0];
+  const extension = originalName.split('.').pop().toLowerCase();
+  
   const options = {
     folder,
-    public_id: `${Date.now()}_${originalName.split(".")[0]}`,
+    public_id: `${Date.now()}_${fileNameWithoutExt}.${extension}`,
     resource_type: "raw", // ✅ Needed for PDF/DOCX/XLSX/MP3
   };
 
@@ -53,14 +56,17 @@ const uploadDocument = async (buffer, originalName, folder = "documents") => {
 // Upload study materials
 const uploadStudyMaterial = async (buffer, originalName, gradeId, subjectId) => {
   const ext = originalName.split('.').pop().toLowerCase();
+  
+  // Preserve the full filename with extension in public_id
+  const fileNameWithoutExt = originalName.split(".")[0];
 
   const resourceType =
     ['pdf', 'docx', 'xlsx', 'xls', 'zip'].includes(ext) ? 'raw' : 'auto';
 
   const options = {
     folder: `study_materials/grade_${gradeId}/subject_${subjectId}`,
-    public_id: `${Date.now()}_${originalName.split('.')[0]}`,
-    resource_type: resourceType, // ✅ Fix
+    public_id: `${Date.now()}_${fileNameWithoutExt}.${ext}`,
+    resource_type: resourceType,
   };
 
   return uploadToCloudinary(buffer, options);
@@ -82,9 +88,13 @@ const uploadEventBanner = async (buffer, eventName) => {
 
 // Upload message attachments
 const uploadMessageAttachment = async (buffer, originalName, messageId) => {
+  // Preserve the full filename with extension in public_id
+  const fileNameWithoutExt = originalName.split(".")[0];
+  const extension = originalName.split('.').pop().toLowerCase();
+  
   const options = {
     folder: 'message_attachments',
-    public_id: `msg_${messageId}_${Date.now()}_${originalName.split('.')[0]}`,
+    public_id: `msg_${messageId}_${Date.now()}_${fileNameWithoutExt}.${extension}`,
     resource_type: 'auto'
   };
   return uploadToCloudinary(buffer, options);

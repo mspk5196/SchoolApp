@@ -33,7 +33,7 @@ import RNFS from 'react-native-fs';
 import RNBlobUtil from 'react-native-blob-util';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CheckBox } from 'react-native-elements';
-import { cleanImageUrl } from '../../../../utils/cleanImageUrl';
+import { cleanImageUrl, getFileNameFromUrl } from '../../../../utils/cleanImageUrl';
 import mime from 'react-native-mime-types';
 
 // E2EE Imports
@@ -935,9 +935,12 @@ const StudentPageMessage = ({ route, navigation }) => {
     // Clean the URL first to fix any /https:// issues
     const cleanUrl = cleanImageUrl(fileUrl);
     
-    const ext = fileName.split('.').pop().toLowerCase();
+    // Extract proper filename with extension from URL
+    const properFileName = getFileNameFromUrl(cleanUrl, fileName);
+    
+    const ext = properFileName.split('.').pop().toLowerCase();
     const isPdf = ext === 'pdf';
-    const localFile = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+    const localFile = `${RNFS.DocumentDirectoryPath}/${properFileName}`;
 
     const downloadAndOpen = async () => {
       const hasPermission = await requestStoragePermission('other');
@@ -960,14 +963,14 @@ const StudentPageMessage = ({ route, navigation }) => {
         setDownloadProgress(null);
 
         if (downloadResult.statusCode === 200) {
-          const mimeType = mime.lookup(fileName) || undefined;
+          const mimeType = mime.lookup(properFileName) || undefined;
           await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
         } else {
           Alert.alert('Download failed', 'Could not download the file.');
         }
       } catch (err) {
         setDownloadProgress(null);
-        Linking.openURL(fileUrl);
+        Linking.openURL(cleanUrl);
         console.error('File open error:', err);
       }
     };

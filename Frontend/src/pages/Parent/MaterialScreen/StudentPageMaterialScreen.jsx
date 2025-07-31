@@ -18,7 +18,7 @@ import Download from '../../../assets/ParentPage/Materials-img/download.svg'
 import { API_URL } from '../../../utils/env.js';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
-import { cleanImageUrl } from '../../../utils/cleanImageUrl';
+import { cleanImageUrl, getFileNameFromUrl } from '../../../utils/cleanImageUrl';
 import Nodata from '../../../components/General/Nodata';
 import mime from 'react-native-mime-types';
 
@@ -131,7 +131,10 @@ const StudentPageMaterialScreen = () => {
     // Clean the URL first to fix any /https:// issues
     const cleanUrl = cleanImageUrl(fileUrl);
     
-    const localFile = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+    // Extract proper filename with extension from URL
+    const properFileName = getFileNameFromUrl(cleanUrl, fileName);
+    
+    const localFile = `${RNFS.DownloadDirectoryPath}/${properFileName}`;
 
     try {
       const downloadResult = await RNFS.downloadFile({
@@ -147,7 +150,7 @@ const StudentPageMaterialScreen = () => {
       setDownloadProgress(null);
 
       if (downloadResult.statusCode === 200) {
-        const mimeType = mime.lookup(fileName) || undefined;
+        const mimeType = mime.lookup(properFileName) || undefined;
         await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
       } else {
         Alert.alert('Download failed', 'Could not download the file.');
