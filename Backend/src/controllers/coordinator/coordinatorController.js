@@ -1640,7 +1640,7 @@ LEFT JOIN invigilators i ON es.id = i.exam_id
 LEFT JOIN mentors m ON i.mentor_id = m.id
 LEFT JOIN users u ON m.phone = u.phone
 JOIN Grades g ON es.grade_id = g.id
-WHERE es.grade_id = '2'
+WHERE es.grade_id = ?
 GROUP BY es.id
 ORDER BY es.exam_date, es.start_time;
   `;
