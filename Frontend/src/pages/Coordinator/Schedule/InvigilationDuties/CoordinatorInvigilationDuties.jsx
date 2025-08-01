@@ -38,7 +38,7 @@ const CoordinatorInvigilationDuties = ({navigation, route}) => {
   // Get grade_id from route params or coordinator data
   useEffect(() => {
     // You might get this from route params or from coordinator data
-    const gradeId = route.params?.gradeId || 2; // Default to grade 2 if not provided
+    const gradeId = route.params.activeGrade || 1;
     setGradeId(gradeId);
     fetchExamSchedule(gradeId);
     fetchAvailableMentors(gradeId);
@@ -51,6 +51,8 @@ const CoordinatorInvigilationDuties = ({navigation, route}) => {
       .then(data => {
         if (data.success) {
           setExams(data.exams);
+          console.log("Fetched exams:", data.exams);
+          
         } else {
           console.error("Failed to fetch exam schedule");
         }

@@ -1622,50 +1622,83 @@ exports.deleteExamSchedule = (req, res) => {
 exports.getExamScheduleWithInvigilators = (req, res) => {
   const { grade_id } = req.query;
 
+  console.log('Received grade_id:', grade_id); // Add debugging
+
+  if (!grade_id) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'grade_id is required' 
+    });
+  }
+
   const sql = `
     SELECT 
-  es.id, 
-  es.grade_id, 
-  es.subject_id, 
-  es.exam_date AS date,
-  TIME_FORMAT(es.start_time, '%h:%i %p') AS start_time,
-  TIME_FORMAT(es.end_time, '%h:%i %p') AS end_time,
-  ANY_VALUE(s.subject_name) AS subject,
-  GROUP_CONCAT(i.mentor_id) AS invigilator_ids,
-  GROUP_CONCAT(u.name) AS invigilator_names,
-  ANY_VALUE(g.grade_name) AS grade_name
-FROM Exam_Schedule es
-LEFT JOIN Subjects s ON es.subject_id = s.id
-LEFT JOIN invigilators i ON es.id = i.exam_id
-LEFT JOIN mentors m ON i.mentor_id = m.id
-LEFT JOIN users u ON m.phone = u.phone
-JOIN Grades g ON es.grade_id = g.id
-WHERE es.grade_id = ?
-GROUP BY es.id
-ORDER BY es.exam_date, es.start_time;
+      es.id, 
+      es.grade_id, 
+      es.subject_id, 
+      es.exam_date AS date,
+      TIME_FORMAT(es.start_time, '%h:%i %p') AS start_time,
+      TIME_FORMAT(es.end_time, '%h:%i %p') AS end_time,
+      ANY_VALUE(s.subject_name) AS subject,
+      GROUP_CONCAT(i.mentor_id) AS invigilator_ids,
+      GROUP_CONCAT(u.name) AS invigilator_names,
+      ANY_VALUE(g.grade_name) AS grade_name
+    FROM Exam_Schedule es
+    LEFT JOIN Subjects s ON es.subject_id = s.id
+    LEFT JOIN invigilators i ON es.id = i.exam_id
+    LEFT JOIN mentors m ON i.mentor_id = m.id
+    LEFT JOIN users u ON m.phone = u.phone
+    JOIN Grades g ON es.grade_id = g.id
+    WHERE es.grade_id = ?
+    GROUP BY es.id
+    ORDER BY es.exam_date, es.start_time;
   `;
 
   db.query(sql, [grade_id], (err, results) => {
     if (err) {
       console.error("Error fetching exam schedule:", err);
-      return res.status(500).json({ success: false, message: 'Database error' });
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Database error',
+        error: err.message 
+      });
+    }
+
+    console.log('Raw query results:', results); // Add debugging
+
+    if (!results || results.length === 0) {
+      return res.json({ 
+        success: true, 
+        exams: [],
+        message: 'No exams found for this grade' 
+      });
     }
 
     // Transform the results to match the frontend format
-    const formattedResults = results.map(exam => ({
-      id: exam.id,
-      subject: exam.subject,
-      date: exam.date,
-      time: `${exam.start_time} - ${exam.end_time}`,
-      grade: exam.grade_name,
-      invigilators: exam.invigilator_ids ?
-        exam.invigilator_ids.split(',').map(Number) : [],
-      invigilatorNames: exam.invigilator_names ?
-        exam.invigilator_names.split(',') : [],
-      color: '#6A5ACD' // Default color for exams
-    }));
+    const formattedResults = results.map(exam => {
+      console.log('Processing exam:', exam); // Add debugging
+      
+      return {
+        id: exam.id,
+        subject: exam.subject || 'Unknown Subject',
+        date: exam.date,
+        time: `${exam.start_time || ''} - ${exam.end_time || ''}`,
+        grade: exam.grade_name || '',
+        invigilators: exam.invigilator_ids ? 
+          exam.invigilator_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [],
+        invigilatorNames: exam.invigilator_names ? 
+          exam.invigilator_names.split(',').map(name => name.trim()) : [],
+        color: '#6A5ACD'
+      };
+    });
 
-    res.json({ success: true, exams: formattedResults });
+    console.log('Formatted results:', formattedResults); // Add debugging
+
+    res.json({ 
+      success: true, 
+      exams: formattedResults,
+      count: formattedResults.length
+    });
   });
 };
 
