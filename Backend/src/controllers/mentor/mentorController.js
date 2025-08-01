@@ -22,7 +22,7 @@ exports.getMentorData = (req, res) => {
     SELECT m.id, u.name, m.roll, m.grade_id, sec.section_name, sub.subject_name, m.section_id, m.phone, up.file_path
     FROM Mentors m
     JOIN Users u ON m.phone = u.phone
-    JOIN Sections sec ON m.section_id = sec.id
+    LEFT JOIN Sections sec ON m.section_id = sec.id
     LEFT JOIN mentor_section_assignments msa ON m.id = msa.mentor_id
     LEFT JOIN Subjects sub ON msa.subject_id = sub.id
     LEFT JOIN User_photos up ON m.phone = up.phone
