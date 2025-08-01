@@ -74,28 +74,28 @@ if (shouldRunCrons) {
     }, getCronOptions());
 
     // Assessment sessions creator - runs at 11:59 PM IST daily
-    // const assessmentTime = adjustTimeForUTC(23, 59);
-    // cron.schedule(`${assessmentTime.minute} ${assessmentTime.hour} * * *`, async () => {
-    //     console.log('🔄 Creating assessment sessions for tomorrow...');
-    //     try {
-    //         const result = await createAssessmentSessionsByDate();
-    //         console.log('✅ Assessment sessions created:', result);
-    //     } catch (error) {
-    //         console.error('❌ Assessment sessions creation failed:', error);
-    //     }
-    // }, getCronOptions());
+    const assessmentTime = adjustTimeForUTC(23, 59);
+    cron.schedule(`${assessmentTime.minute} ${assessmentTime.hour} * * *`, async () => {
+        console.log('🔄 Creating assessment sessions for tomorrow...');
+        try {
+            const result = await createAssessmentSessionsByDate();
+            console.log('✅ Assessment sessions created:', result);
+        } catch (error) {
+            console.error('❌ Assessment sessions creation failed:', error);
+        }
+    }, getCronOptions());
 
     // // Academic sessions creator - runs at 12:05 AM IST daily
-    // const academicTime = adjustTimeForUTC(0, 5);
-    // cron.schedule(`${academicTime.minute} ${academicTime.hour} * * *`, async () => {
-    //     console.log('🔄 Creating today academic sessions...');
-    //     try {
-    //         const result = await runDailyScheduleUpdate();
-    //         console.log('✅ Academic sessions created:', result);
-    //     } catch (error) {
-    //         console.error('❌ Academic sessions creation failed:', error);
-    //     }
-    // }, getCronOptions());
+    const academicTime = adjustTimeForUTC(0, 5);
+    cron.schedule(`${academicTime.minute} ${academicTime.hour} * * *`, async () => {
+        console.log('🔄 Creating today academic sessions...');
+        try {
+            const result = await runDailyScheduleUpdate();
+            console.log('✅ Academic sessions created:', result);
+        } catch (error) {
+            console.error('❌ Academic sessions creation failed:', error);
+        }
+    }, getCronOptions());
 
     // // Student backlogs checker - runs at 1:00 AM IST daily
     // const backlogTime = adjustTimeForUTC(1, 0);
