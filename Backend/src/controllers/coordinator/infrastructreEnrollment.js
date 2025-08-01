@@ -79,20 +79,26 @@ exports.createVenue = async (req, res) => {
 };
 
 exports.updateVenue = (req, res) => {
+  console.log('Update venue request for ID:', req.params.id);
+  console.log('Request body:', req.body);
+  
   Venue.findById(req.params.id, (err, venue) => {
     if (err) {
-      console.error(err);
+      console.error('Error finding venue:', err);
       return res.status(500).json({ message: 'Server error' });
     }
     if (!venue) {
+      console.log('Venue not found for ID:', req.params.id);
       return res.status(404).json({ message: 'Venue not found' });
     }
 
+    console.log('Found venue, updating...');
     Venue.update(req.params.id, req.body, (err, updatedVenue) => {
       if (err) {
-        console.error(err);
+        console.error('Error updating venue:', err);
         return res.status(400).json({ message: 'Invalid data' });
       }
+      console.log('Venue updated successfully');
       res.json(updatedVenue);
     });
   });

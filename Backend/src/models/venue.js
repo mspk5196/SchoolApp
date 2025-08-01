@@ -131,7 +131,7 @@ class Venue {
     delete venueData.grades;
 
     // Use the promise-based transaction
-    db.beginTransaction()
+    db.promise().beginTransaction()
       .then(transaction => {
         // Update venue
         return transaction.query('UPDATE venues SET ? WHERE id = ?', [venueData, id])

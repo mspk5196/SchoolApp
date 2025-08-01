@@ -146,9 +146,36 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
   }, {});
 
   // Handle edit
-  const handleEdit = (venue) => {
-    navigation.navigate('AddInfraEnrollment', { venue });
-  };
+  // const handleEdit = (venue) => {
+  //   navigation.navigate('AddInfraEnrollment', { venue });
+  // };
+
+const handleEdit = (venue) => {
+  try {
+    // Clean the venue data - remove any frontend-only properties
+    const cleanVenue = {
+      id: venue.id,
+      name: venue.name,
+      block: venue.block,
+      floor: venue.floor,
+      capacity: venue.capacity,
+      grade_id: venue.grade_id,
+      subject_id: venue.subject_id,
+      type: venue.type,
+      status: venue.status,
+      created_by: venue.created_by
+    };
+
+    navigation.navigate('AddInfraEnrollment', { 
+      venue: cleanVenue,
+      isEdit: true, // Pass isEdit as a separate parameter
+      phone: coordinatorData.phone 
+    });
+  } catch (error) {
+    console.error('Navigation error:', error);
+    Alert.alert('Error', 'Failed to navigate to edit screen');
+  }
+};
 
   // Handle toggle status
   const handleToggleStatus = async (venue) => {

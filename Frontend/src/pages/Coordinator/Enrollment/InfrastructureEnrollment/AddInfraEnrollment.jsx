@@ -9,8 +9,9 @@ import { API_URL } from '../../../../utils/env.js';
 
 const AddInfraEnrollment = ({ navigation, route }) => {
   const editVenue = route.params?.venue;
+  const isEdit = route.params?.isEdit;
   const phoneNo = route.params?.phone;
-  const isEditing = !!editVenue;
+  const isEditing = isEdit || !!editVenue;
   const [loading, setLoading] = useState(false);
 
   const [grades, setGrades] = useState([]);
@@ -23,37 +24,80 @@ const AddInfraEnrollment = ({ navigation, route }) => {
   const [blockModalVisible, setBlockModalVisible] = useState(false);
   const [typeModalVisible, setTypeModalVisible] = useState(false);
 
-  // Store selected grades as an array of ids
-  const [selectedGrades, setSelectedGrades] = useState(
-    isEditing && editVenue.grades ? editVenue.grades.map(g => g.id) : []
-  );
+  // Fix grade initialization - handle single grade_id case
+  const [selectedGrades, setSelectedGrades] = useState(() => {
+    if (isEditing && editVenue) {
+      // If grades array exists (multiple grades)
+      if (editVenue.grades && Array.isArray(editVenue.grades)) {
+        return editVenue.grades.map(g => g.id || g);
+      }
+      // If single grade_id exists
+      if (editVenue.grade_id) {
+        return [editVenue.grade_id];
+      }
+    }
+    return [];
+  });
 
   const [formData, setFormData] = useState({
-    name: isEditing ? editVenue.name : '',
-    block: isEditing ? editVenue.block : 'A',
-    floor: isEditing ? editVenue.floor.toString() : '',
-    capacity: isEditing ? editVenue.capacity.toString() : '',
-    subject: isEditing ? editVenue.subject : '',
-    type: isEditing ? editVenue.type : 'Academic class',
-    status: isEditing ? editVenue.status : 'Active'
+    name: isEditing && editVenue ? editVenue.name : '',
+    block: isEditing && editVenue ? editVenue.block : 'A',
+    floor: isEditing && editVenue ? editVenue.floor.toString() : '',
+    capacity: isEditing && editVenue ? editVenue.capacity.toString() : '',
+    subject: isEditing && editVenue ? (editVenue.subject_id || '') : '',
+    type: isEditing && editVenue ? editVenue.type : 'Academic class',
+    status: isEditing && editVenue ? editVenue.status : 'Active'
   });
 
   const [showFormData, setShowFormData] = useState({
-    name: isEditing ? editVenue.name : '',
-    block: isEditing ? editVenue.block : 'A',
-    floor: isEditing ? editVenue.floor.toString() : '',
-    capacity: isEditing ? editVenue.capacity.toString() : '',
-    gradeNames: isEditing && editVenue.grades ? editVenue.grades.map(g => g.grade_name).join(', ') : '',
-    subject: isEditing && editVenue.subject_name ? editVenue.subject_name : '',
-    type: isEditing ? editVenue.type : 'Academic class',
-    status: isEditing ? editVenue.status : 'Active'
+    name: isEditing && editVenue ? editVenue.name : '',
+    block: isEditing && editVenue ? editVenue.block : 'A',
+    floor: isEditing && editVenue ? editVenue.floor.toString() : '',
+    capacity: isEditing && editVenue ? editVenue.capacity.toString() : '',
+    gradeNames: '',
+    subject: '',
+    type: isEditing && editVenue ? editVenue.type : 'Academic class',
+    status: isEditing && editVenue ? editVenue.status : 'Active'
   });
 
   useEffect(() => {
-    fetchGrades();
-    fetchSubject();
-    fetchBlock();
+    const loadData = async () => {
+      await Promise.all([fetchGrades(), fetchSubject(), fetchBlock()]);
+      
+      // After loading options, set edit data if editing
+      if (isEditing && editVenue) {
+        loadEditData();
+      }
+    };
+    
+    loadData();
   }, []);
+
+  // Load edit data after options are fetched
+  const loadEditData = () => {
+    // Set grade names for display
+    if (editVenue.grade_id && grades.length > 0) {
+      const grade = grades.find(g => g.id === editVenue.grade_id);
+      if (grade) {
+        handleChangeDisplay('gradeNames', grade.grade_name);
+      }
+    }
+    
+    // Set subject name for display
+    if (editVenue.subject_id && subjects.length > 0) {
+      const subject = subjects.find(s => s.id === editVenue.subject_id);
+      if (subject) {
+        handleChangeDisplay('subject', subject.subject_name);
+      }
+    }
+  };
+
+  // Re-run loadEditData when grades or subjects are loaded
+  useEffect(() => {
+    if (isEditing && editVenue && (grades.length > 0 || subjects.length > 0)) {
+      loadEditData();
+    }
+  }, [grades, subjects, isEditing]);
 
   const fetchGrades = async () => {
     try {
@@ -155,22 +199,43 @@ const AddInfraEnrollment = ({ navigation, route }) => {
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.floor || !formData.capacity) {
-      Alert.alert('Error', 'Please fill all required fields');
+    // Better validation
+    if (!formData.name.trim()) {
+      Alert.alert('Error', 'Venue name is required');
+      return;
+    }
+    
+    if (!formData.floor || isNaN(parseInt(formData.floor))) {
+      Alert.alert('Error', 'Valid floor number is required');
+      return;
+    }
+    
+    if (!formData.capacity || isNaN(parseInt(formData.capacity))) {
+      Alert.alert('Error', 'Valid capacity is required');
       return;
     }
 
+    // Prepare data differently for create vs update
     const venueData = {
-      name: formData.name,
+      name: formData.name.trim(),
       block: formData.block,
       floor: parseInt(formData.floor, 10),
       capacity: parseInt(formData.capacity, 10),
-      grade_ids: selectedGrades.length > 0 ? selectedGrades : [],
       subject_id: formData.subject ? parseInt(formData.subject, 10) : null,
       type: formData.type,
       status: formData.status,
-      created_by: phoneNo || '9876543201' // Default to 'admin' if phoneNo is not provided
+      created_by: phoneNo || '9876543201'
     };
+
+    // For create operation, use grade_ids
+    // For update operation, use grades (as expected by backend)
+    if (isEditing) {
+      venueData.grades = selectedGrades.length > 0 ? selectedGrades : [];
+    } else {
+      venueData.grade_ids = selectedGrades.length > 0 ? selectedGrades : [];
+    }
+
+    console.log('Submitting venue data:', venueData); // Debug log
 
     try {
       setLoading(true);
@@ -195,13 +260,16 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       }
 
       const responseData = await response.json();
+      console.log('Server response:', responseData); // Debug log
 
       if (response.ok) {
+        Alert.alert('Success', isEditing ? 'Venue updated successfully' : 'Venue added successfully');
         navigation.goBack();
       } else {
         throw new Error(responseData.message || 'Failed to save venue');
       }
     } catch (error) {
+      console.error('Submit error:', error);
       Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
