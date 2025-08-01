@@ -6,7 +6,8 @@ const {
   uploadStudyMaterial,
   uploadEventBanner,
   uploadMessageAttachment,
-  deleteFromCloudinary
+  deleteFromCloudinary,
+  cloudinary
 } = require('../../utils/cloudinary');
 
 exports.getCoordinatorData = (req, res) => {
