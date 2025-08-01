@@ -331,7 +331,7 @@ const AdminMentorlistDetail = ({ route, navigation }) => {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      const fullImageUrl = `${normalizedPath}`;
       return { uri: fullImageUrl };
     } else {
       return Staff;

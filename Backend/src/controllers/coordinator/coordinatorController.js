@@ -665,22 +665,94 @@ exports.getGradeSubject = (req, res) => {
   });
 };
 
+// exports.uploadStudyMaterial = async (req, res) => {
+//   const { grade_id, subject_id, level, expected_date } = req.body;
+//   console.log(expected_date);
+  
+//   let connection;
+
+//   try {
+//     if (!req.files?.length) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'No files uploaded',
+//       });
+//     }
+
+//     connection = await db.promise().getConnection();
+//     await connection.query('START TRANSACTION');
+
+//     for (let file of req.files) {
+//       try {
+//         // Upload to Cloudinary
+//         const cloudinaryResult = await uploadStudyMaterial(
+//           file.buffer,
+//           file.originalname,
+//           grade_id,
+//           subject_id
+//         );
+
+//         // Determine material type based on file mime type
+//         let materialType = 'PDF';
+//         if (file.mimetype.includes('video')) {
+//           materialType = 'Video';
+//         } else if (file.mimetype.includes('audio')) {
+//           materialType = 'Audio';
+//         } else if (file.mimetype.includes('image')) {
+//           materialType = 'Image';
+//         }
+
+//         await connection.query(
+//           `INSERT INTO Materials 
+//            (grade_id, subject_id, level, material_type, file_name, file_url, expected_date)
+//            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+//           [
+//             grade_id,
+//             subject_id,
+//             level,
+//             materialType,
+//             file.originalname,
+//             cloudinaryResult.secure_url,
+//             expected_date || null
+//           ]
+//         );
+//       } catch (uploadError) {
+//         console.error('Cloudinary upload error:', uploadError);
+//         throw new Error(`Failed to upload ${file.originalname}`);
+//       }
+//     }
+
+//     await connection.query('COMMIT');
+//     res.json({ success: true, message: 'Study materials uploaded successfully' });
+//   } catch (err) {
+//     if (connection) {
+//       await connection.query('ROLLBACK').catch(console.error);
+//       connection.release();
+//     }
+//     console.error('Upload error:', err);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Failed to upload study materials',
+//     });
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
+
 exports.uploadStudyMaterial = async (req, res) => {
   const { grade_id, subject_id, level, expected_date } = req.body;
-  console.log(expected_date);
-  
   let connection;
 
   try {
     if (!req.files?.length) {
       return res.status(400).json({
         success: false,
-        message: 'No files uploaded',
+        message: "No files uploaded",
       });
     }
 
     connection = await db.promise().getConnection();
-    await connection.query('START TRANSACTION');
+    await connection.query("START TRANSACTION");
 
     for (let file of req.files) {
       try {
@@ -692,14 +764,29 @@ exports.uploadStudyMaterial = async (req, res) => {
           subject_id
         );
 
-        // Determine material type based on file mime type
-        let materialType = 'PDF';
-        if (file.mimetype.includes('video')) {
-          materialType = 'Video';
-        } else if (file.mimetype.includes('audio')) {
-          materialType = 'Audio';
-        } else if (file.mimetype.includes('image')) {
-          materialType = 'Image';
+        // Determine material type
+        let materialType = "PDF";
+        if (file.mimetype.includes("video")) {
+          materialType = "Video";
+        } else if (file.mimetype.includes("audio")) {
+          materialType = "Audio";
+        } else if (file.mimetype.includes("image")) {
+          materialType = "Image";
+        }
+
+        // ✅ Generate preview URL for PDFs/DOCX/XLSX
+        let fileUrl = cloudinaryResult.secure_url;
+        if (
+          file.mimetype.includes("pdf") ||
+          file.mimetype.includes("word") ||
+          file.mimetype.includes("sheet") ||
+          file.mimetype.includes("presentation")
+        ) {
+          fileUrl = cloudinary.url(cloudinaryResult.public_id, {
+            resource_type: "raw",
+            type: "upload",
+            flags: "attachment:false", // 👈 Important for preview
+          });
         }
 
         await connection.query(
@@ -712,32 +799,33 @@ exports.uploadStudyMaterial = async (req, res) => {
             level,
             materialType,
             file.originalname,
-            cloudinaryResult.secure_url,
-            expected_date || null
+            fileUrl, // ✅ Store preview-friendly URL
+            expected_date || null,
           ]
         );
       } catch (uploadError) {
-        console.error('Cloudinary upload error:', uploadError);
+        console.error("Cloudinary upload error:", uploadError);
         throw new Error(`Failed to upload ${file.originalname}`);
       }
     }
 
-    await connection.query('COMMIT');
-    res.json({ success: true, message: 'Study materials uploaded successfully' });
+    await connection.query("COMMIT");
+    res.json({ success: true, message: "Study materials uploaded successfully" });
   } catch (err) {
     if (connection) {
-      await connection.query('ROLLBACK').catch(console.error);
+      await connection.query("ROLLBACK").catch(console.error);
       connection.release();
     }
-    console.error('Upload error:', err);
+    console.error("Upload error:", err);
     res.status(500).json({
       success: false,
-      message: 'Failed to upload study materials',
+      message: "Failed to upload study materials",
     });
   } finally {
     if (connection) connection.release();
   }
 };
+
 
 exports.getMaterials = async (req, res) => {
   const { gradeID, subjectID } = req.query;
