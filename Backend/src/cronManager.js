@@ -15,8 +15,15 @@ console.log('  - NODE_ENV:', process.env.NODE_ENV);
 console.log('  - RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
 console.log('  - Should run crons:', shouldRunCrons);
 
+function getTimezone() {
+  const tz = process.env.TIMEZONE;
+  if (!tz || typeof tz !== "string" || tz.trim() === "") return "Asia/Kolkata";
+  return tz;
+}
+
 if (shouldRunCrons) {
   console.log('🕐 Starting cron jobs...');
+  console.log("Scheduling cron job with date:", yourDateVariable);
 
   // Daily attendance updater - runs at 6:00 PM daily
   cron.schedule('0 18 * * *', async () => {
@@ -29,7 +36,7 @@ if (shouldRunCrons) {
     }
   }, {
     scheduled: true,
-    timezone: process.env.TIMEZONE || "Asia/Kolkata"
+    timezone: getTimezone()
   });
 
   // Assessment sessions creator - runs at 11:59 PM daily
@@ -43,7 +50,7 @@ if (shouldRunCrons) {
     }
   }, {
     scheduled: true,
-    timezone: process.env.TIMEZONE || "Asia/Kolkata"
+    timezone: getTimezone()
   });
 
   // Academic sessions creator - runs at 12:05 AM daily
@@ -57,7 +64,7 @@ if (shouldRunCrons) {
     }
   }, {
     scheduled: true,
-    timezone: process.env.TIMEZONE || "Asia/Kolkata"
+    timezone: getTimezone()
   });
 
   // Student backlogs checker - runs at 1:00 AM daily
@@ -71,7 +78,7 @@ if (shouldRunCrons) {
     }
   }, {
     scheduled: true,
-    timezone: process.env.TIMEZONE || "Asia/Kolkata"
+    timezone: getTimezone()
   });
 
   console.log('✅ All cron jobs initialized');
