@@ -667,7 +667,7 @@ exports.getGradeSubject = (req, res) => {
 
 exports.uploadStudyMaterial = async (req, res) => {
   const { grade_id, subject_id, level, expected_date } = req.body;
-  console.log('Upload request:', { grade_id, subject_id, level, expected_date });
+  console.log(expected_date);
   
   let connection;
 
@@ -682,12 +682,8 @@ exports.uploadStudyMaterial = async (req, res) => {
     connection = await db.promise().getConnection();
     await connection.query('START TRANSACTION');
 
-    const uploadResults = [];
-
     for (let file of req.files) {
       try {
-        console.log(`Processing file: ${file.originalname}, type: ${file.mimetype}`);
-        
         // Upload to Cloudinary
         const cloudinaryResult = await uploadStudyMaterial(
           file.buffer,
@@ -695,8 +691,6 @@ exports.uploadStudyMaterial = async (req, res) => {
           grade_id,
           subject_id
         );
-
-        console.log(`Cloudinary upload successful: ${cloudinaryResult.secure_url}`);
 
         // Determine material type based on file mime type
         let materialType = 'PDF';
@@ -706,14 +700,9 @@ exports.uploadStudyMaterial = async (req, res) => {
           materialType = 'Audio';
         } else if (file.mimetype.includes('image')) {
           materialType = 'Image';
-        } else if (file.mimetype.includes('pdf') || file.originalname.toLowerCase().endsWith('.pdf')) {
-          materialType = 'PDF';
         }
 
-        // Clean the secure URL - remove any trailing commas or spaces
-        const cleanUrl = cloudinaryResult.secure_url.trim().replace(/,+$/, '');
-
-        const [insertResult] = await connection.query(
+        await connection.query(
           `INSERT INTO Materials 
            (grade_id, subject_id, level, material_type, file_name, file_url, expected_date)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -723,40 +712,27 @@ exports.uploadStudyMaterial = async (req, res) => {
             level,
             materialType,
             file.originalname,
-            cleanUrl, // Use cleaned URL
+            cloudinaryResult.secure_url,
             expected_date || null
           ]
         );
-
-        uploadResults.push({
-          id: insertResult.insertId,
-          filename: file.originalname,
-          url: cleanUrl,
-          type: materialType
-        });
-
       } catch (uploadError) {
-        console.error('File upload error:', uploadError);
-        throw new Error(`Failed to upload ${file.originalname}: ${uploadError.message}`);
+        console.error('Cloudinary upload error:', uploadError);
+        throw new Error(`Failed to upload ${file.originalname}`);
       }
     }
 
     await connection.query('COMMIT');
-    
-    res.json({ 
-      success: true, 
-      message: 'Study materials uploaded successfully',
-      files: uploadResults
-    });
-    
+    res.json({ success: true, message: 'Study materials uploaded successfully' });
   } catch (err) {
     if (connection) {
       await connection.query('ROLLBACK').catch(console.error);
+      connection.release();
     }
     console.error('Upload error:', err);
     res.status(500).json({
       success: false,
-      message: err.message || 'Failed to upload study materials',
+      message: 'Failed to upload study materials',
     });
   } finally {
     if (connection) connection.release();
