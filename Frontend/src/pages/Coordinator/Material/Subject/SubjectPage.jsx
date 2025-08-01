@@ -407,6 +407,20 @@ const SubjectPage = ({ route, navigation }) => {
     };
 
     const openFileLikeWhatsApp = async (fileUrl, fileName) => {
+        // Clean the URL to fix any /https:// issues
+        let cleanUrl = fileUrl;
+        if (fileUrl.startsWith('/http://') || fileUrl.startsWith('/https://')) {
+            cleanUrl = fileUrl.substring(1);
+        }
+        
+        // For Cloudinary raw files, ensure proper URL format
+        if (cleanUrl.includes('cloudinary.com') && cleanUrl.includes('/raw/')) {
+            // Cloudinary raw files can be accessed directly
+            cleanUrl = cleanUrl;
+        }
+
+        console.log("Opening file:", cleanUrl, "as", fileName);
+        
 
         const localFile = `${RNFS.DownloadDirectoryPath}/${fileName}`;
 
@@ -420,64 +434,74 @@ const SubjectPage = ({ route, navigation }) => {
                     text: 'Just View',
                     onPress: async () => {
                         try {
-                            await Linking.openURL(fileUrl);
+                            await Linking.openURL(cleanUrl);
                         } catch (err) {
                             console.error('File open error:', err);
-                            Alert.alert('Error', 'Could not open the file in the app.');
+                            Alert.alert('Error', 'Could not open the file in the app. The file will be downloaded instead.');
+                            // Fallback to download if direct opening fails
+                            downloadFile();
                         }
                     },
                 },
                 {
                     text: 'Download',
-                    onPress: async () => {
-                        setDownloadProgress(0);
-                        const downloadResult = await RNFS.downloadFile({
-                            fromUrl: fileUrl,
-                            toFile: localFile,
-                            progress: (res) => {
-                                const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);
-                                setDownloadProgress(percent);
-                            },
-                            progressDivider: 1,
-                        }).promise;
-
-                        setDownloadProgress(null);
-
-                        if (downloadResult.statusCode === 200) {
-                            const mimeType = mime.lookup(fileName) || undefined;
-                            await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
-                        } else {
-                            Alert.alert('Download failed', 'Could not download the file.');
-                        }
-                    },
+                    onPress: downloadFile,
                 }
-
-            ]
-            )
+            ]);
         } catch (err) {
             setDownloadProgress(null);
-            if (
-                err &&
-                (err.message?.includes('No app associated') ||
-                    err.message?.includes('no activity found to handle Intent'))
-            ) {
-                Alert.alert(
-                    'No App Found',
-                    'No app is installed to open this file type. Would you like to open it in your browser?',
-                    [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                            text: 'Open in Browser',
-                            onPress: () => Linking.openURL(fileUrl),
-                        },
-                    ]
-                );
-            } else {
-                Alert.alert('Error', 'Could not open the file.');
-            }
             console.error('File open error:', err);
+            Alert.alert('Error', 'Could not process the file.');
+        }
+
+        async function downloadFile() {
+            try {
+                setDownloadProgress(0);
+                const downloadResult = await RNFS.downloadFile({
+                    fromUrl: cleanUrl,
+                    toFile: localFile,
+                    progress: (res) => {
+                        const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);
+                        setDownloadProgress(percent);
+                    },
+                    progressDivider: 1,
+                }).promise;
+
+                setDownloadProgress(null);
+
+                if (downloadResult.statusCode === 200) {
+                    const mimeType = mime.lookup(fileName) || undefined;
+                    await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
+                } else {
+                    Alert.alert('Download failed', 'Could not download the file.');
+                }
+            } catch (downloadErr) {
+                setDownloadProgress(null);
+                if (
+                    downloadErr &&
+                    (downloadErr.message?.includes('No app associated') ||
+                        downloadErr.message?.includes('no activity found to handle Intent'))
+                ) {
+                    Alert.alert(
+                        'No App Found',
+                        'No app is installed to open this file type. Would you like to open it in your browser?',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                                text: 'Open in Browser',
+                                onPress: () => Linking.openURL(cleanUrl),
+                            },
+                        ]
+                    );
+                } else {
+                    Alert.alert('Error', 'Could not open the file.');
+                }
+                console.error('File download error:', downloadErr);
+            }
         }
     };
+
+    
 
     const renderAddMaterialForm = () => {
         return (
