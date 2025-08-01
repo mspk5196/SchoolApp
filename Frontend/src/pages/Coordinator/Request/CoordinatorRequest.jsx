@@ -116,7 +116,7 @@ const CoordinatorRequest = ({ navigation }) => {
   // {"document_type": ["Bonofide", "Fee Receipt"], "grade_id": 2, "id": 1, "purpose": "Income Tax", "requestID": "1744774325056yx2jv0bep", "request_date": "2025-04-16T03:32:05.000Z", "status": "Requested", "student_roll": "S103"}
 
   const handleAddRequest = () => {
-    navigation.navigate('CoordinatorGeneralActivity');
+    navigation.navigate('CoordinatorGeneralActivity', {coordinatorGrades});
   };
 
   const fetchStudentRequests = async () => {

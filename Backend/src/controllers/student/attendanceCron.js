@@ -1,5 +1,4 @@
 const db = require('../../config/db');
-const cron = require('node-cron');
 
 // Extract the cron logic into a function
 async function runAttendanceUpdater() {
@@ -11,7 +10,7 @@ async function runAttendanceUpdater() {
   // 🛑 Skip Sundays
   if (today.getDay() === 0) {
     console.log("Today is Sunday, skipping update.");
-    return;
+    return { success: true, message: "Skipped - Sunday" };
   }
 
   // 🛑 Check calendar_events for holiday
@@ -22,7 +21,7 @@ async function runAttendanceUpdater() {
   `);
   if (holidays.length > 0) {
     console.log("Today is a holiday, skipping update.");
-    return;
+    return { success: true, message: "Skipped - Holiday" };
   }
 
   const [students] = await db.promise().query(`SELECT id, roll, section_id FROM Students`);
@@ -71,10 +70,8 @@ async function runAttendanceUpdater() {
 
   console.log("✅ Attendance processing started at:", new Date().toLocaleString());
   console.log("✅ Attendance update complete.");
+  return { success: true, message: "Attendance updated successfully" };
 }
 
-// Schedule the cron as before
-cron.schedule('00 18 * * *', runAttendanceUpdater);
-
-// Export for manual run
+// Export for manual run and cron manager
 module.exports = { runAttendanceUpdater };

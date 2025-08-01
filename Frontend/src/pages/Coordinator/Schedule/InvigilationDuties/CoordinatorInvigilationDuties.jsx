@@ -176,7 +176,7 @@ const CoordinatorInvigilationDuties = ({navigation, route}) => {
         <View style={styles.calendercontainer}>
           <Calendar
             style={styles.calender}
-            current={'2025-04-20'} // Set to current date
+            current={new Date().toISOString().split('T')[0]} // Set to current date
             markedDates={markedDates}
           />
         </View>
