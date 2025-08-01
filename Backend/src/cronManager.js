@@ -23,7 +23,7 @@ function getTimezone() {
 
 if (shouldRunCrons) {
   console.log('🕐 Starting cron jobs...');
-  console.log("Scheduling cron job with date:", yourDateVariable);
+//   console.log("Scheduling cron job with date:", yourDateVariable);
 
   // Daily attendance updater - runs at 6:00 PM daily
   cron.schedule('0 18 * * *', async () => {
