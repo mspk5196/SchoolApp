@@ -1624,25 +1624,25 @@ exports.getExamScheduleWithInvigilators = (req, res) => {
 
   const sql = `
     SELECT 
-      es.id, 
-      es.grade_id, 
-      es.subject_id, 
-      es.exam_date AS date,
-      TIME_FORMAT(es.start_time, '%h:%i %p') AS start_time,
-      TIME_FORMAT(es.end_time, '%h:%i %p') AS end_time,
-      s.subject_name AS subject,
-      GROUP_CONCAT(i.mentor_id) AS invigilator_ids,
-      GROUP_CONCAT(u.name) AS invigilator_names,
-      g.grade_name
-    FROM Exam_Schedule es
-    LEFT JOIN Subjects s ON es.subject_id = s.id
-    LEFT JOIN invigilators i ON es.id = i.exam_id
-    LEFT JOIN mentors m ON i.mentor_id = m.id
-    LEFT JOIN users u ON m.phone = u.phone
-    JOIN Grades g ON es.grade_id = g.id
-    WHERE es.grade_id = ?
-    GROUP BY es.id
-    ORDER BY es.exam_date, es.start_time;
+  es.id, 
+  es.grade_id, 
+  es.subject_id, 
+  es.exam_date AS date,
+  TIME_FORMAT(es.start_time, '%h:%i %p') AS start_time,
+  TIME_FORMAT(es.end_time, '%h:%i %p') AS end_time,
+  ANY_VALUE(s.subject_name) AS subject,
+  GROUP_CONCAT(i.mentor_id) AS invigilator_ids,
+  GROUP_CONCAT(u.name) AS invigilator_names,
+  ANY_VALUE(g.grade_name) AS grade_name
+FROM Exam_Schedule es
+LEFT JOIN Subjects s ON es.subject_id = s.id
+LEFT JOIN invigilators i ON es.id = i.exam_id
+LEFT JOIN mentors m ON i.mentor_id = m.id
+LEFT JOIN users u ON m.phone = u.phone
+JOIN Grades g ON es.grade_id = g.id
+WHERE es.grade_id = '2'
+GROUP BY es.id
+ORDER BY es.exam_date, es.start_time;
   `;
 
   db.query(sql, [grade_id], (err, results) => {

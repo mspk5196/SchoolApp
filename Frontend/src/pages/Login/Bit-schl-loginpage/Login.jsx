@@ -16,7 +16,10 @@ import React, { useState } from 'react';
 import Separator from '../../../assets/FirstPage/login-page/img/separator.svg';
 import Googleicon from '../../../assets/FirstPage/login-page/img/google.svg';
 import Tickicon from '../../../assets/ParentPage/basic-img/tick.svg';
-import Tickbox from '../../../assets/ParentPage/basic-img/tickbox.svg'
+import Tickbox from '../../../assets/ParentPage/basic-img/tickbox.svg';
+import EyeOn from '../../../assets/FirstPage/login-page/img/eye-svgrepo-com.svg';
+import EyeOff from '../../../assets/FirstPage/login-page/img/eye-slash-svgrepo-com.svg';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,12 +28,12 @@ import { encryptPassword } from '../../../components/Login/encrypt/encryptPasswo
 import { generateAndStoreKeys } from '../../../utils/keyManager';
 import Config from 'react-native-config';
 
-
 const Login = () => {
     const navigation = useNavigation();
     const [phoneNumber, setPhoneNumber] = useState('');
     const [password, setPassword] = useState('');
     const [checked, setChecked] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleLogin = async () => {
         // console.log("API URL:", Config.API_URL);
@@ -87,15 +90,27 @@ const Login = () => {
                                 activeOutlineColor="#2842C4"
                                 keyboardType="phone-pad"
                             />
-                            <TextInput
-                                style={styles.input}
-                                label="Password"
-                                value={password}
-                                onChangeText={setPassword}
-                                mode="outlined"
-                                activeOutlineColor="#2842C4"
-                                secureTextEntry
-                            />
+                            <View style={{ position: 'relative' }}>
+                                <TextInput
+                                    style={styles.input}
+                                    label="Password"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    mode="outlined"
+                                    activeOutlineColor="#2842C4"
+                                    secureTextEntry={!showPassword}
+                                />
+                                <Pressable
+                                    onPress={() => setShowPassword(!showPassword)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: 10,
+                                        top: 22,
+                                    }}
+                                >
+                                    {showPassword ? <EyeOn width={24} height={24} /> : <EyeOff width={24} height={24} />}
+                                </Pressable>
+                            </View> 
                         </View>
 
                         <Pressable style={styles.checkboxContainer} onPress={() => setChecked(!checked)}>
