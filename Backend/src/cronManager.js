@@ -16,9 +16,7 @@ console.log('  - RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
 console.log('  - Should run crons:', shouldRunCrons);
 
 function getTimezone() {
-    let tz = (process.env.TIMEZONE || "Asia/Kolkata").trim();
-    if (tz.startsWith('=')) tz = tz.slice(1);
-    return tz;
+    return "Asia/Kolkata";
 }
 
 if (shouldRunCrons) {
