@@ -49,8 +49,8 @@ app.use('/api', require('./routes/message'));
 
 // Initialize cron jobs only if not running as a separate worker
 // This prevents duplicate cron jobs when running both web and worker processes
-if (!process.env.CRON_WORKER && process.env.NODE_ENV !== 'production') {
-  console.log('🕐 Loading cron jobs for development...');
+if (!process.env.CRON_WORKER) {
+  console.log('🕐 Loading cron jobs for Railway deployment...');
   require('./cronManager');
 }
 

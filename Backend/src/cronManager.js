@@ -4,9 +4,16 @@ const { runDailyScheduleUpdate } = require('./controllers/mentor/dailyScheduleUp
 const { createAssessmentSessionsByDate } = require('./controllers/mentor/assesmentCronJob');
 const { runOverdueCheck } = require('./controllers/mentor/studentBacklogsCron');
 
-// Only start cron jobs if this is the designated worker process
+// Only start cron jobs if this is the designated worker process or in Railway production
 const shouldRunCrons = process.env.CRON_WORKER === 'true' || 
+  (process.env.NODE_ENV === 'production' && process.env.RAILWAY_ENVIRONMENT) ||
   (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT);
+
+console.log('🔧 Cron configuration:');
+console.log('  - CRON_WORKER:', process.env.CRON_WORKER);
+console.log('  - NODE_ENV:', process.env.NODE_ENV);
+console.log('  - RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
+console.log('  - Should run crons:', shouldRunCrons);
 
 if (shouldRunCrons) {
   console.log('🕐 Starting cron jobs...');
