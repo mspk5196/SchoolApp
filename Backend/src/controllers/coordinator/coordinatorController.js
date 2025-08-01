@@ -2229,9 +2229,9 @@ exports.deleteWeeklySchedule = (req, res) => {
       }
       if (results.length > 0) {
         const dailyScheduleIds = results.map(row => row.id);
-        const deleteQuery = 'DELETE FROM daily_schedule WHERE id = ?';
-        const query2 = 'DELETE FROM acadamic_sessions WHERE dsa_id = ?';
-        const query3 = 'DELETE FROM assessment_sessions WHERE dsa_id = ?';
+        const deleteQuery = 'DELETE FROM daily_schedule WHERE id IN (?)';
+        const query2 = 'DELETE FROM acadamic_sessions WHERE dsa_id IN (?)';
+        const query3 = 'DELETE FROM assessment_sessions WHERE dsa_id IN (?)';
         db.query(deleteQuery, [dailyScheduleIds], (err) => {
           if (err) {
             console.error(err);

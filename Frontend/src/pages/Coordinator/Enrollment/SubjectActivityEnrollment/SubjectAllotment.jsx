@@ -470,15 +470,24 @@ const SubjectAllotment = ({ navigation, route }) => {
           onPress={() => setShowSubjectTypeModal(false)}
         >
           <View style={styles.listModalContainer} onStartShouldSetResponder={() => true}>
-            {subjectTypeOptions.map(activity => (
-              <TouchableOpacity
-                key={activity.id}
-                style={styles.listModalItem}
-                onPress={() => handleAddCategory(selectedSubjectId, activity.id)}
-              >
-                <Text style={styles.listModalItemText}>{activity.activity_type}</Text>
-              </TouchableOpacity>
-            ))}
+            <View style={styles.scrollIndicator} />
+            <ScrollView 
+              showsVerticalScrollIndicator={true}
+              persistentScrollbar={true}
+              bounces={true}
+              indicatorStyle="black"
+            >
+              {subjectTypeOptions.map(activity => (
+                <TouchableOpacity
+                  key={activity.id}
+                  style={styles.listModalItem}
+                  onPress={() => handleAddCategory(selectedSubjectId, activity.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.listModalItemText}>{activity.activity_type}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -495,17 +504,31 @@ const SubjectAllotment = ({ navigation, route }) => {
           activeOpacity={1}
           onPress={() => setSubjectTitleModal(false)}
         >
-          <ScrollView style={styles.listModalContainer} onStartShouldSetResponder={() => true}>
-            {subjectTitles.map(subject => (
-              <TouchableOpacity
-                key={subject.id}
-                style={styles.listModalItem}
-                onPress={() => handleSelectSubjectTitle(subject.id)}
-              >
-                <Text style={styles.listModalItemText}>{subject.subject_name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <View style={styles.listModalContainer} onStartShouldSetResponder={() => true}>
+            <View style={styles.scrollIndicator} />
+            <Text style={[styles.modalTitle, { textAlign: 'center', alignSelf: 'center', marginBottom: 10 }]}>
+              Select Subject
+            </Text>
+            
+            <ScrollView 
+              showsVerticalScrollIndicator={true}
+              persistentScrollbar={true}
+              bounces={true}
+              indicatorStyle="black"
+              contentContainerStyle={{ paddingBottom: 8 }}
+            >
+              {subjectTitles.map(subject => (
+                <TouchableOpacity
+                  key={subject.id}
+                  style={styles.listModalItem}
+                  onPress={() => handleSelectSubjectTitle(subject.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.listModalItemText}>{subject.subject_name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </TouchableOpacity>
       </Modal>
 
@@ -523,11 +546,16 @@ const SubjectAllotment = ({ navigation, route }) => {
           onPress={() => setShowAddSubjectModal(true)}
         >
           <View style={styles.formModalContainer}>
+            <View style={styles.scrollIndicator} />
             <Text style={styles.modalTitle}>Add New Subjects</Text>
 
             <ScrollView
               style={styles.modalScrollContainer}
               contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator={true}
+              indicatorStyle="black"
+              persistentScrollbar={true}
+              bounces={true}
             >
               {subjectInputs.map((input, index) => (
                 <View key={`subject-input-${index}`} style={styles.inputContainer}>
@@ -535,7 +563,7 @@ const SubjectAllotment = ({ navigation, route }) => {
                     style={styles.input}
                     placeholder={`Enter subject name ${index + 1}`}
                     value={input}
-                    placeholderTextColor='gray'
+                    placeholderTextColor='rgba(75, 85, 99, 0.6)'
                     onChangeText={(text) => updateSubjectInput(text, index)}
                   />
                   {index > 0 && (
@@ -554,13 +582,18 @@ const SubjectAllotment = ({ navigation, route }) => {
               ))}
             </ScrollView>
 
-            <TouchableOpacity style={styles.addMoreButton} onPress={addSubjectInput}>
+            <TouchableOpacity 
+              style={styles.addMoreButton} 
+              onPress={addSubjectInput}
+              activeOpacity={0.7}
+            >
               <Text style={styles.addMoreButtonText}>+ Add more Subject</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.enrollButton}
               onPress={submitSubjects}
+              activeOpacity={0.8}
             >
               <Text style={styles.enrollButtonText}>Add Subjects</Text>
             </TouchableOpacity>
@@ -581,18 +614,23 @@ const SubjectAllotment = ({ navigation, route }) => {
           onPress={() => setShowAddActivityModal(true)}
         >
           <View style={styles.formModalContainer}>
-            <Text style={styles.modalTitle}>Activity</Text>
+            <View style={styles.scrollIndicator} />
+            <Text style={styles.modalTitle}>Add New Activities</Text>
 
             <ScrollView
               style={styles.modalScrollContainer}
               contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator={true}
+              indicatorStyle="black"
+              persistentScrollbar={true}
+              bounces={true}
             >
               {activityInputs.map((input, index) => (
                 <View key={`activity-${index}`} style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
                     placeholder={`Enter activity ${index + 1}`}
-                    placeholderTextColor='gray'
+                    placeholderTextColor='rgba(75, 85, 99, 0.6)'
                     value={input}
                     onChangeText={(text) => updateActivityInput(text, index)}
                   />
@@ -612,13 +650,18 @@ const SubjectAllotment = ({ navigation, route }) => {
               ))}
             </ScrollView>
 
-            <TouchableOpacity style={styles.addMoreButton} onPress={addActivityInput}>
+            <TouchableOpacity 
+              style={styles.addMoreButton} 
+              onPress={addActivityInput}
+              activeOpacity={0.7}
+            >
               <Text style={styles.addMoreButtonText}>+ Add more Activity</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.enrollButton}
               onPress={submitActivities}
+              activeOpacity={0.8}
             >
               <Text style={styles.enrollButtonText}>Add Activity</Text>
             </TouchableOpacity>

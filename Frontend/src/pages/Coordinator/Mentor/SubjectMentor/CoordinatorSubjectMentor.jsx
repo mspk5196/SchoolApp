@@ -32,6 +32,9 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
   const [subjects, setSubject] = useState([]);
   const [enroledMentors, setEnroledMentors] = useState([]);
   const [availableMentors, setAvailableMentors] = useState([]);
+  
+  // Create a reference for the horizontal scroll view
+  const scrollViewRef = React.useRef(null);
 
   useEffect(() => {
     fetchGradeMentor();
@@ -96,8 +99,9 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
 
       if (data.success) {
         setSubject(data.mentorGradeSubjects);
-        if (data.success) {
-          setActiveSubject(data.mentorGradeSubjects[0].subject_id)
+        if (data.success && data.mentorGradeSubjects.length > 0) {
+          // Set the initial active subject
+          setActiveSubject(data.mentorGradeSubjects[0].subject_id);
         }
       } else {
         Alert.alert('No Subject Found', 'No subject is associated with this section');
@@ -180,10 +184,26 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
     }
   };
 
-  const handleSubjectChange = (subjectID) => {
+  const handleSubjectChange = (subjectID, index) => {
     setActiveSubject(subjectID);
     // Reset selection when subject changes
     setSelectedFaculties([]);
+    
+    // Simple centering approach using the index of the selected item
+    if (scrollViewRef.current) {
+      // Find the subject's index
+      const selectedIndex = subjects.findIndex(subject => subject.subject_id === subjectID);
+      
+      // Scroll to this index with automatic centering
+      // We use 120 as estimated width of each item with margins
+      const position = Math.max(0, selectedIndex * 120 - 100);
+      
+      // Use a small timeout to ensure the UI has updated
+      setTimeout(() => {
+        // Animate scroll to the calculated position
+        scrollViewRef.current.scrollTo({ x: position, animated: true });
+      }, 20);
+    }
   };
 
   // Prepare for modal opening
@@ -193,7 +213,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
     setIsModalVisible(true);
   };
 
-  // Render the top part: navbar and tabs
+  // Render the top part: navbar only (no subject tabs)
   const renderHeader = () => (
     <SafeAreaView style={styles.headerContainer}>
       <View style={styles.SubNavbar}>
@@ -206,31 +226,6 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
           <Text style={styles.headerTxt}>Subject Mentor</Text>
         </View>
       </View>
-
-      <ScrollView
-        horizontal={true}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        style={styles.classnavsubject}
-        nestedScrollEnabled={true}>
-        {subjects.map((subject, index) => (
-          <Pressable
-            key={subject.subject_id}
-            style={[
-              styles.subjectselection,
-              activeSubject === subject.subject_id && styles.activeButton,
-            ]}
-            onPress={() => handleSubjectChange(subject.subject_id)}>
-            <Text
-              style={[
-                styles.gradeselectiontext,
-                activeSubject === subject.subject_id && styles.activeText,
-              ]}>
-              {subject.subject_name}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
     </SafeAreaView>
   );
 
@@ -256,9 +251,47 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      {/* Fixed header section */}
+      <View style={styles.header}>
+        <BackIcon
+          width={styles.BackIcon.width}
+          height={styles.BackIcon.height}
+          onPress={() => navigation.goBack()}
+        />
+        <Text style={styles.headerTxt}>Subject Mentor</Text>
+      </View>
+
+      {/* Subject tabs in separate container */}
+      <View style={styles.subjectTabsContainer}>
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          style={styles.classnavsubject}
+        >
+          {subjects.map((subject, index) => (
+            <Pressable
+              key={subject.subject_id}
+              style={[
+                styles.subjectselection,
+                activeSubject === subject.subject_id && styles.activeButton,
+              ]}
+              onPress={() => handleSubjectChange(subject.subject_id, index)}>
+              <Text
+                style={[
+                  styles.gradeselectiontext,
+                  activeSubject === subject.subject_id && styles.activeText,
+                ]}>
+                {subject.subject_name}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+
       <FlatList
-        ListHeaderComponent={renderHeader}
         data={enroledMentors}
         showsVerticalScrollIndicator={false}
         keyExtractor={item => item.id.toString()}
@@ -357,7 +390,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

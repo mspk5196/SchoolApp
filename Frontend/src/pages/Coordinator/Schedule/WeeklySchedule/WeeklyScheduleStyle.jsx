@@ -222,28 +222,36 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modalContainer: {
-        width: '85%',
+        width: '90%',
         backgroundColor: '#FFFFFF',
-        borderRadius: 10,
-        paddingHorizontal: 20,
-        paddingVertical: 20,
-        maxHeight: '80%',
+        borderRadius: 16,
+        paddingHorizontal: 24,
+        paddingTop: 24,
+        paddingBottom: 32,
+        maxHeight: '85%',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
     },
     modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        color: 'black',
+        fontSize: 22,
+        fontWeight: '600',
+        marginBottom: 24,
+        color: '#1A1A1A',
         textAlign: 'center',
+        letterSpacing: 0.3,
     },
     modalSection: {
-        marginBottom: 16,
+        marginBottom: 24,
     },
     modalSectionTitle: {
         fontSize: 16,
-        fontWeight: '500',
-        marginBottom: 8,
-        color: '#333333',
+        fontWeight: '600',
+        marginBottom: 10,
+        color: '#1A1A1A',
+        letterSpacing: 0.2,
     },
     timeInputRow: {
         flexDirection: 'row',
@@ -271,19 +279,26 @@ const styles = StyleSheet.create({
     selectionInput: {
         flexDirection: 'row',
         alignItems: 'center',
-        height: 35,
+        height: 48,
         borderWidth: 1,
-        borderColor: '#DDDDDD',
-        borderRadius: 5,
-        paddingHorizontal: 10,
+        borderColor: '#E0E0E0',
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        backgroundColor: '#FAFAFA',
+        marginTop: 4,
     },
     selectionIcon: {
-        marginRight: 10,
+        marginRight: 12,
         color: '#666666',
     },
     selectionText: {
-        fontSize: 14,
+        fontSize: 15,
         color: '#333333',
+        flex: 1,
+    },
+    selectionChevron: {
+        marginLeft: 'auto',
+        color: '#666666',
     },
     modalActions: {
         flexDirection: 'row',
@@ -321,101 +336,84 @@ const styles = StyleSheet.create({
 
     // List Modal Styles
     listModalContainer: {
-        width: 200,
+        width: '80%',
+        maxWidth: 320,
         backgroundColor: '#FFFFFF',
-        borderRadius: 8,
-        overflow: 'hidden',
-        maxHeight: '60%',
+        borderRadius: 16,
+        height: 300, // Fixed height
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+    },
+    listModalScroll: {
+        flex: 1,
+    },
+    listModalHeader: {
+        paddingVertical: 15,
+        paddingHorizontal: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEEEEE',
+        backgroundColor: '#F8F9FA',
     },
     listModalItem: {
-        paddingVertical: 12,
-        paddingHorizontal: 16,
+        paddingVertical: 15,
+        paddingHorizontal: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEEEEE',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    listModalItemText: {
+        fontSize: 16,
+        color: '#333333',
+        flex: 1,
+    },
+    listModalHeader: {
+        backgroundColor: '#F8F9FA',
+        paddingVertical: 15,
+        paddingHorizontal: 20,
         borderBottomWidth: 1,
         borderBottomColor: '#EEEEEE',
     },
-    listModalItemText: {
+    listModalHeaderText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1A1A1A',
+    },
+    listModalSearchContainer: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEEEEE',
+        backgroundColor: '#FFFFFF',
+    },
+    listModalSearchInput: {
+        backgroundColor: '#F5F5F5',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
         fontSize: 14,
-        color: '#333333',
     },
 
-    // Time Picker Modal Styles - updated from Academic Schedule
+    // Time Picker Modal Styles
     timeModalContainer: {
         backgroundColor: 'white',
         borderRadius: 16,
-        padding: 20,
         width: '90%',
         maxWidth: 350,
-        alignSelf: 'center', // Added from Academic Schedule
-        maxHeight: '80%',
-    },
-    timeModalTitle: {
-        fontSize: 18,
-        fontWeight: '600', // Matched with Academic Schedule
-        marginBottom: 20,
-        textAlign: 'center',
+        alignSelf: 'center',
+        overflow: 'hidden',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
     },
     timePickerContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    timePickerColumn: {
-        height: 200,
-        width: 60,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#DDDDDD',
-        overflow: 'hidden',
-    },
-    timeSeparator: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginHorizontal: 10, // Matched with Academic Schedule
-    },
-    timePickerItem: {
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 8, // Matched with Academic Schedule
-    },
-    selectedTimePickerItem: {
-        backgroundColor: '#0C36FF',
-    },
-    timePickerText: {
-        fontSize: 16,
-    },
-    selectedTimePickerText: {
-        color: '#FFFFFF',
-    },
-    unselectedTimePickerText: {
-        color: '#333333',
-    },
-    periodPickerColumn: {
-        height: 200,
-        justifyContent: 'center',
-        marginLeft: 15,
-    },
-    periodPickerItem: {
-        height: 40,
-        width: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 8,
-        marginVertical: 5,
-    },
-    selectedPeriodPickerItem: {
-        backgroundColor: '#0C36FF',
-    },
-    periodPickerText: {
-        fontSize: 16,
-        fontWeight: 'bold', // Added from existing styles
-    },
-    selectedPeriodPickerText: {
-        color: '#FFFFFF',
-    },
-    unselectedPeriodPickerText: {
-        color: '#333333',
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 20,
     },
 
     // Select Button - from Academic Schedule
@@ -435,6 +433,102 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginVertical: 'auto'
+    },
+    
+    // Improved Time Picker Styles
+    timePickerContainer: {
+        padding: 15,
+        backgroundColor: '#FFFFFF',
+    },
+    timePickerRow: {
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    timePickerLabels: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+        marginBottom: 8,
+        paddingHorizontal: 10,
+    },
+    timePickerLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#555',
+        width: 60,
+        textAlign: 'center',
+    },
+    timePickerSeparator: {
+        width: 20,
+        textAlign: 'center',
+    },
+    timePickerScrollsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginVertical: 10,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 12,
+        padding: 8,
+    },
+    timePickerScrollWrapper: {
+        width: 60,
+        height: 150,
+        borderRadius: 8,
+        overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+        marginHorizontal: 4,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    timePickerScroll: {
+        height: 150,
+    },
+    timePickerScrollContent: {
+        paddingVertical: 50, // Adds space before and after items for better scrolling
+    },
+    timePickerItem: {
+        height: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 8,
+    },
+    timePickerItemSelected: {
+        backgroundColor: '#E6ECFF',
+    },
+    timePickerItemText: {
+        fontSize: 18,
+        color: '#333',
+        fontWeight: '400',
+    },
+    timePickerItemTextSelected: {
+        fontWeight: '600',
+        color: '#0C36FF',
+    },
+    timePickerColon: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginHorizontal: 2,
+        color: '#555',
+        width: 20,
+        textAlign: 'center',
+    },
+    selectedTimePreview: {
+        marginTop: 15,
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+        backgroundColor: '#E6ECFF',
+        borderRadius: 8,
+        alignSelf: 'center',
+    },
+    selectedTimePreviewText: {
+        fontSize: 18,
+        color: '#0C36FF',
+        fontWeight: '600',
     }
 });
 

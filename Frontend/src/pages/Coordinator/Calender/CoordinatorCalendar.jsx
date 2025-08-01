@@ -42,6 +42,8 @@ const CoordinatorCalendar = ({ navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState('date');
   const [currentDateTimeField, setCurrentDateTimeField] = useState(null);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const currentDate = new Date();
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -437,7 +439,9 @@ const CoordinatorCalendar = ({ navigation }) => {
         </View>
 
         <View style={styles.monthSelector}>
-          <TouchableOpacity style={styles.monthYearContainer}>
+          <TouchableOpacity 
+            style={styles.monthYearContainer}
+            onPress={() => setShowMonthPicker(true)}>
             <Text style={styles.monthYear}>
               {`${monthNames[currentMonth]} ${currentYear}`}
             </Text>
@@ -677,6 +681,59 @@ const CoordinatorCalendar = ({ navigation }) => {
             onChange={onDateChange}
           />
         )}
+
+        {/* Month Selection Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={showMonthPicker}
+          onRequestClose={() => setShowMonthPicker(false)}>
+          <TouchableWithoutFeedback onPress={() => setShowMonthPicker(false)}>
+            <View style={styles.monthPickerOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.monthPickerContent}>
+                  <View style={styles.yearSelector}>
+                    <TouchableOpacity onPress={() => {
+                      setCurrentYear(prev => prev - 1);
+                      setShowMonthPicker(false);
+                    }}>
+                      <Text style={styles.yearSelectorText}>← {currentYear - 1}</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.currentYearText}>{currentYear}</Text>
+                    <TouchableOpacity onPress={() => {
+                      setCurrentYear(prev => prev + 1);
+                      setShowMonthPicker(false);
+                    }}>
+                      <Text style={styles.yearSelectorText}>{currentYear + 1} →</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.monthGrid}>
+                    {monthNames.map((month, index) => (
+                      <TouchableOpacity
+                        key={month}
+                        style={[
+                          styles.monthItem,
+                          currentMonth === index && styles.activeMonthItem,
+                          currentMonth === index && currentYear === currentDate.getFullYear() && styles.currentMonthItem
+                        ]}
+                        onPress={() => {
+                          setCurrentMonth(index);
+                          setShowMonthPicker(false);
+                        }}>
+                        <Text style={[
+                          styles.monthItemText,
+                          currentMonth === index && styles.activeMonthItemText
+                        ]}>
+                          {month.substring(0, 3)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );

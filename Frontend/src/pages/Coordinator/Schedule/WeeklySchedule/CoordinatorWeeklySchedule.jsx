@@ -8,8 +8,10 @@ import {
   Modal,
   FlatList,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import BackIcon from '../../../../assets/CoordinatorPage/WeeklySchedule/Back.svg';
 import EditIcon from '../../../../assets/CoordinatorPage/WeeklySchedule/Edit.svg';
 import BookIcon from '../../../../assets/CoordinatorPage/WeeklySchedule/Book.svg';
@@ -119,8 +121,8 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
           faculty_id: item.mentors_id,
           activity_name: item.activity_name,
           activity: item.activity,
-          venue_id:item.venue_id,
-          venue:item.venue_name,
+          venue_id: item.venue_id,
+          venue: item.venue_name,
         })));
         // console.log(data.scheduleItems);
 
@@ -163,9 +165,9 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
       );
       const data = await response.json();
       if (data.success) {
-        setVenues(data.venues); 
+        setVenues(data.venues);
         console.log(data.venues);
-        
+
       }
     } catch (error) {
       console.error('Error fetching venues:', error);
@@ -395,13 +397,15 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     setShowFacultyModal(false);
   };
 
-  // Time picker logic (same as before)
+  // Time picker logic
   const [selectedTimeType, setSelectedTimeType] = useState('start');
   const [selectedTime, setSelectedTime] = useState({
     hour: '09',
     minute: '40',
     period: 'AM'
   });
+  const [showCustomTimeModal, setShowCustomTimeModal] = useState(false); // For Android
+  // Removed showNativePicker and pendingTimeType
 
   const hours = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
   const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
@@ -417,7 +421,12 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
       minute: minute,
       period: period
     });
-    setShowTimeModal(true);
+
+    if (Platform.OS === 'android') {
+      setShowCustomTimeModal(true);
+    } else {
+      setShowTimeModal(true);
+    }
   };
 
   const confirmTimeSelection = () => {
@@ -427,6 +436,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
       [selectedTimeType === 'start' ? 'timeStart' : 'timeEnd']: newTime
     }));
     setShowTimeModal(false);
+    setShowCustomTimeModal(false);
   };
 
   const selectActivity = (activity_id, activity_name) => {
@@ -518,7 +528,6 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                       {index < scheduleItems.length - 1 && <View style={styles.timeLine} />}
                     </View>
                   </View>
-
                   {/* Schedule Details */}
                   <View style={styles.detailsContainer}>
                     {/* Subject */}
@@ -526,25 +535,21 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                       <BookIcon width={16} height={16} style={styles.detailIcon} />
                       <Text style={styles.detailText}>{item.subject_name}</Text>
                     </View>
-
                     {/* Faculty */}
                     <View style={styles.detailRow}>
                       <UserIcon width={16} height={16} style={styles.detailIcon} />
                       <Text style={styles.detailText}>{item.faculty}</Text>
                     </View>
-
                     {/* Activity */}
                     <View style={styles.detailRow}>
                       <ActivityIcon width={16} height={16} style={styles.detailIcon} />
                       <Text style={styles.detailText}>{item.activity_name || 'Acadamics'}</Text>
                     </View>
-
                     {/* Venue */}
                     <View style={styles.detailRow}>
                       <LocationIcon width={16} height={16} style={styles.detailIcon} />
                       <Text style={styles.detailText}>{item.venue || 'Room 101'}</Text>
                     </View>
-
                     {/* Delete button */}
                     <TouchableOpacity
                       style={styles.deleteButton}
@@ -561,11 +566,13 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
           </View>
         </ScrollView>
       )}
+
       {/* Add activity button */}
       <TouchableOpacity style={styles.addButton} onPress={handleAddActivity}>
         <Add2Icon width={18} height={18} />
         <Text style={styles.addButtonText}>Add activity</Text>
       </TouchableOpacity>
+
       {/* Add/Edit Activity Modal */}
       <Modal
         transparent={true}
@@ -582,7 +589,6 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
               {/* Time Selection */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Time</Text>
-
                 <View style={styles.timeInputRow}>
                   <Text style={styles.timeLabel}>From:</Text>
                   <TouchableOpacity
@@ -592,7 +598,6 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                     <Text style={styles.timeInputText}>{newActivity.timeStart}</Text>
                   </TouchableOpacity>
                 </View>
-
                 <View style={styles.timeInputRow}>
                   <Text style={styles.timeLabel}>To:</Text>
                   <TouchableOpacity
@@ -603,7 +608,6 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                   </TouchableOpacity>
                 </View>
               </View>
-
               {/* Subject Selection */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Subject</Text>
@@ -615,7 +619,6 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                   <Text style={styles.selectionText}>{newActivity.subject}</Text>
                 </TouchableOpacity>
               </View>
-
               {/* Faculty Selection */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Faculty</Text>
@@ -628,7 +631,6 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                   <Text style={styles.selectionText}>{newActivity.faculty}</Text>
                 </TouchableOpacity>
               </View>
-
               {/* Activity Selection */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Activity</Text>
@@ -640,7 +642,6 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                   <Text style={styles.selectionText}>{newActivity.activity_name}</Text>
                 </TouchableOpacity>
               </View>
-
               {/* Venue Selection */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Venue</Text>
@@ -652,7 +653,6 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                   <Text style={styles.selectionText}>{newActivity.venue}</Text>
                 </TouchableOpacity>
               </View>
-
               {/* Action Buttons */}
               <View style={styles.modalActions}>
                 <TouchableOpacity
@@ -661,7 +661,6 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   style={styles.saveButton}
                   onPress={saveNewActivity}
@@ -676,128 +675,202 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
         </View>
       </Modal>
 
-      {/* Time Selection Modal (same as before) */}
-      <Modal
-        transparent={true}
-        visible={showTimeModal}
-        animationType="slide"
-        onRequestClose={() => setShowTimeModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowTimeModal(false)}
+      {/* Time Selection Modal - iOS */}
+      {/* Time Selection Modal - iOS only */}
+      {Platform.OS === 'ios' && (
+        <Modal
+          transparent={true}
+          visible={showTimeModal}
+          animationType="fade"
+          onRequestClose={() => setShowTimeModal(false)}
         >
-          <View style={styles.timeModalContainer} onStartShouldSetResponder={() => true}>
-            <Text style={styles.timeModalTitle}>
-              Select {selectedTimeType === 'start' ? 'Start' : 'End'} Time
-            </Text>
-
-            <View style={styles.timePickerContainer}>
-              {/* Hour */}
-              <FlatList
-                data={hours}
-                keyExtractor={(item) => `hour-${item}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.timePickerItem,
-                      selectedTime.hour === item && styles.selectedTimePickerItem
-                    ]}
-                    onPress={() => setSelectedTime({ ...selectedTime, hour: item })}
-                  >
-                    <Text
-                      style={[
-                        styles.timePickerText,
-                        selectedTime.hour === item ? styles.selectedTimePickerText : styles.unselectedTimePickerText
-                      ]}
-                    >
-                      {item}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                style={styles.timePickerColumn}
-                showsVerticalScrollIndicator={false}
-                initialScrollIndex={hours.indexOf(selectedTime.hour) !== -1 ? hours.indexOf(selectedTime.hour) : 0}
-                getItemLayout={(data, index) => (
-                  { length: 40, offset: 40 * index, index }
-                )}
-              />
-
-              <Text style={styles.timeSeparator}>:</Text>
-
-              {/* Minutes */}
-              <FlatList
-                data={minutes}
-                keyExtractor={(item) => `minute-${item}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.timePickerItem,
-                      selectedTime.minute === item && styles.selectedTimePickerItem
-                    ]}
-                    onPress={() => setSelectedTime({ ...selectedTime, minute: item })}
-                  >
-                    <Text
-                      style={[
-                        styles.timePickerText,
-                        selectedTime.minute === item ? styles.selectedTimePickerText : styles.unselectedTimePickerText
-                      ]}
-                    >
-                      {item}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                style={styles.timePickerColumn}
-                showsVerticalScrollIndicator={false}
-                initialScrollIndex={minutes.indexOf(selectedTime.minute) !== -1 ? minutes.indexOf(selectedTime.minute) : 0}
-                getItemLayout={(data, index) => (
-                  { length: 40, offset: 40 * index, index }
-                )}
-              />
-
-              {/* AM/PM */}
-              <View style={styles.periodPickerColumn}>
-                {['AM', 'PM'].map(period => (
-                  <TouchableOpacity
-                    key={period}
-                    style={[
-                      styles.periodPickerItem,
-                      selectedTime.period === period && styles.selectedPeriodPickerItem
-                    ]}
-                    onPress={() => setSelectedTime({ ...selectedTime, period })}
-                  >
-                    <Text
-                      style={[
-                        styles.periodPickerText,
-                        selectedTime.period === period ? styles.selectedPeriodPickerText : styles.unselectedPeriodPickerText
-                      ]}
-                    >
-                      {period}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowTimeModal(false)}
+          >
+            <View style={styles.timeModalContainer}>
+              <View style={styles.listModalHeader}>
+                <Text style={styles.modalSectionTitle}>
+                  Select {selectedTimeType === 'start' ? 'Start' : 'End'} Time
+                </Text>
+              </View>
+              <View style={styles.timePickerContainer}>
+                <DateTimePicker
+                  value={new Date(`2024-01-01 ${selectedTime.hour}:${selectedTime.minute} ${selectedTime.period}`)}
+                  mode="time"
+                  is24Hour={false}
+                  display="spinner"
+                  onChange={(event, selectedDate) => {
+                    if (selectedDate) {
+                      const hours = selectedDate.getHours();
+                      const minutes = selectedDate.getMinutes();
+                      const period = hours >= 12 ? 'PM' : 'AM';
+                      const hour = hours % 12 || 12;
+                      setSelectedTime({
+                        hour: hour.toString().padStart(2, '0'),
+                        minute: minutes.toString().padStart(2, '0'),
+                        period
+                      });
+                    }
+                  }}
+                />
+              </View>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowTimeModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={confirmTimeSelection}
+                >
+                  <Text style={styles.saveButtonText}>Select</Text>
+                </TouchableOpacity>
               </View>
             </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowTimeModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={confirmTimeSelection}
-              >
-                <Text style={styles.saveButtonText}>Select</Text>
-              </TouchableOpacity>
+      {/* Time Selection Modal - Android only */}
+      {Platform.OS === 'android' && showCustomTimeModal && (
+        <Modal
+          transparent={true}
+          visible={showCustomTimeModal}
+          animationType="fade"
+          onRequestClose={() => setShowCustomTimeModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowCustomTimeModal(false)}
+          >
+            <View style={styles.timeModalContainer}>
+              <View style={styles.listModalHeader}>
+                <Text style={styles.modalSectionTitle}>
+                  Select {selectedTimeType === 'start' ? 'Start' : 'End'} Time
+                </Text>
+              </View>
+              <View style={styles.timePickerContainer}>
+                <View style={styles.timePickerRow}>
+                  {/* Column Headers */}
+                  <View style={styles.timePickerLabels}>
+                    <Text style={styles.timePickerLabel}>Hour</Text>
+                    <Text style={styles.timePickerSeparator}>:</Text>
+                    <Text style={styles.timePickerLabel}>Minute</Text>
+                    <Text style={styles.timePickerSeparator}></Text>
+                    <Text style={styles.timePickerLabel}>Period</Text>
+                  </View>
+                  
+                  <View style={styles.timePickerScrollsContainer}>
+                    {/* Hour Picker */}
+                    <View style={styles.timePickerScrollWrapper}>
+                      <ScrollView 
+                        style={styles.timePickerScroll} 
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.timePickerScrollContent}
+                      >
+                        {hours.map(h => (
+                          <TouchableOpacity 
+                            key={h} 
+                            style={[
+                              styles.timePickerItem,
+                              selectedTime.hour === h && styles.timePickerItemSelected
+                            ]}
+                            onPress={() => setSelectedTime(prev => ({ ...prev, hour: h }))}
+                          >
+                            <Text style={[
+                              styles.timePickerItemText,
+                              selectedTime.hour === h && styles.timePickerItemTextSelected
+                            ]}>{h}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                    
+                    <Text style={styles.timePickerColon}>:</Text>
+                    
+                    {/* Minute Picker */}
+                    <View style={styles.timePickerScrollWrapper}>
+                      <ScrollView 
+                        style={styles.timePickerScroll} 
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.timePickerScrollContent}
+                      >
+                        {minutes.map(m => (
+                          <TouchableOpacity 
+                            key={m} 
+                            style={[
+                              styles.timePickerItem,
+                              selectedTime.minute === m && styles.timePickerItemSelected
+                            ]}
+                            onPress={() => setSelectedTime(prev => ({ ...prev, minute: m }))}
+                          >
+                            <Text style={[
+                              styles.timePickerItemText,
+                              selectedTime.minute === m && styles.timePickerItemTextSelected
+                            ]}>{m}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                    
+                    <Text style={styles.timePickerColon}></Text>
+                    
+                    {/* AM/PM Picker */}
+                    <View style={styles.timePickerScrollWrapper}>
+                      <ScrollView 
+                        style={styles.timePickerScroll} 
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.timePickerScrollContent}
+                      >
+                        {['AM', 'PM'].map(p => (
+                          <TouchableOpacity 
+                            key={p} 
+                            style={[
+                              styles.timePickerItem,
+                              selectedTime.period === p && styles.timePickerItemSelected
+                            ]}
+                            onPress={() => setSelectedTime(prev => ({ ...prev, period: p }))}
+                          >
+                            <Text style={[
+                              styles.timePickerItemText,
+                              selectedTime.period === p && styles.timePickerItemTextSelected
+                            ]}>{p}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  </View>
+                </View>
+                
+                <View style={styles.selectedTimePreview}>
+                  <Text style={styles.selectedTimePreviewText}>
+                    {selectedTime.hour}:{selectedTime.minute} {selectedTime.period}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowCustomTimeModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={confirmTimeSelection}
+                >
+                  <Text style={styles.saveButtonText}>Select</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+          </TouchableOpacity>
+        </Modal>
+      )}
 
       {/* Subject Selection Modal */}
       <Modal
@@ -812,15 +885,20 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
           onPress={() => setShowSubjectModal(false)}
         >
           <View style={styles.listModalContainer}>
-            {subjects.map(subject => (
-              <TouchableOpacity
-                key={subject.id}
-                style={styles.listModalItem}
-                onPress={() => selectSubject(subject)}
-              >
-                <Text style={styles.listModalItemText}>{subject.subject_name}</Text>
-              </TouchableOpacity>
-            ))}
+            <View style={styles.listModalHeader}>
+              <Text style={styles.modalSectionTitle}>Select Subject</Text>
+            </View>
+            <ScrollView style={styles.listModalScroll}>
+              {subjects.map(subject => (
+                <TouchableOpacity
+                  key={subject.id}
+                  style={styles.listModalItem}
+                  onPress={() => selectSubject(subject)}
+                >
+                  <Text style={styles.listModalItemText}>{subject.subject_name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -838,19 +916,24 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
           onPress={() => setShowFacultyModal(false)}
         >
           <View style={styles.listModalContainer}>
-            {mentors.length > 0 ? (
-              mentors.map(mentor => (
-                <TouchableOpacity
-                  key={mentor.id}
-                  style={styles.listModalItem}
-                  onPress={() => selectFaculty(mentor)}
-                >
-                  <Text style={styles.listModalItemText}>{mentor.name}</Text>
-                </TouchableOpacity>
-              ))
-            ) : (
-              <Text style={styles.noMentorsText}>No mentors available for this subject</Text>
-            )}
+            <View style={styles.listModalHeader}>
+              <Text style={styles.modalSectionTitle}>Select Faculty</Text>
+            </View>
+            <ScrollView style={styles.listModalScroll}>
+              {mentors.length > 0 ? (
+                mentors.map(mentor => (
+                  <TouchableOpacity
+                    key={mentor.id}
+                    style={styles.listModalItem}
+                    onPress={() => selectFaculty(mentor)}
+                  >
+                    <Text style={styles.listModalItemText}>{mentor.name}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <Text style={styles.noMentorsText}>No mentors available for this subject</Text>
+              )}
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
