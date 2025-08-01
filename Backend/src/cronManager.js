@@ -63,55 +63,86 @@ if (shouldRunCrons) {
 
     // Daily attendance updater - runs at 6:00 PM IST daily
     const attendanceTime = adjustTimeForUTC(18, 0);
-    cron.schedule(`${attendanceTime.minute} ${attendanceTime.hour} * * *`, async () => {
-        console.log('🔄 Running daily attendance updater...');
-        try {
-            const result = await runAttendanceUpdater();
-            console.log('✅ Attendance updater completed:', result.message);
-        } catch (error) {
-            console.error('❌ Attendance updater failed:', error);
-        }
-    }, getCronOptions());
+    const attendanceCronExpression = `${attendanceTime.minute} ${attendanceTime.hour} * * *`;
+    console.log('🕐 Attendance cron - IST: 18:00, UTC equivalent:', attendanceTime);
+    
+    try {
+        cron.schedule(attendanceCronExpression, async () => {
+            console.log('🔄 Running daily attendance updater...');
+            try {
+                const result = await runAttendanceUpdater();
+                console.log('✅ Attendance updater completed:', result.message);
+            } catch (error) {
+                console.error('❌ Attendance updater failed:', error);
+            }
+        }, getCronOptions());
+        console.log('✅ Attendance cron job scheduled successfully');
+    } catch (error) {
+        console.error('❌ Failed to schedule attendance cron job:', error);
+    }
 
     // Assessment sessions creator - runs at 11:59 PM IST daily
     const assessmentTime = adjustTimeForUTC(23, 59);
-    console.log('Assessment cron');
+    const assessmentCronExpression = `${assessmentTime.minute} ${assessmentTime.hour} * * *`;
+    console.log('🕐 Assessment cron - IST: 23:59, UTC equivalent:', assessmentTime);
     
-    cron.schedule(`${assessmentTime.minute} ${assessmentTime.hour} * * *`, async () => {
-        console.log('🔄 Creating assessment sessions for tomorrow...');
-        try {
-            const result = await createAssessmentSessionsByDate();
-            console.log('✅ Assessment sessions created:', result);
-        } catch (error) {
-            console.error('❌ Assessment sessions creation failed:', error);
-        }
-    }, getCronOptions());
+    try {
+        cron.schedule(assessmentCronExpression, async () => {
+            console.log('🔄 Creating assessment sessions for tomorrow...');
+            try {
+                const result = await createAssessmentSessionsByDate();
+                console.log('✅ Assessment sessions created:', result);
+            } catch (error) {
+                console.error('❌ Assessment sessions creation failed:', error);
+            }
+        }, getCronOptions());
+        console.log('✅ Assessment cron job scheduled successfully');
+    } catch (error) {
+        console.error('❌ Failed to schedule assessment cron job:', error);
+    }
 
-    // // Academic sessions creator - runs at 12:05 AM IST daily
-    // const academicTime = adjustTimeForUTC(0, 5);
-    // console.log('Academic cron');
-    // cron.schedule(`${academicTime.minute} ${academicTime.hour} * * *`, async () => {
-    //     console.log('🔄 Creating today academic sessions...');
-    //     try {
-    //         const result = await runDailyScheduleUpdate();
-    //         console.log('✅ Academic sessions created:', result);
-    //     } catch (error) {
-    //         console.error('❌ Academic sessions creation failed:', error);
-    //     }
-    // }, getCronOptions());
+    // Academic sessions creator - runs at 12:05 AM IST daily
+    const academicTime = adjustTimeForUTC(0, 5);
+    const academicCronExpression = `${academicTime.minute} ${academicTime.hour} * * *`;
+    console.log('🕐 Academic cron - IST: 00:05, UTC equivalent:', academicTime);
+    console.log('🕐 Academic cron expression:', academicCronExpression);
+    
+    try {
+        cron.schedule(academicCronExpression, async () => {
+            console.log('🔄 Creating today academic sessions...');
+            try {
+                const result = await runDailyScheduleUpdate();
+                console.log('✅ Academic sessions created:', result);
+            } catch (error) {
+                console.error('❌ Academic sessions creation failed:', error);
+            }
+        }, getCronOptions());
+        console.log('✅ Academic cron job scheduled successfully');
+    } catch (error) {
+        console.error('❌ Failed to schedule academic cron job:', error);
+        console.error('❌ Attempted expression:', academicCronExpression);
+        console.error('❌ Attempted options:', getCronOptions());
+    }
 
-    // // Student backlogs checker - runs at 1:00 AM IST daily
+    // Student backlogs checker - runs at 1:00 AM IST daily
     const backlogTime = adjustTimeForUTC(1, 0);
-    console.log('Backlog cron');
-    cron.schedule(`${backlogTime.minute} ${backlogTime.hour} * * *`, async () => {
-        console.log('🔄 Running overdue levels check...');
-        try {
-            const result = await runOverdueCheck();
-            console.log('✅ Overdue levels check completed:', result);
-        } catch (error) {
-            console.error('❌ Overdue levels check failed:', error);
-        }
-    }, getCronOptions());
+    const backlogCronExpression = `${backlogTime.minute} ${backlogTime.hour} * * *`;
+    console.log('🕐 Backlog cron - IST: 01:00, UTC equivalent:', backlogTime);
+    
+    try {
+        cron.schedule(backlogCronExpression, async () => {
+            console.log('🔄 Running overdue levels check...');
+            try {
+                const result = await runOverdueCheck();
+                console.log('✅ Overdue levels check completed:', result);
+            } catch (error) {
+                console.error('❌ Overdue levels check failed:', error);
+            }
+        }, getCronOptions());
+        console.log('✅ Backlog cron job scheduled successfully');
+    } catch (error) {
+        console.error('❌ Failed to schedule backlog cron job:', error);
+    }
 
     console.log('✅ All cron jobs initialized');
 } else {
