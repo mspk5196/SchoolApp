@@ -535,33 +535,33 @@ exports.getBufferActivities = (req, res) => {
 
 
   const sql = `
-    SELECT 
-      ba.id, 
-      at.activity_type as activity_name,
-      g.grade_name, 
-      GROUP_CONCAT(DISTINCT s.section_name ORDER BY s.section_name SEPARATOR ', ') as sections,
-      ba.from_time, 
-      ba.to_time, 
-      ba.status,
-      ba.ended_at,
-      CONCAT(
-        TIME_FORMAT(ba.from_time, '%h:%i %p'), 
-        ' - ', 
-        TIME_FORMAT(ba.to_time, '%h:%i %p')
-      ) as time_range,
-      CASE 
-        WHEN ba.status = 'Active' THEN 
-          CONCAT('Ends in ', TIMESTAMPDIFF(MINUTE, NOW(), CONCAT(CURDATE(), ' ', ba.to_time)), 'min')
-        ELSE 'Ended'
-      END as time_left
-    FROM buffer_activity ba
-    JOIN activity_types at ON ba.activity_type_id = at.id
-    JOIN Grades g ON ba.grade_id = g.id
-    JOIN Sections s ON FIND_IN_SET(s.id, ba.section_ids)
-    WHERE ba.mentor_id = ?
-    GROUP BY ba.id
-    ORDER BY ba.status DESC, ba.from_time ASC
-  `;
+  SELECT 
+    ba.id, 
+    at.activity_type as activity_name,
+    g.grade_name, 
+    GROUP_CONCAT(DISTINCT s.section_name ORDER BY s.section_name SEPARATOR ', ') as sections,
+    ba.from_time, 
+    ba.to_time, 
+    ba.status,
+    ba.ended_at,
+    CONCAT(
+      TIME_FORMAT(ba.from_time, '%h:%i %p'), 
+      ' - ', 
+      TIME_FORMAT(ba.to_time, '%h:%i %p')
+    ) as time_range,
+    CASE 
+      WHEN ba.status = 'Active' THEN 
+        CONCAT('Ends in ', TIMESTAMPDIFF(MINUTE, NOW(), CONCAT(CURDATE(), ' ', ba.to_time)), 'min')
+      ELSE 'Ended'
+    END as time_left
+  FROM buffer_activity ba
+  JOIN activity_types at ON ba.activity_type_id = at.id
+  JOIN Grades g ON ba.grade_id = g.id
+  JOIN Sections s ON FIND_IN_SET(s.id, ba.section_ids)
+  WHERE ba.mentor_id = ?
+  GROUP BY ba.id, at.activity_type, g.grade_name, ba.from_time, ba.to_time, ba.status, ba.ended_at
+  ORDER BY ba.status DESC, ba.from_time ASC
+`;
 
   db.query(sql, [mentor_id], (err, results) => {
     if (err) {
