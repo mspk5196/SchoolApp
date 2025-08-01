@@ -13,14 +13,24 @@ cloudinary.config({
 const uploadToCloudinary = async (buffer, options = {}) => {
   return new Promise((resolve, reject) => {
     const uploadOptions = {
-      ...options, // ✅ Spread first
-      resource_type: options.resource_type || 'raw' // ✅ Default to 'raw' instead of 'auto'
+      ...options,
+      resource_type: options.resource_type || 'raw'
     };
 
-    cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
-      if (error) reject(error);
-      else resolve(result);
-    }).end(buffer);
+    const uploadStream = cloudinary.uploader.upload_stream(
+      uploadOptions, 
+      (error, result) => {
+        if (error) {
+          console.error('Cloudinary upload error:', error);
+          reject(error);
+        } else {
+          console.log('Cloudinary upload success:', result.secure_url);
+          resolve(result);
+        }
+      }
+    );
+
+    uploadStream.end(buffer);
   });
 };
 
@@ -57,31 +67,46 @@ const uploadDocument = async (buffer, originalName, folder = "documents") => {
 const uploadStudyMaterial = async (buffer, originalName, gradeId, subjectId) => {
   const ext = originalName.split('.').pop().toLowerCase();
   
-  // Get filename without extension
-  const fileNameWithoutExt = originalName.split(".")[0];
+  // Get filename without extension and sanitize it
+  const fileNameWithoutExt = originalName.split(".")[0]
+    .replace(/[^a-zA-Z0-9_-]/g, '_') // Replace special chars with underscore
+    .substring(0, 50); // Limit length
 
   // Determine resource type based on file extension
   let resourceType = 'raw'; // Default for documents/PDFs
   let publicId;
+  let additionalOptions = {};
   
   if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
     resourceType = 'image';
-    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for images
+    publicId = `${Date.now()}_${fileNameWithoutExt}`;
   } else if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(ext)) {
     resourceType = 'video';
-    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for videos
+    publicId = `${Date.now()}_${fileNameWithoutExt}`;
   } else if (['mp3', 'wav', 'ogg', 'aac'].includes(ext)) {
     resourceType = 'video'; // Audio files use 'video' resource type in Cloudinary
-    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for audio
+    publicId = `${Date.now()}_${fileNameWithoutExt}`;
   } else {
-    // For raw files (PDFs, DOCs, etc.), include the extension in public_id
-    publicId = `${Date.now()}_${fileNameWithoutExt}.${ext}`;
+    // For raw files (PDFs, DOCs, etc.)
+    publicId = `${Date.now()}_${fileNameWithoutExt}`;
+    
+    // Special handling for PDFs
+    if (ext === 'pdf') {
+      additionalOptions = {
+        // Ensure PDF can be viewed/downloaded properly
+        format: 'pdf',
+        flags: 'attachment'
+      };
+    }
   }
 
   const options = {
     folder: `study_materials/grade_${gradeId}/subject_${subjectId}`,
     public_id: publicId,
     resource_type: resourceType,
+    use_filename: false, // Don't use original filename
+    unique_filename: true, // Ensure unique filenames
+    ...additionalOptions
   };
 
   return uploadToCloudinary(buffer, options);
