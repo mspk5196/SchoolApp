@@ -413,15 +413,17 @@ const SubjectPage = ({ route, navigation }) => {
             cleanUrl = fileUrl.substring(1);
         }
         
-        // For Cloudinary raw files, ensure proper URL format
-        if (cleanUrl.includes('cloudinary.com') && cleanUrl.includes('/raw/')) {
-            // Cloudinary raw files can be accessed directly
-            cleanUrl = cleanUrl;
+        // For Cloudinary URLs, remove problematic query parameters
+        if (cleanUrl.includes('cloudinary.com')) {
+            // Remove query parameters that can interfere with PDF opening
+            cleanUrl = cleanUrl.split('?')[0];
+            
+            // Clean up any double slashes
+            cleanUrl = cleanUrl.replace(/([^:]\/)\/+/g, '$1');
         }
 
         console.log("Opening file:", cleanUrl, "as", fileName);
         
-
         const localFile = `${RNFS.DownloadDirectoryPath}/${fileName}`;
 
         try {
@@ -434,6 +436,7 @@ const SubjectPage = ({ route, navigation }) => {
                     text: 'Just View',
                     onPress: async () => {
                         try {
+                            // For PDFs, try opening directly in browser
                             await Linking.openURL(cleanUrl);
                         } catch (err) {
                             console.error('File open error:', err);
@@ -457,6 +460,7 @@ const SubjectPage = ({ route, navigation }) => {
         async function downloadFile() {
             try {
                 setDownloadProgress(0);
+                
                 const downloadResult = await RNFS.downloadFile({
                     fromUrl: cleanUrl,
                     toFile: localFile,

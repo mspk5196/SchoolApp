@@ -137,16 +137,37 @@ const StudentPageMaterialScreen = () => {
     setDownloadProgress(0);
     
     // Clean the URL first to fix any /https:// issues
-    const cleanUrl = cleanImageUrl(fileUrl);
+    let cleanUrl = cleanImageUrl(fileUrl);
+    
+    // For Cloudinary URLs, remove problematic query parameters and transformations
+    if (cleanUrl.includes('cloudinary.com')) {
+      // Remove query parameters that can interfere with PDF opening
+      cleanUrl = cleanUrl.split('?')[0];
+      
+      // Remove fl_attachment transformation if present
+      cleanUrl = cleanUrl.replace('/fl_attachment:false/', '/');
+      cleanUrl = cleanUrl.replace('fl_attachment:false/', '');
+      cleanUrl = cleanUrl.replace('/fl_attachment:true/', '/');
+      cleanUrl = cleanUrl.replace('fl_attachment:true/', '');
+      
+      // Clean up any double slashes
+      cleanUrl = cleanUrl.replace(/([^:]\/)\/+/g, '$1');
+      
+      // For PDFs, create a viewing URL without attachment flag
+      if (fileName.toLowerCase().endsWith('.pdf') && cleanUrl.includes('/raw/upload/')) {
+        // Replace raw with image for better PDF viewing in browsers
+        cleanUrl = cleanUrl.replace('/raw/upload/', '/image/upload/fl_attachment:false/');
+      }
+    }
     
     // For Cloudinary raw files, use the provided fileName with proper extension
     // If fileName doesn't have an extension, extract it from the URL or add default
     let properFileName = fileName;
-    if (cleanUrl.includes('cloudinary.com') && cleanUrl.includes('/raw/')) {
+    if (fileUrl.includes('cloudinary.com') && fileUrl.includes('/raw/')) {
       // For raw files from Cloudinary, ensure proper filename with extension
       if (!properFileName.includes('.')) {
         // Try to get extension from URL, default to pdf if not found
-        const urlExtension = cleanUrl.split('.').pop();
+        const urlExtension = fileUrl.split('.').pop();
         if (urlExtension && urlExtension.length <= 4) {
           properFileName = `${properFileName}.${urlExtension}`;
         } else {
@@ -155,14 +176,16 @@ const StudentPageMaterialScreen = () => {
       }
     } else {
       // For other URLs, use the getFileNameFromUrl utility
-      properFileName = getFileNameFromUrl(cleanUrl, fileName);
+      properFileName = getFileNameFromUrl(fileUrl, fileName);
     }
+    
+    console.log("Student opening file:", cleanUrl, "as", properFileName);
     
     const localFile = `${RNFS.DownloadDirectoryPath}/${properFileName}`;
 
     try {
       const downloadResult = await RNFS.downloadFile({
-        fromUrl: cleanUrl,
+        fromUrl: fileUrl, // Use original URL for download
         toFile: localFile,
         progress: (res) => {
           const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);

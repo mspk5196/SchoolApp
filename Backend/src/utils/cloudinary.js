@@ -40,7 +40,7 @@ const uploadProfilePhoto = async (buffer, userId, userType) => {
 
 // Upload documents (PDFs, DOCs, etc.)
 const uploadDocument = async (buffer, originalName, folder = "documents") => {
-  // For raw files, don't include extension in public_id
+  // For raw files, include extension in public_id
   const fileNameWithoutExt = originalName.split(".")[0];
   const ext = originalName.split(".").pop().toLowerCase();
   
@@ -62,17 +62,20 @@ const uploadStudyMaterial = async (buffer, originalName, gradeId, subjectId) => 
 
   // Determine resource type based on file extension
   let resourceType = 'raw'; // Default for documents/PDFs
-  let publicId = `${Date.now()}_${fileNameWithoutExt}.${ext}`; // Include extension in public_id for study materials
+  let publicId;
   
   if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
     resourceType = 'image';
-    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for images either
+    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for images
   } else if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(ext)) {
     resourceType = 'video';
-    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for videos either
+    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for videos
   } else if (['mp3', 'wav', 'ogg', 'aac'].includes(ext)) {
     resourceType = 'video'; // Audio files use 'video' resource type in Cloudinary
-    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for audio either
+    publicId = `${Date.now()}_${fileNameWithoutExt}`; // No extension for audio
+  } else {
+    // For raw files (PDFs, DOCs, etc.), include the extension in public_id
+    publicId = `${Date.now()}_${fileNameWithoutExt}.${ext}`;
   }
 
   const options = {
@@ -106,15 +109,22 @@ const uploadMessageAttachment = async (buffer, originalName, messageId) => {
   
   // Determine resource type based on file extension
   let resourceType = 'raw'; // Default for documents
+  let publicId;
+  
   if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(extension)) {
     resourceType = 'image';
+    publicId = `msg_${messageId}_${Date.now()}_${fileNameWithoutExt}`; // No extension for images
   } else if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(extension)) {
     resourceType = 'video';
+    publicId = `msg_${messageId}_${Date.now()}_${fileNameWithoutExt}`; // No extension for videos
+  } else {
+    // For raw files (PDFs, DOCs, etc.), include extension in public_id
+    publicId = `msg_${messageId}_${Date.now()}_${fileNameWithoutExt}.${extension}`;
   }
   
   const options = {
     folder: 'message_attachments',
-    public_id: `msg_${messageId}_${Date.now()}_${fileNameWithoutExt}`, // No extension in public_id
+    public_id: publicId,
     resource_type: resourceType
   };
   return uploadToCloudinary(buffer, options);
