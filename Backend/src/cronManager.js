@@ -16,15 +16,54 @@ console.log('  - RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
 console.log('  - Should run crons:', shouldRunCrons);
 
 function getTimezone() {
-    return "Asia/Kolkata";
+    // Check if the timezone is supported in the current environment
+    try {
+        Intl.DateTimeFormat(undefined, { timeZone: "Asia/Kolkata" });
+        return "Asia/Kolkata";
+    } catch (error) {
+        console.warn('⚠️ Asia/Kolkata timezone not supported, falling back to UTC+05:30');
+        return "UTC";
+    }
+}
+
+function getCronOptions() {
+    const timezone = getTimezone();
+    if (timezone === "UTC") {
+        // If we can't use Asia/Kolkata, we'll adjust the times to UTC equivalent
+        // Asia/Kolkata is UTC+05:30, so we subtract 5.5 hours from the times
+        return { scheduled: true };
+    }
+    return { scheduled: true, timezone: timezone };
+}
+
+function adjustTimeForUTC(hour, minute = 0) {
+    // Convert IST time to UTC (subtract 5.5 hours)
+    const timezone = getTimezone();
+    if (timezone === "UTC") {
+        let utcHour = hour - 5;
+        let utcMinute = minute - 30;
+        
+        if (utcMinute < 0) {
+            utcMinute += 60;
+            utcHour -= 1;
+        }
+        
+        if (utcHour < 0) {
+            utcHour += 24;
+        }
+        
+        return { hour: utcHour, minute: utcMinute };
+    }
+    return { hour, minute };
 }
 
 if (shouldRunCrons) {
     console.log('🕐 Starting cron jobs...');
-    //   console.log("Scheduling cron job with date:", yourDateVariable);
+    console.log('🌍 Using timezone:', getTimezone());
 
-    // Daily attendance updater - runs at 6:00 PM daily
-    cron.schedule('0 18 * * *', async () => {
+    // Daily attendance updater - runs at 6:00 PM IST daily
+    const attendanceTime = adjustTimeForUTC(18, 0);
+    cron.schedule(`${attendanceTime.minute} ${attendanceTime.hour} * * *`, async () => {
         console.log('🔄 Running daily attendance updater...');
         try {
             const result = await runAttendanceUpdater();
@@ -32,13 +71,11 @@ if (shouldRunCrons) {
         } catch (error) {
             console.error('❌ Attendance updater failed:', error);
         }
-    }, {
-        scheduled: true,
-        timezone: getTimezone()
-    });
+    }, getCronOptions());
 
-    // Assessment sessions creator - runs at 11:59 PM daily
-    cron.schedule('59 23 * * *', async () => {
+    // Assessment sessions creator - runs at 11:59 PM IST daily
+    const assessmentTime = adjustTimeForUTC(23, 59);
+    cron.schedule(`${assessmentTime.minute} ${assessmentTime.hour} * * *`, async () => {
         console.log('🔄 Creating assessment sessions for tomorrow...');
         try {
             const result = await createAssessmentSessionsByDate();
@@ -46,13 +83,11 @@ if (shouldRunCrons) {
         } catch (error) {
             console.error('❌ Assessment sessions creation failed:', error);
         }
-    }, {
-        scheduled: true,
-        timezone: getTimezone()
-    });
+    }, getCronOptions());
 
-    // Academic sessions creator - runs at 12:05 AM daily
-    cron.schedule('5 0 * * *', async () => {
+    // Academic sessions creator - runs at 12:05 AM IST daily
+    const academicTime = adjustTimeForUTC(0, 5);
+    cron.schedule(`${academicTime.minute} ${academicTime.hour} * * *`, async () => {
         console.log('🔄 Creating today academic sessions...');
         try {
             const result = await runDailyScheduleUpdate();
@@ -60,13 +95,11 @@ if (shouldRunCrons) {
         } catch (error) {
             console.error('❌ Academic sessions creation failed:', error);
         }
-    }, {
-        scheduled: true,
-        timezone: getTimezone()
-    });
+    }, getCronOptions());
 
-    // Student backlogs checker - runs at 1:00 AM daily
-    cron.schedule('0 1 * * *', async () => {
+    // Student backlogs checker - runs at 1:00 AM IST daily
+    const backlogTime = adjustTimeForUTC(1, 0);
+    cron.schedule(`${backlogTime.minute} ${backlogTime.hour} * * *`, async () => {
         console.log('🔄 Running overdue levels check...');
         try {
             const result = await runOverdueCheck();
@@ -74,10 +107,7 @@ if (shouldRunCrons) {
         } catch (error) {
             console.error('❌ Overdue levels check failed:', error);
         }
-    }, {
-        scheduled: true,
-        timezone: getTimezone()
-    });
+    }, getCronOptions());
 
     console.log('✅ All cron jobs initialized');
 } else {
