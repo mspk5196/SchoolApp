@@ -75,6 +75,8 @@ if (shouldRunCrons) {
 
     // Assessment sessions creator - runs at 11:59 PM IST daily
     const assessmentTime = adjustTimeForUTC(23, 59);
+    console.log('Assessment cron');
+    
     cron.schedule(`${assessmentTime.minute} ${assessmentTime.hour} * * *`, async () => {
         console.log('🔄 Creating assessment sessions for tomorrow...');
         try {
@@ -87,6 +89,7 @@ if (shouldRunCrons) {
 
     // // Academic sessions creator - runs at 12:05 AM IST daily
     const academicTime = adjustTimeForUTC(0, 5);
+    console.log('Academic cron');
     cron.schedule(`${academicTime.minute} ${academicTime.hour} * * *`, async () => {
         console.log('🔄 Creating today academic sessions...');
         try {
