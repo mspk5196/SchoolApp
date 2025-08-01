@@ -88,29 +88,30 @@ if (shouldRunCrons) {
     }, getCronOptions());
 
     // // Academic sessions creator - runs at 12:05 AM IST daily
-    const academicTime = adjustTimeForUTC(0, 5);
-    console.log('Academic cron');
-    cron.schedule(`${academicTime.minute} ${academicTime.hour} * * *`, async () => {
-        console.log('🔄 Creating today academic sessions...');
-        try {
-            const result = await runDailyScheduleUpdate();
-            console.log('✅ Academic sessions created:', result);
-        } catch (error) {
-            console.error('❌ Academic sessions creation failed:', error);
-        }
-    }, getCronOptions());
-
-    // // Student backlogs checker - runs at 1:00 AM IST daily
-    // const backlogTime = adjustTimeForUTC(1, 0);
-    // cron.schedule(`${backlogTime.minute} ${backlogTime.hour} * * *`, async () => {
-    //     console.log('🔄 Running overdue levels check...');
+    // const academicTime = adjustTimeForUTC(0, 5);
+    // console.log('Academic cron');
+    // cron.schedule(`${academicTime.minute} ${academicTime.hour} * * *`, async () => {
+    //     console.log('🔄 Creating today academic sessions...');
     //     try {
-    //         const result = await runOverdueCheck();
-    //         console.log('✅ Overdue levels check completed:', result);
+    //         const result = await runDailyScheduleUpdate();
+    //         console.log('✅ Academic sessions created:', result);
     //     } catch (error) {
-    //         console.error('❌ Overdue levels check failed:', error);
+    //         console.error('❌ Academic sessions creation failed:', error);
     //     }
     // }, getCronOptions());
+
+    // // Student backlogs checker - runs at 1:00 AM IST daily
+    const backlogTime = adjustTimeForUTC(1, 0);
+    console.log('Backlog cron');
+    cron.schedule(`${backlogTime.minute} ${backlogTime.hour} * * *`, async () => {
+        console.log('🔄 Running overdue levels check...');
+        try {
+            const result = await runOverdueCheck();
+            console.log('✅ Overdue levels check completed:', result);
+        } catch (error) {
+            console.error('❌ Overdue levels check failed:', error);
+        }
+    }, getCronOptions());
 
     console.log('✅ All cron jobs initialized');
 } else {
