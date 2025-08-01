@@ -36,7 +36,7 @@ const EventCard = ({ event, onPress, onDelete }) => {
     <TouchableOpacity style={styles.eventCard} onPress={() => onPress(event)}>
       <View style={styles.eventImageContainer}>
         {banner_url ? (
-          <Image source={{ uri: `${API_URL}/${banner_url}` }} style={styles.eventImage} resizeMode="cover" />
+          <Image source={{ uri: `${banner_url}` }} style={styles.eventImage} resizeMode="cover" />
         ) : (
           <View style={[styles.eventImage, { backgroundColor: '#FEE2E2' }]}>
             <Text style={styles.placeholderText}>{event_name.substring(0, 1)}</Text>
@@ -154,7 +154,7 @@ const EventDetail = ({ event, visible, onClose }) => {
         <ScrollView style={styles.detailScrollView}>
           <View style={styles.detailImageContainer}>
             {event.banner_url ? (
-              <Image source={{ uri: `${API_URL}/${event.banner_url}` }} style={styles.eventImage} resizeMode="cover" />
+              <Image source={{ uri: `${event.banner_url}` }} style={styles.eventImage} resizeMode="cover" />
             ) : (
               <View style={[styles.eventImage, { backgroundColor: '#FEE2E2' }]}>
                 <Text style={styles.placeholderText}>{event.event_name}</Text>
@@ -330,6 +330,9 @@ const CoordinatorEvent = ({ navigation, route }) => {
         });
 
         setEvents(groupedEvents);
+        // console.log('Fetched events:', groupedEvents['In-school'][0].event_date);
+        console.log('Fetched events:', groupedEvents);
+        
       }
     } catch (error) {
       console.error('Error fetching events:', error);
