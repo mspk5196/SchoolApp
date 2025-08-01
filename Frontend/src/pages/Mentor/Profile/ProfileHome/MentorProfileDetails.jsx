@@ -10,7 +10,6 @@ import Home from '../../../../assets/MentorPage/home.svg';
 import Leave2 from '../../../../assets/MentorPage/leave2.svg';
 import Grade from '../../../../assets/MentorPage/grade.svg';
 import styles from './mentordetailssty';
-import robustProfileImageHandler from '../../../../utils/robustProfileImageHandler';
 import { API_URL } from '../../../../utils/env.js'
 
 const MentorProfileDetails = ({ navigation, route }) => {
@@ -113,7 +112,15 @@ const MentorProfileDetails = ({ navigation, route }) => {
   };
 
   const getProfileImageSource = (profilePath) => {
-    return robustProfileImageHandler(profilePath, Profile, API_URL);
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Profile;
+    }
   };
 
   return (

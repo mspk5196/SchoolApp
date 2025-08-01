@@ -118,12 +118,9 @@ const CoordinatorProfile = ({ navigation, route }) => {
 
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
-      // Check if it's already a full URL (Cloudinary URL)
-      if (profilePath.startsWith('http://') || profilePath.startsWith('https://')) {
-        return { uri: profilePath };
-      }
-      // For local paths, normalize and construct URL with API_URL
+      // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
       const fullImageUrl = `${API_URL}/${normalizedPath}`;
       return { uri: fullImageUrl };
     } else {

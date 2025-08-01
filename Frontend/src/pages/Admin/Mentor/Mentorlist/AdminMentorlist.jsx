@@ -4,7 +4,6 @@ import Leftarrow from "../../../../assets/AdminPage/Basicimg/PrevBtn.svg";
 import styles from './MentorlistStyles';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
 import Search from '../../../../assets/AdminPage/MentorHome/search.svg';
-import { cleanImageUrl } from '../../../../utils/cleanImageUrl';
 import { API_URL } from '../../../../utils/env.js'
 
 
@@ -61,15 +60,9 @@ const AdminMentorlist = ({ navigation, route }) => {
   
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
-      // Clean the URL to fix any malformed issues
-      const cleanPath = cleanImageUrl(profilePath);
-      
-      // Check if it's already a full URL (Cloudinary URL)
-      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
-        return { uri: cleanPath };
-      }
-      // For local paths, normalize and construct URL with API_URL
-      const normalizedPath = cleanPath.replace(/\\/g, '/');
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
       const fullImageUrl = `${API_URL}/${normalizedPath}`;
       return { uri: fullImageUrl };
     } else {

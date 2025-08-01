@@ -1,13 +1,5 @@
 const db = require('../../config/db');
 const { createAcademicSessionsByDate } = require('../mentor/mentorController');
-const {
-  uploadProfilePhoto,
-  uploadDocument,
-  uploadStudyMaterial,
-  uploadEventBanner,
-  uploadMessageAttachment,
-  deleteFromCloudinary
-} = require('../../utils/cloudinary');
 
 exports.getCoordinatorData = (req, res) => {
   const { phoneNumber } = req.body;
@@ -601,24 +593,22 @@ exports.uploadRequestDocuments = async (req, res) => {
     for (let i = 0; i < req.files.length; i++) {
       const file = req.files[i];
 
-      try {
-        // Upload to Cloudinary
-        const cloudinaryResult = await uploadDocument(
-          file.buffer,
-          file.originalname,
-          'documents/student_requests'
-        );
+      // Get the file extension from originalname
+      const fileExt = path.extname(file.originalname).toLowerCase();
 
-        await connection.query(
-          `INSERT INTO Student_Document 
-          (request_id, document_type, file_name, file_path)  
-          VALUES (?, ?, ?, ?)`,
-          [request_id, document_titles[i], file.originalname, cloudinaryResult.secure_url]
-        );
-      } catch (uploadError) {
-        console.error('Cloudinary upload error:', uploadError);
-        throw new Error(`Failed to upload ${file.originalname}`);
-      }
+      // Generate new file path with .pdf extension
+      const fileId = uuidv4(); // or any unique ID generation method
+      const newFilePath = path.join('./uploads/documents', `${fileId}.pdf`);
+
+      // Rename/move the file to ensure .pdf extension
+      fs.renameSync(file.path, path.join(__dirname, '../../..', newFilePath));
+
+      await connection.query(
+        `INSERT INTO Student_Document 
+        (request_id, document_type, file_name, file_path)  
+        VALUES (?, ?, ?, ?)`,
+        [request_id, document_titles[i], file.originalname, newFilePath]
+      );
     }
 
     await connection.query(
@@ -667,11 +657,14 @@ exports.getGradeSubject = (req, res) => {
 
 exports.uploadStudyMaterial = async (req, res) => {
   const { grade_id, subject_id, level, expected_date } = req.body;
-  console.log(expected_date);
-  
   let connection;
 
   try {
+    const uploadDir = path.join(__dirname, '../../../', 'uploads', 'materials');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
     if (!req.files?.length) {
       return res.status(400).json({
         success: false,
@@ -683,43 +676,31 @@ exports.uploadStudyMaterial = async (req, res) => {
     await connection.query('START TRANSACTION');
 
     for (let file of req.files) {
-      try {
-        // Upload to Cloudinary
-        const cloudinaryResult = await uploadStudyMaterial(
-          file.buffer,
-          file.originalname,
+      const ext = path.extname(file.originalname).toLowerCase();
+      const fileId = uuidv4();
+      const newFileName = `${fileId}${ext}`;
+      const relativePath = path.join('uploads', 'materials', newFileName);
+      const absolutePath = path.join(__dirname, '../../../', relativePath);
+
+      // Move file to /uploads/materials
+      fs.renameSync(file.path, absolutePath);
+
+      const materialType = file.mimetype.includes('video') ? 'Video' : 'PDF';
+
+      await connection.query(
+        `INSERT INTO Materials 
+         (grade_id, subject_id, level, material_type, file_name, file_url, expected_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
           grade_id,
-          subject_id
-        );
-
-        // Determine material type based on file mime type
-        let materialType = 'PDF';
-        if (file.mimetype.includes('video')) {
-          materialType = 'Video';
-        } else if (file.mimetype.includes('audio')) {
-          materialType = 'Audio';
-        } else if (file.mimetype.includes('image')) {
-          materialType = 'Image';
-        }
-
-        await connection.query(
-          `INSERT INTO Materials 
-           (grade_id, subject_id, level, material_type, file_name, file_url, expected_date)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [
-            grade_id,
-            subject_id,
-            level,
-            materialType,
-            file.originalname,
-            cloudinaryResult.secure_url,
-            expected_date || null
-          ]
-        );
-      } catch (uploadError) {
-        console.error('Cloudinary upload error:', uploadError);
-        throw new Error(`Failed to upload ${file.originalname}`);
-      }
+          subject_id,
+          level,
+          materialType,
+          file.originalname,
+          relativePath.replace(/\\/g, '/'), // Ensures URL is safe on all OS
+          expected_date || null
+        ]
+      );
     }
 
     await connection.query('COMMIT');
@@ -764,108 +745,78 @@ exports.getMaterials = async (req, res) => {
   });
 };
 
-exports.deleteMaterial = async (req, res) => {
+exports.deleteMaterial = (req, res) => {
   const { fileId } = req.body;
 
-  try {
-    // First get the file URL and material type
-    const getFileQuery = 'SELECT file_url, material_type FROM Materials WHERE id = ?';
-    const [results] = await db.promise().query(getFileQuery, [fileId]);
-    
-    if (results.length === 0) {
+  // First get the file path
+  const getFileQuery = 'SELECT file_url FROM Materials WHERE id = ?';
+  db.query(getFileQuery, [fileId], (err, results) => {
+    if (err || results.length === 0) {
       return res.status(404).json({ success: false, message: 'Material not found' });
     }
 
-    const fileUrl = results[0].file_url;
-    const materialType = results[0].material_type;
+    const filePath = results[0].file_url;
+    const absolutePath = path.join(__dirname, '../../../', filePath);
 
-    // Delete from database first
     const sql = 'DELETE FROM materials WHERE id = ?';
-    await db.promise().query(sql, [fileId]);
-
-    // Extract public_id from Cloudinary URL for deletion
-    if (fileUrl && fileUrl.includes('cloudinary.com')) {
-      try {
-        // Extract public_id from Cloudinary URL
-        const urlParts = fileUrl.split('/');
-        const versionIndex = urlParts.findIndex(part => part.startsWith('v'));
-        let publicId = urlParts.slice(versionIndex + 1).join('/');
-        // Remove file extension
-        publicId = publicId.substring(0, publicId.lastIndexOf('.'));
-
-        // Determine resource type based on material type
-        let resourceType = 'raw'; // Default for PDFs and documents
-        if (materialType === 'Image') {
-          resourceType = 'image';
-        } else if (materialType === 'Video') {
-          resourceType = 'video';
+    db.query(sql, [fileId], (err, result) => {
+      if (err) {
+        console.error('Failed to delete from DB:', err);
+        return res.status(500).json({ success: false, message: 'Server error' });
+      }
+      // Delete the file from filesystem
+      fs.unlink(absolutePath, (fsErr) => {
+        if (fsErr) {
+          console.error('File deletion error:', fsErr);
+          return res.status(200).json({ success: true, message: 'DB record deleted, but file not found' });
         }
 
-        await deleteFromCloudinary(publicId, resourceType);
-      } catch (cloudinaryError) {
-        console.error('Cloudinary deletion error:', cloudinaryError);
-        // Continue execution - file was deleted from DB
-      }
-    }
+        return res.json({ success: true, message: 'File and DB record deleted successfully' });
+      });
+    });
+  })
 
-    res.json({ success: true, message: 'Material deleted successfully' });
-  } catch (error) {
-    console.error('Delete material error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
+
 };
 
 // Delete all materials of a level
-exports.deleteLevel = async (req, res) => {
+exports.deleteLevel = (req, res) => {
   const { level, gradeID, subjectID } = req.body;
 
-  try {
-    const getFileQuery = 'SELECT file_url, material_type FROM Materials WHERE level = ? AND grade_id = ? AND subject_id = ?';
-    const [results] = await db.promise().query(getFileQuery, [level, gradeID, subjectID]);
+  const getFileQuery = 'SELECT file_url FROM Materials WHERE level = ? AND grade_id = ? AND subject_id = ?';
+  db.query(getFileQuery, [level, gradeID, subjectID], (err, results) => {
+    if (err) {
+      console.error('Fetch files error:', err);
+      return res.status(500).json({ success: false, message: 'Server error while fetching materials' });
+    }
 
     if (results.length === 0) {
       return res.status(404).json({ success: false, message: 'No materials found for the given level' });
     }
 
-    // Delete all matching files from Cloudinary
-    for (const row of results) {
-      const fileUrl = row.file_url;
-      const materialType = row.material_type;
-      
-      if (fileUrl && fileUrl.includes('cloudinary.com')) {
-        try {
-          // Extract public_id from Cloudinary URL
-          const urlParts = fileUrl.split('/');
-          const versionIndex = urlParts.findIndex(part => part.startsWith('v'));
-          let publicId = urlParts.slice(versionIndex + 1).join('/');
-          // Remove file extension
-          publicId = publicId.substring(0, publicId.lastIndexOf('.'));
-
-          // Determine resource type based on material type
-          let resourceType = 'raw'; // Default for PDFs and documents
-          if (materialType === 'Image') {
-            resourceType = 'image';
-          } else if (materialType === 'Video') {
-            resourceType = 'video';
-          }
-
-          await deleteFromCloudinary(publicId, resourceType);
-          console.log(`✅ Deleted file from Cloudinary: ${publicId}`);
-        } catch (cloudinaryError) {
-          console.error(`❌ Error deleting file from Cloudinary:`, cloudinaryError.message);
+    // Delete all matching files from the file system
+    results.forEach((row) => {
+      const filePath = path.join(__dirname, '../../../', row.file_url);
+      fs.unlink(filePath, (fsErr) => {
+        if (fsErr) {
+          console.error(`ÔØî Error deleting file ${filePath}:`, fsErr.message);
+        } else {
+          console.log(`Ô£à Deleted file: ${filePath}`);
         }
-      }
-    }
+      });
+    });
 
     // Delete all matching records from the DB
     const deleteQuery = 'DELETE FROM Materials WHERE level = ? AND grade_id = ? AND subject_id = ?';
-    await db.promise().query(deleteQuery, [level, gradeID, subjectID]);
+    db.query(deleteQuery, [level, gradeID, subjectID], (err, result) => {
+      if (err) {
+        console.error('Delete level error:', err);
+        return res.status(500).json({ success: false, message: 'Server error while deleting materials' });
+      }
 
-    res.json({ success: true, message: 'All files and DB records for this level deleted successfully' });
-  } catch (error) {
-    console.error('Delete level error:', error);
-    res.status(500).json({ success: false, message: 'Server error while deleting materials' });
-  }
+      return res.json({ success: true, message: 'All files and DB records for this level deleted successfully' });
+    });
+  });
 };
 
 exports.updateExpectedDate = (req, res) => {
@@ -1065,7 +1016,6 @@ exports.getActivities = (req, res) => {
 const bcrypt = require('bcrypt');
 const { createTodayAcademicSessions } = require('../mentor/mentorController');
 const { log } = require('console');
-const e = require('express');
 
 // Student Enrollment
 
@@ -1078,12 +1028,7 @@ exports.enrollStudent = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
-    // Upload profile photo to Cloudinary
-    const cloudinaryResult = await uploadProfilePhoto(
-      profilePhoto.buffer,
-      mobileNumber,
-      'students'
-    );
+    const profilePhotoPath = path.join('uploads/profileImages/students', profilePhoto.filename);
 
     const con = db.promise(); // <<== IMPORTANT!!
 
@@ -1133,7 +1078,7 @@ exports.enrollStudent = async (req, res) => {
         await trx.query(
           `INSERT INTO Students (name, dob, gender, section_id, father_mob, profile_photo, roll, mentor_id)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [name, dob, gender, section, mobileNumber, cloudinaryResult.secure_url, rollNumber, mentorID ? mentorID : '0']
+          [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber, mentorID ? mentorID : '0']
         );
 
         await trx.query(
@@ -1164,7 +1109,7 @@ exports.enrollStudent = async (req, res) => {
         await trx.query(
           `INSERT INTO Students (name, dob, gender, section_id, father_mob, profile_photo, roll, mentor_id)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [name, dob, gender, section, mobileNumber, cloudinaryResult.secure_url, rollNumber, mentorID]
+          [name, dob, gender, section, mobileNumber, profilePhotoPath, rollNumber, mentorID]
         );
 
         await trx.query(
@@ -1225,13 +1170,6 @@ exports.enrollMentor = async (req, res) => {
       return res.status(400).json({ success: false, message: "Profile photo is required" });
     }
 
-    // Upload profile photo to Cloudinary
-    const cloudinaryResult = await uploadProfilePhoto(
-      profilePhoto.buffer,
-      mobileNumber,
-      'mentors'
-    );
-
     const gradeNumber = typeof grade === 'string' ? grade.match(/\d+/)?.[0] : grade;
 
     // Get current student count for this grade
@@ -1253,6 +1191,7 @@ exports.enrollMentor = async (req, res) => {
     const newRoll = `M${String(nextMentorNumber).padStart(3, '0')}`;
 
     console.log('✅ New mentor roll:', newRoll);
+    const photoPath = profilePhoto.path;
 
     // Start transaction
     const connection = await con.beginTransaction();
@@ -1305,7 +1244,7 @@ exports.enrollMentor = async (req, res) => {
       await connection.query(
         `INSERT INTO user_photos (phone, roll, file_path, is_profile_photo)
          VALUES (?, ?, ?, ?)`,
-        [mobileNumber, newRoll, cloudinaryResult.secure_url, 1]
+        [mobileNumber, newRoll, photoPath, 1]
       );
 
       await connection.commit();
@@ -1684,26 +1623,26 @@ exports.getExamScheduleWithInvigilators = (req, res) => {
   const { grade_id } = req.query;
 
   const sql = `
-   SELECT 
-  es.id, 
-  es.grade_id, 
-  es.subject_id, 
-  es.exam_date AS date,
-  TIME_FORMAT(es.start_time, '%h:%i %p') AS start_time,
-  TIME_FORMAT(es.end_time, '%h:%i %p') AS end_time,
-  ANY_VALUE(s.subject_name) AS subject,
-  GROUP_CONCAT(i.mentor_id) AS invigilator_ids,
-  GROUP_CONCAT(u.name) AS invigilator_names,
-  ANY_VALUE(g.grade_name) AS grade_name
-FROM Exam_Schedule es
-LEFT JOIN Subjects s ON es.subject_id = s.id
-LEFT JOIN invigilators i ON es.id = i.exam_id
-LEFT JOIN mentors m ON i.mentor_id = m.id
-LEFT JOIN users u ON m.phone = u.phone
-JOIN Grades g ON es.grade_id = g.id
-WHERE es.grade_id = '2'
-GROUP BY es.id
-ORDER BY es.exam_date, es.start_time;
+    SELECT 
+      es.id, 
+      es.grade_id, 
+      es.subject_id, 
+      es.exam_date AS date,
+      TIME_FORMAT(es.start_time, '%h:%i %p') AS start_time,
+      TIME_FORMAT(es.end_time, '%h:%i %p') AS end_time,
+      s.subject_name AS subject,
+      GROUP_CONCAT(i.mentor_id) AS invigilator_ids,
+      GROUP_CONCAT(u.name) AS invigilator_names,
+      g.grade_name
+    FROM Exam_Schedule es
+    LEFT JOIN Subjects s ON es.subject_id = s.id
+    LEFT JOIN invigilators i ON es.id = i.exam_id
+    LEFT JOIN mentors m ON i.mentor_id = m.id
+    LEFT JOIN users u ON m.phone = u.phone
+    JOIN Grades g ON es.grade_id = g.id
+    WHERE es.grade_id = ?
+    GROUP BY es.id
+    ORDER BY es.exam_date, es.start_time;
   `;
 
   db.query(sql, [grade_id], (err, results) => {
@@ -3322,46 +3261,36 @@ exports.assignSubjectToMentorSection = (req, res) => {
   });
 };
 
-exports.createEvent = async (req, res) => {
-  try {
-    const { phone, event_name, location, participants_limit, event_date, grade_id, event_type, about, guidelinesRegistration, guidelinesParticipation } = req.body;
-    
-    let banner_url = null;
-    
-    // Upload banner to Cloudinary if file is provided
-    if (req.file) {
-      const cloudinaryResult = await uploadEventBanner(
-        req.file.buffer,
-        event_name
-      );
-      banner_url = cloudinaryResult.secure_url;
+exports.createEvent = (req, res) => {
+  const { phone, event_name, location, participants_limit, event_date, grade_id, event_type, about, guidelinesRegistration, guidelinesParticipation } = req.body;
+  const banner_url = req.file ? req.file.path : null;
+
+  const sql = `
+      INSERT INTO events 
+      (phone, event_name, location, participants_limit, event_date, grade_id, event_type, about, registration_guidelines, participation_guidelines, banner_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+  db.promise().query(sql, [
+    phone,
+    event_name,
+    location,
+    participants_limit,
+    event_date,
+    grade_id,
+    event_type,
+    about,
+    guidelinesRegistration,
+    guidelinesParticipation,
+    banner_url
+  ], (err, result) => {
+    if (err) {
+      console.error("Error creating event:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
     }
-
-    const sql = `
-        INSERT INTO events 
-        (phone, event_name, location, participants_limit, event_date, grade_id, event_type, about, registration_guidelines, participation_guidelines, banner_url)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-
-    const [result] = await db.promise().query(sql, [
-      phone,
-      event_name,
-      location,
-      participants_limit,
-      event_date,
-      grade_id,
-      event_type,
-      about,
-      guidelinesRegistration,
-      guidelinesParticipation,
-      banner_url
-    ]);
-
     res.json({ success: true, eventId: result.insertId });
-  } catch (error) {
-    console.error("Error creating event:", error);
-    res.status(500).json({ success: false, message: 'Database error' });
-  }
+  });
+  // });
 };
 
 // Get all events for a coordinator

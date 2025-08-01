@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Pressable, Alert } from 'react-native';
 import { API_URL } from '../../../../utils/env.js'
-import { cleanImageUrl } from '../../../../utils/cleanImageUrl';
 import BackIcon from "../../../../assets/CoordinatorPage/StudentProfile/leftarrow.svg";
 import styles from './StudentProfileStyles';
 const Staff = require('../../../../assets/CoordinatorPage/StudentProfile/staff.png');
@@ -73,15 +72,9 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
 
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
-      // Clean the URL to fix any malformed issues
-      const cleanPath = cleanImageUrl(profilePath);
-      
-      // Check if it's already a full URL (Cloudinary URL)
-      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
-        return { uri: cleanPath };
-      }
-      // For local paths, normalize and construct URL with API_URL
-      const normalizedPath = cleanPath.replace(/\\/g, '/');
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
       const fullImageUrl = `${API_URL}/${normalizedPath}`;
       return { uri: fullImageUrl };
     } else {

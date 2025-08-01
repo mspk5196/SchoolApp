@@ -4,12 +4,32 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const crypto = require('crypto');
-const { uploadMessageAttachment } = require('../../utils/cloudinary');
 // const { io } = require('../../../server.js');
 
-// Configure storage for message attachments using memory storage for Cloudinary
+// Configure storage for message attachments
+const attachmentStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = './uploads/message_attachments';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    let ext = path.extname(file.originalname);
+    if (!ext) {
+      const mimeMap = {
+        'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif',
+        'application/pdf': '.pdf', 'audio/mp3': '.mp3', 'audio/mpeg': '.mp3',
+      };
+      ext = mimeMap[file.mimetype] || '';
+    }
+    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + ext);
+  }
+});
+
 const uploadAttachment = multer({
-  storage: multer.memoryStorage(),
+  storage: attachmentStorage,
   limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit
 });
 
@@ -303,19 +323,13 @@ exports.sendAttachment = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
-    // Upload file to Cloudinary
-    const cloudinaryResult = await uploadMessageAttachment(
-      file.buffer,
-      file.originalname,
-      `${sender_id}_${Date.now()}`
-    );
-
     const fileType = getFileType(file.mimetype);
+    const filePath = `/message_attachments/${file.filename}`;
 
     const [result] = await db.promise().query(`
       INSERT INTO messages (sender_id, receiver_id, sender_type, receiver_type, attachment_path, attachment_type, created_at)
       VALUES (?, ?, ?, ?, ?, ?, NOW())
-    `, [sender_id, receiver_id, sender_type, receiver_type, cloudinaryResult.secure_url, fileType]);
+    `, [sender_id, receiver_id, sender_type, receiver_type, filePath, fileType]);
 
     const [newMessage] = await db.promise().query(`
       SELECT * FROM messages WHERE message_id = ?

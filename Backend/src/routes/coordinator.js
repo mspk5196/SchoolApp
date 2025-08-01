@@ -6,31 +6,66 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
-// Configure multer for memory storage (all files will be uploaded to Cloudinary)
+// Configure multer
 const upload = multer({
-  storage: multer.memoryStorage(),
+  dest: './uploads/documents',
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+const materialsStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, './uploads/materials');
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
+
 const uploadMaterials = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit for large study content
+  storage: materialsStorage,
+  limits: { fileSize: 100 * 1024 * 1024 } // 50MB limit for large study content
 });
 
-const uploadStudentProfile = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit for profile photos
+const profileStudentPhotoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, './uploads/profileImages/students'); // Your desired folder
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}_${file.originalname}`;
+    cb(null, uniqueName);
+  }
 });
 
-const uploadMentorProfile = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit for profile photos
+const uploadStudentProfile = multer({ storage:profileStudentPhotoStorage });
+
+module.exports = uploadStudentProfile;
+
+const profileMentorPhotoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, './uploads/profileImages/mentor'); // Your desired folder
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}_${file.originalname}`;
+    cb(null, uniqueName);
+  }
 });
 
-const uploadEventBanner = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for event banners
+const uploadMentorProfile = multer({ storage:profileMentorPhotoStorage });
+
+module.exports = uploadMentorProfile;
+
+const coordinatorEventBanner = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, './uploads/events/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
 });
+
+const uploadEventBanner = multer({ storage: coordinatorEventBanner });
+module.exports = uploadEventBanner;
 
 
 // Coordinator routes

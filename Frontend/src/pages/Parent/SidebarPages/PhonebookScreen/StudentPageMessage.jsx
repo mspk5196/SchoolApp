@@ -33,7 +33,6 @@ import RNFS from 'react-native-fs';
 import RNBlobUtil from 'react-native-blob-util';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CheckBox } from 'react-native-elements';
-import { cleanImageUrl, getFileNameFromUrl } from '../../../../utils/cleanImageUrl';
 import mime from 'react-native-mime-types';
 
 // E2EE Imports
@@ -770,10 +769,7 @@ const StudentPageMessage = ({ route, navigation }) => {
 
             {!isSent && (
               <Image
-                source={item.sender_profile ? (() => {
-                  const cleanUrl = cleanImageUrl(item.sender_profile);
-                  return { uri: cleanUrl.startsWith('http') ? cleanUrl : `${API_URL}/${cleanUrl}` };
-                })() : Profile}
+                source={item.sender_profile ? { uri: `${API_URL}/${item.sender_profile}` } : Profile}
                 style={styles.profileImage}
               />
             )}
@@ -794,11 +790,7 @@ const StudentPageMessage = ({ route, navigation }) => {
                   {item.attachment_type === 'image' ? (
                     <TouchableOpacity
                       onPress={async () => {
-                        // Handle both local paths and Cloudinary URLs with cleaning
-                        const cleanedPath = cleanImageUrl(item.attachment_path);
-                        const uri = cleanedPath.startsWith('http') 
-                          ? cleanedPath 
-                          : `${API_URL}/uploads${cleanedPath}`;
+                        const uri = `${API_URL}/uploads${item.attachment_path}`;
                         const hasPermission = await requestSaveImagePermission();
                         if (!hasPermission) {
                           Alert.alert('Permission Denied', 'Cannot save image without permission.');
@@ -809,14 +801,7 @@ const StudentPageMessage = ({ route, navigation }) => {
                       }}
                     >
                       <Image
-                        source={(() => {
-                          const cleanedPath = cleanImageUrl(item.attachment_path);
-                          return { 
-                            uri: cleanedPath.startsWith('http') 
-                              ? cleanedPath 
-                              : `${API_URL}/uploads${cleanedPath}` 
-                          };
-                        })()}
+                        source={{ uri: `${API_URL}/uploads${item.attachment_path}` }}
                         style={styles.messageImage}
                         resizeMode="contain"
                       />
@@ -828,13 +813,7 @@ const StudentPageMessage = ({ route, navigation }) => {
                         playingAudioId === item.message_id && !audioPaused && { backgroundColor: '#e0f7fa' }
                       ]}
                       activeOpacity={0.7}
-                      onPress={() => {
-                        const cleanedPath = cleanImageUrl(item.attachment_path);
-                        const audioUri = cleanedPath.startsWith('http') 
-                          ? cleanedPath 
-                          : `${API_URL}/uploads${cleanedPath}`;
-                        playAudio(audioUri, item.message_id);
-                      }}
+                      onPress={() => playAudio(`${API_URL}/uploads${item.attachment_path}`, item.message_id)}
                     >
                       {playingAudioId === item.message_id ? (
                         audioPaused ? (
@@ -862,22 +841,14 @@ const StudentPageMessage = ({ route, navigation }) => {
                   ) : (
                     <TouchableOpacity
                       style={styles.documentAttachment}
-                      onPress={() => {
-                        const cleanedPath = cleanImageUrl(item.attachment_path);
-                        const docUri = cleanedPath.startsWith('http') 
-                          ? cleanedPath 
-                          : `${API_URL}/uploads${cleanedPath}`;
-                        const fileName = cleanedPath.startsWith('http')
-                          ? cleanedPath.split('/').pop().split('?')[0] // Remove query params from Cloudinary URL
-                          : cleanedPath.split('/').pop();
-                        downloadAndOpenDocument(docUri, fileName);
-                      }}
+                      onPress={() => downloadAndOpenDocument(
+                        `${API_URL}/uploads${item.attachment_path}`,
+                        item.attachment_path.split('/').pop()
+                      )}
                     >
                       <DocumentIcon width={24} height={24} />
                       <Text style={styles.documentText}>
-                        {item.attachment_path.startsWith('http')
-                          ? item.attachment_path.split('/').pop().split('?')[0] // Remove query params
-                          : item.attachment_path.split('/').pop()}
+                        {item.attachment_path.split('/').pop()}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -932,15 +903,9 @@ const StudentPageMessage = ({ route, navigation }) => {
   };
 
   const downloadAndOpenDocument = async (fileUrl, fileName) => {
-    // Clean the URL first to fix any /https:// issues
-    const cleanUrl = cleanImageUrl(fileUrl);
-    
-    // Extract proper filename with extension from URL
-    const properFileName = getFileNameFromUrl(cleanUrl, fileName);
-    
-    const ext = properFileName.split('.').pop().toLowerCase();
+    const ext = fileName.split('.').pop().toLowerCase();
     const isPdf = ext === 'pdf';
-    const localFile = `${RNFS.DocumentDirectoryPath}/${properFileName}`;
+    const localFile = `${RNFS.DocumentDirectoryPath}/${fileName}`;
 
     const downloadAndOpen = async () => {
       const hasPermission = await requestStoragePermission('other');
@@ -951,7 +916,7 @@ const StudentPageMessage = ({ route, navigation }) => {
       setDownloadProgress(0);
       try {
         const downloadResult = await RNFS.downloadFile({
-          fromUrl: cleanUrl,
+          fromUrl: fileUrl,
           toFile: localFile,
           progress: (res) => {
             const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);
@@ -963,14 +928,14 @@ const StudentPageMessage = ({ route, navigation }) => {
         setDownloadProgress(null);
 
         if (downloadResult.statusCode === 200) {
-          const mimeType = mime.lookup(properFileName) || undefined;
+          const mimeType = mime.lookup(fileName) || undefined;
           await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
         } else {
           Alert.alert('Download failed', 'Could not download the file.');
         }
       } catch (err) {
         setDownloadProgress(null);
-        Linking.openURL(cleanUrl);
+        Linking.openURL(fileUrl);
         console.error('File open error:', err);
       }
     };

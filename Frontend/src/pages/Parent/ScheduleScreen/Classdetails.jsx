@@ -160,15 +160,11 @@ const ClassDetailScreen = ({ selectedClass,
 
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
-      // Check if it's already a full URL (Cloudinary URL)
-      if (profilePath.startsWith('http')) {
-        return { uri: profilePath };
-      } else {
-        // Handle local paths - replace backslashes with forward slashes and construct full URL
-        const normalizedPath = profilePath.replace(/\\/g, '/');
-        const fullImageUrl = `${API_URL}/${normalizedPath}`;
-        return { uri: fullImageUrl };
-      }
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
     } else {
       return ProfileImg;
     }
@@ -177,8 +173,7 @@ const ClassDetailScreen = ({ selectedClass,
     // console.log("File URL:", `${API_URL}${fileUrl}`);
 
     if (!fileUrl) return '';
-    // Handle both local paths and Cloudinary URLs
-    return fileUrl.startsWith('http') ? fileUrl : `${API_URL}/${fileUrl}`;
+    return `${API_URL}/${fileUrl}`;
   };
 
   // if (!data) return <Nodata />
@@ -304,12 +299,7 @@ const ClassDetailScreen = ({ selectedClass,
               {Array.isArray(data.materials) && data.materials.map((file, idx) => (
                 <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                   <TouchableOpacity
-                    onPress={() => {
-                      const fileUrl = file.file_url.startsWith('http') 
-                        ? file.file_url 
-                        : `${API_URL}/${file.file_url}`;
-                      openFileLikeWhatsApp(fileUrl, file.file_name);
-                    }}
+                    onPress={() => openFileLikeWhatsApp(`${API_URL}/${file.file_url}`, file.file_name)}
                     style={[styles.pdfButton, { marginRight: 10 }]}
                   >
                     <Text style={styles.pdfButtonText}>{(file.file_name).replace(/%/g, ' ')}</Text>

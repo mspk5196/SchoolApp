@@ -64,12 +64,10 @@ const StudentScheduleScreen = () => {
       );
       lastScrollOffset.current = scrollOffset;
       setTimeout(() => {
-        if (scrollViewRef.current) {
-          scrollViewRef.current.scrollTo({
-            x: scrollOffset,
-            animated: true,
-          });
-        }
+        scrollViewRef.current.scrollTo({
+          x: scrollOffset,
+          animated: true,
+        });
       }, 100);
     }
   };
@@ -77,28 +75,22 @@ const StudentScheduleScreen = () => {
   useEffect(() => {
     if (activeTab === 'academic' && scrollViewRef.current) {
       setTimeout(() => {
-        if (scrollViewRef.current) {
-          scrollViewRef.current.scrollTo({
-            x: lastScrollOffset.current,
-            animated: false,
-          });
-        }
+        scrollViewRef.current.scrollTo({
+          x: lastScrollOffset.current,
+          animated: false,
+        });
       }, 100);
     }
   }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab === 'academic') {
-      centerSelectedDay();
-    }
-  }, [selectedDay, weekDays, activeTab]);
+    centerSelectedDay();
+  }, [selectedDay, weekDays]);
 
   useFocusEffect(
     React.useCallback(() => {
-      if (activeTab === 'academic') {
-        centerSelectedDay();
-      }
-    }, [selectedDay, weekDays, activeTab])
+      centerSelectedDay();
+    }, [selectedDay, weekDays])
   );
 
   useEffect(() => {
@@ -278,11 +270,6 @@ const StudentScheduleScreen = () => {
 
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
-      // Check if it's a Cloudinary URL (starts with http/https)
-      if (profilePath.startsWith('http://') || profilePath.startsWith('https://')) {
-        return { uri: profilePath };
-      }
-      // Local file path - normalize and construct URL
       const normalizedPath = profilePath.replace(/\\/g, '/');
       const fullImageUrl = `${API_URL}/${normalizedPath}`;
       return { uri: fullImageUrl };

@@ -23,7 +23,6 @@ import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
 import { useState } from 'react';
 import styles from './ProfileStyles'; // Import your styles
 import {API_URL} from '../../../../utils/env.js'
-import robustProfileImageHandler from '../../../../utils/robustProfileImageHandler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Nodata from '../../../../components/General/Nodata';
 import PerformanceGraph from '../../../../components/Admin/performancegraph/Performancegraph';
@@ -174,7 +173,15 @@ const StudentProfile = ({ navigation }) => {
 
 
   const getProfileImageSource = (profilePath) => {
-    return robustProfileImageHandler(profilePath, Profile, API_URL);
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Profile;
+    }
   };
 
 

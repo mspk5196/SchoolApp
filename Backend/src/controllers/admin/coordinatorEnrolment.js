@@ -1,6 +1,5 @@
 const bcrypt = require('bcrypt');
 const db = require('../../config/db');
-const { uploadProfilePhoto } = require('../../utils/cloudinary');
 
 exports.enrollCoordinator = async (req, res) => {
     try {
@@ -16,13 +15,6 @@ exports.enrollCoordinator = async (req, res) => {
             return res.status(400).json({ success: false, message: "At least one grade must be selected" });
         }
 
-        // Upload profile photo to Cloudinary
-        const cloudinaryResult = await uploadProfilePhoto(
-            profilePhoto.buffer,
-            mobileNumber,
-            'coordinators'
-        );
-
         const trx = await db.promise().beginTransaction();
 
         try {
@@ -34,6 +26,7 @@ exports.enrollCoordinator = async (req, res) => {
             console.log(countResult);
             
             const newRoll = `C${String(coordinatorCount).padStart(3, '0')}`;
+            const photoPath = profilePhoto.path;
 
             const existingUser = await trx.query(
                 `SELECT * FROM Users WHERE phone = ?`,
@@ -85,7 +78,7 @@ exports.enrollCoordinator = async (req, res) => {
             await trx.query(
                 `INSERT INTO user_photos (phone, roll, file_path, is_profile_photo)
            VALUES (?, ?, ?, ?)`,
-                [mobileNumber, newRoll, cloudinaryResult.secure_url, 1]
+                [mobileNumber, newRoll, photoPath, 1]
             );
 
             await trx.commit();

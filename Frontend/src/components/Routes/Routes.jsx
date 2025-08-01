@@ -214,7 +214,6 @@ const Routes = () => {
                         {/* CoordinatorRequest */}
                         <Stack.Screen name="CoordinatorGeneralActivity" component={CoordinatorGeneralActivity} />
                         <Stack.Screen name="CoordinatorRequestUpload" component={CoordinatorRequestUpload} />
-                        <Stack.Screen name="CoordinatorRequestHome" component={CoordinatorRequest} />
                         {/* CoordinatorEnrollmentHome */}
                         <Stack.Screen name="AddInfraEnrollment" component={AddInfraEnrollment} />
                         <Stack.Screen name="FilterPopup" component={FilterPopup} />

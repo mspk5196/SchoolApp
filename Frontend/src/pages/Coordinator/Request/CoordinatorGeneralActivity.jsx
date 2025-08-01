@@ -35,8 +35,7 @@ const Section = ({ title, items, onAddRequest }) => {
   );
 };
 
-const CoordinatorGeneralActivity = ({ navigation, route }) => {
-  const { coordinatorGrades } = route.params;
+const CoordinatorGeneralActivity = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentSection, setCurrentSection] = useState('');
   const [newItemText, setNewItemText] = useState('');
@@ -133,7 +132,7 @@ const CoordinatorGeneralActivity = ({ navigation, route }) => {
       }
   
       if (newPurposes.length > 0) {
-        await fetch(`${API_URL}/api/coordinator/insertDocPurpose`, {
+        await fetch(`${API_URL}/api/coordinator/insertDocType`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ names: newPurposes })
@@ -148,7 +147,7 @@ const CoordinatorGeneralActivity = ({ navigation, route }) => {
       setNewRequests([]);
       setNewPurposes([]);
   
-      navigation.navigate('CoordinatorRequest', { coordinatorGrades });
+      navigation.navigate('RequestHome');
     } catch (error) {
       console.error('Error adding new items:', error);
     }

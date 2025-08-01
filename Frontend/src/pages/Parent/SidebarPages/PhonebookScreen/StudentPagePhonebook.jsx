@@ -14,7 +14,6 @@ import CallIcon from '../../../../assets/ParentPage/phonebook/call';
 import PrevIcon from '../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
 import MsgIcon from '../../../../assets/ParentPage/phonebook/msg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import robustProfileImageHandler from '../../../../utils/robustProfileImageHandler';
 import { API_URL } from '../../../../utils/env.js'
 
 const ContactCard = ({ name, facultyId, subject, phoneNumber, onMessagePress, profile }) => {
@@ -24,7 +23,15 @@ const ContactCard = ({ name, facultyId, subject, phoneNumber, onMessagePress, pr
   };
 
   const getProfileImageSource = (profilePath) => {
-    return robustProfileImageHandler(profilePath, Profile, API_URL);
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Profile;
+    }
   };
 
   return (

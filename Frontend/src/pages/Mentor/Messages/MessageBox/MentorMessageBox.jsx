@@ -756,10 +756,7 @@ const MentorMessageBox = ({ route, navigation }) => {
                   {item.attachment_type === 'image' ? (
                     <TouchableOpacity
                       onPress={async () => {
-                        // Handle both local paths and Cloudinary URLs
-                        const uri = item.attachment_path.startsWith('http') 
-                          ? item.attachment_path 
-                          : `${API_URL}/uploads${item.attachment_path}`;
+                        const uri = `${API_URL}/uploads${item.attachment_path}`;
                         const hasPermission = await requestSaveImagePermission();
                         if (!hasPermission) {
                           Alert.alert('Permission Denied', 'Cannot save image without permission.');
@@ -770,11 +767,7 @@ const MentorMessageBox = ({ route, navigation }) => {
                       }}
                     >
                       <Image
-                        source={{ 
-                          uri: item.attachment_path.startsWith('http') 
-                            ? item.attachment_path 
-                            : `${API_URL}/uploads${item.attachment_path}` 
-                        }}
+                        source={{ uri: `${API_URL}/uploads${item.attachment_path}` }}
                         style={styles.messageImage}
                         resizeMode="contain"
                       />
@@ -786,12 +779,7 @@ const MentorMessageBox = ({ route, navigation }) => {
                         playingAudioId === item.message_id && !audioPaused && { backgroundColor: '#e0f7fa' }
                       ]}
                       activeOpacity={0.7}
-                      onPress={() => {
-                        const audioUri = item.attachment_path.startsWith('http') 
-                          ? item.attachment_path 
-                          : `${API_URL}/uploads${item.attachment_path}`;
-                        playAudio(audioUri, item.message_id);
-                      }}
+                      onPress={() => playAudio(`${API_URL}/uploads${item.attachment_path}`, item.message_id)}
                     >
                       {playingAudioId === item.message_id ? (
                         audioPaused ? (
@@ -820,21 +808,14 @@ const MentorMessageBox = ({ route, navigation }) => {
                   ) : (
                     <TouchableOpacity
                       style={styles.documentAttachment}
-                      onPress={() => {
-                        const docUri = item.attachment_path.startsWith('http') 
-                          ? item.attachment_path 
-                          : `${API_URL}/uploads${item.attachment_path}`;
-                        const fileName = item.attachment_path.startsWith('http')
-                          ? item.attachment_path.split('/').pop().split('?')[0] // Remove query params from Cloudinary URL
-                          : item.attachment_path.split('/').pop();
-                        downloadAndOpenDocument(docUri, fileName);
-                      }}
+                      onPress={() => downloadAndOpenDocument(
+                        `${API_URL}/uploads${item.attachment_path}`,
+                        item.attachment_path.split('/').pop()
+                      )}
                     >
                       <DocumentIcon width={24} height={24} />
                       <Text style={[styles.documentText, isSent ? styles.sentText : styles.receivedText]}>
-                        {item.attachment_path.startsWith('http')
-                          ? item.attachment_path.split('/').pop().split('?')[0] // Remove query params
-                          : item.attachment_path.split('/').pop()}
+                        {item.attachment_path.split('/').pop()}
                       </Text>
                     </TouchableOpacity>
                   )}

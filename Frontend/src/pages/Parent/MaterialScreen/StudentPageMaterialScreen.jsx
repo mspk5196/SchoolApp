@@ -18,7 +18,6 @@ import Download from '../../../assets/ParentPage/Materials-img/download.svg'
 import { API_URL } from '../../../utils/env.js';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
-import { cleanImageUrl, getFileNameFromUrl } from '../../../utils/cleanImageUrl';
 import Nodata from '../../../components/General/Nodata';
 import mime from 'react-native-mime-types';
 
@@ -116,17 +115,9 @@ const StudentPageMaterialScreen = () => {
         grouped[item.level] = { level: item.level, pdfs: [], videos: [] };
       }
       if (item.material_type === 'PDF') {
-        grouped[item.level].pdfs.push({ 
-          name: item.file_name, 
-          url: item.file_url, 
-          type: 'PDF' 
-        });
+        grouped[item.level].pdfs.push({ name: item.file_name, url: item.file_url });
       } else if (item.material_type === 'Video') {
-        grouped[item.level].videos.push({ 
-          name: item.file_name, 
-          url: item.file_url, 
-          type: 'Video' 
-        });
+        grouped[item.level].videos.push({ name: item.file_name, url: item.file_url });
       }
     });
     // Convert to sorted array by level
@@ -135,57 +126,11 @@ const StudentPageMaterialScreen = () => {
 
   const openFileLikeWhatsApp = async (fileUrl, fileName) => {
     setDownloadProgress(0);
-    
-    // Clean the URL first to fix any /https:// issues
-    let cleanUrl = cleanImageUrl(fileUrl);
-    
-    // For Cloudinary URLs, remove problematic query parameters and transformations
-    if (cleanUrl.includes('cloudinary.com')) {
-      // Remove query parameters that can interfere with PDF opening
-      cleanUrl = cleanUrl.split('?')[0];
-      
-      // Remove fl_attachment transformation if present
-      cleanUrl = cleanUrl.replace('/fl_attachment:false/', '/');
-      cleanUrl = cleanUrl.replace('fl_attachment:false/', '');
-      cleanUrl = cleanUrl.replace('/fl_attachment:true/', '/');
-      cleanUrl = cleanUrl.replace('fl_attachment:true/', '');
-      
-      // Clean up any double slashes
-      cleanUrl = cleanUrl.replace(/([^:]\/)\/+/g, '$1');
-      
-      // For PDFs, create a viewing URL without attachment flag
-      if (fileName.toLowerCase().endsWith('.pdf') && cleanUrl.includes('/raw/upload/')) {
-        // Replace raw with image for better PDF viewing in browsers
-        cleanUrl = cleanUrl.replace('/raw/upload/', '/image/upload/fl_attachment:false/');
-      }
-    }
-    
-    // For Cloudinary raw files, use the provided fileName with proper extension
-    // If fileName doesn't have an extension, extract it from the URL or add default
-    let properFileName = fileName;
-    if (fileUrl.includes('cloudinary.com') && fileUrl.includes('/raw/')) {
-      // For raw files from Cloudinary, ensure proper filename with extension
-      if (!properFileName.includes('.')) {
-        // Try to get extension from URL, default to pdf if not found
-        const urlExtension = fileUrl.split('.').pop();
-        if (urlExtension && urlExtension.length <= 4) {
-          properFileName = `${properFileName}.${urlExtension}`;
-        } else {
-          properFileName = `${properFileName}.pdf`; // Default for raw files
-        }
-      }
-    } else {
-      // For other URLs, use the getFileNameFromUrl utility
-      properFileName = getFileNameFromUrl(fileUrl, fileName);
-    }
-    
-    console.log("Student opening file:", cleanUrl, "as", properFileName);
-    
-    const localFile = `${RNFS.DownloadDirectoryPath}/${properFileName}`;
+    const localFile = `${RNFS.DownloadDirectoryPath}/${fileName}`;
 
     try {
       const downloadResult = await RNFS.downloadFile({
-        fromUrl: fileUrl, // Use original URL for download
+        fromUrl: fileUrl,
         toFile: localFile,
         progress: (res) => {
           const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);
@@ -197,7 +142,7 @@ const StudentPageMaterialScreen = () => {
       setDownloadProgress(null);
 
       if (downloadResult.statusCode === 200) {
-        const mimeType = mime.lookup(properFileName) || undefined;
+        const mimeType = mime.lookup(fileName) || undefined;
         await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
       } else {
         Alert.alert('Download failed', 'Could not download the file.');
@@ -216,7 +161,7 @@ const StudentPageMaterialScreen = () => {
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Open in Browser',
-              onPress: () => Linking.openURL(cleanUrl),
+              onPress: () => Linking.openURL(fileUrl),
             },
           ]
         );
@@ -237,19 +182,7 @@ const StudentPageMaterialScreen = () => {
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', flex: 1 }}>
           <Text style={styles.pdfName}>{(item.name).replace(/%/g, ' ')}</Text>
-          <TouchableOpacity onPress={() => {
-            // Clean the URL first to fix any /https:// issues
-            const cleanUrl = cleanImageUrl(item.url);
-            const fileUrl = cleanUrl.startsWith('http') ? cleanUrl : `${API_URL}/${cleanUrl}`;
-            
-            // Create proper filename with PDF extension
-            let fileName = item.name;
-            if (!fileName.toLowerCase().endsWith('.pdf')) {
-              fileName = fileName + '.pdf';
-            }
-            
-            openFileLikeWhatsApp(fileUrl, fileName);
-          }}>
+          <TouchableOpacity onPress={() => openFileLikeWhatsApp(`${API_URL}/${item.url}`, item.name)}>
             <Download />
           </TouchableOpacity>
         </View>
@@ -264,20 +197,7 @@ const StudentPageMaterialScreen = () => {
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', flex: 1 }}>
           <Text style={styles.pdfName}>{(item.name).replace(/%/g, ' ')}</Text>
-          <TouchableOpacity onPress={() => {
-            // Clean the URL first to fix any /https:// issues
-            const cleanUrl = cleanImageUrl(item.url);
-            const fileUrl = cleanUrl.startsWith('http') ? cleanUrl : `${API_URL}/${cleanUrl}`;
-            
-            // Create proper filename with video extension
-            let fileName = item.name;
-            const hasVideoExt = /\.(mp4|avi|mov|wmv|flv|webm)$/i.test(fileName);
-            if (!hasVideoExt) {
-              fileName = fileName + '.mp4'; // Default to mp4 if no extension
-            }
-            
-            openFileLikeWhatsApp(fileUrl, fileName);
-          }}>
+          <TouchableOpacity onPress={() => openFileLikeWhatsApp(`${API_URL}/${item.url}`, item.name)}>
             <Download />
           </TouchableOpacity>
         </View>

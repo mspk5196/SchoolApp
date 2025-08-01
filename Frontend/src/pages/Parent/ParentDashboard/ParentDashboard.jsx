@@ -11,7 +11,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import EventBus from "../../../utils/EventBus";
 import { API_URL } from '../../../utils/env.js';
 import { format } from 'date-fns';
-import robustProfileImageHandler from '../../../utils/robustProfileImageHandler';
 
 const ParentDashboard = () => {
     const navigation = useNavigation();
@@ -174,9 +173,12 @@ const ParentDashboard = () => {
         return (!isNaN(present) && !isNaN(total) && total > 0) ? (present / total) : 0;
     })();
 
-    // Use the robust profile image handler
     const getProfileImageSource = (profilePath) => {
-        return robustProfileImageHandler(profilePath, Profile, API_URL);
+        if (profilePath) {
+            const fullImageUrl = `${API_URL}/${profilePath.replace(/\\/g, '/')}`;
+            return { uri: fullImageUrl };
+        }
+        return Profile;
     };
 
     if (loading) {

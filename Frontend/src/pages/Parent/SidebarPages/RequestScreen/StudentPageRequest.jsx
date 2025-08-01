@@ -8,7 +8,6 @@ import EventBus from "../../../../utils/EventBus";
 import { API_URL } from "../../../../utils/env.js";
 import { ActivityIndicator } from 'react-native-paper';
 import Nodata from '../../../../components/General/Nodata';
-import { cleanImageUrl } from '../../../../utils/cleanImageUrl.js';
 
 const StudentPageRequest = ({ navigation }) => {
   const [showForm, setShowForm] = useState(false);
@@ -283,11 +282,7 @@ const StudentPageRequest = ({ navigation }) => {
       return;
     }
 
-    // Clean the URL first to fix any /https:// issues
-    const cleanPath = cleanImageUrl(filePath);
-    
-    // Check if it's already a full URL (Cloudinary URL)
-    const fullUrl = cleanPath.startsWith('http') ? cleanPath : `${API_URL}/${cleanPath}`;
+    const fullUrl = `${API_URL}/${filePath}`;
     Linking.openURL(fullUrl).catch(err => {
       console.error("Failed to open URL:", err);
       Alert.alert("Error", "Could not open the document");

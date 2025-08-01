@@ -156,7 +156,7 @@ const MentorSubjectPage = ({ route, navigation }) => {
                     const fileObj = {
                         id: item.id,
                         name: item.file_name,
-                        uri: item.file_url.startsWith('http') ? item.file_url : `${API_URL}/${item.file_url}`,
+                        uri: `${API_URL}/${item.file_url}`,
                         type: item.material_type
                     };
 
