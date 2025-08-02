@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Modal, FlatList } from 'react-native';
 import Arrow from '../../../../assets/MentorPage/arrow.svg';
-import DropDownPicker from 'react-native-dropdown-picker';
 import styles from './bufferfoldersty';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Home from '../../../../assets/MentorPage/home.svg';
@@ -13,19 +12,22 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
   const { mentorData } = route.params;
   const [loading, setLoading] = useState(false);
   
-  // Grade dropdown
-  const [openGrade, setOpenGrade] = useState(false);
+  // Grade modal
+  const [showGradeModal, setShowGradeModal] = useState(false);
   const [grade, setGrade] = useState(null);
+  const [gradeName, setGradeName] = useState('');
   const [gradeItems, setGradeItems] = useState([]);
   
-  // Section dropdown
-  const [openSection, setOpenSection] = useState(false);
+  // Section modal
+  const [showSectionModal, setShowSectionModal] = useState(false);
   const [section, setSection] = useState(null);
+  const [sectionName, setSectionName] = useState('');
   const [sectionItems, setSectionItems] = useState([]);
   
-  // Activity dropdown
-  const [openActivity, setOpenActivity] = useState(false);
+  // Activity modal
+  const [showActivityModal, setShowActivityModal] = useState(false);
   const [activity, setActivity] = useState(null);
+  const [activityName, setActivityName] = useState('');
   const [activityItems, setActivityItems] = useState([]);
   
   // Time pickers
@@ -37,6 +39,7 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
   // Fetch grades on mount
   useEffect(() => {
     const fetchGrades = () => {
+      setLoading(true);
       fetch(`${API_URL}/api/mentor/grades`)
         .then(response => {
           if (!response.ok) {
@@ -49,9 +52,11 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
             label: grade.grade_name,
             value: grade.id.toString()
           })));
+          setLoading(false);
         })
         .catch(error => {
           console.error("Error fetching grades:", error);
+          setLoading(false);
         });
     };
     
@@ -122,6 +127,33 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
     }
   };
 
+  // Select handlers for modals
+  const handleGradeSelect = (item) => {
+    setGrade(item.value);
+    setGradeName(item.label);
+    setShowGradeModal(false);
+    
+    // Reset section when grade changes
+    setSection(null);
+    setSectionName('');
+    
+    // Reset activity when grade changes
+    setActivity(null);
+    setActivityName('');
+  };
+  
+  const handleSectionSelect = (item) => {
+    setSection(item.value);
+    setSectionName(item.label);
+    setShowSectionModal(false);
+  };
+  
+  const handleActivitySelect = (item) => {
+    setActivity(item.value);
+    setActivityName(item.label);
+    setShowActivityModal(false);
+  };
+
   const handleSubmit = () => {
     if (!grade || !section || !activity || !fromTime || !toTime) {
       alert('Please fill all fields');
@@ -168,6 +200,41 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
     });
   };
 
+  // Modal components
+  const renderSelectionModal = (visible, onClose, data, onSelect, title) => (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={styles.closeButton}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <FlatList
+            data={data}
+            keyExtractor={(item) => item.value.toString()}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.optionItem}
+                onPress={() => onSelect(item)}
+              >
+                <Text style={styles.optionText}>{item.label}</Text>
+              </TouchableOpacity>
+            )}
+            style={styles.optionList}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -193,53 +260,54 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
           </View>
 
           <View style={styles.formContainer}>
-            {/* Grade Dropdown */}
-            <View style={{marginBottom: openGrade ? 160 : 20, zIndex: 3000}}>
+            {/* Grade Selection */}
+            <View style={{marginBottom: 20}}>
               <Text style={styles.label}>Grade</Text>
-              <DropDownPicker
-                open={openGrade}
-                value={grade}
-                items={gradeItems}
-                setOpen={setOpenGrade}
-                setValue={setGrade}
-                setItems={setGradeItems}
-                placeholder="Select Grade"
-                style={styles.dropdown}
-                dropDownContainerStyle={styles.dropdownContainer}
-              />
+              <TouchableOpacity 
+                style={styles.selectionField}
+                onPress={() => setShowGradeModal(true)}
+              >
+                <Text style={gradeName ? styles.selectedText : styles.placeholderText}>
+                  {gradeName || 'Select Grade'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Section Dropdown */}
-            <View style={{marginBottom: openSection ? 150 : 20, zIndex: 2000}}>
+            {/* Section Selection */}
+            <View style={{marginBottom: 20}}>
               <Text style={styles.label}>Section</Text>
-              <DropDownPicker
-                open={openSection}
-                value={section}
-                items={sectionItems}
-                setOpen={setOpenSection}
-                setValue={setSection}
-                setItems={setSectionItems}
-                placeholder="Select Section"
-                style={styles.dropdown}
-                dropDownContainerStyle={styles.dropdownContainer}
-                disabled={!grade}
-              />
+              <TouchableOpacity 
+                style={[styles.selectionField, !grade && styles.disabledField]}
+                onPress={() => {
+                  if (grade) setShowSectionModal(true);
+                  else alert('Please select a grade first');
+                }}
+              >
+                <Text style={sectionName ? styles.selectedText : styles.placeholderText}>
+                  {sectionName || 'Select Section'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Activity Dropdown */}
-            <View style={{marginBottom: openActivity ? 150 : 20, zIndex: 1000}}>
+            {/* Activity Selection */}
+            <View style={{marginBottom: 20}}>
               <Text style={styles.label}>Activity</Text>
-              <DropDownPicker
-                open={openActivity}
-                value={activity}
-                items={activityItems}
-                setOpen={setOpenActivity}
-                setValue={setActivity}
-                setItems={setActivityItems}
-                placeholder="Select Activity"
-                style={styles.dropdown}
-                dropDownContainerStyle={styles.dropdownContainer}
-              />
+              <TouchableOpacity 
+                style={[styles.selectionField, (!grade || !section) && styles.disabledField]}
+                onPress={() => {
+                  if (!grade) {
+                    alert('Please select a grade first');
+                  } else if (!section) {
+                    alert('Please select a section first');
+                  } else {
+                    setShowActivityModal(true);
+                  }
+                }}
+              >
+                <Text style={activityName ? styles.selectedText : styles.placeholderText}>
+                  {activityName || 'Select Activity'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Time Selection */}
@@ -304,14 +372,44 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
                 {loading ? 'Creating...' : 'Confirm'}
               </Text>
             </TouchableOpacity>
+          </View>
           
-          <View style={styles.homeButton} >
-            <TouchableOpacity onPress={() => navigation.navigate("MentorMain",{mentorData})}>
+          <View style={styles.homeButtonContainer}>
+            <TouchableOpacity 
+              style={styles.homeButton}
+              onPress={() => navigation.navigate("MentorMain", {mentorData})}
+            >
               <Home width={45} height={45} />
             </TouchableOpacity>
           </View>
-          </View>
         </View>
+        
+        {/* Grade Selection Modal */}
+        {renderSelectionModal(
+          showGradeModal,
+          () => setShowGradeModal(false),
+          gradeItems,
+          handleGradeSelect,
+          'Select Grade'
+        )}
+        
+        {/* Section Selection Modal */}
+        {renderSelectionModal(
+          showSectionModal,
+          () => setShowSectionModal(false),
+          sectionItems,
+          handleSectionSelect,
+          'Select Section'
+        )}
+        
+        {/* Activity Selection Modal */}
+        {renderSelectionModal(
+          showActivityModal,
+          () => setShowActivityModal(false),
+          activityItems,
+          handleActivitySelect,
+          'Select Activity'
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

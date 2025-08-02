@@ -8,7 +8,8 @@ import {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#F8F8F8',
-    flex:1
+    flex: 1,
+    position: 'relative',
   },
   header: {
     flexDirection: 'row',
@@ -35,11 +36,14 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    position: 'relative',
   },
   label: {
     fontSize: wp('4%'),
+    fontWeight: '500',
     color: '#000',
-    marginBottom: hp('0.5%'),
+    marginBottom: hp('0.8%'),
+    marginTop: hp('1%'),
   },
   input: {
     borderWidth: 1,
@@ -49,19 +53,88 @@ const styles = StyleSheet.create({
     fontSize: wp('4%'),
     marginBottom: hp('2%'),
     backgroundColor: '#fff',
-    color:'black'
+    color: 'black',
   },
-  dropdown: {
+  selectBox: {
+    borderWidth: 1,
     borderColor: '#D9D9D9',
     borderRadius: 8,
+    padding: wp('3.5%'),
+    marginBottom: hp('2%'),
     backgroundColor: '#fff',
-    zIndex: 1000,
   },
-  dropdownContainer: {
-    borderColor: '#D9D9D9',
-    borderRadius: 15,
-    zIndex: 1000,
-    marginTop: 5,
+  selectedText: {
+    fontSize: wp('4%'),
+    color: '#000',
+  },
+  placeholderText: {
+    fontSize: wp('4%'),
+    color: '#999',
+  },
+  errorText: {
+    fontSize: wp('3.5%'),
+    color: '#FF3B30',
+    marginTop: -hp('1.5%'),
+    marginBottom: hp('1%'),
+    marginLeft: wp('1%'),
+  },
+  errorBox: {
+    borderColor: '#FF3B30',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: wp('85%'),
+    maxHeight: hp('60%'),
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: wp('4%'),
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: wp('5%'),
+    fontWeight: 'bold',
+    marginBottom: hp('2%'),
+    color: '#2E5BFF',
+  },
+  modalList: {
+    width: '100%',
+    maxHeight: hp('40%'),
+  },
+  modalItem: {
+    paddingVertical: hp('1.5%'),
+    paddingHorizontal: wp('3%'),
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    width: '100%',
+  },
+  modalItemText: {
+    fontSize: wp('4%'),
+    color: '#333',
+  },
+  closeButton: {
+    marginTop: hp('2%'),
+    paddingVertical: hp('1%'),
+    paddingHorizontal: wp('5%'),
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+  },
+  closeButtonText: {
+    fontSize: wp('4%'),
+    color: '#333',
+    fontWeight: '500',
   },
   fixedButtonContainer: {
     position: 'absolute',
@@ -72,11 +145,18 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     backgroundColor: '#2E5BFF',
-    paddingVertical: hp('1.2%'),
+    paddingVertical: hp('1.5%'),
     borderRadius: 50,
     alignItems: 'center',
     width: '100%',
-    // top: hp('3.5%'),
+    shadowColor: '#2E5BFF',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   confirmText: {
     color: '#fff',

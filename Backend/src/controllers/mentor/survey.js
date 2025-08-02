@@ -457,6 +457,9 @@ exports.getMentorSurveys = (req, res) => {
             const today = new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
             const currentDate = new Date();
 
+            if (surveys.length === 0) {
+                return res.json([]);
+            }
             const processed = surveys.map(survey => {
                 const endDate = new Date(survey.end_date);
                 const localEndDate = new Date(endDate.getTime() + (endDate.getTimezoneOffset() * -60000));

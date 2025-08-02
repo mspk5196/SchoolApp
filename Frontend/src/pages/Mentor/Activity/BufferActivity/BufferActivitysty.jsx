@@ -45,13 +45,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 15,
   },
+
   AddIcon: {
+    // position: 'absolute',
+    // bottom: 30,
+    // right: 20,
+    padding: 20,
+    backgroundColor: '#0C36FF',
+    borderRadius: 50,
     width: 50,
     height: 50,
-    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   HomeIcon: {
     width: 50,
@@ -71,11 +81,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     shadowColor: '#000',
     shadowOpacity: 0.5,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowRadius: 5,
     elevation: 1.5,
-    marginHorizontal:1,
-    marginVertical:1,
+    marginHorizontal: 1,
+    marginVertical: 1,
     marginBottom: 15,
     // borderWidth:0.5
   },
@@ -161,10 +171,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#EB4B42',
     marginVertical: 5,
-    alignSelf:'flex-end'
+    alignSelf: 'flex-end'
   },
 
-  
+
 });
 
 export default styles;

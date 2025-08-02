@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { View, Text, FlatList, Pressable, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import styles from "./BufferActivitysty";
 import Back from "../../../../assets/MentorPage/backarrow.svg";
-import Add from "../../../../assets/MentorPage/Add.svg";
+import Add from "../../../../assets/MentorPage/plus.svg";
 import Home from "../../../../assets/MentorPage/Home2.svg";
 import { API_URL } from '../../../../utils/env.js'
+import { widthPercentageToDP } from "react-native-responsive-screen";
 
 const MentorBufferActivity = ({ navigation, route }) => {
     const { mentorData } = route.params;
@@ -241,7 +242,7 @@ const MentorBufferActivity = ({ navigation, route }) => {
             <View style={styles.activityIcons}>
                 <View style={styles.AddIcon}>
                     <TouchableOpacity onPress={() => navigation.navigate("MentorBufferActivityRegister", { mentorData })}>
-                        <Add />
+                        <Add width={widthPercentageToDP('8.5%')} height={widthPercentageToDP('8.5%')} />
                     </TouchableOpacity>
                 </View>
                 <View style={styles.HomeIcon}>

@@ -3,8 +3,9 @@ import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from
 import { API_URL } from '../../../../utils/env.js';
 import styles from "./Surveysty";
 import Back from "../../../../assets/MentorPage/backarrow.svg";
-import Add from "../../../../assets/MentorPage/Add.svg";
+import Add from "../../../../assets/MentorPage/plus.svg";
 import Home from "../../../../assets/MentorPage/Home2.svg";
+import { widthPercentageToDP } from "react-native-responsive-screen";
 
 const MentorSurvey = ({ navigation, route }) => {
   const { mentorData } = route.params;
@@ -171,7 +172,7 @@ const MentorSurvey = ({ navigation, route }) => {
         <TouchableOpacity
           style={styles.addIcon}
           onPress={() => navigation.navigate("MentorSurveyRegister", { mentorData })}>
-          <Add />
+          <Add width={widthPercentageToDP('8.5%')} height={widthPercentageToDP('8.5%')} />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.homeIcon}

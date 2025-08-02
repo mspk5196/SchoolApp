@@ -73,7 +73,7 @@ import MentorBufferActivity from '../../pages/Mentor/Activity/BufferActivity/Men
 import MentorDisciplineLog from '../../pages/Mentor/Activity/DiciplineLog/MentorDisciplineLog';
 import MentorEmergencyLeave from '../../pages/Mentor/Activity/EmergencyLeave/MentorEmergencyLeave';
 import MentorEmergencyLeaveHistory from '../../pages/Mentor/Activity/EmergencyLeave/MentorEmergencyLeaveHistory';
-import MentorDisciplineLogRegister from '../../pages/Mentor/Activity/DiciplineLog/MentorDisciplineLogRegister';
+// import MentorDisciplineLogRegister from '../../pages/Mentor/Activity/DiciplineLog/MentorDisciplineLogRegister';
 import MentorGeneralActivity from '../../pages/Mentor/Activity/GeneralActivity/MentorGeneralActivity';
 import MentorGenrealActivityRegister from '../../pages/Mentor/Activity/GeneralActivity/MentorGenrealActivityRegister';
 import MentorSurvey from '../../pages/Mentor/Activity/Survey/MentorSurvey';
@@ -248,7 +248,7 @@ const Routes = () => {
                         <Stack.Screen name="MentorBufferActivity" component={MentorBufferActivity} />
                         <Stack.Screen name="MentorBufferActivityRegister" component={MentorBufferActivityRegister} />
                         <Stack.Screen name="MentorDisciplineLog" component={MentorDisciplineLog} />
-                        <Stack.Screen name="MentorDisciplineLogRegister" component={MentorDisciplineLogRegister} />
+                        {/* <Stack.Screen name="MentorDisciplineLogRegister" component={MentorDisciplineLogRegister} /> */}
                         <Stack.Screen name="MentorEmergencyLeave" component={MentorEmergencyLeave} />
                         <Stack.Screen name="MentorEmergencyLeaveHistory" component={MentorEmergencyLeaveHistory} />
                         <Stack.Screen name="MentorGeneralActivity" component={MentorGeneralActivity} />

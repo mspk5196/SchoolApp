@@ -1,6 +1,5 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, FlatList } from 'react-native';
 import React, { useState, useEffect } from 'react';
-import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Arrow from '../../../assets/MentorPage/arrow.svg';
 import styles from './homeworksty';
@@ -10,20 +9,27 @@ import { API_URL } from '../../../utils/env.js'
 const MentorHomework = ({ navigation, route }) => {
   const { mentorId } = route.params;
   const [grade, setGrade] = useState('');
-  const [gradeOpen, setGradeOpen] = useState(false);
+  const [gradeModalVisible, setGradeModalVisible] = useState(false);
   const [gradeItems, setGradeItems] = useState([]);
-
-  const [subject, setSubject] = useState('');
-  const [subjectOpen, setSubjectOpen] = useState(false);
-  const [subjectItems, setSubjectItems] = useState([]);
+  const [selectedGradeName, setSelectedGradeName] = useState('');
 
   const [section, setSection] = useState('');
-  const [sectionOpen, setSectionOpen] = useState(false);
+  const [sectionModalVisible, setSectionModalVisible] = useState(false);
   const [sectionItems, setSectionItems] = useState([]);
+  const [selectedSectionName, setSelectedSectionName] = useState('');
+  const [sectionError, setSectionError] = useState('');
+
+  const [subject, setSubject] = useState('');
+  const [subjectModalVisible, setSubjectModalVisible] = useState(false);
+  const [subjectItems, setSubjectItems] = useState([]);
+  const [selectedSubjectName, setSelectedSubjectName] = useState('');
+  const [subjectError, setSubjectError] = useState('');
 
   const [level, setLevel] = useState('');
-  const [levelOpen, setLevelOpen] = useState(false);
+  const [levelModalVisible, setLevelModalVisible] = useState(false);
   const [levelItems, setLevelItems] = useState([]);
+  const [selectedLevelName, setSelectedLevelName] = useState('');
+  const [levelError, setLevelError] = useState('');
 
   const [date, setDate] = useState('');
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
@@ -37,11 +43,14 @@ const MentorHomework = ({ navigation, route }) => {
   useEffect(() => {
     if (grade) {
       fetchSections(grade);
+      setSectionError(''); // Clear section error when grade is selected
     }
   }, [grade]);
+  
   useEffect(() => {
     if (section) {
-      fetchSubjects(section)
+      fetchSubjects(section);
+      setSubjectError(''); // Clear subject error when section is selected
     }
   }, [section]);
 
@@ -49,6 +58,7 @@ const MentorHomework = ({ navigation, route }) => {
   useEffect(() => {
     if (grade && subject) {
       fetchLevels(grade, subject);
+      setLevelError(''); // Clear level error when subject is selected
     }
   }, [subject]);
 
@@ -63,8 +73,8 @@ const MentorHomework = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success) {
         const formattedGrades = data.grades.map(g => ({
-          label: g.grade_name,
-          value: g.id.toString()
+          name: g.grade_name,
+          id: g.id.toString()
         }));
         setGradeItems(formattedGrades);
       }
@@ -87,8 +97,8 @@ const MentorHomework = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success) {
         const formattedSubjects = data.subjects.map(s => ({
-          label: s.subject_name,
-          value: s.subject_id
+          name: s.subject_name,
+          id: s.subject_id
         }));
         setSubjectItems(formattedSubjects);
       }
@@ -103,8 +113,8 @@ const MentorHomework = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success) {
         const formattedSections = data.sections.map(s => ({
-          label: s.section_name,
-          value: s.id.toString()
+          name: s.section_name,
+          id: s.id.toString()
         }));
         setSectionItems(formattedSections);
       }
@@ -119,8 +129,8 @@ const MentorHomework = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success) {
         const formattedLevels = data.levels.map(l => ({
-          label: `Level ${l}`,
-          value: l.toString()
+          name: `Level ${l}`,
+          id: l.toString()
         }));
         setLevelItems(formattedLevels);
       }
@@ -133,6 +143,30 @@ const MentorHomework = ({ navigation, route }) => {
     const formatted = selectedDate.toLocaleDateString('en-GB');
     setDate(formatDate(formatted));
     setDatePickerVisible(false);
+  };
+
+  const handleGradeSelect = (item) => {
+    setGrade(item.id);
+    setSelectedGradeName(item.name);
+    setGradeModalVisible(false);
+  };
+
+  const handleSectionSelect = (item) => {
+    setSection(item.id);
+    setSelectedSectionName(item.name);
+    setSectionModalVisible(false);
+  };
+
+  const handleSubjectSelect = (item) => {
+    setSubject(item.id);
+    setSelectedSubjectName(item.name);
+    setSubjectModalVisible(false);
+  };
+
+  const handleLevelSelect = (item) => {
+    setLevel(item.id);
+    setSelectedLevelName(item.name);
+    setLevelModalVisible(false);
   };
 
   const handleAddHomework = async () => {
@@ -183,21 +217,17 @@ const MentorHomework = ({ navigation, route }) => {
 
       <ScrollView
         contentContainerStyle={{
-          // paddingBottom: 200,
           paddingHorizontal: 15,
           flexGrow: 1,
+          paddingBottom: 100, // Add padding for the fixed button
         }}
         keyboardShouldPersistTaps="handled">
         <View style={styles.formContainer}>
           <Text style={styles.label}>Date</Text>
-          <TouchableOpacity onPress={() => setDatePickerVisible(true)}>
-            <TextInput
-              style={styles.input}
-              placeholder="DD/MM/YYYY"
-              placeholderTextColor="#999"
-              value={date}
-              editable={false}
-            />
+          <TouchableOpacity onPress={() => setDatePickerVisible(true)} style={styles.selectBox}>
+            <Text style={date ? styles.selectedText : styles.placeholderText}>
+              {date || "Select Date"}
+            </Text>
           </TouchableOpacity>
           <DateTimePickerModal
             isVisible={isDatePickerVisible}
@@ -208,66 +238,186 @@ const MentorHomework = ({ navigation, route }) => {
           />
 
           <Text style={styles.label}>Grade</Text>
-          <View style={{ marginBottom: gradeOpen ? 100 : 10, zIndex: 1000 }}>
-            <DropDownPicker
-              open={gradeOpen}
-              value={grade}
-              items={gradeItems}
-              setOpen={setGradeOpen}
-              setValue={setGrade}
-              setItems={setGradeItems}
-              placeholder="Select Grade"
-              style={styles.dropdown}
-              dropDownContainerStyle={styles.dropdownContainer}
-            />
-          </View>
+          <TouchableOpacity 
+            style={styles.selectBox}
+            onPress={() => setGradeModalVisible(true)}>
+            <Text style={selectedGradeName ? styles.selectedText : styles.placeholderText}>
+              {selectedGradeName || "Select Grade"}
+            </Text>
+          </TouchableOpacity>
 
           <Text style={styles.label}>Section</Text>
-          <View style={{ marginBottom: sectionOpen ? 100 : 10, zIndex: 999 }}>
-            <DropDownPicker
-              open={sectionOpen}
-              value={section}
-              items={sectionItems}
-              setOpen={setSectionOpen}
-              setValue={setSection}
-              setItems={setSectionItems}
-              placeholder="Select Section"
-              style={styles.dropdown}
-              dropDownContainerStyle={styles.dropdownContainer}
-            />
-          </View>
+          <TouchableOpacity 
+            style={[styles.selectBox, sectionError ? styles.errorBox : null]}
+            onPress={() => {
+              if (!grade) {
+                setSectionError('Please select Grade first');
+              } else {
+                setSectionModalVisible(true);
+                setSectionError('');
+              }
+            }}>
+            <Text style={selectedSectionName ? styles.selectedText : styles.placeholderText}>
+              {selectedSectionName || "Select Section"}
+            </Text>
+          </TouchableOpacity>
+          {sectionError ? <Text style={styles.errorText}>{sectionError}</Text> : null}
 
           <Text style={styles.label}>Subject</Text>
-          <View style={{ marginBottom: subjectOpen ? 140 : 10, zIndex: 998 }}>
-            <DropDownPicker
-              open={subjectOpen}
-              value={subject}
-              items={subjectItems}
-              setOpen={setSubjectOpen}
-              setValue={setSubject}
-              setItems={setSubjectItems}
-              placeholder="Select Subject"
-              style={styles.dropdown}
-              dropDownContainerStyle={styles.dropdownContainer}
-            />
-          </View>
+          <TouchableOpacity 
+            style={[styles.selectBox, subjectError ? styles.errorBox : null]}
+            onPress={() => {
+              if (!section) {
+                setSubjectError('Please select Section first');
+              } else {
+                setSubjectModalVisible(true);
+                setSubjectError('');
+              }
+            }}>
+            <Text style={selectedSubjectName ? styles.selectedText : styles.placeholderText}>
+              {selectedSubjectName || "Select Subject"}
+            </Text>
+          </TouchableOpacity>
+          {subjectError ? <Text style={styles.errorText}>{subjectError}</Text> : null}
 
           <Text style={styles.label}>Level</Text>
-          <View style={{ marginBottom: levelOpen ? 100 : 10, zIndex: 997 }}>
-            <DropDownPicker
-              open={levelOpen}
-              value={level}
-              items={levelItems}
-              setOpen={setLevelOpen}
-              setValue={setLevel}
-              setItems={setLevelItems}
-              placeholder="Select Level"
-              style={styles.dropdown}
-              dropDownContainerStyle={styles.dropdownContainer}
-            />
-          </View>
+          <TouchableOpacity 
+            style={[styles.selectBox, levelError ? styles.errorBox : null]}
+            onPress={() => {
+              if (!subject) {
+                setLevelError('Please select Subject first');
+              } else {
+                setLevelModalVisible(true);
+                setLevelError('');
+              }
+            }}>
+            <Text style={selectedLevelName ? styles.selectedText : styles.placeholderText}>
+              {selectedLevelName || "Select Level"}
+            </Text>
+          </TouchableOpacity>
+          {levelError ? <Text style={styles.errorText}>{levelError}</Text> : null}
         </View>
       </ScrollView>
+      
+      {/* Grade Selection Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={gradeModalVisible}
+        onRequestClose={() => setGradeModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Grade</Text>
+            <FlatList
+              data={gradeItems}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={styles.modalItem} 
+                  onPress={() => handleGradeSelect(item)}>
+                  <Text style={styles.modalItemText}>{item.name}</Text>
+                </TouchableOpacity>
+              )}
+              style={styles.modalList}
+            />
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => setGradeModalVisible(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Section Selection Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={sectionModalVisible}
+        onRequestClose={() => setSectionModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Section</Text>
+            <FlatList
+              data={sectionItems}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={styles.modalItem} 
+                  onPress={() => handleSectionSelect(item)}>
+                  <Text style={styles.modalItemText}>{item.name}</Text>
+                </TouchableOpacity>
+              )}
+              style={styles.modalList}
+            />
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => setSectionModalVisible(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Subject Selection Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={subjectModalVisible}
+        onRequestClose={() => setSubjectModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Subject</Text>
+            <FlatList
+              data={subjectItems}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={styles.modalItem} 
+                  onPress={() => handleSubjectSelect(item)}>
+                  <Text style={styles.modalItemText}>{item.name}</Text>
+                </TouchableOpacity>
+              )}
+              style={styles.modalList}
+            />
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => setSubjectModalVisible(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Level Selection Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={levelModalVisible}
+        onRequestClose={() => setLevelModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Level</Text>
+            <FlatList
+              data={levelItems}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={styles.modalItem} 
+                  onPress={() => handleLevelSelect(item)}>
+                  <Text style={styles.modalItemText}>{item.name}</Text>
+                </TouchableOpacity>
+              )}
+              style={styles.modalList}
+            />
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => setLevelModalVisible(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.fixedButtonContainer}>
         <TouchableOpacity style={styles.confirmButton} onPress={handleAddHomework}>
