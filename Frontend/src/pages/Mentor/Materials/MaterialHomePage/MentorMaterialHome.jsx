@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, Pressable, SectionList, Alert, FlatList } from 'react-native';
+import { Text, View, Pressable, SectionList, Alert, FlatList, ActivityIndicator } from 'react-native';
 import styles from './MaterialHomeStyle';
 import HomeIcon from '../../../../assets/CoordinatorPage/MaterialHome/Home.svg';
 import { API_URL } from "../../../../utils/env.js";
+import Nodata from '../../../../components/General/Nodata.jsx';
 
 const MentorMaterialHome = ({ navigation, route }) => {
   const { mentorData } = route.params || {};
   const [gradeSubject, setGradeSubject] = useState([]);
-  const [grades, setGrades] = useState([])
-  const [activeGrade ,setActiveGrade] = useState(null)
+  const [grades, setGrades] = useState([]);
+  const [activeGrade, setActiveGrade] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // useEffect(() => {
   //   fetchGradeSubjects();
@@ -19,6 +22,7 @@ const MentorMaterialHome = ({ navigation, route }) => {
   },[])
 
   const fetchGradeSubjects = async (gradeID) => {
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/mentor/getGradeSubject`, {
         method: "POST",
@@ -39,35 +43,54 @@ const MentorMaterialHome = ({ navigation, route }) => {
         }]);
       } else {
         setGradeSubject([]);
-        Alert.alert("No Subjects", "No subjects for this section");
+        // Don't show an alert, we'll display the NoData component instead
       }
     } catch (error) {
       console.error("Error:", error);
+      setGradeSubject([]);
       Alert.alert("Error", "Failed to fetch subjects");
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   const fetchGrade = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/mentor/getGrades`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
       const data = await response.json();
-      if (data.success) {
-        setGrades(data.grades)
-        console.log(data.grades);
+      if (data.success && data.grades.length > 0) {
+        setGrades(data.grades);
         
-        if(data.success){
-          setActiveGrade(data.grades[0].id)
-          fetchGradeSubjects(data.grades[0].id)
-        }
+        setActiveGrade(data.grades[0].id);
+        await fetchGradeSubjects(data.grades[0].id);
       } else {
-        Alert.alert("No Grades", "No grades found");
+        setGrades([]);
+        setGradeSubject([]);
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("Error:", error);
+      setGrades([]);
+      setGradeSubject([]);
       Alert.alert("Error", "Failed to fetch grades");
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle refresh
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    if (activeGrade) {
+      fetchGradeSubjects(activeGrade);
+    } else if (grades.length > 0) {
+      fetchGradeSubjects(grades[0].id);
+    } else {
+      fetchGrade();
     }
   };
 
@@ -128,8 +151,20 @@ const MentorMaterialHome = ({ navigation, route }) => {
 
       <SectionList
         sections={gradeSubject}
-        style={{marginTop:20, flex:2}}
-        keyExtractor={(item) => item.key} // Use the unique key we created
+        style={styles.subjectListContainer}
+        contentContainerStyle={gradeSubject.length === 0 || gradeSubject[0]?.data.length === 0 ? styles.emptyContainer : null}
+        refreshing={isRefreshing}
+        onRefresh={handleRefresh}
+        ListEmptyComponent={
+          <View style={styles.noDataContainer}>
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#2563EB" />
+            ) : (
+              <Nodata />
+            )}
+          </View>
+        }
+        keyExtractor={(item) => item.key}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => {

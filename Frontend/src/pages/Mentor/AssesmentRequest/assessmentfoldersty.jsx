@@ -2,9 +2,14 @@ import {StyleSheet} from 'react-native';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
+  heightPercentageToDP,
 } from 'react-native-responsive-screen';
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -47,18 +52,94 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     color: 'black',
   },
-  dropdown: {
+  selectorButton: {
+    borderWidth: 1,
     borderColor: '#D9D9D9',
     borderRadius: 8,
+    paddingHorizontal: wp('3%'),
+    paddingVertical: hp('1.5%'),
     backgroundColor: '#fff',
-    height: hp('5%'), // ⬅️ Uniform dropdown height
-    zIndex: 1000,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: hp('2%'),
   },
-  dropdownContainer: {
-    borderColor: '#D9D9D9',
+  selectorText: {
+    fontSize: wp('4%'),
+    color: '#333',
+  },
+  placeholderText: {
+    fontSize: wp('4%'),
+    color: '#999',
+  },
+  selectorModal: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: wp('4%'),
+  },
+  modalContent: {
+    backgroundColor: '#fff',
     borderRadius: 15,
-    zIndex: 1000,
-    marginTop: 5,
+    width: wp('85%'),
+    // Fixed height issues with proper constraints
+    paddingBottom: wp('18%'),
+    maxHeight: hp('70%'),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    overflow: 'hidden', // This prevents content from spilling outside
+  },
+  // modalInnerContent: {
+  //   paddingVertical: hp('1%'),
+  //   paddingHorizontal: wp('4%'),
+  //   flexGrow: 1,
+  // },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: hp('2%'),
+    paddingHorizontal: wp('4%'),
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#f8f8f8',
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+    // No margin to avoid spacing issues
+  },
+  closeButton: {
+    padding: 8,
+  },
+  closeButtonText: {
+    fontSize: wp('5%'),
+    color: '#007BFF',
+    fontWeight: '600',
+  },
+  optionItem: {
+    paddingVertical: hp('2%'),
+    paddingHorizontal: wp('3%'),
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  optionText: {
+    fontSize: wp('4.2%'),
+    color: '#333',
+  },
+  selectedOption: {
+    backgroundColor: '#f0f7ff',
+    borderLeftWidth: 3,
+    borderLeftColor: '#007BFF',
+  },
+  selectedText: {
+    color: '#007BFF',
+    fontWeight: '600',
   },
   fixedButtonContainer: {
     position: 'absolute',
@@ -82,11 +163,18 @@ const styles = StyleSheet.create({
   },
   modalView: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 15,
     padding: 20,
-    maxHeight: hp('85%'),
-    top: hp('25%'),
+    width: wp('90%'),
+    maxHeight: hp('80%'),
+    alignSelf: 'center',
+    marginTop: 'auto',
+    marginBottom: 'auto',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   modalTitle: {
     fontSize: wp('5%'),
@@ -138,6 +226,16 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: wp('4.5%'),
     fontWeight: '600',
+  },
+  emptyListContainer: {
+    padding: wp('5%'),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyListText: {
+    fontSize: wp('4%'),
+    color: '#666',
+    textAlign: 'center',
   },
 });
 

@@ -3,14 +3,11 @@ import { StyleSheet } from "react-native";
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#f8f9fa",
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 10,
   },
-
-
-
   // Header
   activityHeader: {
     flexDirection: "row",
@@ -36,13 +33,16 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     marginTop: 18,
-    color: '#333'
+    marginBottom: 5,
+    color: '#333',
+    paddingLeft: 5,
   },
   sectionTitle2: {
     fontSize: 20,
     fontWeight: "600",
     marginTop: 10,
-    color: '#333'
+    color: '#333',
+    paddingLeft: 5,
   },
 
 
@@ -59,6 +59,12 @@ const styles = StyleSheet.create({
     height: 65,
     marginLeft: 8,
     marginVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
     // position: "relative",
     // flex: 1,
   },
@@ -108,6 +114,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 8,
     gap: 5,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    padding: 12,
+    marginHorizontal: 5,
   },
   dayText: {
     fontWeight: 'bold',
@@ -118,6 +128,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#92A5B5',
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginHorizontal: 5,
   },
 
   // Schedule Card
@@ -133,6 +148,12 @@ const styles = StyleSheet.create({
     width: 270,
     marginLeft: 10,
     paddingRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    // elevation: 3,
+    marginBottom: 5,
   },
   scheduleItem: {
     flexDirection: 'row',
@@ -461,6 +482,140 @@ const styles = StyleSheet.create({
   },
   attentionRightContent: {
     alignItems: 'flex-end',
+  },
+
+  // Loading and No Data Components
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  shimmerContainer: {
+    marginVertical: 10,
+    marginHorizontal: 10,
+  },
+  shimmerCard: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  shimmerLine: {
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  shimmerLineShort: {
+    width: '60%',
+    height: 12,
+  },
+  shimmerLineMedium: {
+    width: '80%',
+    height: 16,
+  },
+  shimmerLineLong: {
+    width: '100%',
+    height: 14,
+  },
+  shimmerAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#e0e0e0',
+    marginRight: 12,
+  },
+  shimmerContent: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  shimmerScheduleCard: {
+    flexDirection: 'row',
+    marginVertical: 8,
+    marginHorizontal: 10,
+  },
+  shimmerTime: {
+    width: 60,
+    marginRight: 10,
+  },
+  shimmerTimeSlot: {
+    backgroundColor: '#e0e0e0',
+    height: 12,
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  shimmerScheduleMain: {
+    flex: 1,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    padding: 16,
+    height: 80,
+  },
+  noDataContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    minHeight: 80,
+  },
+  noDataIcon: {
+    width: 80,
+    height: 80,
+    marginBottom: 16,
+    opacity: 0.5,
+  },
+  noDataTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  noDataSubtitle: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  retryButton: {
+    backgroundColor: '#4F46E5',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sectionLoadingContainer: {
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+  },
+  attentionLoadingContainer: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+  },
+  attentionShimmerCard: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    padding: 12,
+    width: 320,
+    height: 65,
+    marginRight: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
 

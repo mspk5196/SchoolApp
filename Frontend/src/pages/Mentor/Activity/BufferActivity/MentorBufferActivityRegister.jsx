@@ -201,37 +201,50 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
   };
 
   // Modal components
-  const renderSelectionModal = (visible, onClose, data, onSelect, title) => (
+  const renderSelectionModal = (visible, onClose, data, onSelect, title, selectedValue) => (
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
+      <TouchableOpacity 
+        style={styles.modalOverlay} 
+        activeOpacity={1}
+        onPress={onClose}
+      >
         <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{title}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.closeButton}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <FlatList
-            data={data}
-            keyExtractor={(item) => item.value.toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.optionItem}
-                onPress={() => onSelect(item)}
-              >
-                <Text style={styles.optionText}>{item.label}</Text>
+          <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{title}</Text>
+              <TouchableOpacity onPress={onClose}>
+                <Text style={styles.closeButton}>✕</Text>
               </TouchableOpacity>
-            )}
-            style={styles.optionList}
-          />
+            </View>
+            
+            <FlatList
+              data={data}
+              keyExtractor={(item) => item.value.toString()}
+              renderItem={({ item }) => {
+                const isSelected = item.value === selectedValue;
+                return (
+                  <TouchableOpacity
+                    style={isSelected ? styles.selectedOptionItem : styles.optionItem}
+                    onPress={() => onSelect(item)}
+                  >
+                    <Text style={isSelected ? styles.selectedOptionText : styles.optionText}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+              style={styles.optionList}
+              showsVerticalScrollIndicator={true}
+              initialNumToRender={10}
+            />
+          </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     </Modal>
   );
 
@@ -390,7 +403,8 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
           () => setShowGradeModal(false),
           gradeItems,
           handleGradeSelect,
-          'Select Grade'
+          'Select Grade',
+          grade
         )}
         
         {/* Section Selection Modal */}
@@ -399,7 +413,8 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
           () => setShowSectionModal(false),
           sectionItems,
           handleSectionSelect,
-          'Select Section'
+          'Select Section',
+          section
         )}
         
         {/* Activity Selection Modal */}
@@ -408,7 +423,8 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
           () => setShowActivityModal(false),
           activityItems,
           handleActivitySelect,
-          'Select Activity'
+          'Select Activity',
+          activity
         )}
       </ScrollView>
     </KeyboardAvoidingView>

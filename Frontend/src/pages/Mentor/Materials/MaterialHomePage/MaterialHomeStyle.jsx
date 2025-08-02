@@ -112,6 +112,27 @@ const styles = StyleSheet.create({
         color: "#FFF",
     },
 
+    // Empty state styles
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 50,
+        marginTop: 40,
+    },
+
+    subjectListContainer: {
+        flex: 1,
+        marginTop: 20,
+    },
+
+    noDataContainer: {
+        alignSelf: 'center',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%',
+        height: 300,
+    }
 });
 
 export default styles;

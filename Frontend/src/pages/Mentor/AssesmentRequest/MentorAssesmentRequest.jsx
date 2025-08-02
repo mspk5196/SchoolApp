@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, FlatList, Alert, Image } from "react-native";
+import { useFocusEffect } from '@react-navigation/native';
 import styles from "./AssessmentRequeststy";
 import { API_URL } from "../../../utils/env.js";
 import Back from "../../../assets/MentorPage/entypo_home.svg";
-import Add from "../../../assets/MentorPage/Add.svg";
+import Add from "../../../assets/MentorPage/plus.svg";
 import Clock from "../../../assets/MentorPage/formkit_time.svg";
+import { widthPercentageToDP } from "react-native-responsive-screen";
+import Nodata from "../../../components/General/Nodata.jsx";
 const Staff = '../../../../assets/MentorPage/User.svg';
 
 const MentorAssesmentRequest = ({ navigation, route }) => {
@@ -13,10 +16,29 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
   const [expandedItem, setExpandedItem] = useState(null);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [students, setStudents] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     fetchAssessmentRequests();
   }, []);
+
+  // Refresh data when the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchAssessmentRequests();
+      return () => {
+        // Clean up any subscriptions if needed
+      };
+    }, [])
+  );
+  
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchAssessmentRequests();
+    // Reset expanded item when refreshing
+    setExpandedItem(null);
+    setSelectedLevel(null);
+  };
 
   const convertToISTDate = (isoString) => {
     const date = new Date(isoString);
@@ -45,10 +67,13 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
         if (data.success) {
           setAssessments(data.assessments);
           // console.log("Fetched assessments:", data.assessments);
-
         }
       })
-      .catch(error => console.error('Error fetching assessments:', error));
+      .catch(error => console.error('Error fetching assessments:', error))
+      .finally(() => {
+        // Always turn off refreshing state when fetch completes
+        setIsRefreshing(false);
+      });
   };
 
   const fetchStudentsForAssessment = (assessmentId, level) => {
@@ -119,10 +144,20 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
 
       <View style={styles.underline} />
 
-      <FlatList
+      <FlatList 
         data={assessments}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[
+          styles.listContainer,
+          assessments.length === 0 && styles.emptyListContainer
+        ]}
+        refreshing={isRefreshing}
+        onRefresh={handleRefresh}
+        ListEmptyComponent={
+          <View style={styles.noDataContainer}>
+            <Nodata />
+          </View>
+        }
         renderItem={({ item }) => (
           <>
             <View style={styles.card}>
@@ -190,10 +225,13 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
 
       <View>
         <TouchableOpacity
-          onPress={() => navigation.navigate("MentorAssessmentRequestRegister", { mentorId: mentorData[0].id })}
+          onPress={() => navigation.navigate("MentorAssessmentRequestRegister", { 
+            mentorId: mentorData[0].id,
+            onGoBack: () => fetchAssessmentRequests()
+          })}
           style={styles.activityIcons}
         >
-          <Add />
+          <Add width={widthPercentageToDP('8.5%')} height={widthPercentageToDP('8.5%')} />
         </TouchableOpacity>
       </View>
     </View>

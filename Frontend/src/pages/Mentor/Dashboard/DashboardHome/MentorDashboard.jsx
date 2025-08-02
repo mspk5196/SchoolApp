@@ -9,6 +9,8 @@ import {
   TextInput,
   Alert,
   Image,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useNavigation } from '@react-navigation/native';
 import styles from "./Dashboardsty";
@@ -41,12 +43,15 @@ const MentorDashboard = ({ route }) => {
   const [selectedActivity, setSelectedActivity] = useState("");
   const [scheduleData, setScheduleData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAttentionLoading, setIsAttentionLoading] = useState(true);
+  const [isScheduleLoading, setIsScheduleLoading] = useState(true);
 
   const [subjects, setSubjects] = useState([]);
   const [selectedSection, setSelectedSection] = useState(null);
 
   const [overdueStudents, setOverdueStudents] = useState([]);
   const [coordinatorTasks, setCoordinatorTasks] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Fetch subjects and activities when section is available
   useEffect(() => {
@@ -69,6 +74,7 @@ const MentorDashboard = ({ route }) => {
 
   const fetchOverdueStudents = async () => {
     try {
+      setIsAttentionLoading(true);
       const response = await fetch(`${API_URL}/api/mentor/getOverdueStudents?mentorId=${mentorData[0].id}`);
       const data = await response.json();
       if (data.success) {
@@ -76,6 +82,8 @@ const MentorDashboard = ({ route }) => {
       }
     } catch (error) {
       console.error('Error fetching overdue students:', error);
+    } finally {
+      setIsAttentionLoading(false);
     }
   };
 
@@ -91,48 +99,49 @@ const MentorDashboard = ({ route }) => {
     }
   };
 
-  const attentionList = [
-    {
-      id: "1",
-      name: "Prakash Raj",
-      studentId: "2024VI023",
-      subject: "Science",
-      pending: "4 days",
-      count: 2,
-    },
-    {
-      id: "2",
-      name: "Asha Rani",
-      studentId: "2024VI011",
-      subject: "Maths",
-      pending: "2 days",
-      count: 1,
-    },
-    {
-      id: "3",
-      name: "Prakash Raj",
-      studentId: "2024VI023",
-      subject: "Science",
-      pending: "4 days",
-      count: 2,
-    },
-    {
-      id: "4",
-      name: "Asha Rani",
-      studentId: "2024VI011",
-      subject: "Maths",
-      pending: "2 days",
-      count: 1,
-    },
-  ];
+  // const attentionList = [
+  //   {
+  //     id: "1",
+  //     name: "Prakash Raj",
+  //     studentId: "2024VI023",
+  //     subject: "Science",
+  //     pending: "4 days",
+  //     count: 2,
+  //   },
+  //   {
+  //     id: "2",
+  //     name: "Asha Rani",
+  //     studentId: "2024VI011",
+  //     subject: "Maths",
+  //     pending: "2 days",
+  //     count: 1,
+  //   },
+  //   {
+  //     id: "3",
+  //     name: "Prakash Raj",
+  //     studentId: "2024VI023",
+  //     subject: "Science",
+  //     pending: "4 days",
+  //     count: 2,
+  //   },
+  //   {
+  //     id: "4",
+  //     name: "Asha Rani",
+  //     studentId: "2024VI011",
+  //     subject: "Maths",
+  //     pending: "2 days",
+  //     count: 1,
+  //   },
+  // ];
 
   // Fetch schedule data when date changes
+  
   useEffect(() => {
     fetchScheduleData();
   }, [date]);
 
   const fetchScheduleData = async () => {
-    setIsLoading(true);
+    setIsScheduleLoading(true);
     try {
       const formattedDate = formatDateForAPI(date);
       const response = await fetch(`${API_URL}/api/mentor/daily-schedule`, {
@@ -159,7 +168,7 @@ const MentorDashboard = ({ route }) => {
       console.error('Error fetching schedule data:', error);
       setScheduleData([]);
     } finally {
-      setIsLoading(false);
+      setIsScheduleLoading(false);
     }
   };
 
@@ -196,6 +205,33 @@ const MentorDashboard = ({ route }) => {
       dateObj.getFullYear() === today.getFullYear();
 
     return isToday ? "Today" : dateObj.toLocaleDateString("en-US", { weekday: "long" });
+  };
+
+  function parseTimeWithAmPmToDate(timeStr, targetDate = new Date()) {
+    const [time, modifier] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+
+    const date = new Date(targetDate);
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  }
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchOverdueStudents(),
+        fetchCoordinatorTasks(),
+        fetchScheduleData()
+      ]);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const openEditModal = async (item) => {
@@ -614,6 +650,51 @@ const MentorDashboard = ({ route }) => {
     }
   };
 
+  // Shimmer Loading Components
+  const AttentionShimmer = React.memo(() => (
+    <View style={styles.attentionLoadingContainer}>
+      {[1, 2].map((item) => (
+        <View key={item} style={styles.attentionShimmerCard}>
+          <View style={styles.shimmerAvatar} />
+          <View style={styles.shimmerContent}>
+            <View style={[styles.shimmerLine, styles.shimmerLineMedium]} />
+            <View style={[styles.shimmerLine, styles.shimmerLineShort]} />
+          </View>
+        </View>
+      ))}
+    </View>
+  ));
+
+  const ScheduleShimmer = React.memo(() => (
+    <View style={styles.sectionLoadingContainer}>
+      {[1, 2, 3].map((item) => (
+        <View key={item} style={styles.shimmerScheduleCard}>
+          <View style={styles.shimmerTime}>
+            <View style={styles.shimmerTimeSlot} />
+            <View style={styles.shimmerTimeSlot} />
+          </View>
+          <View style={styles.shimmerScheduleMain}>
+            <View style={[styles.shimmerLine, styles.shimmerLineLong]} />
+            <View style={[styles.shimmerLine, styles.shimmerLineMedium]} />
+            <View style={[styles.shimmerLine, styles.shimmerLineShort]} />
+          </View>
+        </View>
+      ))}
+    </View>
+  ));
+
+  const NoDataComponent = React.memo(({ title, subtitle, onRetry, showRetry = false }) => (
+    <View style={styles.noDataContainer}>
+      <Text style={styles.noDataTitle}>{title}</Text>
+      <Text style={styles.noDataSubtitle}>{subtitle}</Text>
+      {showRetry && (
+        <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  ));
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -627,62 +708,73 @@ const MentorDashboard = ({ route }) => {
       {/* Attention Section */}
       <View style={{ flex: 4 }}>
         <Text style={styles.sectionTitle1}>Attentions</Text>
-        <FlatList
-          horizontal
-          data={[...overdueStudents, ...coordinatorTasks]}
-          keyExtractor={(item, index) => `${item.id}_${index}`}
-          contentContainerStyle={{ paddingTop: 10, paddingBottom: 10 }}
-          showsHorizontalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', padding: 20 }}>
-              <Text style={{ color: 'grey', fontSize: 16 }}>No Attentions Available</Text>
-            </View>
-          }
-          renderItem={({ item, index }) => (
-            <Pressable onPress={() => navigation.navigate("MentorDashboardAttentions", { mentorData })}>
-              <View style={[
-                styles.attentionBox,
-                {
-                  marginRight: 10,
-                  backgroundColor: item.days_overdue >= 10 ? '#FFE4E6' : '#FFF7ED'
-                }
-              ]}>
-                {index === 0 && (overdueStudents.length + coordinatorTasks.length) > 0 && (
-                  <View style={styles.attentionNotification}>
-                    <Text style={styles.attentionNotificationText}>
-                      {overdueStudents.length + coordinatorTasks.length}
+        {isAttentionLoading ? (
+          <AttentionShimmer />
+        ) : (
+          <FlatList
+            horizontal
+            data={[...overdueStudents, ...coordinatorTasks]}
+            keyExtractor={(item, index) => `${item.id}_${index}`}
+            contentContainerStyle={{ 
+              paddingTop: 10, 
+              paddingBottom: 10,
+              flexGrow: 1
+            }}
+            showsHorizontalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={{ width: 350, height: 100 }}>
+                <NoDataComponent 
+                  title="No Attentions Available"
+                  subtitle="All tasks are up to date. Great work!"
+                />
+              </View>
+            }
+            renderItem={({ item, index }) => (
+              <Pressable onPress={() => navigation.navigate("MentorDashboardAttentions", { mentorData })}>
+                <View style={[
+                  styles.attentionBox,
+                  {
+                    marginRight: 10,
+                    backgroundColor: item.days_overdue >= 10 ? '#FFE4E6' : '#FFF7ED'
+                  }
+                ]}>
+                  {index === 0 && (overdueStudents.length + coordinatorTasks.length) > 0 && (
+                    <View style={styles.attentionNotification}>
+                      <Text style={styles.attentionNotificationText}>
+                        {overdueStudents.length + coordinatorTasks.length}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.attentionLeft}>
+                    {/* <User width={50} height={50} /> */}
+                    {item.profile_photo ? (
+                      <Image
+                        source={getProfileImageSource(item.profile_photo)}
+                        style={{borderRadius:50}}
+                        width={50} height={50}
+                      />
+                    ) : (
+                      <Image source={User} style={{borderRadius:50}} width={50} height={50} />
+                    )}
+                    <View style={{ marginLeft: 10 }}>
+                      <Text style={styles.attentionName}>{item.student_name}</Text>
+                      <Text style={styles.attentionId}>{item.student_roll}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.attentionRight}>
+                    <Text style={styles.attentionSubject}>{item.subject_name}</Text>
+                    <Text style={[
+                      styles.attentionPending,
+                      { color: item.days_overdue >= 10 ? '#EF4444' : '#F97316' }
+                    ]}>
+                      {item.days_overdue} days
                     </Text>
                   </View>
-                )}
-                <View style={styles.attentionLeft}>
-                  {/* <User width={50} height={50} /> */}
-                  {item.profile_photo ? (
-                    <Image
-                      source={getProfileImageSource(item.profile_photo)}
-                      style={{borderRadius:50}}
-                      width={50} height={50}
-                    />
-                  ) : (
-                    <Image source={User} style={{borderRadius:50}} width={50} height={50} />
-                  )}
-                  <View style={{ marginLeft: 10 }}>
-                    <Text style={styles.attentionName}>{item.student_name}</Text>
-                    <Text style={styles.attentionId}>{item.student_roll}</Text>
-                  </View>
                 </View>
-                <View style={styles.attentionRight}>
-                  <Text style={styles.attentionSubject}>{item.subject_name}</Text>
-                  <Text style={[
-                    styles.attentionPending,
-                    { color: item.days_overdue >= 10 ? '#EF4444' : '#F97316' }
-                  ]}>
-                    {item.days_overdue} days
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-          )}
-        />
+              </Pressable>
+            )}
+          />
+        )}
       </View>
 
       {/* Schedule Header */}
@@ -702,80 +794,95 @@ const MentorDashboard = ({ route }) => {
         </View>
 
         {/* Schedule Cards */}
-        <FlatList
-          data={scheduleData}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 50 }}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', padding: 20 }}>
-              <Text style={{ color: 'grey', fontSize: 16 }}>Timetable Not Available</Text>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <Pressable onPress={() => {
-              if (item.activity === 'Academics') {
-                console.log("Hi", convertDateFormat(formatDate(date)));
-                // console.log(item.subject_id),
-                navigation.navigate("MentorDashboardAcademics", {
-                  sessionId: item.dsa_id, // You'll need to pass the actual session ID
-                  subject: item.subject,
-                  subject_id: item.subject_id,
-                  grade: item.grade,
-                  section: item.section_id,
-                  section_name: item.section,
-                  duration: item.duration,
-                  startTime: item.starttime,
-                  endTime: item.endtime,
-                  date: convertDateFormat(formatDate(date)),
-                });
-              } else {
-                // Handle other activity types
-                navigation.navigate("MentorDashboardAssessment", {
-                  sessionId: item.dsa_id, // You'll need to pass the actual session ID
-                  subject: item.subject,
-                  subject_id: item.subject_id,
-                  grade: item.grade,
-                  section: item.section_id,
-                  section_name: item.section,
-                  duration: item.duration,
-                  startTime: item.starttime,
-                  endTime: item.endtime,
-                  date: convertDateFormat(formatDate(date)),
-                })
-              }
-            }}>
-              <View style={styles.scheduleBox}>
-                <View style={styles.scheduleItem}>
-                  <View style={styles.scheduleTime}>
-                    <Text style={styles.starttimeText}>{item.starttime}</Text>
-                    <Text style={styles.endtimeText}>{item.endtime}</Text>
-                  </View>
-                  <View style={[styles.scheduleCard, { backgroundColor: item.bgColor }]}>
-                    {/* Edit icon absolutely positioned in left corner */}
-                    <TouchableOpacity
-                      style={styles.editIcon}
-                      onPress={() => openEditModal(item)}
-                    >
-                      <Edit width={20} height={20} />
-                    </TouchableOpacity>
+        {isScheduleLoading ? (
+          <ScheduleShimmer />
+        ) : (
+          <FlatList
+            data={scheduleData}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingBottom: 50 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#4F46E5']}
+                tintColor={'#4F46E5'}
+              />
+            }
+            ListEmptyComponent={
+              <NoDataComponent 
+                title="No Schedule Available"
+                subtitle="There are no classes scheduled for this date."
+                onRetry={fetchScheduleData}
+                showRetry={true}
+              />
+            }
+            renderItem={({ item }) => (
+              <Pressable onPress={() => {
+                if (item.activity === 'Academics') {
+                  console.log("Hi", convertDateFormat(formatDate(date)));
+                  // console.log(item.subject_id),
+                  navigation.navigate("MentorDashboardAcademics", {
+                    sessionId: item.dsa_id, // You'll need to pass the actual session ID
+                    subject: item.subject,
+                    subject_id: item.subject_id,
+                    grade: item.grade,
+                    section: item.section_id,
+                    section_name: item.section,
+                    duration: item.duration,
+                    startTime: item.starttime,
+                    endTime: item.endtime,
+                    date: convertDateFormat(formatDate(date)),
+                  });
+                } else {
+                  // Handle other activity types
+                  navigation.navigate("MentorDashboardAssessment", {
+                    sessionId: item.dsa_id, // You'll need to pass the actual session ID
+                    subject: item.subject,
+                    subject_id: item.subject_id,
+                    grade: item.grade,
+                    section: item.section_id,
+                    section_name: item.section,
+                    duration: item.duration,
+                    startTime: item.starttime,
+                    endTime: item.endtime,
+                    date: convertDateFormat(formatDate(date)),
+                  })
+                }
+              }}>
+                <View style={styles.scheduleBox}>
+                  <View style={styles.scheduleItem}>
+                    <View style={styles.scheduleTime}>
+                      <Text style={styles.starttimeText}>{item.starttime}</Text>
+                      <Text style={styles.endtimeText}>{item.endtime}</Text>
+                    </View>
+                    <View style={[styles.scheduleCard, { backgroundColor: item.bgColor }]}>
+                      {/* Edit icon absolutely positioned in left corner */}
+                      <TouchableOpacity
+                        style={styles.editIcon}
+                        onPress={() => openEditModal(item)}
+                      >
+                        <Edit width={20} height={20} />
+                      </TouchableOpacity>
 
-                    <View style={[styles.sideLine, { backgroundColor: item.sideColor }]} />
-                    <View style={styles.scheduleInfo}>
-                      <Text style={styles.subjectText}>{item.subject}</Text>
-                      <Text style={styles.gradeText}>Grade {item.grade} - {item.section}</Text>
-                      <View style={styles.activityStyle}>
-                        <Text style={[styles.typeText, { color: item.fontColor }]}>
-                          {item.activity}
-                        </Text>
-                        <Text style={styles.durationText}>{item.duration}</Text>
+                      <View style={[styles.sideLine, { backgroundColor: item.sideColor }]} />
+                      <View style={styles.scheduleInfo}>
+                        <Text style={styles.subjectText}>{item.subject}</Text>
+                        <Text style={styles.gradeText}>Grade {item.grade} - {item.section}</Text>
+                        <View style={styles.activityStyle}>
+                          <Text style={[styles.typeText, { color: item.fontColor }]}>
+                            {item.activity}
+                          </Text>
+                          <Text style={styles.durationText}>{item.duration}</Text>
+                        </View>
                       </View>
                     </View>
                   </View>
                 </View>
-              </View>
-            </Pressable>
-          )}
-        />
+              </Pressable>
+            )}
+          />
+        )}
 
       </View>
 

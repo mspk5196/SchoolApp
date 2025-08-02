@@ -135,7 +135,7 @@ export default StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     right: 0,
-    // backgroundColor: '#4E6BFF',
+    backgroundColor: '#0C36FF',
     borderRadius: 30,
     width: 50,
     height: 50,
@@ -143,11 +143,6 @@ export default StyleSheet.create({
     justifyContent: 'center',
     // elevation: 3,
   },
-
-  //Icons
-  // AddIcon: {
-  //   padding: 10,
-  // },
   clockicon: {
     marginTop: 14,
     marginRight: 1,
@@ -160,8 +155,8 @@ export default StyleSheet.create({
     marginBottom: 16,
     borderBottomLeftRadius: 8,
     borderBottomRightRadius: 8,
-    marginHorizontal:2,
-    marginVertical:20,
+    marginHorizontal: 2,
+    marginVertical: 20,
     // shadowColor: '#000',
     // shadowOffset: { width: 0, height: 1 },
     // shadowOpacity: 0.1,
@@ -184,7 +179,7 @@ export default StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 1,
     elevation: 1.5,
-    height:80
+    height: 80
   },
   studentInfo: {
     flexDirection: 'row',
@@ -206,5 +201,21 @@ export default StyleSheet.create({
   studentDate: {
     fontSize: 12,
     color: '#777',
+  },
+  listContainer: {
+    flexGrow: 1,
+    paddingBottom: 80, // Adds space at the bottom for the floating action button
+  },
+  emptyListContainer: {
+    flexGrow: 1,
+    justifyContent: 'center', 
+    alignItems: 'center',
+    minHeight: '80%', // Use minHeight to ensure it takes up enough space
+  },
+  noDataContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: '30%', // Position more towards the center
   },
 });

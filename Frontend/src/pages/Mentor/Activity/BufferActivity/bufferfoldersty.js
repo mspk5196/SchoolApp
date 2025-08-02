@@ -57,14 +57,24 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContainer: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '70%',
+    borderRadius: 15,
+    width: wp('85%'),
+    maxHeight: hp('60%'),
+    marginVertical: hp('10%'),
     paddingBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -73,6 +83,9 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+    backgroundColor: '#f8f8f8',
   },
   modalTitle: {
     fontSize: 18,
@@ -80,12 +93,13 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   closeButton: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#666',
+    color: '#007BFF',
+    padding: 5,
   },
   optionList: {
-    maxHeight: 350,
+    maxHeight: hp('50%'),
   },
   optionItem: {
     padding: 15,
@@ -95,6 +109,17 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 16,
     color: '#333',
+  },
+  selectedOptionItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#e6f2ff',
+  },
+  selectedOptionText: {
+    fontSize: 16,
+    color: '#007BFF',
+    fontWeight: '600',
   },
   timeCard: {
     marginBottom: 20,

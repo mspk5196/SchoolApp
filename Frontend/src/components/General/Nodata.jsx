@@ -4,10 +4,11 @@ import NodataImg from '../../assets/Genreal/nodata.svg'
 
 export class Nodata extends Component {
     render() {
+        const { message, style } = this.props;
         return (
-            <View style={styles.img}>
-                <NodataImg />
-                <Text style={styles.imgtext}>No data found</Text>
+            <View style={[styles.img, style]}>
+                <NodataImg width={100} height={100} />
+                <Text style={styles.imgtext}>{message || "No data found"}</Text>
             </View>
         )
     }
@@ -17,13 +18,15 @@ export default Nodata
 
 const styles = StyleSheet.create({
     img: {
-        flex: 1,
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
         alignItems: 'center',
+        padding: 20,
     },
     imgtext: {
         fontSize: 18,
-        fontWeight: '700',
-        color: '#000000',
+        fontWeight: '600',
+        color: '#555',
+        marginTop: 15,
+        textAlign: 'center',
     },
 })
