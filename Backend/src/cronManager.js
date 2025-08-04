@@ -40,16 +40,24 @@ function adjustTimeForUTC(hour, minute = 0) {
     // Convert IST time to UTC (subtract 5.5 hours)
     const timezone = getTimezone();
     if (timezone === "UTC") {
+        // Convert IST (UTC+5:30) to UTC
         let utcHour = hour - 5;
         let utcMinute = minute - 30;
         
+        // Handle minute overflow/underflow
         if (utcMinute < 0) {
             utcMinute += 60;
             utcHour -= 1;
+        } else if (utcMinute >= 60) {
+            utcMinute -= 60;
+            utcHour += 1;
         }
         
+        // Handle hour overflow/underflow
         if (utcHour < 0) {
             utcHour += 24;
+        } else if (utcHour >= 24) {
+            utcHour -= 24;
         }
         
         return { hour: utcHour, minute: utcMinute };
@@ -57,92 +65,115 @@ function adjustTimeForUTC(hour, minute = 0) {
     return { hour, minute };
 }
 
+function validateCronExpression(expression) {
+    // Basic validation for cron expression format
+    const parts = expression.split(' ');
+    if (parts.length !== 5) {
+        throw new Error(`Invalid cron expression format: ${expression}`);
+    }
+    
+    const [minute, hour, day, month, weekday] = parts;
+    
+    // Validate ranges
+    if (parseInt(minute) < 0 || parseInt(minute) > 59) {
+        throw new Error(`Invalid minute value: ${minute}`);
+    }
+    if (parseInt(hour) < 0 || parseInt(hour) > 23) {
+        throw new Error(`Invalid hour value: ${hour}`);
+    }
+    
+    return true;
+}
+
+function createSafeCronJob(expression, callback, options, jobName) {
+    try {
+        // Validate the expression first
+        validateCronExpression(expression);
+        
+        console.log(`🕐 Scheduling ${jobName} with expression: ${expression}`);
+        console.log(`🔧 Options:`, options);
+        
+        cron.schedule(expression, callback, options);
+        console.log(`✅ ${jobName} scheduled successfully`);
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to schedule ${jobName}:`, error.message);
+        console.error(`❌ Expression: ${expression}`);
+        console.error(`❌ Options:`, options);
+        return false;
+    }
+}
+
 if (shouldRunCrons) {
     console.log('🕐 Starting cron jobs...');
     console.log('🌍 Using timezone:', getTimezone());
+
+    // Test time conversions
+    console.log('🧪 Testing time conversions:');
+    console.log('  - IST 00:05 -> UTC:', adjustTimeForUTC(0, 5));
+    console.log('  - IST 01:00 -> UTC:', adjustTimeForUTC(1, 0));
+    console.log('  - IST 18:00 -> UTC:', adjustTimeForUTC(18, 0));
+    console.log('  - IST 23:59 -> UTC:', adjustTimeForUTC(23, 59));
 
     // Daily attendance updater - runs at 6:00 PM IST daily
     const attendanceTime = adjustTimeForUTC(18, 0);
     const attendanceCronExpression = `${attendanceTime.minute} ${attendanceTime.hour} * * *`;
     console.log('🕐 Attendance cron - IST: 18:00, UTC equivalent:', attendanceTime);
     
-    try {
-        cron.schedule(attendanceCronExpression, async () => {
-            console.log('🔄 Running daily attendance updater...');
-            try {
-                const result = await runAttendanceUpdater();
-                console.log('✅ Attendance updater completed:', result.message);
-            } catch (error) {
-                console.error('❌ Attendance updater failed:', error);
-            }
-        }, getCronOptions());
-        console.log('✅ Attendance cron job scheduled successfully');
-    } catch (error) {
-        console.error('❌ Failed to schedule attendance cron job:', error);
-    }
+    createSafeCronJob(attendanceCronExpression, async () => {
+        console.log('🔄 Running daily attendance updater...');
+        try {
+            const result = await runAttendanceUpdater();
+            console.log('✅ Attendance updater completed:', result.message);
+        } catch (error) {
+            console.error('❌ Attendance updater failed:', error);
+        }
+    }, getCronOptions(), 'Attendance Cron Job');
 
     // Assessment sessions creator - runs at 11:59 PM IST daily
     const assessmentTime = adjustTimeForUTC(23, 59);
     const assessmentCronExpression = `${assessmentTime.minute} ${assessmentTime.hour} * * *`;
     console.log('🕐 Assessment cron - IST: 23:59, UTC equivalent:', assessmentTime);
     
-    try {
-        cron.schedule(assessmentCronExpression, async () => {
-            console.log('🔄 Creating assessment sessions for tomorrow...');
-            try {
-                const result = await createAssessmentSessionsByDate();
-                console.log('✅ Assessment sessions created:', result);
-            } catch (error) {
-                console.error('❌ Assessment sessions creation failed:', error);
-            }
-        }, getCronOptions());
-        console.log('✅ Assessment cron job scheduled successfully');
-    } catch (error) {
-        console.error('❌ Failed to schedule assessment cron job:', error);
-    }
-
+    createSafeCronJob(assessmentCronExpression, async () => {
+        console.log('🔄 Creating assessment sessions for tomorrow...');
+        try {
+            const result = await createAssessmentSessionsByDate();
+            console.log('✅ Assessment sessions created:', result);
+        } catch (error) {
+            console.error('❌ Assessment sessions creation failed:', error);
+        }
+    }, getCronOptions(), 'Assessment Cron Job');
     // Academic sessions creator - runs at 12:05 AM IST daily
     const academicTime = adjustTimeForUTC(0, 5);
     const academicCronExpression = `${academicTime.minute} ${academicTime.hour} * * *`;
     console.log('🕐 Academic cron - IST: 00:05, UTC equivalent:', academicTime);
     console.log('🕐 Academic cron expression:', academicCronExpression);
     
-    try {
-        cron.schedule(academicCronExpression, async () => {
-            console.log('🔄 Creating today academic sessions...');
-            try {
-                const result = await runDailyScheduleUpdate();
-                console.log('✅ Academic sessions created:', result);
-            } catch (error) {
-                console.error('❌ Academic sessions creation failed:', error);
-            }
-        }, getCronOptions());
-        console.log('✅ Academic cron job scheduled successfully');
-    } catch (error) {
-        console.error('❌ Failed to schedule academic cron job:', error);
-        console.error('❌ Attempted expression:', academicCronExpression);
-        console.error('❌ Attempted options:', getCronOptions());
-    }
+    createSafeCronJob(academicCronExpression, async () => {
+        console.log('🔄 Creating today academic sessions...');
+        try {
+            const result = await runDailyScheduleUpdate();
+            console.log('✅ Academic sessions created:', result);
+        } catch (error) {
+            console.error('❌ Academic sessions creation failed:', error);
+        }
+    }, getCronOptions(), 'Academic Cron Job');
 
     // Student backlogs checker - runs at 1:00 AM IST daily
     const backlogTime = adjustTimeForUTC(1, 0);
     const backlogCronExpression = `${backlogTime.minute} ${backlogTime.hour} * * *`;
     console.log('🕐 Backlog cron - IST: 01:00, UTC equivalent:', backlogTime);
     
-    try {
-        cron.schedule(backlogCronExpression, async () => {
-            console.log('🔄 Running overdue levels check...');
-            try {
-                const result = await runOverdueCheck();
-                console.log('✅ Overdue levels check completed:', result);
-            } catch (error) {
-                console.error('❌ Overdue levels check failed:', error);
-            }
-        }, getCronOptions());
-        console.log('✅ Backlog cron job scheduled successfully');
-    } catch (error) {
-        console.error('❌ Failed to schedule backlog cron job:', error);
-    }
+    createSafeCronJob(backlogCronExpression, async () => {
+        console.log('🔄 Running overdue levels check...');
+        try {
+            const result = await runOverdueCheck();
+            console.log('✅ Overdue levels check completed:', result);
+        } catch (error) {
+            console.error('❌ Overdue levels check failed:', error);
+        }
+    }, getCronOptions(), 'Backlog Cron Job');
 
     console.log('✅ All cron jobs initialized');
 } else {
