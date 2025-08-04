@@ -143,6 +143,7 @@ import AdminMessageHome from '../../pages/Admin/Messages/MessageHome/AdminMessag
 import CoordinatorMessageHome from '../../pages/Coordinator/Messages/MessageHome/CoordinatorMessageHome';
 import SubjectActivityPage from '../../pages/Coordinator/Material/SubjectActivity/SubjectActivityPage';
 import MentorSubjectActivityPage from '../../pages/Mentor/Materials/SubjectActivity/MentorSubjectActivityPage';
+import StudentPageMaterialScreen from '../../pages/Parent/MaterialScreen/StudentPageMaterialScreen';
 
 const Stack = createStackNavigator();
 
@@ -276,7 +277,8 @@ const Routes = () => {
                         <Stack.Screen name="StudentPerformanceDetailsScreen" component={PerformanceDetailsScreen} />
                         {/* Survey */}
                         <Stack.Screen name="StudentPageSurvey" component={StudentPageSurvey} />
-
+                        {/* Material */}
+                        <Stack.Screen name="StudentPageMaterialActivity" component={StudentPageMaterialScreen} />
                         {/* SideBar Pages */}
                         {/* Profile */}
                         <Stack.Screen name="StudentPageProfile" component={StudentProfile} />

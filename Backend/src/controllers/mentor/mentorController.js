@@ -230,18 +230,18 @@ exports.getGradeSubject = (req, res) => {
   const { gradeID } = req.body;
   console.log("Received gradeID:", (req.body.gradeID));
   const sql = `
-    SELECT 
+   SELECT 
+      ssa.id as section_subject_activity_id,
       sub.id AS subject_id, 
       sub.subject_name,
-      act.id AS activity_id,
-      act.activity_name,
-      ssa.id AS section_subject_activity_id
+      at.id as activity_id,
+      at.activity_type as activity_name
     FROM section_subject_activities ssa
     JOIN sections sec ON ssa.section_id = sec.id
     JOIN subjects sub ON ssa.subject_id = sub.id
-    JOIN activity_types act ON ssa.activity_id = act.id
+    LEFT JOIN activity_types at ON ssa.activity_type = at.id
     WHERE sec.grade_id = ?
-    ORDER BY sub.subject_name, act.activity_name;
+    ORDER BY sub.subject_name, at.activity_type;
   `;
   db.query(sql, [gradeID], (err, results) => {
     if (err) {
