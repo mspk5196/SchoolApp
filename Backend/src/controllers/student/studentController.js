@@ -1294,35 +1294,54 @@ exports.getMaterialsAndCompletedLevels = async (req, res) => {
   }
 
   try {
-    // Get grade_id from section_id
-    const [[sectionRow]] = await db.promise().query(
-      `SELECT grade_id FROM sections WHERE id = ?`, [section_id]
-    );
-    if (!sectionRow) return res.status(404).json({ success: false, message: "Section not found" });
-    const grade_id = sectionRow.grade_id;
-
-    // Fetch materials for this subject and grade
-    const [materials] = await db.promise().query(
-      `SELECT id, level, material_type, file_name, file_url
-       FROM materials
-       WHERE subject_id = ? AND grade_id = ?
-       ORDER BY level ASC, material_type ASC`,
-      [subject_id, grade_id]
+    // Get activities for this subject and section
+    const [activitiesRows] = await db.promise().query(
+      `SELECT ssa.id as section_subject_activity_id, act.id as activity_id, act.activity_name
+       FROM section_subject_activities ssa
+       JOIN activity_types act ON ssa.activity_id = act.id
+       WHERE ssa.section_id = ? AND ssa.subject_id = ?
+       ORDER BY act.activity_name`, 
+      [section_id, subject_id]
     );
 
-    // Fetch completed levels for this student and subject
-    const [completedLevelsRows] = await db.promise().query(
-      `SELECT DISTINCT level
-       FROM student_level_updates
-       WHERE student_roll = ? AND subject_id = ?`,
-      [student_roll, subject_id]
-    );
-    const completedLevels = completedLevelsRows.map(row => row.level);
+    if (activitiesRows.length === 0) {
+      return res.status(404).json({ success: false, message: "No activities found for this subject" });
+    }
+
+    // Group materials by activity
+    const activitiesWithMaterials = [];
+    
+    for (const activity of activitiesRows) {
+      // Fetch materials for this activity
+      const [materials] = await db.promise().query(
+        `SELECT id, level, material_type, file_name, file_url, title
+         FROM materials
+         WHERE section_subject_activity_id = ?
+         ORDER BY level ASC, material_type ASC`,
+        [activity.section_subject_activity_id]
+      );
+
+      // Fetch completed levels for this student and activity
+      const [completedLevelsRows] = await db.promise().query(
+        `SELECT DISTINCT level
+         FROM student_level_updates
+         WHERE student_roll = ? AND subject_id = ?`,
+        [student_roll, subject_id]
+      );
+      const completedLevels = completedLevelsRows.map(row => row.level);
+
+      activitiesWithMaterials.push({
+        activity_id: activity.activity_id,
+        activity_name: activity.activity_name,
+        section_subject_activity_id: activity.section_subject_activity_id,
+        materials,
+        completedLevels
+      });
+    }
 
     res.json({
       success: true,
-      materials,
-      completedLevels
+      activities: activitiesWithMaterials
     });
   } catch (err) {
     console.error("Error fetching materials and completed levels:", err);

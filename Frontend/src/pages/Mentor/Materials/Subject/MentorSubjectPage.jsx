@@ -31,7 +31,7 @@ import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 
 const MentorSubjectPage = ({ route, navigation }) => {
-    const { grade, subject, subjectID, gradeID } = route.params || {};
+    const { grade, subject, subjectID, gradeID, activity, activityID, section_subject_activity_id } = route.params || {};
 
     const [editingLevelId, setEditingLevelId] = useState(null);
     const [editingDate, setEditingDate] = useState(new Date());
@@ -60,7 +60,7 @@ const MentorSubjectPage = ({ route, navigation }) => {
         return () => {
             isMounted = false;
         };
-    }, [gradeID, subjectID]);
+    }, [section_subject_activity_id]);
 
     const [downloadProgress, setDownloadProgress] = useState(null);
 
@@ -132,14 +132,14 @@ const MentorSubjectPage = ({ route, navigation }) => {
     };
 
     const fetchMaterials = async (isRefreshing = false) => {
-        console.log("Fetching materials for:", { gradeID, subjectID });
+        console.log("Fetching materials for:", { section_subject_activity_id });
 
         try {
             if (isRefreshing) {
                 setRefreshing(true);
             }
             
-            const response = await fetch(`${API_URL}/api/mentor/getMaterials?gradeID=${gradeID}&subjectID=${subjectID}`);
+            const response = await fetch(`${API_URL}/api/mentor/getMaterials?section_subject_activity_id=${section_subject_activity_id}`);
             const data = await response.json();
 
             if (response.ok && data.success) {
@@ -163,7 +163,8 @@ const MentorSubjectPage = ({ route, navigation }) => {
                         id: item.id,
                         name: item.file_name,
                         uri: `${API_URL}/${item.file_url}`,
-                        type: item.material_type
+                        type: item.material_type,
+                        title: item.title
                     };
 
                     if (item.material_type === 'PDF') {
@@ -229,8 +230,7 @@ const MentorSubjectPage = ({ route, navigation }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     level: editingLevelId,
-                    grade_id: gradeID,
-                    subject_id: subjectID,
+                    section_subject_activity_id: section_subject_activity_id,
                     expected_date: formatDateToLocalYYYYMMDD(newDate),
                 }),
             });
@@ -257,7 +257,7 @@ const MentorSubjectPage = ({ route, navigation }) => {
                         height={styles.BackIcon.height}
                     />
                 </TouchableOpacity>
-                <Text style={styles.headerTxt}>{subject} Material</Text>
+                <Text style={styles.headerTxt}>{subject} - {activity}</Text>
             </View>
 
             <ScrollView 
@@ -274,7 +274,7 @@ const MentorSubjectPage = ({ route, navigation }) => {
             >
                 {grade ? (
                     <View style={styles.gradeContainer}>
-                        <Text style={styles.gradeText}>{grade} - {subject}</Text>
+                        <Text style={styles.gradeText}>{grade} - {subject} - {activity}</Text>
 
                         {materials.length > 0 ? (
                             materials.map((material, index) => (

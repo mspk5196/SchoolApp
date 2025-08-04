@@ -31,15 +31,16 @@ const MentorMaterialHome = ({ navigation, route }) => {
       });
       const data = await response.json();
       if (data.success) {
-        // Ensure each item has a unique key
-        const subjectsWithKeys = data.gradeSubjects.map((subject, index) => ({
-          ...subject,
+        // Extract unique subjects from the activity-grouped data
+        const uniqueSubjects = data.gradeSubjects.map((subject, index) => ({
+          subject_id: subject.subject_id,
+          subject_name: subject.subject_name,
           key: `${subject.subject_id}-${index}` // Create a unique key
         }));
 
         setGradeSubject([{
           title: 'Subjects',
-          data: subjectsWithKeys
+          data: uniqueSubjects
         }]);
       } else {
         setGradeSubject([]);
@@ -168,7 +169,7 @@ const MentorMaterialHome = ({ navigation, route }) => {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => {
-              navigation.navigate('MentorSubjectPage', {
+              navigation.navigate('MentorSubjectActivityPage', {
                 grade: `Grade ${activeGrade}`,
                 gradeID: activeGrade,
                 subject: item.subject_name,

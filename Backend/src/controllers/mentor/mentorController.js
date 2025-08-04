@@ -230,11 +230,18 @@ exports.getGradeSubject = (req, res) => {
   const { gradeID } = req.body;
   console.log("Received gradeID:", (req.body.gradeID));
   const sql = `
-    SELECT DISTINCT sub.id AS subject_id, sub.subject_name
-    FROM section_subject_activities ss
-    JOIN sections sec ON ss.section_id = sec.id
-    JOIN subjects sub ON ss.subject_id = sub.id
-    WHERE sec.grade_id = ?;
+    SELECT 
+      sub.id AS subject_id, 
+      sub.subject_name,
+      act.id AS activity_id,
+      act.activity_name,
+      ssa.id AS section_subject_activity_id
+    FROM section_subject_activities ssa
+    JOIN sections sec ON ssa.section_id = sec.id
+    JOIN subjects sub ON ssa.subject_id = sub.id
+    JOIN activity_types act ON ssa.activity_id = act.id
+    WHERE sec.grade_id = ?
+    ORDER BY sub.subject_name, act.activity_name;
   `;
   db.query(sql, [gradeID], (err, results) => {
     if (err) {
@@ -242,44 +249,61 @@ exports.getGradeSubject = (req, res) => {
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ success: true, message: "Subject data fetched successfully", gradeSubjects: results });
+    // Group activities by subject
+    const groupedData = {};
+    results.forEach(row => {
+      if (!groupedData[row.subject_id]) {
+        groupedData[row.subject_id] = {
+          subject_id: row.subject_id,
+          subject_name: row.subject_name,
+          activities: []
+        };
+      }
+      groupedData[row.subject_id].activities.push({
+        activity_id: row.activity_id,
+        activity_name: row.activity_name,
+        section_subject_activity_id: row.section_subject_activity_id
+      });
+    });
+
+    const subjectsWithActivities = Object.values(groupedData);
+    res.json({ success: true, message: "Subject data fetched successfully", gradeSubjects: subjectsWithActivities });
   });
 };
 
 exports.getMaterials = async (req, res) => {
-  const { gradeID, subjectID } = req.query;
-  console.log(`[GET] /api/mentor/getMaterials?gradeID=${gradeID}&subjectID=${subjectID}`);
+  const { section_subject_activity_id } = req.query;
+  console.log(`[GET] /api/mentor/getMaterials?section_subject_activity_id=${section_subject_activity_id}`);
 
-  if (!gradeID || !subjectID) {
-    return res.status(400).json({ error: 'Missing gradeID or subjectID' });
+  if (!section_subject_activity_id) {
+    return res.status(400).json({ error: 'Missing section_subject_activity_id' });
   }
 
   const sql = `
     SELECT * FROM materials 
-      WHERE grade_id = ? AND subject_id = ?
+      WHERE section_subject_activity_id = ?
       ORDER BY level
   `;
-  db.query(sql, [gradeID, subjectID], (err, results) => {
+  db.query(sql, [section_subject_activity_id], (err, results) => {
     if (err) {
-      console.error("Error fetching subjects materials data:", err);
+      console.error("Error fetching materials data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ success: true, message: "Subject materials data fetched successfully", materials: results });
+    res.json({ success: true, message: "Materials data fetched successfully", materials: results });
     console.log(results);
-
   });
 };
 exports.updateExpectedDate = (req, res) => {
-  const { level, grade_id, subject_id, expected_date } = req.body;
+  const { level, section_subject_activity_id, expected_date } = req.body;
 
   const sql = `
     UPDATE Materials
     SET expected_date = ?
-    WHERE level = ? AND grade_id = ? AND subject_id = ?
+    WHERE level = ? AND section_subject_activity_id = ?
   `;
 
-  db.query(sql, [expected_date, level, grade_id, subject_id], (err, result) => {
+  db.query(sql, [expected_date, level, section_subject_activity_id], (err, result) => {
     if (err) {
       console.error("Update error:", err);
       return res.status(500).json({ success: false, message: "Database error" });

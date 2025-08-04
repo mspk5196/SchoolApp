@@ -104,8 +104,24 @@ const StudentPageMaterialScreen = () => {
         })
       });
       const data = await response.json();
-      setCompletedLevels(data.completedLevels || []);
-      setMaterialsByLevel(groupMaterials(data.materials || []));
+      
+      if (data.success && data.activities) {
+        // For now, get the first activity's data or combine all activities
+        // You might want to add activity selection UI later
+        const allMaterials = [];
+        const allCompletedLevels = [];
+        
+        data.activities.forEach(activity => {
+          allMaterials.push(...activity.materials);
+          allCompletedLevels.push(...activity.completedLevels);
+        });
+        
+        setCompletedLevels([...new Set(allCompletedLevels)]); // Remove duplicates
+        setMaterialsByLevel(groupMaterials(allMaterials));
+      } else {
+        setCompletedLevels([]);
+        setMaterialsByLevel([]);
+      }
     } catch (error) {
       console.error('Error fetching materials:', error);
     } finally {
@@ -137,10 +153,16 @@ const StudentPageMaterialScreen = () => {
       if (!grouped[item.level]) {
         grouped[item.level] = { level: item.level, pdfs: [], videos: [] };
       }
+      const fileData = { 
+        name: item.file_name, 
+        url: item.file_url, 
+        title: item.title 
+      };
+      
       if (item.material_type === 'PDF') {
-        grouped[item.level].pdfs.push({ name: item.file_name, url: item.file_url });
+        grouped[item.level].pdfs.push(fileData);
       } else if (item.material_type === 'Video') {
-        grouped[item.level].videos.push({ name: item.file_name, url: item.file_url });
+        grouped[item.level].videos.push(fileData);
       }
     });
     // Convert to sorted array by level

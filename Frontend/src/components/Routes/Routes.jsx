@@ -142,6 +142,7 @@ import AdminMessageBox from '../../pages/Admin/Messages/MessageBox/AdminMessageB
 import AdminMessageHome from '../../pages/Admin/Messages/MessageHome/AdminMessageHome';
 import CoordinatorMessageHome from '../../pages/Coordinator/Messages/MessageHome/CoordinatorMessageHome';
 import SubjectActivityPage from '../../pages/Coordinator/Material/SubjectActivity/SubjectActivityPage';
+import MentorSubjectActivityPage from '../../pages/Mentor/Materials/SubjectActivity/MentorSubjectActivityPage';
 
 const Stack = createStackNavigator();
 
@@ -262,6 +263,7 @@ const Routes = () => {
                         <Stack.Screen name="MentorAssessmentRequestRegister" component={MentorAssessmentRequestRegister} />
                         {/* Mentor Materials */}
                         <Stack.Screen name="MentorSubjectPage" component={MentorSubjectPage} />
+                        <Stack.Screen name="MentorSubjectActivityPage" component={MentorSubjectActivityPage} />
                         {/* Mentor Profile */}
                         <Stack.Screen name="MentorLeaveApply" component={MentorLeaveApply} />
                         <Stack.Screen name="MentorLeaveHistory" component={MentorLeaveHistory} />
