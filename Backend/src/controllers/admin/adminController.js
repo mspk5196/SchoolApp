@@ -925,9 +925,12 @@ WHERE (
   ar.start_time,
   ar.end_time,
   ar.status,
+  ar.mentor_id,
   g.grade_name,
   sec.section_name,
   sub.subject_name,
+  u.name,
+  m.roll,
   up.file_path
 ORDER BY ar.date DESC, ar.start_time DESC;
     `);
@@ -1157,7 +1160,7 @@ exports.getAllAdminLogs = async (req, res) => {
       JOIN users u ON m.phone = u.phone
       LEFT JOIN assessment_request_students ars ON ar.id = ars.assessment_request_id
       WHERE ar.status = 'Pending'
-      GROUP BY ar.id
+      GROUP BY ar.id, ar.date, ar.start_time, ar.end_time, ar.levels, s.subject_name, sec.section_name, g.grade_name, u.name, m.roll, u.phone
       ORDER BY ar.created_at DESC
     `);
 

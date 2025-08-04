@@ -3611,9 +3611,12 @@ WHERE sec.grade_id IN (
   ar.start_time,
   ar.end_time,
   ar.status,
+  ar.mentor_id,
   g.grade_name,
   sec.section_name,
   sub.subject_name,
+  u.name,
+  m.roll,
   up.file_path
 ORDER BY ar.date DESC, ar.start_time DESC;
     `;

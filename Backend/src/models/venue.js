@@ -2,10 +2,13 @@ const db = require('../config/db');
 
 class Venue {
   static findAll(filters, callback) {
-    let query = 'SELECT v.*, g.grade_name as grade, s.subject_name as subject FROM venues v ';
+    let query = `SELECT v.*, g.grade_name as grade, 
+                 GROUP_CONCAT(DISTINCT s.subject_name) as subject_names
+                 FROM venues v `;
     query += 'LEFT JOIN grades g ON v.grade_id = g.id ';
-    query += 'LEFT JOIN subjects s ON v.subject_id = s.id ';
-    query += 'WHERE v.is_accepted = 1 ';
+    query += 'LEFT JOIN venue_subjects vs ON v.id = vs.venue_id ';
+    query += 'LEFT JOIN subjects s ON vs.subject_id = s.id ';
+    query += 'WHERE 1=1 ';
 
     const whereClauses = [];
     const params = [];
@@ -28,8 +31,11 @@ class Venue {
     }
 
     if (whereClauses.length > 0) {
-      query += ' WHERE ' + whereClauses.join(' AND ');
+      query += ' AND ' + whereClauses.join(' AND ');
     }
+
+    // Group by venue and order by approval status (approved first, then by name)
+    query += ' GROUP BY v.id ORDER BY v.is_accepted DESC, v.venue_status ASC, v.name';
 
     db.query(query, params, (err, rows) => {
       if (err) return callback(err);
@@ -40,14 +46,14 @@ class Venue {
   static findById(id, callback) {
     const query = `
       SELECT v.*, 
-        GROUP_CONCAT(DISTINCT g.grade_name) as grade_names,
-        GROUP_CONCAT(DISTINCT g.id) as grade_ids,
-        ANY_VALUE(s.subject_name) as subject
+        g.grade_name as grade,
+        GROUP_CONCAT(DISTINCT s.subject_name) as subject_names,
+        GROUP_CONCAT(DISTINCT s.id) as subject_ids
       FROM venues v
-      LEFT JOIN venue_grades vg ON v.id = vg.venue_id
-      LEFT JOIN grades g ON vg.grade_id = g.id
-      LEFT JOIN subjects s ON v.subject_id = s.id
-      WHERE v.id = ? AND v.is_accepted = 1
+      LEFT JOIN grades g ON v.grade_id = g.id
+      LEFT JOIN venue_subjects vs ON v.id = vs.venue_id
+      LEFT JOIN subjects s ON vs.subject_id = s.id
+      WHERE v.id = ?
       GROUP BY v.id`;
 
     db.query(query, [id], (err, results) => {
@@ -55,19 +61,30 @@ class Venue {
       if (results.length === 0) return callback(null, null);
 
       const venue = results[0];
-      if (venue.grade_ids) {
-        venue.grades = venue.grade_ids.split(',').map(id => parseInt(id));
+      if (venue.subject_ids) {
+        venue.subjects = venue.subject_ids.split(',').map(id => parseInt(id));
       } else {
-        venue.grades = [];
+        venue.subjects = [];
       }
       callback(null, venue);
     });
   }
 
   static create(venueData, callback) {
-    // Extract grades array and remove from venueData to prevent SQL error
-    const grades = venueData.grade_ids || [];
-    delete venueData.grade_ids;
+    // Extract subjects array and remove from venueData to prevent SQL error
+    const subjects = venueData.subject_ids || [];
+    delete venueData.subject_ids;
+
+    console.log('Creating venue with data:', venueData);
+    console.log('Subjects to associate:', subjects);
+
+    // Set default venue_status if not provided
+    if (!venueData.venue_status) {
+      venueData.venue_status = 'Requested';
+    }
+    
+    // Set is_accepted to 0 by default (will be approved by admin)
+    venueData.is_accepted = 0;
 
     // Convert to promise-based approach
     new Promise((resolve, reject) => {
@@ -91,16 +108,19 @@ class Venue {
 
             const venueId = result.insertId;
 
-            if (grades.length > 0) {
-              const gradeValues = grades.map(gradeId => [venueId, gradeId]);
-              conn.query('INSERT INTO venue_grades (venue_id, grade_id) VALUES ?', [gradeValues], (err) => {
+            if (subjects.length > 0) {
+              const subjectValues = subjects.map(subjectId => [venueId, subjectId]);
+              console.log('Inserting venue-subject relationships:', subjectValues);
+              conn.query('INSERT INTO venue_subjects (venue_id, subject_id) VALUES ?', [subjectValues], (err) => {
                 if (err) {
+                  console.error('Error inserting venue-subject relationships:', err);
                   return conn.rollback(() => {
                     conn.release();
                     reject(err);
                   });
                 }
 
+                console.log('Successfully inserted venue-subject relationships');
                 conn.commit(err => {
                   conn.release();
                   if (err) return reject(err);
@@ -108,6 +128,7 @@ class Venue {
                 });
               });
             } else {
+              console.log('No subjects to associate, committing venue creation');
               conn.commit(err => {
                 conn.release();
                 if (err) return reject(err);
@@ -127,8 +148,8 @@ class Venue {
   }
 
   static update(id, venueData, callback) {
-    const grades = venueData.grades || [];
-    delete venueData.grades;
+    const subjects = venueData.subjects || [];
+    delete venueData.subjects;
 
     // Use the promise-based transaction
     db.promise().beginTransaction()
@@ -136,13 +157,13 @@ class Venue {
         // Update venue
         return transaction.query('UPDATE venues SET ? WHERE id = ?', [venueData, id])
           .then(() => {
-            // Delete existing grade associations
-            return transaction.query('DELETE FROM venue_grades WHERE venue_id = ?', [id]);
+            // Delete existing subject associations
+            return transaction.query('DELETE FROM venue_subjects WHERE venue_id = ?', [id]);
           })
           .then(() => {
-            if (grades.length > 0) {
-              const gradeValues = grades.map(gradeId => [id, gradeId]);
-              return transaction.query('INSERT INTO venue_grades (venue_id, grade_id) VALUES ?', [gradeValues]);
+            if (subjects.length > 0) {
+              const subjectValues = subjects.map(subjectId => [id, subjectId]);
+              return transaction.query('INSERT INTO venue_subjects (venue_id, subject_id) VALUES ?', [subjectValues]);
             }
           })
           .then(() => {
@@ -162,14 +183,21 @@ class Venue {
     db.beginTransaction(err => {
       if (err) return callback(err);
 
-      db.query('DELETE FROM venue_grades WHERE venue_id = ?', [id], err => {
+      // Delete venue_subjects associations
+      db.query('DELETE FROM venue_subjects WHERE venue_id = ?', [id], err => {
         if (err) return db.rollback(() => callback(err));
 
-        db.query('DELETE FROM venues WHERE id = ?', [id], err => {
+        // Delete venue_grades associations (if any exist)
+        db.query('DELETE FROM venue_grades WHERE venue_id = ?', [id], err => {
           if (err) return db.rollback(() => callback(err));
-          db.commit(err => {
+
+          // Delete the venue
+          db.query('DELETE FROM venues WHERE id = ?', [id], err => {
             if (err) return db.rollback(() => callback(err));
-            callback(null, true);
+            db.commit(err => {
+              if (err) return db.rollback(() => callback(err));
+              callback(null, true);
+            });
           });
         });
       });
@@ -188,8 +216,8 @@ class Venue {
       SELECT DISTINCT v.*
       FROM venues v
       LEFT JOIN venue_grades vg ON v.id = vg.venue_id
-      WHERE vg.grade_id = ? OR v.grade_id = ? OR (vg.grade_id IS NULL AND v.grade_id IS NULL) AND v.is_accepted = 1
-      ORDER BY v.name`;
+      WHERE (vg.grade_id = ? OR v.grade_id = ? OR (vg.grade_id IS NULL AND v.grade_id IS NULL))
+      ORDER BY v.is_accepted DESC, v.venue_status ASC, v.name`;
 
     db.query(query, [gradeId, gradeId], (err, results) => {
       if (err) return callback(err);
@@ -201,7 +229,8 @@ class Venue {
     const query = `
       SELECT v.* 
       FROM venues v
-      WHERE v.status = 'Active' AND v.is_accepted = 1`;
+      WHERE v.status = 'Active'
+      ORDER BY v.is_accepted DESC, v.venue_status ASC, v.name`;
 
     db.query(query, (err, results) => {
       if (err) return callback(err);
@@ -240,6 +269,38 @@ class Venue {
 
       db.query(updateQuery, [activeVenueIds], callback);
     });
+  }
+
+  // Admin approval methods
+  static approveVenue(id, callback) {
+    const query = 'UPDATE venues SET is_accepted = 1, venue_status = "Approved" WHERE id = ?';
+    db.query(query, [id], (err) => {
+      if (err) return callback(err);
+      Venue.findById(id, callback);
+    });
+  }
+
+  static rejectVenue(id, callback) {
+    const query = 'UPDATE venues SET is_accepted = 0, venue_status = "Rejected" WHERE id = ?';
+    db.query(query, [id], (err) => {
+      if (err) return callback(err);
+      Venue.findById(id, callback);
+    });
+  }
+
+  static getPendingVenues(callback) {
+    const query = `
+      SELECT v.*, g.grade_name as grade,
+             GROUP_CONCAT(DISTINCT s.subject_name) as subject_names
+      FROM venues v
+      LEFT JOIN grades g ON v.grade_id = g.id
+      LEFT JOIN venue_subjects vs ON v.id = vs.venue_id
+      LEFT JOIN subjects s ON vs.subject_id = s.id
+      WHERE v.venue_status = 'Requested'
+      GROUP BY v.id
+      ORDER BY v.created_at ASC`;
+    
+    db.query(query, callback);
   }
 }
 

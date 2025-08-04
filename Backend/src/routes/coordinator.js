@@ -131,6 +131,10 @@ router.put('/coordinator/enrollment/updateVenueStatus/:id', infraEnrollment.upda
 router.get('/coordinator/enrollment/getGrades', infraEnrollment.getGrades);
 router.get('/coordinator/enrollment/getSubjects', infraEnrollment.getSubjects);
 router.get('/coordinator/enrollment/getBlocks', infraEnrollment.getBlocks);
+// Admin approval routes
+router.put('/coordinator/enrollment/approveVenue/:id', infraEnrollment.approveVenue);
+router.put('/coordinator/enrollment/rejectVenue/:id', infraEnrollment.rejectVenue);
+router.get('/coordinator/enrollment/getPendingVenues', infraEnrollment.getPendingVenues);
 
 
 //StudentEnrollment

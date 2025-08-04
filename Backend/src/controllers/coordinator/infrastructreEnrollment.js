@@ -28,10 +28,10 @@ exports.getVenuesByGrade = (req, res) => {
   const { gradeId } = req.query;
 
   const sql = `
-    SELECT id, name, block, floor, capacity, type
+    SELECT id, name, block, floor, capacity, type, venue_status, is_accepted
     FROM venues
-    WHERE (grade_id = ? OR grade_id IS NULL) AND is_accepted = 1
-    ORDER BY name`;
+    WHERE (grade_id = ? OR grade_id IS NULL)
+    ORDER BY is_accepted DESC, venue_status ASC, name`;
 
   db.query(sql, [gradeId], (err, results) => {
     if (err) {
@@ -47,6 +47,7 @@ exports.getVenuesByGrade = (req, res) => {
 exports.createVenue = async (req, res) => {
   try {
     const venueData = req.body;
+    console.log('Received venue data:', JSON.stringify(venueData, null, 2));
     
     // Prepare the venue data for database insertion
     const preparedData = {
@@ -54,15 +55,18 @@ exports.createVenue = async (req, res) => {
       block: venueData.block,
       floor: parseInt(venueData.floor, 10),
       capacity: parseInt(venueData.capacity, 10),
-      subject_id: venueData.subject_id || null,
+      grade_id: venueData.grade_id || null, // Single grade
       type: venueData.type,
       status: venueData.status || 'InActive',
-      created_by: venueData.created_by || '9876543201', // Default to 'admin' if not provided
+      created_by: venueData.created_by || '9876543201',
     };
     
-    // Add the grades array separately to be handled in the model
-    if (venueData.grade_ids && venueData.grade_ids.length) {
-      preparedData.grade_ids = venueData.grade_ids;
+    // Add the subjects array separately to be handled in the model
+    if (venueData.subject_ids && venueData.subject_ids.length) {
+      preparedData.subject_ids = venueData.subject_ids;
+      console.log('Subject IDs to be saved:', venueData.subject_ids);
+    } else {
+      console.log('No subject_ids found in request data');
     }
 
     Venue.create(preparedData, (err, venue) => {
@@ -186,5 +190,46 @@ exports.getBlocks = (req, res) => {
     }
 
     res.json({ success: true, message: "Blocks fetched successfully", blocks: results });
+  });
+};
+
+// Admin approval endpoints
+exports.approveVenue = (req, res) => {
+  const { id } = req.params;
+  
+  Venue.approveVenue(id, (err, venue) => {
+    if (err) {
+      console.error('Error approving venue:', err);
+      return res.status(500).json({ success: false, message: 'Failed to approve venue' });
+    }
+    if (!venue) {
+      return res.status(404).json({ success: false, message: 'Venue not found' });
+    }
+    res.json({ success: true, message: 'Venue approved successfully', venue });
+  });
+};
+
+exports.rejectVenue = (req, res) => {
+  const { id } = req.params;
+  
+  Venue.rejectVenue(id, (err, venue) => {
+    if (err) {
+      console.error('Error rejecting venue:', err);
+      return res.status(500).json({ success: false, message: 'Failed to reject venue' });
+    }
+    if (!venue) {
+      return res.status(404).json({ success: false, message: 'Venue not found' });
+    }
+    res.json({ success: true, message: 'Venue rejected successfully', venue });
+  });
+};
+
+exports.getPendingVenues = (req, res) => {
+  Venue.getPendingVenues((err, venues) => {
+    if (err) {
+      console.error('Error fetching pending venues:', err);
+      return res.status(500).json({ success: false, message: 'Failed to fetch pending venues' });
+    }
+    res.json({ success: true, venues });
   });
 };
