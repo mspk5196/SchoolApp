@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, Pressable, ScrollView, Alert, ActivityIndicator, SafeAreaView } from 'react-native';
-import styles from './StudentSubjectActivityStyle';
+import { Text, View, Pressable, ScrollView, Alert, ActivityIndicator, SafeAreaView, TouchableOpacity } from 'react-native';
+import styles from './StudentSubjectActivityStyle.jsx';
 import { API_URL } from "../../../utils/env.js";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import BackIcon from '../../../assets/ParentPage/basic-img/Backicon.svg'
 
 const StudentSubjectActivityPage = ({ navigation, route }) => {
   const { subject, subjectID } = route.params || {};
@@ -83,35 +84,63 @@ const StudentSubjectActivityPage = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerContainer}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <BackIcon />
+        </TouchableOpacity>
         <Text style={styles.headerText}>{subject} Activities</Text>
+        {/* <View style={styles.backButton} /> */}
       </View>
 
       <ScrollView 
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.scrollContainer}
+        style={styles.mainScrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        {activities.map((activity, index) => (
-          <Pressable
-            key={activity.activity_id}
-            style={[
-              styles.activityCard,
-              { backgroundColor: (index % 2) ? '#C9F7F5' : '#65558F12' }
-            ]}
-            onPress={() => handleActivityPress(activity)}
-          >
-            <Text style={[
-              styles.activityText,
-              { color: (index % 2) ? '#0FBEB3' : '#65558F' }
-            ]}>
-              {activity.activity_name}
-            </Text>
-            <Text style={styles.materialCount}>
-              {activity.materials.length} materials
-            </Text>
-          </Pressable>
-        ))}
+        <View style={styles.activitiesGrid}>
+          {activities.map((activity, index) => {
+            const cardColors = [
+              { bg: '#FF6B6B', text: '#FFFFFF' },
+              { bg: '#4ECDC4', text: '#FFFFFF' },
+              { bg: '#45B7D1', text: '#FFFFFF' },
+              { bg: '#96CEB4', text: '#FFFFFF' },
+              { bg: '#FFEAA7', text: '#2D3436' },
+              { bg: '#DDA0DD', text: '#FFFFFF' },
+              { bg: '#98D8C8', text: '#2D3436' },
+              { bg: '#F7DC6F', text: '#2D3436' },
+            ];
+            
+            const colorScheme = cardColors[index % cardColors.length];
+            
+            return (
+              <Pressable
+                key={activity.activity_id}
+                style={[
+                  styles.activityCard,
+                  { backgroundColor: colorScheme.bg }
+                ]}
+                onPress={() => handleActivityPress(activity)}
+              >
+                <View style={styles.activityIcon}>
+                  <Text style={[styles.activityIconText, { color: colorScheme.text }]}>
+                    {activity.activity_name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={[
+                  styles.activityText,
+                  { color: colorScheme.text }
+                ]}>
+                  {activity.activity_name}
+                </Text>
+                <Text style={[styles.materialCount, { color: '#2D3436' }]}>
+                  {activity.materials.length} materials
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

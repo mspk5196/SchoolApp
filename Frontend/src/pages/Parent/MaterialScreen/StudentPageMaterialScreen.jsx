@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import styles from './MaterialScreenStyles';
+import styles from './MaterialScreenStyles.jsx';
 import PDFicon from '../../../assets/ParentPage/Materials-img/pdf.svg';
 import VideoIcon from '../../../assets/ParentPage/Materials-img/video-icon.svg'
 import Download from '../../../assets/ParentPage/Materials-img/download.svg'
@@ -20,10 +20,12 @@ import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
 import Nodata from '../../../components/General/Nodata';
 import mime from 'react-native-mime-types';
+import BackIcon from '../../../assets/ParentPage/basic-img/Backicon.svg';
+import HomeIcon from '../../../assets/ParentPage/NavImg/home.svg';
 
-const StudentPageMaterialScreen = ({ route }) => {
+const StudentPageMaterialScreen = ({ route, navigation }) => {
   const { subject, subjectID, activity, activityID, section_subject_activity_id, activityData } = route.params || {};
-  
+
   const [selectedTabs, setSelectedTabs] = useState({});
   const [completedLevels, setCompletedLevels] = useState([]);
   const [currentActiveLevel, setCurrentActiveLevel] = useState(1);
@@ -37,7 +39,7 @@ const StudentPageMaterialScreen = ({ route }) => {
       // Use the passed activity data
       setCompletedLevels(activityData.completedLevels || []);
       setMaterialsByLevel(groupMaterials(activityData.materials || []));
-      
+
       // Set current active level to the next incomplete level
       const nextIncompleteLevel = findNextIncompleteLevel(activityData.completedLevels || [], activityData.materials || []);
       setCurrentActiveLevel(nextIncompleteLevel);
@@ -66,12 +68,12 @@ const StudentPageMaterialScreen = ({ route }) => {
       if (!grouped[item.level]) {
         grouped[item.level] = { level: item.level, pdfs: [], videos: [] };
       }
-      const fileData = { 
-        name: item.file_name, 
-        url: item.file_url, 
-        title: item.title 
+      const fileData = {
+        name: item.file_name,
+        url: item.file_url,
+        title: item.title
       };
-      
+
       if (item.material_type === 'PDF') {
         grouped[item.level].pdfs.push(fileData);
       } else if (item.material_type === 'Video') {
@@ -140,7 +142,10 @@ const StudentPageMaterialScreen = ({ route }) => {
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', flex: 1 }}>
           <Text style={styles.pdfName}>{(item.name).replace(/%/g, ' ')}</Text>
-          <TouchableOpacity onPress={() => openFileLikeWhatsApp(`${API_URL}/${item.url}`, item.name)}>
+          <TouchableOpacity
+            style={styles.downloadButton}
+            onPress={() => openFileLikeWhatsApp(`${API_URL}/${item.url}`, item.name)}
+          >
             <Download />
           </TouchableOpacity>
         </View>
@@ -155,7 +160,10 @@ const StudentPageMaterialScreen = ({ route }) => {
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', flex: 1 }}>
           <Text style={styles.pdfName}>{(item.name).replace(/%/g, ' ')}</Text>
-          <TouchableOpacity onPress={() => openFileLikeWhatsApp(`${API_URL}/${item.url}`, item.name)}>
+          <TouchableOpacity
+            style={styles.downloadButton}
+            onPress={() => openFileLikeWhatsApp(`${API_URL}/${item.url}`, item.name)}
+          >
             <Download />
           </TouchableOpacity>
         </View>
@@ -257,10 +265,23 @@ const StudentPageMaterialScreen = ({ route }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerContainer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <BackIcon />
+        </TouchableOpacity>
         <Text style={styles.headerText}>{subject} - {activity}</Text>
+        {/* <View style={styles.backButton} /> */}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('ParentRoute')}
+        >
+          <HomeIcon />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.mainScrollView}
         refreshControl={
           <RefreshControl
@@ -297,10 +318,10 @@ const StudentPageMaterialScreen = ({ route }) => {
             alignItems: 'center'
           }}>
             <ActivityIndicator size="large" color="#007bff" style={{ marginBottom: 10 }} />
-            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 5, color:'black' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 5, color: 'black' }}>
               Downloading...
             </Text>
-            <Text style={{ fontSize: 16, color:'black' }}>
+            <Text style={{ fontSize: 16, color: 'black' }}>
               {downloadProgress}%
             </Text>
           </View>

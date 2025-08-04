@@ -1000,6 +1000,195 @@ exports.getStudentScheduleByMonth = (req, res) => {
   });
 };
 
+// Enhanced detailed student schedule with comprehensive academic information
+exports.getDetailedStudentSchedule = async (req, res) => {
+  const { 
+    sectionId, 
+    studentId, 
+    gradeId, 
+    month, 
+    year, 
+    day,
+    includeDetails = true,
+    includeTeacherInfo = true,
+    includeClassroomInfo = true,
+    includeSubjectDetails = true
+  } = req.body;
+
+  if (!sectionId || !month || !year) {
+    return res.status(400).json({ success: false, message: 'Missing required parameters' });
+  }
+
+  try {
+    // Build date filter
+    let dateFilter = '';
+    let queryParams = [sectionId];
+    
+    if (day) {
+      // Specific day
+      const specificDate = moment(`${year}-${month}-${day}`).format('YYYY-MM-DD');
+      dateFilter = 'AND ds.date = ?';
+      queryParams.push(specificDate);
+    } else {
+      // Entire month
+      const startDate = moment(`${year}-${month}-01`).startOf('month').format('YYYY-MM-DD');
+      const endDate = moment(startDate).endOf('month').format('YYYY-MM-DD');
+      dateFilter = 'AND ds.date BETWEEN ? AND ?';
+      queryParams.push(startDate, endDate);
+    }
+
+    // Enhanced query with comprehensive details
+    const query = `
+      SELECT 
+        ds.id,
+        ds.date,
+        ds.session_no as period_number,
+        ds.start_time,
+        ds.end_time,
+        CONCAT(DATE_FORMAT(ds.start_time, '%h:%i %p'), ' - ', DATE_FORMAT(ds.end_time, '%h:%i %p')) as formatted_time,
+        TIMESTAMPDIFF(MINUTE, ds.start_time, ds.end_time) as duration_minutes,
+        
+        -- Subject information
+        sub.id as subject_id,
+        sub.subject_name,
+        sub.subject_code,
+        sub.description as subject_description,
+        
+        -- Teacher information  
+        u.name AS teacher_name,
+        u.email as teacher_email,
+        m.phone as teacher_phone,
+        up.file_path as teacher_profile_path,
+        
+        -- Activity information
+        act.activity_type,
+        act.id as activity_id,
+        
+        -- Section information
+        sec.section_name,
+        sec.grade_id,
+        g.grade_name,
+        
+        -- Classroom information (if available)
+        '' as classroom_name,
+        '' as room_number,
+        '' as building_name,
+        '' as floor_number,
+        
+        -- Status and additional info
+        'scheduled' as class_status,
+        '' as class_notes,
+        
+        -- Curriculum information (if available)
+        '' as current_chapter,
+        '' as current_topic,
+        JSON_ARRAY() as learning_objectives,
+        
+        -- Assessment information
+        CASE WHEN act.activity_type = 'Assessment' THEN 1 ELSE 0 END as has_assessment,
+        CASE WHEN act.activity_type = 'Assessment' THEN ds.date ELSE NULL END as assessment_date,
+        
+        -- Homework information (to be checked separately)
+        0 as has_assignment,
+        NULL as assignment_due_date,
+        0 as has_quiz,
+        NULL as quiz_date,
+        
+        -- Attendance requirement
+        1 as attendance_required,
+        
+        -- Color coding
+        CASE 
+          WHEN act.activity_type = 'Academic' THEN '#E8F5E9'
+          WHEN act.activity_type = 'Assessment' THEN '#FFEBEE'
+          ELSE '#FFF3E0'
+        END as background_color
+
+      FROM daily_schedule ds
+      LEFT JOIN subjects sub ON ds.subject_id = sub.id
+      LEFT JOIN mentors m ON ds.mentors_id = m.id
+      LEFT JOIN Users u ON m.phone = u.phone
+      LEFT JOIN Activity_Types act ON ds.activity = act.id
+      LEFT JOIN User_photos up ON m.phone = up.phone
+      LEFT JOIN Sections sec ON ds.section_id = sec.id
+      LEFT JOIN Grades g ON sec.grade_id = g.id
+      WHERE ds.section_id = ? ${dateFilter}
+      ORDER BY ds.date, ds.session_no
+    `;
+
+    const [results] = await db.promise().query(query, queryParams);
+
+    // If requesting specific day, return as array
+    if (day) {
+      // Enhance results with additional details if requested
+      const enhancedResults = await Promise.all(results.map(async (item) => {
+        const enhanced = { ...item };
+
+        // Check for homework if includeDetails is true
+        if (includeDetails && studentId && item.subject_id) {
+          try {
+            const [homeworkCheck] = await db.promise().query(
+              `SELECT h.id, h.date as due_date
+               FROM homework h
+               JOIN student_homework sh ON h.id = sh.homework_id
+               WHERE h.subject_id = ? AND h.date >= ? AND sh.student_roll = (
+                 SELECT roll FROM students WHERE id = ?
+               ) AND sh.status != 'Done'
+               LIMIT 1`,
+              [item.subject_id, item.date, studentId]
+            );
+            
+            if (homeworkCheck.length > 0) {
+              enhanced.has_assignment = true;
+              enhanced.assignment_due_date = homeworkCheck[0].due_date;
+            }
+          } catch (err) {
+            console.log('Error checking homework:', err);
+          }
+        }
+
+        // Check for current chapter/topic if student is provided
+        if (includeSubjectDetails && studentId && item.subject_id) {
+          try {
+            const [chapterInfo] = await db.promise().query(
+              `SELECT chapter_name, topic_name
+               FROM student_progress 
+               WHERE student_id = ? AND subject_id = ?
+               ORDER BY updated_at DESC LIMIT 1`,
+              [studentId, item.subject_id]
+            );
+            
+            if (chapterInfo.length > 0) {
+              enhanced.current_chapter = chapterInfo[0].chapter_name;
+              enhanced.current_topic = chapterInfo[0].topic_name;
+            }
+          } catch (err) {
+            console.log('Error checking chapter info:', err);
+          }
+        }
+
+        return enhanced;
+      }));
+
+      return res.json({ success: true, schedule: enhancedResults });
+    }
+
+    // For month view, group by day
+    const scheduleByDay = {};
+    results.forEach(item => {
+      const day = moment(item.date).date();
+      if (!scheduleByDay[day]) scheduleByDay[day] = [];
+      scheduleByDay[day].push(item);
+    });
+
+    res.json({ success: true, scheduleByDay });
+
+  } catch (err) {
+    console.error('Error fetching detailed schedule:', err);
+    res.status(500).json({ success: false, message: 'Database error' });
+  }
+};
+
 // Get student performance details for a specific date and subject
 exports.getAssessmentDetails = async (req, res) => {
   const { sectionId, subject, date, studentRoll, studentId } = req.body;
@@ -1176,34 +1365,45 @@ exports.getAcademicDetails = async (req, res) => {
     // Fetch materials for this level, subject, and section
     let materials = [];
     if (level1) {
-      // Method 1: Using JSON_TABLE (MySQL 8.0+)
-      // console.log("Fetching materials for subject:", subjectRow.id, "gradeId:", gradeId, "level:", level1);
-
-      const [materialRows] = await db.promise().query(
-        `SELECT m.file_name, m.file_url
-   FROM materials m
-   WHERE m.subject_id = ? 
-     AND m.grade_id = ? 
-     AND m.level = ?
-     AND material_type = 'PDF'`,
-        [subjectRow.id, gradeId, level1]
+      // First, get the section_subject_activity_id for academic activities
+      const [sectionSubjectActivityRows] = await db.promise().query(
+        `SELECT ssa.id as section_subject_activity_id
+         FROM section_subject_activities ssa
+         JOIN activity_types act ON ssa.activity_type = act.id
+         WHERE ssa.section_id = ? AND ssa.subject_id = ? AND act.activity_type = 'Academic'
+         LIMIT 1`,
+        [sectionId, subjectRow.id]
       );
 
-      // console.log("Material Rows:", materialRows);
-
-      // Fallback method if JSON_TABLE fails
-      if (!materialRows || materialRows.length === 0) {
-        const [fallbackRows] = await db.promise().query(
-          `SELECT m.file_name, m.file_url
-   FROM materials m
-   WHERE m.subject_id = ? 
-     AND m.level = ?`,
-          [subjectRow.id, level1]
+      if (sectionSubjectActivityRows.length > 0) {
+        const sectionSubjectActivityId = sectionSubjectActivityRows[0].section_subject_activity_id;
+        
+        // Fetch materials using the proper mapping
+        const [materialRows] = await db.promise().query(
+          `SELECT m.file_name, m.file_url, m.title
+           FROM materials m
+           WHERE m.section_subject_activity_id = ? 
+             AND m.level = ?
+             AND m.material_type = 'PDF'
+           ORDER BY m.title ASC`,
+          [sectionSubjectActivityId, level1]
         );
 
-        materials = fallbackRows;
-      } else {
         materials = materialRows;
+
+        // Fallback: if no materials found with activity mapping, try the old method
+        if (!materials || materials.length === 0) {
+          const [fallbackRows] = await db.promise().query(
+            `SELECT m.file_name, m.file_url, m.title
+             FROM materials m
+             WHERE m.subject_id = ? 
+               AND m.grade_id = ? 
+               AND m.level = ?
+               AND m.material_type = 'PDF'`,
+            [subjectRow.id, gradeId, level1]
+          );
+          materials = fallbackRows;
+        }
       }
     }
 

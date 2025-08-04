@@ -83,18 +83,36 @@ const StudentSubjectSelectionPage = ({ navigation }) => {
   };
 
   const renderSubjectCard = (subject, index) => {
+    const cardColors = [
+      { bg: '#FF6B6B', text: '#FFFFFF' },
+      { bg: '#4ECDC4', text: '#FFFFFF' },
+      { bg: '#45B7D1', text: '#FFFFFF' },
+      { bg: '#96CEB4', text: '#FFFFFF' },
+      { bg: '#FFEAA7', text: '#2D3436' },
+      { bg: '#DDA0DD', text: '#FFFFFF' },
+      { bg: '#98D8C8', text: '#2D3436' },
+      { bg: '#F7DC6F', text: '#2D3436' },
+    ];
+    
+    const colorScheme = cardColors[index % cardColors.length];
+    
     return (
       <TouchableOpacity
         key={subject.subject_id}
         style={[
           styles.subjectCard,
-          { backgroundColor: (index % 2) ? '#C9F7F5' : '#65558F12' }
+          { backgroundColor: colorScheme.bg }
         ]}
         onPress={() => handleSubjectPress(subject)}
       >
+        <View style={styles.subjectIcon}>
+          <Text style={[styles.subjectIconText, { color: colorScheme.text }]}>
+            {subject.subject_name.charAt(0).toUpperCase()}
+          </Text>
+        </View>
         <Text style={[
           styles.subjectText,
-          { color: (index % 2) ? '#0FBEB3' : '#65558F' }
+          { color: colorScheme.text }
         ]}>
           {subject.subject_name}
         </Text>
