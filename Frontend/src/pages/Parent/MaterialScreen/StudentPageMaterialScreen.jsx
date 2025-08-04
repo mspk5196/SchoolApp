@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import styles from './MaterialScreenStyles';
 import PDFicon from '../../../assets/ParentPage/Materials-img/pdf.svg';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import VideoIcon from '../../../assets/ParentPage/Materials-img/video-icon.svg'
 import Download from '../../../assets/ParentPage/Materials-img/download.svg'
 import { API_URL } from '../../../utils/env.js';
@@ -22,128 +21,42 @@ import FileViewer from 'react-native-file-viewer';
 import Nodata from '../../../components/General/Nodata';
 import mime from 'react-native-mime-types';
 
-const StudentPageMaterialScreen = () => {
-  const [selectedLanguage, setSelectedLanguage] = useState('Tamil');
+const StudentPageMaterialScreen = ({ route }) => {
+  const { subject, subjectID, activity, activityID, section_subject_activity_id, activityData } = route.params || {};
+  
   const [selectedTabs, setSelectedTabs] = useState({});
-  const [completedLevels, setCompletedLevels] = useState([1, 2]);
-  const [currentActiveLevel, setCurrentActiveLevel] = useState(3);
-
-  const [sectionSubjects, setSectionSubjects] = useState([]);
-  const [studentData, setStudentData] = useState([]);
+  const [completedLevels, setCompletedLevels] = useState([]);
+  const [currentActiveLevel, setCurrentActiveLevel] = useState(1);
+  const [materialsByLevel, setMaterialsByLevel] = useState([]);
+  const [downloadProgress, setDownloadProgress] = useState(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [materialsByLevel, setMaterialsByLevel] = useState({});
-  const [downloadProgress, setDownloadProgress] = useState(null);
-
-  const fetchStudentData = async () => {
-    try {
-      const storedData = await AsyncStorage.getItem('studentData');
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        setStudentData(parsedData[0]);
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
-  }
 
   useEffect(() => {
-    fetchStudentData();
-  }, []);
-
-  const fetchSubjects = async (isRefreshing = false) => {
-    try {
-      if (isRefreshing) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+    if (activityData) {
+      // Use the passed activity data
+      setCompletedLevels(activityData.completedLevels || []);
+      setMaterialsByLevel(groupMaterials(activityData.materials || []));
       
-      const response = await fetch(`${API_URL}/api/student/getSectionSubjects`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ sectionId: studentData.section_id }),
-      });
-      const data = await response.json();
-      setSectionSubjects(data.subjects);
-      if (data.subjects.length > 0) {
-        setSelectedLanguage(data.subjects[0].subject_id);
-      }
-      // console.log('Fetched subjects:', data.subjects);
-
-    } catch (error) {
-      console.error('Error fetching subjects:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      // Set current active level to the next incomplete level
+      const nextIncompleteLevel = findNextIncompleteLevel(activityData.completedLevels || [], activityData.materials || []);
+      setCurrentActiveLevel(nextIncompleteLevel);
     }
+  }, [activityData]);
+
+  const findNextIncompleteLevel = (completed, materials) => {
+    const allLevels = [...new Set(materials.map(m => m.level))].sort((a, b) => a - b);
+    const nextIncomplete = allLevels.find(level => !completed.includes(level));
+    return nextIncomplete || (allLevels.length > 0 ? allLevels[allLevels.length - 1] : 1);
   };
-
-  useEffect(() => {
-    if (studentData.section_id) {
-      fetchSubjects();
-    }
-  }, [studentData.section_id]);
-
-
-  const fetchMaterialsAndLevels = async (isRefreshing = false) => {
-    try {
-      if (!isRefreshing) {
-        setLoading(true);
-      }
-      
-      const response = await fetch(`${API_URL}/api/student/getMaterialsAndCompletedLevels`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          section_id: studentData.section_id,
-          subject_id: selectedLanguage,
-          student_roll: studentData.roll
-        })
-      });
-      const data = await response.json();
-      
-      if (data.success && data.activities) {
-        // For now, get the first activity's data or combine all activities
-        // You might want to add activity selection UI later
-        const allMaterials = [];
-        const allCompletedLevels = [];
-        
-        data.activities.forEach(activity => {
-          allMaterials.push(...activity.materials);
-          allCompletedLevels.push(...activity.completedLevels);
-        });
-        
-        setCompletedLevels([...new Set(allCompletedLevels)]); // Remove duplicates
-        setMaterialsByLevel(groupMaterials(allMaterials));
-      } else {
-        setCompletedLevels([]);
-        setMaterialsByLevel([]);
-      }
-    } catch (error) {
-      console.error('Error fetching materials:', error);
-    } finally {
-      if (!isRefreshing) {
-        setLoading(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (selectedLanguage && studentData.section_id) {
-      fetchMaterialsAndLevels();
-    }
-  }, [selectedLanguage, studentData.section_id]);
 
   const onRefresh = async () => {
-    if (studentData.section_id) {
-      await fetchSubjects(true);
-      if (selectedLanguage) {
-        await fetchMaterialsAndLevels(true);
-      }
-    }
+    // For now, just refresh the current activity data
+    // In a full implementation, you might want to refetch from the server
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
   };
 
   // Group materials by level and type
@@ -344,33 +257,8 @@ const StudentPageMaterialScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerContainer}>
-        <Text style={styles.headerText}>Materials</Text>
+        <Text style={styles.headerText}>{subject} - {activity}</Text>
       </View>
-
-      <ScrollView
-        style={styles.languageScrollContainer}
-        horizontal
-        showsHorizontalScrollIndicator={false}>
-        {sectionSubjects.map(language => (
-          <TouchableOpacity
-            key={language.subject_id}
-            style={[
-              styles.languageButton,
-              selectedLanguage === language.subject_id ? styles.selectedLanguage : null,
-            ]}
-            onPress={() => setSelectedLanguage(language.subject_id)}>
-            <Text
-              style={[
-                styles.languageText,
-                selectedLanguage === language.subject_id
-                  ? styles.selectedLanguageText
-                  : null,
-              ]}>
-              {language.subject_name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
       <ScrollView 
         style={styles.mainScrollView}

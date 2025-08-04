@@ -12,6 +12,7 @@ import ScheduleScreen from '../../pages/Parent/ScheduleScreen/StudentScheduleScr
 import SidebarOverlay from '../Parent/Sidebar/SidebarOverlay';
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import StudentSubjectSelectionPage from '../../pages/Parent/MaterialScreen/StudentSubjectSelectionPage';
  
 
 const ParentRoute = () => {
@@ -64,7 +65,7 @@ const ParentRoute = () => {
             >
                 <Tab.Screen name="Home" component={ParentDashboard} />
                 <Tab.Screen name="Schedule" component={ScheduleScreen} />
-                <Tab.Screen name="Materials" component={MaterialScreen} />
+                <Tab.Screen name="Materials" component={StudentSubjectSelectionPage} />
                 <Tab.Screen
                     name="MoreTab"
                     component={ParentDashboard}
