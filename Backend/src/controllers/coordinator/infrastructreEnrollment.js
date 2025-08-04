@@ -105,23 +105,41 @@ exports.updateVenue = (req, res) => {
 };
 
 exports.deleteVenue = (req, res) => {
-  Venue.findById(req.params.id, (err, venue) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Server error' });
-    }
-    if (!venue) {
-      return res.status(404).json({ message: 'Venue not found' });
+  try {
+    const venueId = req.params.id;
+    
+    if (!venueId) {
+      return res.status(400).json({ success: false, message: 'Venue ID is required' });
     }
 
-    Venue.delete(req.params.id, (err) => {
+    Venue.findById(venueId, (err, venue) => {
       if (err) {
-        console.error(err);
-        return res.status(500).json({ message: 'Server error' });
+        console.error('Error finding venue for deletion:', err);
+        return res.status(500).json({ success: false, message: 'Server error while finding venue' });
       }
-      res.json({ message: 'Venue deleted successfully' });
+      
+      if (!venue) {
+        return res.status(404).json({ success: false, message: 'Venue not found' });
+      }
+
+      Venue.delete(venueId, (err, result) => {
+        if (err) {
+          console.error('Error deleting venue:', err);
+          return res.status(500).json({ success: false, message: 'Server error while deleting venue' });
+        }
+        
+        console.log('Venue deleted successfully:', venueId);
+        res.status(200).json({ 
+          success: true, 
+          message: 'Venue deleted successfully',
+          deletedVenueId: venueId
+        });
+      });
     });
-  });
+  } catch (error) {
+    console.error('Unexpected error in deleteVenue:', error);
+    res.status(500).json({ success: false, message: 'Unexpected server error' });
+  }
 };
 
 exports.updateVenueStatus = (req, res) => {

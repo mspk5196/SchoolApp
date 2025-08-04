@@ -174,21 +174,37 @@ class Venue {
 
   static delete(id, callback) {
     db.beginTransaction(err => {
-      if (err) return callback(err);
+      if (err) {
+        console.error('Error starting transaction for venue deletion:', err);
+        return callback(err);
+      }
 
       // Delete venue_subjects associations
       db.query('DELETE FROM venue_subjects WHERE venue_id = ?', [id], err => {
-        if (err) return db.rollback(() => callback(err));
+        if (err) {
+          console.error('Error deleting venue_subjects:', err);
+          return db.rollback(() => callback(err));
+        }
 
         // Delete venue_grades associations (if any exist)
         db.query('DELETE FROM venue_grades WHERE venue_id = ?', [id], err => {
-          if (err) return db.rollback(() => callback(err));
+          if (err) {
+            console.error('Error deleting venue_grades:', err);
+            return db.rollback(() => callback(err));
+          }
 
           // Delete the venue
           db.query('DELETE FROM venues WHERE id = ?', [id], err => {
-            if (err) return db.rollback(() => callback(err));
+            if (err) {
+              console.error('Error deleting venue:', err);
+              return db.rollback(() => callback(err));
+            }
+            
             db.commit(err => {
-              if (err) return db.rollback(() => callback(err));
+              if (err) {
+                console.error('Error committing venue deletion transaction:', err);
+                return db.rollback(() => callback(err));
+              }
               callback(null, true);
             });
           });
