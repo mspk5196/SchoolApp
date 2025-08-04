@@ -639,11 +639,18 @@ exports.getGradeSubject = (req, res) => {
   const { gradeID } = req.body;
   // console.log("Received gradeID:", (req.body.sectionID || gradeID));
   const sql = `
-    SELECT DISTINCT sub.id AS subject_id, sub.subject_name
-    FROM section_subject_activities ss
-    JOIN sections sec ON ss.section_id = sec.id
-    JOIN subjects sub ON ss.subject_id = sub.id
-    WHERE sec.grade_id = ?;
+    SELECT 
+      ssa.id as section_subject_activity_id,
+      sub.id AS subject_id, 
+      sub.subject_name,
+      at.id as activity_id,
+      at.activity_type as activity_name
+    FROM section_subject_activities ssa
+    JOIN sections sec ON ssa.section_id = sec.id
+    JOIN subjects sub ON ssa.subject_id = sub.id
+    LEFT JOIN activity_types at ON ssa.activity_type = at.id
+    WHERE sec.grade_id = ?
+    ORDER BY sub.subject_name, at.activity_type;
   `;
   db.query(sql, [gradeID], (err, results) => {
     if (err) {
@@ -651,12 +658,36 @@ exports.getGradeSubject = (req, res) => {
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ success: true, message: "Subject data fetched successfully", gradeSubjects: results });
+    // Group results by subject
+    const groupedSubjects = results.reduce((acc, row) => {
+      const existingSubject = acc.find(subj => subj.subject_id === row.subject_id);
+      
+      if (existingSubject) {
+        existingSubject.activities.push({
+          section_subject_activity_id: row.section_subject_activity_id,
+          activity_id: row.activity_id,
+          activity_name: row.activity_name
+        });
+      } else {
+        acc.push({
+          subject_id: row.subject_id,
+          subject_name: row.subject_name,
+          activities: [{
+            section_subject_activity_id: row.section_subject_activity_id,
+            activity_id: row.activity_id,
+            activity_name: row.activity_name
+          }]
+        });
+      }
+      return acc;
+    }, []);
+
+    res.json({ success: true, message: "Subject data fetched successfully", gradeSubjects: groupedSubjects });
   });
 };
 
 exports.uploadStudyMaterial = async (req, res) => {
-  const { grade_id, subject_id, level, expected_date } = req.body;
+  const { section_subject_activity_id, level, expected_date, title } = req.body;
   let connection;
 
   try {
@@ -689,12 +720,12 @@ exports.uploadStudyMaterial = async (req, res) => {
 
       await connection.query(
         `INSERT INTO Materials 
-         (grade_id, subject_id, level, material_type, file_name, file_url, expected_date)
+         (section_subject_activity_id, level, title, material_type, file_name, file_url, expected_date)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
-          grade_id,
-          subject_id,
+          section_subject_activity_id,
           level,
+          title || null,
           materialType,
           file.originalname,
           relativePath.replace(/\\/g, '/'), // Ensures URL is safe on all OS
@@ -721,27 +752,28 @@ exports.uploadStudyMaterial = async (req, res) => {
 };
 
 exports.getMaterials = async (req, res) => {
-  const { gradeID, subjectID } = req.query;
-  // console.log(`[GET] /api/coordinator/getMaterials?gradeID=${gradeID}&subjectID=${subjectID}`);
+  const { section_subject_activity_id } = req.query;
 
-  if (!gradeID || !subjectID) {
-    return res.status(400).json({ error: 'Missing gradeID or subjectID' });
+  if (!section_subject_activity_id) {
+    return res.status(400).json({ error: 'Missing section_subject_activity_id' });
   }
 
   const sql = `
-    SELECT * FROM materials 
-      WHERE grade_id = ? AND subject_id = ?
-      ORDER BY level
+    SELECT m.*, ssa.subject_id, ssa.section_id, s.subject_name, at.activity_type 
+    FROM materials m
+    JOIN section_subject_activities ssa ON m.section_subject_activity_id = ssa.id
+    JOIN subjects s ON ssa.subject_id = s.id
+    LEFT JOIN activity_types at ON ssa.activity_type = at.id
+    WHERE m.section_subject_activity_id = ?
+    ORDER BY m.level
   `;
-  db.query(sql, [gradeID, subjectID], (err, results) => {
+  db.query(sql, [section_subject_activity_id], (err, results) => {
     if (err) {
-      console.error("Error fetching subjects materials data:", err);
+      console.error("Error fetching materials data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ success: true, message: "Subject materials data fetched successfully", materials: results });
-    // console.log(results);
-
+    res.json({ success: true, message: "Materials data fetched successfully", materials: results });
   });
 };
 
@@ -781,10 +813,10 @@ exports.deleteMaterial = (req, res) => {
 
 // Delete all materials of a level
 exports.deleteLevel = (req, res) => {
-  const { level, gradeID, subjectID } = req.body;
+  const { level, section_subject_activity_id } = req.body;
 
-  const getFileQuery = 'SELECT file_url FROM Materials WHERE level = ? AND grade_id = ? AND subject_id = ?';
-  db.query(getFileQuery, [level, gradeID, subjectID], (err, results) => {
+  const getFileQuery = 'SELECT file_url FROM Materials WHERE level = ? AND section_subject_activity_id = ?';
+  db.query(getFileQuery, [level, section_subject_activity_id], (err, results) => {
     if (err) {
       console.error('Fetch files error:', err);
       return res.status(500).json({ success: false, message: 'Server error while fetching materials' });
@@ -807,8 +839,8 @@ exports.deleteLevel = (req, res) => {
     });
 
     // Delete all matching records from the DB
-    const deleteQuery = 'DELETE FROM Materials WHERE level = ? AND grade_id = ? AND subject_id = ?';
-    db.query(deleteQuery, [level, gradeID, subjectID], (err, result) => {
+    const deleteQuery = 'DELETE FROM Materials WHERE level = ? AND section_subject_activity_id = ?';
+    db.query(deleteQuery, [level, section_subject_activity_id], (err, result) => {
       if (err) {
         console.error('Delete level error:', err);
         return res.status(500).json({ success: false, message: 'Server error while deleting materials' });
@@ -820,15 +852,15 @@ exports.deleteLevel = (req, res) => {
 };
 
 exports.updateExpectedDate = (req, res) => {
-  const { level, grade_id, subject_id, expected_date } = req.body;
+  const { level, section_subject_activity_id, expected_date } = req.body;
 
   const sql = `
     UPDATE Materials
     SET expected_date = ?
-    WHERE level = ? AND grade_id = ? AND subject_id = ?
+    WHERE level = ? AND section_subject_activity_id = ?
   `;
 
-  db.query(sql, [expected_date, level, grade_id, subject_id], (err, result) => {
+  db.query(sql, [expected_date, level, section_subject_activity_id], (err, result) => {
     if (err) {
       console.error("Update error:", err);
       return res.status(500).json({ success: false, message: "Database error" });
@@ -1787,8 +1819,8 @@ exports.getWeeklySchedule = (req, res) => {
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
+    console.log(results);
     res.json({ success: true, scheduleItems: results });
-    // console.log(results);
 
   });
 };
@@ -1870,7 +1902,7 @@ exports.checkTimeConflict = (req, res) => {
 setInterval(() => {
   exports.updateVenueStatusBasedOnSchedule();
 }, 1 * 60 * 1000); // 5 minutes
-
+ 
 // Add or update a schedule item
 
 // exports.addOrUpdateWeeklySchedule = (req, res) => {
