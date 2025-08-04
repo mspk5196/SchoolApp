@@ -1296,11 +1296,11 @@ exports.getMaterialsAndCompletedLevels = async (req, res) => {
   try {
     // Get activities for this subject and section
     const [activitiesRows] = await db.promise().query(
-      `SELECT ssa.id as section_subject_activity_id, act.id as activity_id, act.activity_name
+      `SELECT ssa.id as section_subject_activity_id, act.id as activity_id, act.activity_type as activity_name
        FROM section_subject_activities ssa
-       JOIN activity_types act ON ssa.activity_id = act.id
+       JOIN activity_types act ON ssa.activity_type = act.id
        WHERE ssa.section_id = ? AND ssa.subject_id = ?
-       ORDER BY act.activity_name`, 
+       ORDER BY act.activity_type`, 
       [section_id, subject_id]
     );
 
