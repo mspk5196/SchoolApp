@@ -7,6 +7,7 @@ import {
   FlatList,
   TouchableOpacity,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import styles from './PhonebookStyles';
 import Profile from '../../../../assets/ParentPage/LeaveIcon/profile.png';
@@ -68,6 +69,7 @@ const ContactCard = ({ name, facultyId, subject, phoneNumber, onMessagePress, pr
 
 const StudentPagePhonebook = ({ navigation }) => {
   const [contacts, setContacts] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleMessagePress = (contact) => {
     navigation.navigate('StudentPageMessage', { contact });
@@ -92,8 +94,12 @@ const StudentPagePhonebook = ({ navigation }) => {
   }, []);
 
 
-  const fetchSectionSubjectMentors = async () => {
+  const fetchSectionSubjectMentors = async (isRefreshing = false) => {
     try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      }
+      
       const response = await fetch(`${API_URL}/api/student/fetchSectionSubjectMentors`, {
         method: 'POST',
         headers: {
@@ -107,6 +113,8 @@ const StudentPagePhonebook = ({ navigation }) => {
       setContacts(data.subjectMentors || []);
     } catch (error) {
       console.error('Error fetching mentors:', error);
+    } finally {
+      setRefreshing(false);
     }
   }
 
@@ -115,6 +123,12 @@ const StudentPagePhonebook = ({ navigation }) => {
       fetchSectionSubjectMentors();
     }
   }, [studentData.section_id]);
+
+  const onRefresh = () => {
+    if (studentData.section_id) {
+      fetchSectionSubjectMentors(true);
+    }
+  };
 
   const renderItem = ({ item }) => (
     <ContactCard
@@ -144,6 +158,14 @@ const StudentPagePhonebook = ({ navigation }) => {
         renderItem={renderItem}
         keyExtractor={item => item.subject_id}
         contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#0C36FF']}
+            tintColor="#0C36FF"
+          />
+        }
       />
     </SafeAreaView>
   );

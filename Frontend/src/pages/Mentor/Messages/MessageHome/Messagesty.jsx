@@ -18,45 +18,56 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     marginRight: 10,
-    marginTop:30,
+    marginTop: 30,
   },
   activityText: {
     fontSize: 22,
     fontWeight: "bold",
     color: "#000",
-    marginTop:30,
+    marginTop: 30,
   },
 
   // Underline
   underline: {
     borderBottomWidth: 0.9,
-    borderBottomColor: 'black',  
-    width: 500,  
-    alignSelf: 'center', 
+    borderBottomColor: 'black',
+    width: 500,
+    alignSelf: 'center',
   },
 
   //Add
-  addIcon:{
-    width: 100,
-    height: 60,
-    marginBottom:25,
-    left:280,
+  addIcon: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    padding: 20,
+    backgroundColor: '#0C36FF',
+    borderRadius: 50,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
 
   // Search Bar
   searchView: {
     flexDirection: "row",
-    paddingVertical:15,
-    marginTop:20,
-    alignItems:'center'
+    paddingVertical: 15,
+    marginTop: 20,
+    alignItems: 'center'
   },
   searchBar: {
     flexDirection: 'row',
-    alignItems:'center', 
-    width:345,
-    paddingHorizontal:20,
-    borderRadius:30,
-    marginRight:20,
+    alignItems: 'center',
+    width: 345,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    marginRight: 20,
     backgroundColor: "#EEEFF9",
   },
   searchIcon: {
@@ -67,7 +78,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     fontSize: 16,
-    color: "#000", 
+    color: "#000",
     paddingVertical: 10,
     paddingHorizontal: 10,
   },
@@ -118,7 +129,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#3557FF",
     borderRadius: 50,
     marginRight: 10,
-    marginBottom:40,
+    marginBottom: 40,
   },
   inboxText: {
     fontSize: 16,

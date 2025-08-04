@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -13,17 +13,17 @@ import {
 } from 'react-native';
 import Modal from 'react-native-modal';
 import BackIcon from '../../../../assets/AdminPage/SubjectMentor/leftarrow.svg';
-import staff from    '../../../../assets/AdminPage/SubjectMentor/staff.png';
+import staff from '../../../../assets/AdminPage/SubjectMentor/staff.png';
 import styles from './SubjectMentorStyles';
-import Tickicon from  '../../../../assets/AdminPage/SubjectMentor/tickicon.svg';
-import Tickbox from   '../../../../assets/AdminPage/SubjectMentor/tickbox.svg';
-import Tick from      '../../../../assets/AdminPage/SubjectMentor/tick.svg';
+import Tickicon from '../../../../assets/AdminPage/SubjectMentor/tickicon.svg';
+import Tickbox from '../../../../assets/AdminPage/SubjectMentor/tickbox.svg';
+import Tick from '../../../../assets/AdminPage/SubjectMentor/tick.svg';
 import Oneperson from '../../../../assets/AdminPage/SubjectMentor/oneperson.svg';
-import Hat from       '../../../../assets/AdminPage/SubjectMentor/hat.svg';
-import {API_URL} from '../../../../utils/env.js'
+import Hat from '../../../../assets/AdminPage/SubjectMentor/hat.svg';
+import { API_URL } from '../../../../utils/env.js'
 
-const AdminSubjectMentor = ({navigation, route}) => {
-  const {selectedGrade} = route.params;
+const AdminSubjectMentor = ({ navigation, route }) => {
+  const { selectedGrade } = route.params;
   const [activeSubject, setActiveSubject] = useState(null);
   const [mentors, setMentors] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -32,6 +32,10 @@ const AdminSubjectMentor = ({navigation, route}) => {
   const [subjects, setSubject] = useState([]);
   const [enroledMentors, setEnroledMentors] = useState([]);
   const [availableMentors, setAvailableMentors] = useState([]);
+
+
+  // Create a reference for the horizontal scroll view
+  const scrollViewRef = React.useRef(null);
 
   useEffect(() => {
     fetchGradeMentor();
@@ -123,7 +127,7 @@ const AdminSubjectMentor = ({navigation, route}) => {
         if (data.success) {
           setEnroledMentors(data.gradeEnroledMentor);
           console.log(data.gradeEnroledMentor);
-          
+
         } else {
           setEnroledMentors([]);
         }
@@ -180,10 +184,32 @@ const AdminSubjectMentor = ({navigation, route}) => {
     }
   };
 
-  const handleSubjectChange = (subjectID) => {
+  // const handleSubjectChange = (subjectID) => {
+  //   setActiveSubject(subjectID);
+  //   // Reset selection when subject changes
+  //   setSelectedFaculties([]);
+  // };
+
+  const handleSubjectChange = (subjectID, index) => {
     setActiveSubject(subjectID);
     // Reset selection when subject changes
     setSelectedFaculties([]);
+
+    // Simple centering approach using the index of the selected item
+    if (scrollViewRef.current) {
+      // Find the subject's index
+      const selectedIndex = subjects.findIndex(subject => subject.subject_id === subjectID);
+
+      // Scroll to this index with automatic centering
+      // We use 120 as estimated width of each item with margins
+      const position = Math.max(0, selectedIndex * 120 - 100);
+
+      // Use a small timeout to ensure the UI has updated
+      setTimeout(() => {
+        // Animate scroll to the calculated position
+        scrollViewRef.current.scrollTo({ x: position, animated: true });
+      }, 20);
+    }
   };
 
   // Prepare for modal opening
@@ -256,9 +282,47 @@ const AdminSubjectMentor = ({navigation, route}) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      {/* Fixed header section */}
+      <View style={styles.header}>
+        <BackIcon
+          width={styles.BackIcon.width}
+          height={styles.BackIcon.height}
+          onPress={() => navigation.goBack()}
+        />
+        <Text style={styles.headerTxt}>Subject Mentor</Text>
+      </View>
+
+      {/* Subject tabs in separate container */}
+      <View style={styles.subjectTabsContainer}>
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          style={styles.classnavsubject}
+        >
+          {subjects.map((subject, index) => (
+            <Pressable
+              key={subject.subject_id}
+              style={[
+                styles.subjectselection,
+                activeSubject === subject.subject_id && styles.activeButton,
+              ]}
+              onPress={() => handleSubjectChange(subject.subject_id, index)}>
+              <Text
+                style={[
+                  styles.gradeselectiontext,
+                  activeSubject === subject.subject_id && styles.activeText,
+                ]}>
+                {subject.subject_name}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+
       <FlatList
-        ListHeaderComponent={renderHeader}
         data={enroledMentors}
         showsVerticalScrollIndicator={false}
         keyExtractor={item => item.id.toString()}
@@ -357,7 +421,7 @@ const AdminSubjectMentor = ({navigation, route}) => {
           </TouchableOpacity>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

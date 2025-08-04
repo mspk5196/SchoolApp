@@ -8,6 +8,7 @@ import {
     ScrollView,
     Alert,
     TouchableOpacity,
+    ActivityIndicator,
 } from 'react-native';
 import Loginimg from '../../../assets/FirstPage/login-page/img/loginimg.svg';
 import styles from './loginsty';
@@ -34,40 +35,45 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [checked, setChecked] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleLogin = async () => {
         // console.log("API URL:", Config.API_URL);
         console.log("API URL:", API_URL);
+        
+        if (!checked) {
+            Alert.alert("Please accept the Privacy Policy");
+            return;
+        }
+
+        setIsLoading(true);
+        
         try {
+            const encryptedPassword = encryptPassword(password);
 
-            if (checked) {
-                const encryptedPassword = encryptPassword(password);
+            const response = await fetch(`${API_URL}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phoneNumber, password: encryptedPassword }),
+            });
 
-                const response = await fetch(`${API_URL}/api/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phoneNumber, password: encryptedPassword }),
-                });
+            const data = await response.json();
 
-                const data = await response.json();
-
-                if (!data.success) {
-                    Alert.alert(data.message || 'Invalid credentials');
-                    return;
-                }
-                // const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
-
-                await AsyncStorage.setItem('userRoles', JSON.stringify(data.user.roles));
-                await AsyncStorage.setItem('userPhone', JSON.stringify(data.user.phone));
-                navigation.navigate('Redirect', { phoneNumber, password });
+            if (!data.success) {
+                Alert.alert(data.message || 'Invalid credentials');
+                return;
             }
-            else {
-                Alert.alert("Please accept the Privacy Policy");
-            }
+            // const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
+
+            await AsyncStorage.setItem('userRoles', JSON.stringify(data.user.roles));
+            await AsyncStorage.setItem('userPhone', JSON.stringify(data.user.phone));
+            navigation.navigate('Redirect', { phoneNumber, password });
 
         } catch (error) {
             console.error('Login error:', error);
             Alert.alert('Something went wrong');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -118,9 +124,17 @@ const Login = () => {
                             <Text style={styles.checkboxText}>I agree with the Privacy Policy</Text>
                         </Pressable>
 
-                        <TouchableOpacity style={styles.pressablebtn} onPress={handleLogin}>
+                        <TouchableOpacity 
+                            style={[styles.pressablebtn, isLoading && { opacity: 0.7 }]} 
+                            onPress={handleLogin}
+                            disabled={isLoading}
+                        >
                             <View style={styles.btn}>
-                                <Text style={styles.btntext}>LOGIN</Text>
+                                {isLoading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <Text style={styles.btntext}>LOGIN</Text>
+                                )}
                             </View>
                         </TouchableOpacity>
 

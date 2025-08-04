@@ -424,6 +424,35 @@ loadingContainer: {
   alignItems: 'center',
 },
 
+// No Data Component Styles
+noDataContainer: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingHorizontal: 32,
+  paddingVertical: 64,
+},
+noDataIconContainer: {
+  marginBottom: 24,
+},
+noDataIcon: {
+  fontSize: 64,
+  textAlign: 'center',
+},
+noDataTitle: {
+  fontSize: 20,
+  fontWeight: '600',
+  color: '#1F2937',
+  textAlign: 'center',
+  marginBottom: 12,
+},
+noDataMessage: {
+  fontSize: 16,
+  color: '#6B7280',
+  textAlign: 'center',
+  lineHeight: 24,
+},
+
 });
 
 export default styles;

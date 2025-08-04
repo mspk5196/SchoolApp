@@ -13,7 +13,8 @@ import {
     Alert,
     PermissionsAndroid,
     Linking,
-    ActivityIndicator
+    ActivityIndicator,
+    RefreshControl
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RNFetchBlob from 'rn-fetch-blob';
@@ -37,6 +38,7 @@ const MentorSubjectPage = ({ route, navigation }) => {
     const [showEditDatePicker, setShowEditDatePicker] = useState(false);
     const [materials, setMaterials] = useState([]);
     const [activeTabs, setActiveTabs] = useState({});
+    const [refreshing, setRefreshing] = useState(false);
 
     // Function to check and request storage permission
 
@@ -129,10 +131,14 @@ const MentorSubjectPage = ({ route, navigation }) => {
         return `${year}-${month}-${day}`;
     };
 
-    const fetchMaterials = async () => {
+    const fetchMaterials = async (isRefreshing = false) => {
         console.log("Fetching materials for:", { gradeID, subjectID });
 
         try {
+            if (isRefreshing) {
+                setRefreshing(true);
+            }
+            
             const response = await fetch(`${API_URL}/api/mentor/getMaterials?gradeID=${gradeID}&subjectID=${subjectID}`);
             const data = await response.json();
 
@@ -178,12 +184,22 @@ const MentorSubjectPage = ({ route, navigation }) => {
             }
             else {
                 console.error("Backend error:", data.message);
-                Alert.alert('Error', data.message || 'Failed to fetch materials');
+                if (!isRefreshing) {
+                    Alert.alert('Error', data.message || 'Failed to fetch materials');
+                }
             }
         } catch (error) {
             console.error('Fetch error:', error);
-            Alert.alert('Error', 'Something went wrong while fetching materials');
+            if (!isRefreshing) {
+                Alert.alert('Error', 'Something went wrong while fetching materials');
+            }
+        } finally {
+            setRefreshing(false);
         }
+    };
+
+    const onRefresh = () => {
+        fetchMaterials(true);
     };
 
     useEffect(() => {
@@ -244,7 +260,18 @@ const MentorSubjectPage = ({ route, navigation }) => {
                 <Text style={styles.headerTxt}>{subject} Material</Text>
             </View>
 
-            <ScrollView nestedScrollEnabled={true} contentContainerStyle={styles.scrollViewContent}>
+            <ScrollView 
+                nestedScrollEnabled={true} 
+                contentContainerStyle={styles.scrollViewContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#0C36FF']}
+                        tintColor="#0C36FF"
+                    />
+                }
+            >
                 {grade ? (
                     <View style={styles.gradeContainer}>
                         <Text style={styles.gradeText}>{grade} - {subject}</Text>

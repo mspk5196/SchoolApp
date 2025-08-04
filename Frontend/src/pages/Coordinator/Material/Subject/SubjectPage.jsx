@@ -11,7 +11,8 @@ import {
     StatusBar,
     Platform,
     Alert,
-    Linking
+    Linking,
+    RefreshControl
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DocumentPicker from 'react-native-document-picker';
@@ -32,9 +33,10 @@ import mime from 'react-native-mime-types';
 import { Link } from '@react-navigation/native';
 
 const SubjectPage = ({ route, navigation }) => {
-    const { grade, subject, subjectID, gradeID } = route.params || {};
+    const { grade, subject, subjectID, gradeID, activity_name, section_subject_activity_id } = route.params || {};
     const [isAddMode, setIsAddMode] = useState(false);
     const [level, setLevel] = useState('');
+    const [title, setTitle] = useState('');
     const [loading, setLoading] = useState(false);
 
     // Date picker states
@@ -51,6 +53,7 @@ const SubjectPage = ({ route, navigation }) => {
 
     // State to store saved materials
     const [materials, setMaterials] = useState([]);
+    const [refreshing, setRefreshing] = useState(false);
 
     const [downloadProgress, setDownloadProgress] = useState(null);
 
@@ -94,11 +97,15 @@ const SubjectPage = ({ route, navigation }) => {
     const showDatepicker = () => {
         setShowDatePicker(true);
     };
-    const fetchMaterials = async () => {
-        console.log("Fetching materials for:", { gradeID, subjectID });
+    const fetchMaterials = async (isRefreshing = false) => {
+        console.log("Fetching materials for:", { section_subject_activity_id });
 
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/getMaterials?gradeID=${gradeID}&subjectID=${subjectID}`);
+            if (isRefreshing) {
+                setRefreshing(true);
+            }
+            
+            const response = await fetch(`${API_URL}/api/coordinator/getMaterials?section_subject_activity_id=${section_subject_activity_id}`);
             const data = await response.json();
             console.log("🧾 Full response from backend:", data);
 
@@ -113,6 +120,7 @@ const SubjectPage = ({ route, navigation }) => {
                         grouped[level] = {
                             id: level, // using level as group id
                             level: level,
+                            title: item.title,
                             pdfs: [],
                             videos: [],
                             expectedDate: expectedDate,
@@ -144,16 +152,26 @@ const SubjectPage = ({ route, navigation }) => {
             }
             else {
                 console.error("Backend error:", data.message);
-                Alert.alert('Error', data.message || 'Failed to fetch materials');
+                if (!isRefreshing) {
+                    Alert.alert('Error', data.message || 'Failed to fetch materials');
+                }
             }
         } catch (error) {
             console.error('Fetch error:', error);
-            Alert.alert('Error', 'Something went wrong while fetching materials');
+            if (!isRefreshing) {
+                Alert.alert('Error', 'Something went wrong while fetching materials');
+            }
+        } finally {
+            setRefreshing(false);
         }
+    };
+
+    const onRefresh = () => {
+        fetchMaterials(true);
     };
     useEffect(() => {
         fetchMaterials();
-    }, [gradeID, subjectID]);
+    }, [section_subject_activity_id]);
 
     useEffect(() => {
         console.log("✅ Materials updated:", materials);
@@ -164,13 +182,14 @@ const SubjectPage = ({ route, navigation }) => {
         setLoading(true);
         if (!level.trim()) {
             Alert.alert("Required Field", "Please enter a level");
+            setLoading(false);
             return;
         }
 
         const formData = new FormData();
-        formData.append('grade_id', gradeID);  // Assuming grade is an object
-        formData.append('subject_id', subjectID);  // Assuming subject is an object
+        formData.append('section_subject_activity_id', section_subject_activity_id);
         formData.append('level', level);
+        formData.append('title', title);
         formData.append('expected_date', selectedDate ? date.toISOString().split('T')[0] : '');
 
         selectedPDFs.forEach((pdf, index) => {
@@ -219,6 +238,7 @@ const SubjectPage = ({ route, navigation }) => {
                     [newMaterialId]: 'PDF'
                 }));
                 setLevel('');
+                setTitle('');
                 setSelectedDate('');
                 setSelectedPDFs([]);
                 setSelectedVideos([]);
@@ -311,8 +331,7 @@ const SubjectPage = ({ route, navigation }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     level: editingLevelId,
-                    grade_id: gradeID,
-                    subject_id: subjectID,
+                    section_subject_activity_id: section_subject_activity_id,
                     expected_date: formatDateToLocalYYYYMMDD(newDate), // Format: YYYY-MM-DD
                 }),
             });
@@ -335,7 +354,7 @@ const SubjectPage = ({ route, navigation }) => {
             const response = await fetch(`${API_URL}/api/coordinator/deleteLevel`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ level, gradeID, subjectID }),
+                body: JSON.stringify({ level, section_subject_activity_id }),
             });
 
             const data = await response.json();
@@ -485,22 +504,36 @@ const SubjectPage = ({ route, navigation }) => {
                 visible={isAddMode}
                 animationType="slide"
                 transparent={false}
-                onRequestClose={() => setIsAddMode(false)}
+                onRequestClose={() => {
+                    setLevel('');
+                    setTitle('');
+                    setSelectedDate('');
+                    setSelectedPDFs([]);
+                    setSelectedVideos([]);
+                    setIsAddMode(false);
+                }}
             >
                 <SafeAreaView style={styles.formContainer}>
                     <StatusBar barStyle="dark-content" />
                     <View style={styles.formHeader}>
-                        <TouchableOpacity onPress={() => setIsAddMode(false)}>
+                        <TouchableOpacity onPress={() => {
+                            setLevel('');
+                            setTitle('');
+                            setSelectedDate('');
+                            setSelectedPDFs([]);
+                            setSelectedVideos([]);
+                            setIsAddMode(false);
+                        }}>
                             <BackIcon
                                 width={styles.BackIcon.width}
                                 height={styles.BackIcon.height}
                             />
                         </TouchableOpacity>
-                        <Text style={styles.headerTxt}>Material</Text>
+                        <Text style={styles.headerTxt}>{activity_name} Material</Text>
                     </View>
 
                     <ScrollView contentContainerStyle={styles.formContent}>
-                        <Text style={styles.gradeText}>{grade} - {subject}</Text>
+                        <Text style={styles.gradeText}>{grade} - {subject} - {activity_name}</Text>
 
                         <View style={styles.inputContainer}>
                             <Text style={styles.inputLabel}>Level</Text>
@@ -509,6 +542,16 @@ const SubjectPage = ({ route, navigation }) => {
                                 placeholder="Enter Level"
                                 value={level}
                                 onChangeText={setLevel}
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>Title <Text style={styles.optionalText}>(Optional)</Text></Text>
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder="Enter Title"
+                                value={title}
+                                onChangeText={setTitle}
                             />
                         </View>
 
@@ -621,10 +664,21 @@ const SubjectPage = ({ route, navigation }) => {
                         height={styles.BackIcon.height}
                     />
                 </TouchableOpacity>
-                <Text style={styles.headerTxt}>{subject} Material</Text>
+                <Text style={styles.headerTxt}>{subject} - {activity_name}</Text>
             </View>
 
-            <ScrollView nestedScrollEnabled={true} contentContainerStyle={styles.scrollViewContent}>
+            <ScrollView 
+                nestedScrollEnabled={true} 
+                contentContainerStyle={styles.scrollViewContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#0C36FF']}
+                        tintColor="#0C36FF"
+                    />
+                }
+            >
                 {grade ? (
                     <View style={styles.gradeContainer}>
                         <Text style={styles.gradeText}>{grade} - {subject}</Text>
@@ -634,7 +688,12 @@ const SubjectPage = ({ route, navigation }) => {
                             materials.map((material, index) => (
                                 <View key={material.id} style={styles.levelContainer}>
                                     <View style={styles.levelHeader}>
-                                        <Text style={styles.levelTitle}>Level {material.level}</Text>
+                                        <View>
+                                            <Text style={styles.levelTitle}>Level {material.level}</Text>
+                                            {material.title && (
+                                                <Text style={styles.expectedDate}>{material.title}</Text>
+                                            )}
+                                        </View>
                                         <View style={styles.levelHeaderRight}>
                                             <Text style={styles.expectedDate}>Expected date: {convertToIST(material.expectedDate)}</Text>
                                             <TouchableOpacity

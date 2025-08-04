@@ -12,7 +12,7 @@ import { API_URL } from '../../../../utils/env.js';
 
 const StudentEnrollment = ({ navigation, route }) => {
 
-  const {coordinatorData} = route.params;
+  const { coordinatorData } = route.params;
 
   const [student, setStudent] = useState({
     name: '',
@@ -46,7 +46,7 @@ const StudentEnrollment = ({ navigation, route }) => {
 
   const genderOptions = ['Male', 'Female', 'Other'];
 
-  useEffect(() => { 
+  useEffect(() => {
     fetchGrades();
   }, []);
 
@@ -54,7 +54,7 @@ const StudentEnrollment = ({ navigation, route }) => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/getGrades`);
       const data = await response.json();
-      
+
       if (data.success) {
         setGradeOptions(data.grades);
       } else {
@@ -76,7 +76,7 @@ const StudentEnrollment = ({ navigation, route }) => {
         body: JSON.stringify({ gradeID: gradeId })
       });
       const data = await response.json();
-      
+
       if (data.success) {
         setSectionOptions(data.gradeSections);
       } else {
@@ -89,7 +89,7 @@ const StudentEnrollment = ({ navigation, route }) => {
   };
 
 
-  const fetchSectionMentor = async(sectionID) =>{
+  const fetchSectionMentor = async (sectionID) => {
     console.log("Fetching mentor...");
     try {
       const response = await fetch(`${API_URL}/api/coordinator/getSpecificSectionMentor`, {
@@ -100,7 +100,7 @@ const StudentEnrollment = ({ navigation, route }) => {
         body: JSON.stringify({ sectionID })
       });
       const data = await response.json();
-      
+
       if (data.success) {
         setMentorID(data.sectionMentor);
         console.log(data.sectionMentor);
@@ -116,7 +116,7 @@ const StudentEnrollment = ({ navigation, route }) => {
   const handleChange = (field, value) => {
     setStudent({ ...student, [field]: value });
     // Clear error when field is filled
-    if (value!== '') {
+    if (value !== '') {
       setErrors({ ...errors, [field]: null });
     }
 
@@ -124,7 +124,7 @@ const StudentEnrollment = ({ navigation, route }) => {
     if (field === 'grade') {
       fetchSections(value);
     }
-    if(field === 'section'){
+    if (field === 'section') {
       fetchSectionMentor(value)
     }
   };
@@ -197,7 +197,7 @@ const StudentEnrollment = ({ navigation, route }) => {
 
     // Required fields validation
     const requiredFields = [
-      'name', 'dob', 'gender', 'grade', 'section', 
+      'name', 'dob', 'gender', 'grade', 'section',
       'mobileNumber',
       // 'aadharNo', 'emisNo', 
       // 'fatherName', 'motherName', 'fatherMobile',
@@ -244,11 +244,11 @@ const StudentEnrollment = ({ navigation, route }) => {
       Alert.alert('Incomplete Form', 'Please fill all required fields before submitting.');
       return;
     }
-  
+
     try {
       // Create form data for file upload
       const formData = new FormData();
-      
+
       // Add student data
       formData.append('name', student.name);
       formData.append('fatherName', student.fatherName);
@@ -258,7 +258,7 @@ const StudentEnrollment = ({ navigation, route }) => {
       formData.append('section', student.section);
       formData.append('mentorID', mentorID[0].id);
       formData.append('mobileNumber', student.mobileNumber);
-  
+
       // Add profile photo if exists
       if (student.profileImage) {
         const photo = {
@@ -268,7 +268,7 @@ const StudentEnrollment = ({ navigation, route }) => {
         };
         formData.append('profilePhoto', photo);
       }
-  
+
       // Submit to backend
       const response = await fetch(`${API_URL}/api/coordinator/enrollStudent`, {
         method: 'POST',
@@ -277,9 +277,9 @@ const StudentEnrollment = ({ navigation, route }) => {
           'Content-Type': 'multipart/form-data',
         },
       });
-  
+
       const data = await response.json();
-  
+
       if (data.success) {
         Alert.alert('Success', 'Student enrolled successfully!', [
           { text: 'OK', onPress: () => navigation.goBack() }
@@ -300,12 +300,12 @@ const StudentEnrollment = ({ navigation, route }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation && navigation.navigate('CoordinatorEnrollmentHome', {coordinatorData})}
+          onPress={() => navigation && navigation.navigate('CoordinatorEnrollmentHome', { coordinatorData })}
         >
-          <BackIcon  color="black" />
-        </TouchableOpacity> 
+          <BackIcon color="black" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Student Enrollment</Text>
       </View>
 
@@ -329,7 +329,7 @@ const StudentEnrollment = ({ navigation, route }) => {
 
         {/* Basic Information Section */}
         <Text style={styles.sectionHeader}>Basic Information</Text>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Name<Text style={styles.requiredAsterisk}>*</Text></Text>
           <TextInput
@@ -402,18 +402,20 @@ const StudentEnrollment = ({ navigation, route }) => {
               onPress={() => setShowGenderModal(false)}
             >
               <View style={styles.listModalContainer}>
-                {genderOptions.map(item => (
-                  <TouchableOpacity
-                    key={item}
-                    style={styles.listModalItem}
-                    onPress={() => {
-                      handleChange('gender', item);
-                      setShowGenderModal(false);
-                    }}
-                  >
-                    <Text style={styles.listModalItemText}>{item}</Text>
-                  </TouchableOpacity>
-                ))}
+                <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+                  {genderOptions.map(item => (
+                    <TouchableOpacity
+                      key={item}
+                      style={styles.listModalItem}
+                      onPress={() => {
+                        handleChange('gender', item);
+                        setShowGenderModal(false);
+                      }}
+                    >
+                      <Text style={styles.listModalItemText}>{item}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             </TouchableOpacity>
           </Modal>
@@ -461,7 +463,7 @@ const StudentEnrollment = ({ navigation, route }) => {
 
         {/* Academic Information Section */}
         <Text style={styles.sectionHeader}>Academic Information</Text>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Grade<Text style={styles.requiredAsterisk}>*</Text></Text>
           <TouchableOpacity
@@ -486,18 +488,20 @@ const StudentEnrollment = ({ navigation, route }) => {
               onPress={() => setShowGradeModal(false)}
             >
               <View style={styles.listModalContainer}>
-                {gradeOptions.map(item => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.listModalItem}
-                    onPress={() => {
-                      handleChange('grade', item.id);
-                      setShowGradeModal(false);
-                    }}
-                  >
-                    <Text style={styles.listModalItemText}>{item.grade_name}</Text>
-                  </TouchableOpacity>
-                ))}
+                <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+                  {gradeOptions.map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.listModalItem}
+                      onPress={() => {
+                        handleChange('grade', item.id);
+                        setShowGradeModal(false);
+                      }}
+                    >
+                      <Text style={styles.listModalItemText}>{item.grade_name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             </TouchableOpacity>
           </Modal>
@@ -512,7 +516,7 @@ const StudentEnrollment = ({ navigation, route }) => {
             <Text style={styles.selectionText}>
               {student.section ? sectionOptions.find(s => s.id === student.section)?.section_name : "Select Section"}
             </Text>
-          </TouchableOpacity> 
+          </TouchableOpacity>
           {errors.section && <Text style={styles.errorText}>{errors.section}</Text>}
 
           <Modal
@@ -527,18 +531,20 @@ const StudentEnrollment = ({ navigation, route }) => {
               onPress={() => setShowSectionModal(false)}
             >
               <View style={styles.listModalContainer}>
-                {sectionOptions.map(item => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.listModalItem}
-                    onPress={() => {
-                      handleChange('section', item.id);
-                      setShowSectionModal(false);
-                    }}
-                  >
-                    <Text style={styles.listModalItemText}>{item.section_name}</Text>
-                  </TouchableOpacity>
-                ))}
+                <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+                  {sectionOptions.map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.listModalItem}
+                      onPress={() => {
+                        handleChange('section', item.id);
+                        setShowSectionModal(false);
+                      }}
+                    >
+                      <Text style={styles.listModalItemText}>{item.section_name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             </TouchableOpacity>
           </Modal>
@@ -546,7 +552,7 @@ const StudentEnrollment = ({ navigation, route }) => {
 
         {/* Contact Information Section */}
         <Text style={styles.sectionHeader}>Contact Information</Text>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Mobile Number<Text style={styles.requiredAsterisk}>*</Text></Text>
           <TextInput
@@ -659,38 +665,40 @@ const StudentEnrollment = ({ navigation, route }) => {
         </View> */}
 
         {/* Documents Section */}
-        <Text style={styles.sectionHeader}>Documents</Text>
-        
-        <TouchableOpacity
-          style={styles.uploadButton}
-          onPress={pickDocument}
-        >
-          <Text style={styles.uploadButtonText}>
-            Upload Documents
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.documentsSection}>
+          <Text style={styles.sectionHeader}>Documents</Text>
 
-        {uploadedDocuments.length > 0 && (
-          <View style={styles.uploadedDocsContainer}>
-            <Text style={styles.uploadedDocsTitle}>Uploaded Documents</Text>
-            {uploadedDocuments.map((doc, index) => (
-              <View key={index} style={styles.documentItem}>
-                <View style={styles.documentInfo}>
-                  <View style={styles.documentDetails}>
-                    <Text style={styles.documentName} numberOfLines={1}>{doc.name}</Text>
-                    <Text style={styles.documentSize}>{(doc.size / 1024).toFixed(2)} KB</Text>
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={pickDocument}
+          >
+            <Text style={styles.uploadButtonText}>
+              Upload Documents
+            </Text>
+          </TouchableOpacity>
+
+          {uploadedDocuments.length > 0 && (
+            <View style={styles.uploadedDocsContainer}>
+              <Text style={styles.uploadedDocsTitle}>Uploaded Documents</Text>
+              {uploadedDocuments.map((doc, index) => (
+                <View key={index} style={styles.documentItem}>
+                  <View style={styles.documentInfo}>
+                    <View style={styles.documentDetails}>
+                      <Text style={styles.documentName} numberOfLines={1}>{doc.name}</Text>
+                      <Text style={styles.documentSize}>{(doc.size / 1024).toFixed(2)} KB</Text>
+                    </View>
                   </View>
+                  <TouchableOpacity
+                    style={styles.documentDeleteButton}
+                    onPress={() => deleteDocument(index)}
+                  >
+                    <DeleteIcon />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  style={styles.documentDeleteButton}
-                  onPress={() => deleteDocument(index)}
-                >
-                  <DeleteIcon />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>

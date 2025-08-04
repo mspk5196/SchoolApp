@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, View, ScrollView, Pressable, SectionList, Alert, TouchableOpacity } from 'react-native';
+import { Text, View, ScrollView, Pressable, SectionList, Alert, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import styles from './MaterialHomeStyle';
 import HomeIcon from '../../../../assets/CoordinatorPage/MaterialHome/Home.svg';
 import LevelPromotionIcon from '../../../../assets/CoordinatorPage/MaterialHome/LevelPromotion.svg';
+import Nodata from '../../../../components/General/Nodata';
 import { API_URL } from "../../../../utils/env.js";
 
 const CoordinatorMaterialHome = ({ navigation, route }) => {
   const { coordinatorData, coordinatorGrades } = route.params || {};
   const [gradeSubject, setGradeSubject] = useState([]);
   const [activeGrade, setActiveGrade] = useState();
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchGradeSubjects();
@@ -20,8 +23,14 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
     }
   }, [coordinatorGrades])
 
-  const fetchGradeSubjects = async () => {
+  const fetchGradeSubjects = async (isRefreshing = false) => {
     try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
       const response = await fetch(`${API_URL}/api/coordinator/getGradeSubject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -29,23 +38,36 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
       });
       const data = await response.json();
       if (data.success) {
-        // Ensure each item has a unique key
-        const subjectsWithKeys = data.gradeSubjects.map((subject, index) => ({
+        // Transform the data to create a list of subjects with their activities
+        const subjectsWithActivities = data.gradeSubjects.map((subject, index) => ({
           ...subject,
-          key: `${subject.subject_id}-${index}` // Create a unique key 
+          key: `${subject.subject_id}-${index}` // Create a unique key
         }));
 
         setGradeSubject([{
           title: 'Subjects',
-          data: subjectsWithKeys
+          data: subjectsWithActivities
         }]);
       } else {
         setGradeSubject([]);
-        Alert.alert("No Subjects", "No subjects for this section");
+        if (!isRefreshing) {
+          Alert.alert("No Subjects", "No subjects for this section");
+        }
       }
     } catch (error) {
       console.error("Error:", error);
-      Alert.alert("Error", "Failed to fetch subjects");
+      if (!isRefreshing) {
+        Alert.alert("Error", "Failed to fetch subjects");
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    if (activeGrade) {
+      fetchGradeSubjects(true);
     }
   };
 
@@ -68,8 +90,39 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
     );
   };
 
+  // Loading component
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <View style={styles.Header}>
+          <HomeIcon
+            width={styles.HomeIcon.width}
+            height={styles.HomeIcon.height}
+            onPress={() => navigation.goBack()}
+          />
+          <Text style={styles.HeaderTxt}>Material</Text>
+        </View>
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color="#0C36FF" />
+          <Text style={styles.loadingText}>Loading subjects...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <ScrollView flexgrow={1} flex={1}>
+    <ScrollView 
+      flexgrow={1} 
+      flex={1}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={['#0C36FF']}
+          tintColor="#0C36FF"
+        />
+      }
+    >
       <View style={styles.Header}>
         <HomeIcon
           width={styles.HomeIcon.width}
@@ -97,46 +150,58 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         ))}
       </ScrollView>
 
-      <SectionList
-        sections={gradeSubject}
-        keyExtractor={(item) => item.key} // Use the unique key we created
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => {
-              navigation.navigate('SubjectPage', {
-                grade: `Grade ${activeGrade}`,
-                gradeID: activeGrade,
-                subject: item.subject_name,
-                subjectID: item.subject_id
-              });
-            }}
-          >
-            <Cards
-              title={item.subject_name}
-              bgColor={(item.subject_id % 2) ? '#C9F7F5' : '#65558F12'}
-              color={(item.subject_id % 2) ? '#0FBEB3' : '#65558F'}
-            />
-          </Pressable>
-        )}
-        renderSectionHeader={() => null}
-      />
-
-      <Pressable
-        onPress={() => {
-          navigation.navigate('LevelPromotion', {
-            grade: `Grade ${activeGrade}`,
-            gradeID: activeGrade,
-            gradeSubject: gradeSubject
-          });
-        }}
-      >
-        <Cards
-          title="Level Promotion"
-          Icon={<LevelPromotionIcon width={50} height={50} />}
-          bgColor='#EBEEFF'
-          color='#3557FF'
+      {gradeSubject.length > 0 && gradeSubject[0].data.length > 0 ? (
+        <SectionList
+          sections={gradeSubject}
+          keyExtractor={(item) => item.key} // Use the unique key we created
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => {
+                navigation.navigate('SubjectActivityPage', {
+                  grade: `Grade ${activeGrade}`,
+                  gradeID: activeGrade,
+                  subject: item.subject_name,
+                  subjectID: item.subject_id,
+                  activities: item.activities
+                });
+              }}
+            >
+              <Cards
+                title={item.subject_name}
+                bgColor={(item.subject_id % 2) ? '#C9F7F5' : '#65558F12'}
+                color={(item.subject_id % 2) ? '#0FBEB3' : '#65558F'}
+              />
+            </Pressable>
+          )}
+          renderSectionHeader={() => null}
         />
-      </Pressable>
+      ) : (
+        <View style={styles.noDataContainer}>
+          <Nodata 
+            message="No subjects found for this grade"
+            style={styles.noDataContent}
+          />
+        </View>
+      )}
+
+      {activeGrade && (
+        <Pressable
+          onPress={() => {
+            navigation.navigate('LevelPromotion', {
+              grade: `Grade ${activeGrade}`,
+              gradeID: activeGrade,
+              gradeSubject: gradeSubject
+            });
+          }}
+        >
+          <Cards
+            title="Level Promotion"
+            Icon={<LevelPromotionIcon width={50} height={50} />}
+            bgColor='#EBEEFF'
+            color='#3557FF'
+          />
+        </Pressable>
+      )}
     </ScrollView>
   );
 }

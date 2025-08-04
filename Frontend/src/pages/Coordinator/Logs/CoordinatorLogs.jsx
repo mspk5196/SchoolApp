@@ -1,6 +1,6 @@
 // CoordinatorLogs.jsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Linking, RefreshControl } from 'react-native';
 import BackIcon from '../../../assets/CoordinatorPage/Logs/Back.svg';
 import Phone from '../../../assets/CoordinatorPage/Logs/Phone.svg';
 import MessageSquare from '../../../assets/CoordinatorPage/Logs/MessageSquare.svg';
@@ -16,14 +16,17 @@ const CoordinatorLogs = ({ navigation, route }) => {
   const [overdueLevels, setOverdueLevels] = useState([]);
   const [requestedAssessments, setRequestedAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchLogsData();
   }, []);
 
-  const fetchLogsData = async () => {
+  const fetchLogsData = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isRefresh) {
+        setLoading(true);
+      }
 
       // Fetch all data in parallel
       const [classesRes, levelsRes, assessmentsRes] = await Promise.all([
@@ -56,8 +59,16 @@ const CoordinatorLogs = ({ navigation, route }) => {
       console.error('Error fetching logs data:', error);
       Alert.alert('Error', 'Failed to fetch logs data');
     } finally {
-      setLoading(false);
+      if (!isRefresh) {
+        setLoading(false);
+      }
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchLogsData(true);
+    setRefreshing(false);
   };
 
   const handleProcessAssessment = async (requestId, action) => {
@@ -125,6 +136,22 @@ const CoordinatorLogs = ({ navigation, route }) => {
     // Open phone dialer with the contact's phone number
     Linking.openURL(`tel:${phone}`);
   };
+
+  // No Data Component
+  const NoDataComponent = () => (
+    <View style={styles.noDataContainer}>
+      <View style={styles.noDataIconContainer}>
+        <Text style={styles.noDataIcon}>📋</Text>
+      </View>
+      <Text style={styles.noDataTitle}>No Alerts Found</Text>
+      <Text style={styles.noDataMessage}>
+        Great! There are currently no overdue classes, student levels, or assessment requests that need your attention.
+      </Text>
+    </View>
+  );
+
+  // Check if there's any data to display
+  const hasAnyData = overdueClasses.length > 0 || overdueLevels.length > 0 || requestedAssessments.length > 0;
   
   return (
     <View style={styles.container}>
@@ -141,8 +168,18 @@ const CoordinatorLogs = ({ navigation, route }) => {
         <View style={styles.loadingContainer}>
           <Text>Loading...</Text>
         </View>
-      ) : (
-        <ScrollView style={styles.content}>
+      ) : hasAnyData ? (
+        <ScrollView 
+          style={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#007AFF']} // Android
+              tintColor={'#007AFF'} // iOS
+            />
+          }
+        >
           {/* Overdue Classes Section */}
           {overdueClasses.length > 0 && (
             <View style={styles.sectionHeader}>
@@ -295,6 +332,20 @@ const CoordinatorLogs = ({ navigation, route }) => {
               </View>
             </View>
           ))}
+        </ScrollView>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ flex: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#007AFF']} // Android
+              tintColor={'#007AFF'} // iOS
+            />
+          }
+        >
+          <NoDataComponent />
         </ScrollView>
       )}
     </View>

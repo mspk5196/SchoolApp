@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { Menu, MenuOptions, MenuOption, MenuTrigger, MenuProvider } from 'react-native-popup-menu';
 import BackIcon from '../../../../assets/CoordinatorPage/InfrastructureEnrollment/Back.svg';
 import AddIcon from '../../../../assets/CoordinatorPage/InfrastructureEnrollment/Add.svg';
@@ -14,38 +14,63 @@ const ClassroomCard = ({ classroom, onEdit, onToggleStatus, onDelete }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'Active':
-        return '#34C300';
+        return '#10b981';
       case 'InActive':
-        return '#F44336';
+        return '#ef4444';
       default:
-        return '#4CAF50';
+        return '#6b7280';
     }
   };
 
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardContent}>
-        <View>
-          <Text style={styles.cardTitle}>{classroom.name}</Text>
-          <Text style={styles.cardSubtitle}>Floor {classroom.floor}</Text>
-          <Text style={styles.cardCapacity}>Capacity: {classroom.capacity}</Text>
-          {classroom.subject && <Text style={styles.cardSubject}>Subject: {classroom.subject}</Text>}
-        </View>
-        <View style={styles.cardRight}>
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor(classroom.status) }]} />
-            <Text style={styles.statusText}>{classroom.status}</Text>
-          </View>
-          <Text style={styles.dateText}>{new Date(classroom.created_at).toLocaleDateString()}</Text>
-          {classroom.grade && <Text style={styles.gradeText}>Grade: {classroom.grade}</Text>}
-        </View>
-      </View>
+  const getApprovalStatusColor = (venueStatus) => {
+    switch (venueStatus) {
+      case 'Approved':
+        return '#10b981';
+      case 'Rejected':
+        return '#ef4444';
+      case 'Requested':
+        return '#f59e0b';
+      default:
+        return '#6b7280';
+    }
+  };
 
-      <Menu style={{ zIndex: 1000 }}>
-        <MenuTrigger customStyles={{ triggerWrapper: { padding: 5 } }}>
-          <MenuIcon width={20} height={20} />
+  const getApprovalStatusText = (venueStatus, isAccepted) => {
+    if (isAccepted === 1) return 'Approved';
+    return venueStatus || 'Requested';
+  };
+
+  const getApprovalStatusStyle = (venueStatus, isAccepted) => {
+    const status = getApprovalStatusText(venueStatus, isAccepted);
+    switch (status) {
+      case 'Approved':
+        return styles.approvalStatusApproved;
+      case 'Rejected':
+        return styles.approvalStatusRejected;
+      default:
+        return styles.approvalStatusPending;
+    }
+  };
+
+  const isPending = classroom.is_accepted === 0;
+
+  return (
+    <View style={[
+      styles.card,
+      isPending && styles.cardPending
+    ]}>
+      {/* Menu Button */}
+      <Menu>
+        <MenuTrigger style={styles.menuButton}>
+          <MenuIcon width={16} height={16} />
         </MenuTrigger>
-        <MenuOptions customStyles={styles.menuOptions}>
+        <MenuOptions customStyles={{
+          optionsContainer: {
+            ...styles.menuOptions.optionsContainer,
+            right: 0,
+            left: 'auto',
+          }
+        }}>
           <MenuOption onSelect={() => onEdit(classroom)}>
             <Text style={styles.menuOptionText}>Edit</Text>
           </MenuOption>
@@ -55,10 +80,65 @@ const ClassroomCard = ({ classroom, onEdit, onToggleStatus, onDelete }) => {
             </Text>
           </MenuOption>
           <MenuOption onSelect={() => onDelete(classroom)}>
-            <Text style={[styles.menuOptionText, { color: '#F44336', fontWeight: 'bold' }]}>Delete</Text>
+            <Text style={[styles.menuOptionText, styles.menuOptionDelete]}>Delete</Text>
           </MenuOption>
         </MenuOptions>
       </Menu>
+
+      {/* Card Content */}
+      <View style={styles.cardContent}>
+        {/* Header Section */}
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>{classroom.name}</Text>
+          
+          <View style={styles.cardLocationRow}>
+            <Text style={styles.cardSubtitle}>Floor {classroom.floor}</Text>
+            <Text style={styles.cardCapacity}>Capacity: {classroom.capacity}</Text>
+          </View>
+          
+          {classroom.subject_names && (
+            <Text style={styles.cardSubject}>Subjects: {classroom.subject_names}</Text>
+          )}
+        </View>
+        
+        {/* Metadata Section */}
+        <View style={styles.cardMetadata}>
+          <View style={styles.leftMetadata}>
+            {/* Approval Status */}
+            <View style={[
+              styles.approvalStatusContainer,
+              getApprovalStatusStyle(classroom.venue_status, classroom.is_accepted)
+            ]}>
+              <View style={[
+                styles.approvalStatusDot, 
+                { backgroundColor: getApprovalStatusColor(classroom.venue_status) }
+              ]} />
+              <Text style={[
+                styles.approvalStatusText,
+                { color: getApprovalStatusColor(classroom.venue_status) }
+              ]}>
+                {getApprovalStatusText(classroom.venue_status, classroom.is_accepted)}
+              </Text>
+            </View>
+            
+            <Text style={styles.dateText}>
+              Created {new Date(classroom.created_at).toLocaleDateString()}
+            </Text>
+          </View>
+          
+          <View style={styles.rightMetadata}>
+            {/* Status */}
+            <View style={styles.statusContainer}>
+              <View style={[styles.statusDot, { backgroundColor: getStatusColor(classroom.status) }]} />
+              <Text style={styles.statusText}>{classroom.status}</Text>
+            </View>
+            
+            {classroom.grade && (
+              <Text style={styles.gradeText}>Grade: {classroom.grade}</Text>
+            )}
+          </View>
+        </View>
+      </View>
     </View>
   );
 };
@@ -84,6 +164,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
   const { coordinatorData } = route.params || {};
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterVisible, setFilterVisible] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState({
@@ -94,9 +175,14 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
   });
 
   // Fetch venues from backend
-  const fetchVenues = async () => {
+  const fetchVenues = async (isRefreshing = false) => {
     try {
-      setLoading(true);
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
       const response = await fetch(`${API_URL}/api/coordinator/enrollment/getAllVenues`);
       const data = await response.json();
       if (response.ok) {
@@ -107,13 +193,22 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
     } catch (error) {
       Alert.alert('Error', error.message);
     } finally {
-      setLoading(false);
+      if (isRefreshing) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchVenues();
+    fetchVenues(false);
   }, []);
+
+  // Handle pull to refresh
+  const onRefresh = () => {
+    fetchVenues(true);
+  };
 
   // Apply filters and search
   const filteredVenues = venues.filter(venue => {
@@ -190,7 +285,7 @@ const handleEdit = (venue) => {
     });
  
       if (response.ok) {
-        fetchVenues(); // Refresh the list
+        fetchVenues(false); // Refresh the list
         Alert.alert('Success', `Venue status updated to ${newStatus}`);
       } else {
         const error = await response.json();
@@ -212,19 +307,88 @@ const handleEdit = (venue) => {
           text: "Delete",
           onPress: async () => {
             try {
+              // Add timeout to prevent hanging requests
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15 seconds
+
               const response = await fetch(`${API_URL}/api/coordinator/enrollment/deleteVenue/${venue.id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                signal: controller.signal
               });
 
+              clearTimeout(timeoutId);
+
+              // Check if response is ok (status 200-299)
               if (response.ok) {
-                fetchVenues(); // Refresh the list
-                Alert.alert('Success', 'Venue deleted successfully');
+                try {
+                  const responseData = await response.json();
+                  console.log('Delete response:', responseData);
+                  
+                  // Refresh the list immediately
+                  await fetchVenues(false);
+                  Alert.alert('Success', 'Venue deleted successfully');
+                } catch (jsonError) {
+                  // If JSON parsing fails but status was ok, deletion likely succeeded
+                  console.log('Response ok but no JSON - deletion likely successful');
+                  await fetchVenues(false);
+                  Alert.alert('Success', 'Venue deleted successfully');
+                }
               } else {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to delete venue');
+                // If response is not ok, try to get error message
+                let errorMessage = `Failed to delete venue (Status: ${response.status})`;
+                try {
+                  const errorData = await response.json();
+                  errorMessage = errorData.message || errorMessage;
+                } catch (jsonError) {
+                  // Keep the default error message with status code
+                }
+                throw new Error(errorMessage);
               }
             } catch (error) {
-              Alert.alert('Error', error.message);
+              console.error('Delete error:', error);
+              
+              if (error.name === 'AbortError') {
+                // Check if deletion actually succeeded despite timeout
+                Alert.alert(
+                  'Request Timeout', 
+                  'The request timed out, but the venue might have been deleted. Refreshing the list to check.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => fetchVenues(false)
+                    }
+                  ]
+                );
+              } else if (error.message.includes('Network request failed')) {
+                // Network error - also refresh to check if deletion succeeded
+                Alert.alert(
+                  'Network Error',
+                  'Network error occurred. Refreshing the list to check if deletion was successful.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => fetchVenues(false)
+                    }
+                  ]
+                );
+              } else if (error.message.includes('Application failed to respond')) {
+                // This specific error - likely deletion succeeded but response failed
+                Alert.alert(
+                  'Response Error',
+                  'The application failed to respond, but deletion might have succeeded. Refreshing the list to check.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => fetchVenues(false)
+                    }
+                  ]
+                );
+              } else {
+                Alert.alert('Error', error.message);
+              }
             }
           },
           style: "destructive"
@@ -241,7 +405,7 @@ const handleEdit = (venue) => {
   // Refresh when returning from Add/Edit screen
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchVenues();
+      fetchVenues(false);
     });
     return unsubscribe;
   }, [navigation]);
@@ -305,6 +469,17 @@ const handleEdit = (venue) => {
                 onDelete={handleDelete}
               />
             )}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#3557FF']} // Android
+                tintColor="#3557FF" // iOS
+                title="Pull to refresh..." // iOS
+                titleColor="#3557FF" // iOS
+              />
+            }
+            showsVerticalScrollIndicator={false}
           />
         )}
 

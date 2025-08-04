@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
         marginRight: 10,
         backgroundColor: '#F5F5F5',
         width: 110, // Fixed width from Academic Schedule
+        elevation: 2,
     },
     noScheduleText:{
         color:'grey',

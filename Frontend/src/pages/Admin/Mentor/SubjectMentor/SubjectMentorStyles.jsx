@@ -1,13 +1,17 @@
-import {StyleSheet} from 'react-native';
+import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F5F5F5',
   },
-  headerContainer: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
+  subjectTabsContainer: {
+    backgroundColor: '#fff',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    zIndex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -31,34 +35,42 @@ const styles = StyleSheet.create({
     height: 20,
   },
   selectedCard: {
-    backgroundColor: '#fafafa',
+    backgroundColor: '#EBEEFF',
   },
 
   scrollWrapper: {
     marginVertical: 10,
   },
   scrollContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10, // Add padding on both sides
+    paddingRight: 20, // Extra padding at the end to ensure last item isn't cut off
   },
   classnavsubject: {
     flexDirection: 'row',
-    marginBottom: 20,
+    paddingVertical: 8,
     flexGrow: 0,
     flexShrink: 0,
+    backgroundColor: '#fff',
   },
   subjectselection: {
     backgroundColor: '#ffffff',
     padding: 10,
-    marginLeft: 10,
+    marginRight: 10, // Use marginRight instead of marginHorizontal for more predictable scrolling
     marginTop: 20,
-    width: 90,
+    width: 110, // Slightly wider for better content display
     borderRadius: 30,
     alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
   gradeselectiontext: {
     color: 'black',
+    textAlign: 'center',
     fontWeight: '500',
   },
   activeButton: {
@@ -71,13 +83,16 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     alignItems: 'center',
   },
-  addButtonText: {
+  addButtonText:
+  {
     fontSize: 15,
     color: '#0C36FF',
-    fontWeight: '600',
+    fontWeight: '600'
   },
   mentorList: {
+    flex: 1,
     paddingHorizontal: 10,
+    marginTop: 8,
   },
   card: {
     flexDirection: 'row',
@@ -89,11 +104,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     elevation: 3,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
     borderLeftWidth: 4,
-    borderLeftColor: '#1857C0',
+    borderLeftColor: '#1857C0'
   },
   avatar: {
     width: 60,
@@ -105,6 +120,7 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
+    gap: 8,
     justifyContent: 'center',
   },
   name: {
@@ -151,6 +167,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
+
   },
   facultyDetails: {
     flexDirection: 'column',
@@ -160,7 +177,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
-    color: '#000',
+    color: '#000'
   },
   facultySpec: {
     fontSize: 14,
@@ -181,16 +198,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
   },
-  staffName: {
+  staffName:
+  {
     display: 'flex',
     flexDirection: 'row',
-    gap: 6,
+    gap: 6
   },
   Hat: {
     display: 'flex',
     flexDirection: 'row',
-    gap: 6,
+    gap: 6
   },
+
+
 });
 
 export default styles;

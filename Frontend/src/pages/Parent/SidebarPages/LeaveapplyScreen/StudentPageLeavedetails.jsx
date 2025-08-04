@@ -9,7 +9,8 @@ import {
   Modal,
   TouchableWithoutFeedback, 
   Alert,
-  ScrollView
+  ScrollView,
+  RefreshControl
 } from 'react-native';
 import AddIcon from '../../../../assets/ParentPage/LeaveIcon/add.svg';
 import PrevIcon from '../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
@@ -78,6 +79,7 @@ const StudentPageLeavedetails = ({ navigation }) => {
   const [selectedStudentData, setSelectedStudent] = useState([])
   const [studentData, setStudentData] = useState([])
   const [roll, setRoll] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
 
   const [leavesTaken, setLeaves] = useState([])
 
@@ -127,8 +129,12 @@ const StudentPageLeavedetails = ({ navigation }) => {
     }
   }, [roll]);
 
-  const fetchStudentLeaves = async () => {
+  const fetchStudentLeaves = async (isRefreshing = false) => {
     try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      }
+      
       const response = await fetch(`${API_URL}/api/getStudentLeaves`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -142,11 +148,23 @@ const StudentPageLeavedetails = ({ navigation }) => {
         setLeaves(data.leaves);
         // await AsyncStorage.setItem("studentData", JSON.stringify(data.student));
       } else {
-        Alert.alert("No Student Leave data Found", "No student leave data associated with this roll");
+        if (!isRefreshing) {
+          Alert.alert("No Student Leave data Found", "No student leave data associated with this roll");
+        }
       }
     } catch (error) {
       console.error("Error fetching student leave data:", error);
-      Alert.alert("Error", "Failed to fetch student leave data");
+      if (!isRefreshing) {
+        Alert.alert("Error", "Failed to fetch student leave data");
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    if (roll) {
+      fetchStudentLeaves(true);
     }
   };
 
@@ -288,10 +306,28 @@ const StudentPageLeavedetails = ({ navigation }) => {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#0C36FF']}
+            tintColor="#0C36FF"
+          />
+        }
       />) : (
-        <View style={styles.leaveCard}>
+        <ScrollView
+          contentContainerStyle={styles.leaveCard}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#0C36FF']}
+              tintColor="#0C36FF"
+            />
+          }
+        >
           <Nodata/>
-        </View>
+        </ScrollView>
       )}
 
 

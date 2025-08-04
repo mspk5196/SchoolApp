@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, FlatList, SafeAreaView, StatusBar, TouchableOpacity, Text, Alert } from 'react-native';
+import { View, FlatList, SafeAreaView, StatusBar, TouchableOpacity, Text, Alert, RefreshControl } from 'react-native';
 import EventList from '../../../../../components/Parent/Event/EventList';
 import PreviousIcon from '../../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
 import styles from './LikedvevntsStyles';
@@ -87,8 +87,14 @@ const StudentPageLikedEvents = ({ navigation, route }) => {
       </View>
       <FlatList
         data={mappedEvents}
-        refreshing={refresh}
-        onRefresh={fetchLikedEvents}
+        refreshControl={
+          <RefreshControl
+            refreshing={refresh}
+            onRefresh={fetchLikedEvents}
+            colors={['#0C36FF']}
+            tintColor="#0C36FF"
+          />
+        }
         ListEmptyComponent={
           <View style={{flex: 1, height: 400, justifyContent: 'center', alignItems: 'center'}}>
             <Nodata/>

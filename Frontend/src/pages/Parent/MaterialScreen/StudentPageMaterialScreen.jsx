@@ -9,6 +9,7 @@ import {
   Linking,
   Modal,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import styles from './MaterialScreenStyles';
 import PDFicon from '../../../assets/ParentPage/Materials-img/pdf.svg';
@@ -30,6 +31,7 @@ const StudentPageMaterialScreen = () => {
   const [sectionSubjects, setSectionSubjects] = useState([]);
   const [studentData, setStudentData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [materialsByLevel, setMaterialsByLevel] = useState({});
   const [downloadProgress, setDownloadProgress] = useState(null);
 
@@ -49,9 +51,14 @@ const StudentPageMaterialScreen = () => {
     fetchStudentData();
   }, []);
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = async (isRefreshing = false) => {
     try {
-      setLoading(true);
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
       const response = await fetch(`${API_URL}/api/student/getSectionSubjects`, {
         method: 'POST',
         headers: {
@@ -70,6 +77,7 @@ const StudentPageMaterialScreen = () => {
       console.error('Error fetching subjects:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -80,8 +88,12 @@ const StudentPageMaterialScreen = () => {
   }, [studentData.section_id]);
 
 
-  const fetchMaterialsAndLevels = async () => {
+  const fetchMaterialsAndLevels = async (isRefreshing = false) => {
     try {
+      if (!isRefreshing) {
+        setLoading(true);
+      }
+      
       const response = await fetch(`${API_URL}/api/student/getMaterialsAndCompletedLevels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,7 +109,9 @@ const StudentPageMaterialScreen = () => {
     } catch (error) {
       console.error('Error fetching materials:', error);
     } finally {
-      setLoading(false);
+      if (!isRefreshing) {
+        setLoading(false);
+      }
     }
   };
 
@@ -106,6 +120,15 @@ const StudentPageMaterialScreen = () => {
       fetchMaterialsAndLevels();
     }
   }, [selectedLanguage, studentData.section_id]);
+
+  const onRefresh = async () => {
+    if (studentData.section_id) {
+      await fetchSubjects(true);
+      if (selectedLanguage) {
+        await fetchMaterialsAndLevels(true);
+      }
+    }
+  };
 
   // Group materials by level and type
   const groupMaterials = (materials) => {
@@ -327,7 +350,17 @@ const StudentPageMaterialScreen = () => {
         ))}
       </ScrollView>
 
-      <ScrollView style={styles.mainScrollView}>
+      <ScrollView 
+        style={styles.mainScrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#0C36FF']}
+            tintColor="#0C36FF"
+          />
+        }
+      >
         <View style={styles.timeline}>
           {materialsByLevel.length > 0
             ? materialsByLevel.map((level, index) => renderLevel(level, index))

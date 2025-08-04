@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, TextInput, FlatList, Alert, Linking } from 'react-native';
+import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, TextInput, FlatList, Alert, Linking, RefreshControl } from 'react-native';
 import PreviousIcon from '../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
 import DownloadIcon from '../../../../assets/ParentPage/RequestSvg/downloadicon.svg';
 import { styles } from './RequestStyles';
@@ -13,6 +13,7 @@ const StudentPageRequest = ({ navigation }) => {
   const [showForm, setShowForm] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [requests, setRequests] = useState([]);
   const [formData, setFormData] = useState({
     requestTypes: [],
@@ -141,11 +142,16 @@ const StudentPageRequest = ({ navigation }) => {
     }
   };
 
-  const fetchStudentRequests = async () => {
+  const fetchStudentRequests = async (isRefreshing = false) => {
     if (!roll) return;
 
     try {
-      setLoading(true);
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
       const response = await fetch(`${API_URL}/api/fetchStudentRequests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,6 +170,7 @@ const StudentPageRequest = ({ navigation }) => {
       console.error("Error fetching student request data:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -320,6 +327,10 @@ const StudentPageRequest = ({ navigation }) => {
       EventBus.off("userToggled", handleUserToggle);
     };
   }, []);
+
+  const onRefresh = async () => {
+    await fetchStudentRequests(true);
+  };
 
   useEffect(() => {
     if (roll) {
@@ -496,13 +507,31 @@ const StudentPageRequest = ({ navigation }) => {
         </View>
 
         {requests.length === 0 ? (
-          <View style={styles.emptyContainer}>
+          <ScrollView
+            contentContainerStyle={styles.emptyContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#0C36FF']}
+                tintColor="#0C36FF"
+              />
+            }
+          >
             <Nodata/>
-          </View>
+          </ScrollView>
         ) : (
           <FlatList
             data={requests}
             keyExtractor={(item) => item.requestID || String(item.id)}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#0C36FF']}
+                tintColor="#0C36FF"
+              />
+            }
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={[

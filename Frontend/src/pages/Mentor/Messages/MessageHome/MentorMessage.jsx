@@ -3,11 +3,12 @@ import { View, Text, FlatList, Pressable, TextInput, Image, TouchableOpacity, Ac
 import styles from "./Messagesty";
 import Home from "../../../../assets/MentorPage/entypo_home.svg";
 import SearchIcon from "../../../../assets/MentorPage/search.svg";
-import Add from "../../../../assets/MentorPage/Add.svg";
+import Add from "../../../../assets/MentorPage/plus.svg";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../../../utils/env.js';
 import io from 'socket.io-client';
 import { useFocusEffect } from "@react-navigation/native";
+import { widthPercentageToDP } from "react-native-responsive-screen";
 
 const Profile = require('../../../../assets/MentorPage/profile.png');
 
@@ -233,7 +234,7 @@ const MentorMessage = ({ navigation }) => {
             )}
             <View>
                 <TouchableOpacity style={styles.addIcon} onPress={() => navigation.navigate("MentorSendMessage")}>
-                    <Add />
+                    <Add width={widthPercentageToDP('8.5%')} height={widthPercentageToDP('8.5%')} />
                 </TouchableOpacity>
             </View>
         </View>

@@ -12,7 +12,7 @@ import { API_URL } from '../../../../utils/env.js';
 
 const MentorEnrollment = ({ navigation, route }) => {
 
-  const {coordinatorData} =route.params;
+  const { coordinatorData } = route.params;
 
   const [mentor, setMentor] = useState({
     name: '',
@@ -49,7 +49,7 @@ const MentorEnrollment = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/coordinator/getGrades`);
       const data = await response.json();
 
-      if (data.success) { 
+      if (data.success) {
         setGradeOptions(data.grades);
       } else {
         Alert.alert('Error', 'Failed to fetch grades');
@@ -100,7 +100,7 @@ const MentorEnrollment = ({ navigation, route }) => {
 
   const handleChange = (field, value) => {
     setMentor({ ...mentor, [field]: value });
-    if (value!== '') {
+    if (value !== '') {
       setErrors({ ...errors, [field]: null });
     }
 
@@ -221,7 +221,7 @@ const MentorEnrollment = ({ navigation, route }) => {
       newErrors.specification = 'Specification is required';
       isValid = false;
     }
-    if (!mentor.email.trim()) {
+    if (!mentor.email) {
       newErrors.email = 'Email is required';
       isValid = false;
     }
@@ -240,9 +240,9 @@ const MentorEnrollment = ({ navigation, route }) => {
       Alert.alert('Incomplete Form', 'Please fill all required fields before submitting.');
       return;
     }
-  
+
     setIsLoading(true);
-  
+
     try {
       // Prepare form data
       const formData = new FormData();
@@ -255,7 +255,7 @@ const MentorEnrollment = ({ navigation, route }) => {
       formData.append('mobileNumber', mentor.mobileNumber);
       formData.append('specification', mentor.specification);
       formData.append('email', mentor.email);
-  
+
       // Append profile image
       if (mentor.profileImage) {
         formData.append('profilePhoto', {
@@ -264,7 +264,7 @@ const MentorEnrollment = ({ navigation, route }) => {
           name: 'profile.jpg'
         });
       }
-  
+
       // Submit to backend
       const response = await fetch(`${API_URL}/api/coordinator/enrollMentor`, {
         method: 'POST',
@@ -273,9 +273,9 @@ const MentorEnrollment = ({ navigation, route }) => {
           'Content-Type': 'multipart/form-data',
         },
       });
-  
+
       const data = await response.json();
-  
+
       if (data.success) {
         Alert.alert('Success', 'Mentor enrolled successfully', [
           { text: 'OK', onPress: () => navigation.goBack() }
@@ -290,7 +290,7 @@ const MentorEnrollment = ({ navigation, route }) => {
       setIsLoading(false);
     }
   };
-  
+
 
   const handleCancel = () => {
     navigation.goBack();
@@ -299,12 +299,12 @@ const MentorEnrollment = ({ navigation, route }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation && navigation.navigate('CoordinatorEnrollmentHome', {coordinatorData})}
+          onPress={() => navigation && navigation.navigate('CoordinatorEnrollmentHome', { coordinatorData })}
         >
-          <BackIcon  color="black" />
-        </TouchableOpacity> 
+          <BackIcon color="black" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Mentor Enrollment</Text>
       </View>
 
@@ -385,18 +385,20 @@ const MentorEnrollment = ({ navigation, route }) => {
               onPress={() => setShowGenderModal(false)}
             >
               <View style={styles.listModalContainer}>
-                {genderOptions.map(item => (
-                  <TouchableOpacity
-                    key={item}
-                    style={styles.listModalItem}
-                    onPress={() => {
-                      handleChange('gender', item);
-                      setShowGenderModal(false);
-                    }}
-                  >
-                    <Text style={styles.listModalItemText}>{item}</Text>
-                  </TouchableOpacity>
-                ))}
+                <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+                  {genderOptions.map(item => (
+                    <TouchableOpacity
+                      key={item}
+                      style={styles.listModalItem}
+                      onPress={() => {
+                        handleChange('gender', item);
+                        setShowGenderModal(false);
+                      }}
+                    >
+                      <Text style={styles.listModalItemText}>{item}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             </TouchableOpacity>
           </Modal>
@@ -425,20 +427,22 @@ const MentorEnrollment = ({ navigation, route }) => {
               activeOpacity={1}
               onPress={() => setShowGradeModal(false)}
             >
-              <ScrollView style={styles.listModalContainer}>
-                {gradeOptions.map(item => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.listModalItem}
-                    onPress={() => {
-                      handleChange('grade', item.grade_name);
-                      setShowGradeModal(false);
-                    }}
-                  >
-                    <Text style={styles.listModalItemText}>{item.grade_name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <View style={styles.listModalContainer}>
+                <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+                  {gradeOptions.map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.listModalItem}
+                      onPress={() => {
+                        handleChange('grade', item.grade_name);
+                        setShowGradeModal(false);
+                      }}
+                    >
+                      <Text style={styles.listModalItemText}>{item.grade_name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
             </TouchableOpacity>
           </Modal>
         </View>
@@ -570,35 +574,38 @@ const MentorEnrollment = ({ navigation, route }) => {
           {errors.specification && <Text style={styles.errorText}>{errors.email}</Text>}
         </View>
 
-        <TouchableOpacity
-          style={styles.uploadButton}
-          onPress={pickDocument}
-        >
-          <Text style={styles.uploadButtonText}>
-            Upload Mentor{'\n'}
-            <Text style={styles.uploadButtonSubtext}>details from sheet</Text>
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.documentsSection}>
+          <Text style={styles.label}>Documents<Text style={styles.requiredAsterisk}>*</Text></Text>
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={pickDocument}
+          >
+            <Text style={styles.uploadButtonText}>
+              Upload Mentor{'\n'}
+              <Text style={styles.uploadButtonSubtext}>details from sheet</Text>
+            </Text>
+          </TouchableOpacity>
 
-        {uploadedDocuments.length > 0 && (
-          <View style={styles.uploadedDocsContainer}>
-            <Text style={styles.uploadedDocsTitle}>Uploaded Documents</Text>
-            {uploadedDocuments.map((doc, index) => (
-              <View key={index} style={styles.documentItem}>
-                <View style={styles.documentInfo}>
-                  <View style={styles.documentDetails}>
-                    <Text style={styles.documentName} numberOfLines={1}>{doc.name}</Text>
-                    <Text style={styles.documentSize}>{(doc.size / 1024).toFixed(2)} KB</Text>
+          {uploadedDocuments.length > 0 && (
+            <View style={styles.uploadedDocsContainer}>
+              <Text style={styles.uploadedDocsTitle}>Uploaded Documents</Text>
+              {uploadedDocuments.map((doc, index) => (
+                <View key={index} style={styles.documentItem}>
+                  <View style={styles.documentInfo}>
+                    <View style={styles.documentDetails}>
+                      <Text style={styles.documentName} numberOfLines={1}>{doc.name}</Text>
+                      <Text style={styles.documentSize}>{(doc.size / 1024).toFixed(2)} KB</Text>
+                    </View>
                   </View>
+                  <TouchableOpacity
+                    style={styles.documentDeleteButton}
+                    onPress={() => deleteDocument(index)}
+                  ><DeleteIcon /></TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  style={styles.documentDeleteButton}
-                  onPress={() => deleteDocument(index)}
-                ><DeleteIcon /></TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>

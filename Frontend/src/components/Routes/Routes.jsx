@@ -141,6 +141,7 @@ import CoordinatorMessageBox from '../../pages/Coordinator/Messages/MessageBox/C
 import AdminMessageBox from '../../pages/Admin/Messages/MessageBox/AdminMessageBox';
 import AdminMessageHome from '../../pages/Admin/Messages/MessageHome/AdminMessageHome';
 import CoordinatorMessageHome from '../../pages/Coordinator/Messages/MessageHome/CoordinatorMessageHome';
+import SubjectActivityPage from '../../pages/Coordinator/Material/SubjectActivity/SubjectActivityPage';
 
 const Stack = createStackNavigator();
 
@@ -203,6 +204,7 @@ const Routes = () => {
                         {/* CoordinatorMaterialHome */}
                         <Stack.Screen name="LevelPromotion" component={LevelPromotion} />
                         <Stack.Screen name="SubjectPage" component={SubjectPage} />
+                        <Stack.Screen name="SubjectActivityPage" component={SubjectActivityPage} options={{ headerShown: false }} />
                         {/* CoordinatorLogs - Only one page*/}
                         {/* CoordinatorScheduleHome */}
                         <Stack.Screen name="CoordinatorAcademicSchedule" component={CoordinatorAcademicSchedule} />

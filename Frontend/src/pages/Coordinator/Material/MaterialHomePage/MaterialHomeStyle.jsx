@@ -86,6 +86,7 @@ const styles = StyleSheet.create({
         marginRight: 10,
         backgroundColor: '#F5F5F5',
         width: 110, // Fixed width from Academic Schedule
+        elevation: 1,
     },
     noScheduleText:{
         color:'grey',
@@ -102,6 +103,33 @@ const styles = StyleSheet.create({
     activeSectionTabText: {
         color: '#FFFFFF',
         paddingLeft: 5, // Added from Academic Schedule
+    },
+    loadingContainer: {
+        flex: 1,
+        backgroundColor: '#ffffff',
+    },
+    loadingContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 50,
+    },
+    loadingText: {
+        marginTop: 15,
+        fontSize: 16,
+        color: '#666666',
+        fontWeight: '500',
+    },
+    noDataContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 50,
+        paddingHorizontal: 20,
+    },
+    noDataContent: {
+        flex: 1,
+        justifyContent: 'center',
     },
 });
 
