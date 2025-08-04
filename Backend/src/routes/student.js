@@ -33,6 +33,7 @@ router.post('/student/submitSurveyResponse', studentController.submitSurveyRespo
 
 //Schedule
 router.post('/student/getStudentScheduleByMonth', studentController.getStudentScheduleByMonth);
+router.post('/student/getDetailedStudentSchedule', studentController.getDetailedStudentSchedule);
 
 //Materials
 router.post('/student/getMaterialsAndCompletedLevels', studentController.getMaterialsAndCompletedLevels);
