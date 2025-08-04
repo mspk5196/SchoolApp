@@ -47,7 +47,6 @@ exports.getVenuesByGrade = (req, res) => {
 exports.createVenue = async (req, res) => {
   try {
     const venueData = req.body;
-    console.log('Received venue data:', JSON.stringify(venueData, null, 2));
     
     // Prepare the venue data for database insertion
     const preparedData = {
@@ -64,9 +63,6 @@ exports.createVenue = async (req, res) => {
     // Add the subjects array separately to be handled in the model
     if (venueData.subject_ids && venueData.subject_ids.length) {
       preparedData.subject_ids = venueData.subject_ids;
-      console.log('Subject IDs to be saved:', venueData.subject_ids);
-    } else {
-      console.log('No subject_ids found in request data');
     }
 
     Venue.create(preparedData, (err, venue) => {

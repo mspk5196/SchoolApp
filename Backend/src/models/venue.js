@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 class Venue {
   static findAll(filters, callback) {
-    let query = `SELECT v.*, g.grade_name as grade, 
+    let query = `SELECT v.id, v.name, v.block, v.floor, v.capacity, v.grade_id, v.status, v.type, v.created_at, v.updated_at, v.is_accepted, v.venue_status, v.created_by, g.grade_name as grade, 
                  GROUP_CONCAT(DISTINCT s.subject_name) as subject_names
                  FROM venues v `;
     query += 'LEFT JOIN grades g ON v.grade_id = g.id ';
@@ -34,8 +34,8 @@ class Venue {
       query += ' AND ' + whereClauses.join(' AND ');
     }
 
-    // Group by venue and order by approval status (approved first, then by name)
-    query += ' GROUP BY v.id ORDER BY v.is_accepted DESC, v.venue_status ASC, v.name';
+    // Group by all venue columns and grade_name to satisfy GROUP BY requirements
+    query += ' GROUP BY v.id, v.name, v.block, v.floor, v.capacity, v.grade_id, v.status, v.type, v.created_at, v.updated_at, v.is_accepted, v.venue_status, v.created_by, g.grade_name ORDER BY v.is_accepted DESC, v.venue_status ASC, v.name';
 
     db.query(query, params, (err, rows) => {
       if (err) return callback(err);
@@ -45,7 +45,7 @@ class Venue {
 
   static findById(id, callback) {
     const query = `
-      SELECT v.*, 
+      SELECT v.id, v.name, v.block, v.floor, v.capacity, v.grade_id, v.status, v.type, v.created_at, v.updated_at, v.is_accepted, v.venue_status, v.created_by, 
         g.grade_name as grade,
         GROUP_CONCAT(DISTINCT s.subject_name) as subject_names,
         GROUP_CONCAT(DISTINCT s.id) as subject_ids
@@ -54,7 +54,7 @@ class Venue {
       LEFT JOIN venue_subjects vs ON v.id = vs.venue_id
       LEFT JOIN subjects s ON vs.subject_id = s.id
       WHERE v.id = ?
-      GROUP BY v.id`;
+      GROUP BY v.id, v.name, v.block, v.floor, v.capacity, v.grade_id, v.status, v.type, v.created_at, v.updated_at, v.is_accepted, v.venue_status, v.created_by, g.grade_name`;
 
     db.query(query, [id], (err, results) => {
       if (err) return callback(err);
@@ -74,9 +74,6 @@ class Venue {
     // Extract subjects array and remove from venueData to prevent SQL error
     const subjects = venueData.subject_ids || [];
     delete venueData.subject_ids;
-
-    console.log('Creating venue with data:', venueData);
-    console.log('Subjects to associate:', subjects);
 
     // Set default venue_status if not provided
     if (!venueData.venue_status) {
@@ -110,17 +107,14 @@ class Venue {
 
             if (subjects.length > 0) {
               const subjectValues = subjects.map(subjectId => [venueId, subjectId]);
-              console.log('Inserting venue-subject relationships:', subjectValues);
               conn.query('INSERT INTO venue_subjects (venue_id, subject_id) VALUES ?', [subjectValues], (err) => {
                 if (err) {
-                  console.error('Error inserting venue-subject relationships:', err);
                   return conn.rollback(() => {
                     conn.release();
                     reject(err);
                   });
                 }
 
-                console.log('Successfully inserted venue-subject relationships');
                 conn.commit(err => {
                   conn.release();
                   if (err) return reject(err);
@@ -128,7 +122,6 @@ class Venue {
                 });
               });
             } else {
-              console.log('No subjects to associate, committing venue creation');
               conn.commit(err => {
                 conn.release();
                 if (err) return reject(err);
@@ -290,14 +283,14 @@ class Venue {
 
   static getPendingVenues(callback) {
     const query = `
-      SELECT v.*, g.grade_name as grade,
+      SELECT v.id, v.name, v.block, v.floor, v.capacity, v.grade_id, v.status, v.type, v.created_at, v.updated_at, v.is_accepted, v.venue_status, v.created_by, g.grade_name as grade,
              GROUP_CONCAT(DISTINCT s.subject_name) as subject_names
       FROM venues v
       LEFT JOIN grades g ON v.grade_id = g.id
       LEFT JOIN venue_subjects vs ON v.id = vs.venue_id
       LEFT JOIN subjects s ON vs.subject_id = s.id
       WHERE v.venue_status = 'Requested'
-      GROUP BY v.id
+      GROUP BY v.id, v.name, v.block, v.floor, v.capacity, v.grade_id, v.status, v.type, v.created_at, v.updated_at, v.is_accepted, v.venue_status, v.created_by, g.grade_name
       ORDER BY v.created_at ASC`;
     
     db.query(query, callback);
