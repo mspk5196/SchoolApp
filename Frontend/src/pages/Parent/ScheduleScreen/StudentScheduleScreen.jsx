@@ -491,6 +491,8 @@ const StudentScheduleScreen = () => {
   );
 
   if (selectedClass) {
+    console.log(selectedClass);
+    
     return <ClassDetailScreen
       selectedClass={selectedClass}
       studentData={studentData}

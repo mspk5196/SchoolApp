@@ -1152,7 +1152,7 @@ exports.getDetailedStudentSchedule = async (req, res) => {
           try {
             const [chapterInfo] = await db.promise().query(
               `SELECT chapter_name, topic_name
-               FROM student_progress 
+               FROM student_progress
                WHERE student_id = ? AND subject_id = ?
                ORDER BY updated_at DESC LIMIT 1`,
               [studentId, item.subject_id]
@@ -1220,8 +1220,12 @@ exports.getAssessmentDetails = async (req, res) => {
         ANY_VALUE(asm.current_level) AS current_level,
         JSON_ARRAYAGG(
           JSON_OBJECT(
+            'id', m.id,
             'file_name', m.file_name,
-            'file_url', m.file_url
+            'file_url', m.file_url,
+            'title', COALESCE(m.title, m.file_name),
+            'level', m.level,
+            'material_type', m.material_type
           )
         ) AS materials
       FROM assessment_session_marks asm
@@ -1229,7 +1233,7 @@ exports.getAssessmentDetails = async (req, res) => {
         asm.material_id,
         '$[*]' COLUMNS(material_id INT PATH '$')
       ) jt ON 1=1
-      JOIN Materials m ON m.id = jt.material_id
+      JOIN materials m ON m.id = jt.material_id
       WHERE asm.as_id = ? AND asm.status = 'Present'
       GROUP BY asm.student_roll;`,
       [asmtSession.id]
@@ -1380,11 +1384,17 @@ exports.getAcademicDetails = async (req, res) => {
         
         // Fetch materials using the proper mapping
         const [materialRows] = await db.promise().query(
-          `SELECT m.file_name, m.file_url, m.title
+          `SELECT 
+            m.id,
+            m.file_name, 
+            m.file_url, 
+            COALESCE(m.title, m.file_name) as title,
+            m.level,
+            m.material_type
            FROM materials m
            WHERE m.section_subject_activity_id = ? 
              AND m.level = ?
-             AND m.material_type = 'PDF'
+             AND m.material_type IN ('PDF', 'Document')
            ORDER BY m.title ASC`,
           [sectionSubjectActivityId, level1]
         );
@@ -1394,12 +1404,19 @@ exports.getAcademicDetails = async (req, res) => {
         // Fallback: if no materials found with activity mapping, try the old method
         if (!materials || materials.length === 0) {
           const [fallbackRows] = await db.promise().query(
-            `SELECT m.file_name, m.file_url, m.title
+            `SELECT 
+              m.id,
+              m.file_name, 
+              m.file_url, 
+              COALESCE(m.title, m.file_name) as title,
+              m.level,
+              m.material_type
              FROM materials m
              WHERE m.subject_id = ? 
                AND m.grade_id = ? 
                AND m.level = ?
-               AND m.material_type = 'PDF'`,
+               AND m.material_type IN ('PDF', 'Document')
+             ORDER BY m.title ASC`,
             [subjectRow.id, gradeId, level1]
           );
           materials = fallbackRows;
@@ -1514,10 +1531,16 @@ exports.getMaterialsAndCompletedLevels = async (req, res) => {
     for (const activity of activitiesRows) {
       // Fetch materials for this activity
       const [materials] = await db.promise().query(
-        `SELECT id, level, material_type, file_name, file_url, title
+        `SELECT 
+          id, 
+          level, 
+          material_type, 
+          file_name, 
+          file_url, 
+          COALESCE(title, file_name) as title
          FROM materials
          WHERE section_subject_activity_id = ?
-         ORDER BY level ASC, material_type ASC`,
+         ORDER BY level ASC, material_type ASC, title ASC`,
         [activity.section_subject_activity_id]
       );
 

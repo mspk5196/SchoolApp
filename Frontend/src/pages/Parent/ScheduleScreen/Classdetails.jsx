@@ -36,13 +36,13 @@ const ClassDetailScreen = ({ selectedClass,
 
 
   const fetchAssessmentDetails = async () => {
-
     try {
       const res = await fetch(`${API_URL}/api/student/getAssessmentDetails`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           studentRoll: studentData.roll,
+          studentId: studentData.id || studentData.student_id,
           sectionId: studentData.section_id,
           subject: selectedClass.subject,
           date: date
@@ -50,8 +50,8 @@ const ClassDetailScreen = ({ selectedClass,
       });
       const assessment = await res.json();
 
-      if (assessment) {
-        detailsData = {
+      if (assessment && assessment.success !== false) {
+        let detailsData = {
           type: 'Assessment',
           level: assessment.level,
           rank: assessment.rank,
@@ -61,18 +61,17 @@ const ClassDetailScreen = ({ selectedClass,
           disciplinePercent: assessment.disciplinePercent,
           homeworkPercent: assessment.homeworkPercent,
           assessmentPercent: assessment.assessmentPercent,
-          materials: assessment.materials,
-          students: assessment.students // ✅ add this
+          materials: assessment.materials || [],
+          students: assessment.students || [] // ✅ add this
         };
-        setData(detailsData || []);
+        setData(detailsData);
+        console.log("Assessment Details:", detailsData);
+      } else {
+        setData([]);
       }
-
-      console.log("Assessment Details:", detailsData);
-      // if (assessment.score) {
-      //   return <Nodata />
-      // }
     } catch (error) {
       console.error('Error fetching assessment details:', error);
+      setData([]);
     }
   };
   const fetchAcademicDetails = async () => {
@@ -81,27 +80,32 @@ const ClassDetailScreen = ({ selectedClass,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentId: studentData.student_id,
+          studentId: studentData.id || studentData.student_id,
           sectionId: studentData.section_id,
           subject: selectedClass.subject,
           date: date
         })
       });
       const academic = await res2.json();
-      detailsData = {
-        type: 'Academics',
-        attentiveness: academic.attentiveness,
-        level: academic.level,
-        disciplinePercent: academic.disciplinePercent,
-        homeworkPercent: academic.homeworkPercent,
-        academicPercent: academic.academicPercent,
-        materials: academic.materials || []
-      };
-      setData(detailsData || []);
-      // console.log("Academic Details:", detailsData);
-
+      
+      if (academic && academic.success !== false) {
+        let detailsData = {
+          type: 'Academics',
+          attentiveness: academic.attentiveness,
+          level: academic.level,
+          disciplinePercent: academic.disciplinePercent,
+          homeworkPercent: academic.homeworkPercent,
+          academicPercent: academic.academicPercent,
+          materials: academic.materials || []
+        };
+        setData(detailsData);
+        console.log("Academic Details:", detailsData);
+      } else {
+        setData([]);
+      }
     } catch (error) {
-      console.error('Error fetching assessment details:', error);
+      console.error('Error fetching academic details:', error);
+      setData([]);
     }
   };
 
@@ -296,21 +300,44 @@ const ClassDetailScreen = ({ selectedClass,
               )}
 
               {/* PDF download for assessment */}
-              {Array.isArray(data.materials) && data.materials.map((file, idx) => (
-                <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <TouchableOpacity
-                    onPress={() => openFileLikeWhatsApp(`${API_URL}/${file.file_url}`, file.file_name)}
-                    style={[styles.pdfButton, { marginRight: 10 }]}
-                  >
-                    <Text style={styles.pdfButtonText}>{(file.file_name).replace(/%/g, ' ')}</Text>
-                  </TouchableOpacity>
+              {Array.isArray(data.materials) && data.materials.length > 0 ? (
+                <View style={styles.materialsContainer}>
+                  <Text style={styles.materialsTitle}>📚 Materials</Text>
+                  {data.materials.map((file, idx) => (
+                    <View key={`${file.id || idx}`} style={styles.materialItem}>
+                      <TouchableOpacity
+                        onPress={() => openFileLikeWhatsApp(`${API_URL}/${file.file_url}`, file.file_name)}
+                        style={[styles.pdfButton, { marginRight: 10 }]}
+                      >
+                        <View style={styles.materialInfo}>
+                          <Text style={styles.pdfButtonText}>
+                            {file.title || (file.file_name).replace(/%/g, ' ')}
+                          </Text>
+                          {file.material_type && (
+                            <Text style={styles.materialType}>
+                              📄 {file.material_type}
+                            </Text>
+                          )}
+                          {file.level && (
+                            <Text style={styles.materialLevel}>
+                              📊 Level {file.level}
+                            </Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                 </View>
-              ))}
+              ) : (
+                <View style={styles.noMaterialsContainer}>
+                  <Text style={styles.noMaterialsText}>📄 No materials available for this session</Text>
+                </View>
+              )}
 
               {/* Teacher/mentor info */}
               <View style={styles.teacherContainer}>
-                <Image source={getProfileImageSource(selectedClass.filePath)} style={styles.teacherAvatar} />
-                <Text style={styles.teacherName}>{selectedClass.mentor || 'Mentor'}</Text>
+                <Image source={getProfileImageSource(selectedClass.teacher_profile_path)} style={styles.teacherAvatar} />
+                <Text style={styles.teacherName}>{selectedClass.teacher_name || 'Mentor'}</Text>
               </View>
             </>
           )}

@@ -280,9 +280,17 @@ exports.getMaterials = async (req, res) => {
   }
 
   const sql = `
-    SELECT * FROM materials 
-      WHERE section_subject_activity_id = ?
-      ORDER BY level
+    SELECT 
+      id,
+      level,
+      material_type,
+      file_name,
+      file_url,
+      COALESCE(title, file_name) as title,
+      section_subject_activity_id
+    FROM materials 
+    WHERE section_subject_activity_id = ?
+    ORDER BY level ASC, material_type ASC, title ASC
   `;
   db.query(sql, [section_subject_activity_id], (err, results) => {
     if (err) {
@@ -1068,10 +1076,12 @@ exports.getLevels = (req, res) => {
   }
 
   const sql = `
-    SELECT DISTINCT level 
-    FROM materials 
-    WHERE grade_id = ? AND subject_id = ?
-    ORDER BY level
+    SELECT DISTINCT m.level 
+    FROM materials m
+    JOIN section_subject_activities ssa ON m.section_subject_activity_id = ssa.id
+    JOIN sections s ON ssa.section_id = s.id
+    WHERE s.grade_id = ? AND ssa.subject_id = ?
+    ORDER BY m.level
   `;
 
   db.query(sql, [gradeId, subjectId], (err, results) => {
@@ -2582,19 +2592,31 @@ exports.getAssessmentMaterials = (req, res) => {
   console.log(subjectId, sectionId);
 
   const query = `
-    SELECT m.id, m.file_name, m.level
+    SELECT 
+      m.id, 
+      m.file_name, 
+      m.level, 
+      COALESCE(m.title, m.file_name) as title,
+      m.material_type,
+      m.file_url
     FROM materials m
-    JOIN sections s ON m.grade_id = s.grade_id
-    WHERE m.subject_id = ? AND s.id = ? AND level = ?
-    AND m.material_type = 'PDF'
-    ORDER BY m.level
+    WHERE m.section_subject_activity_id IN (
+      SELECT ssa.id 
+      FROM section_subject_activities ssa 
+      JOIN activity_types at ON ssa.activity_type = at.id
+      WHERE ssa.subject_id = ? 
+        AND ssa.section_id = ? 
+        AND at.activity_type = 'Assessment'
+    )
+    AND m.level = ?
+    AND m.material_type IN ('PDF', 'Document')
+    ORDER BY m.title ASC
   `;
 
   db.query(query, [subjectId, sectionId, level], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ success: true, materials: results });
     console.log("materials", results);
-
   });
 };
 
@@ -2666,10 +2688,9 @@ exports.getOverdueStudents = async (req, res) => {
 FROM student_levels sl
 JOIN students s ON sl.student_roll = s.roll
 JOIN sections sec ON s.section_id = sec.id
-JOIN materials m ON sl.level = m.level 
-  AND sl.subject_id = m.subject_id 
-  AND sec.grade_id = m.grade_id
-JOIN subjects sub ON m.subject_id = sub.id
+JOIN section_subject_activities ssa ON sl.subject_id = ssa.subject_id AND sec.id = ssa.section_id
+JOIN materials m ON sl.level = m.level AND m.section_subject_activity_id = ssa.id
+JOIN subjects sub ON ssa.subject_id = sub.id
 WHERE sl.status = 'OnGoing' 
   AND m.expected_date <= CURDATE()
   AND DATEDIFF(CURDATE(), m.expected_date) <= 10
@@ -2739,9 +2760,8 @@ const checkOverdueLevels = async () => {
       FROM student_levels sl
       JOIN students s ON sl.student_roll = s.roll
       JOIN sections sec ON s.section_id = sec.id
-      JOIN materials m ON sl.level = m.level 
-                        AND sl.subject_id = m.subject_id 
-                        AND sec.grade_id = m.grade_id
+      JOIN section_subject_activities ssa ON sl.subject_id = ssa.subject_id AND sec.id = ssa.section_id
+      JOIN materials m ON sl.level = m.level AND m.section_subject_activity_id = ssa.id
       JOIN section_mentor_subject sms ON sms.section_id = s.section_id
       JOIN mentor_section_assignments msa ON sms.msa_id = msa.id
       WHERE sl.status = 'OnGoing'
