@@ -1896,7 +1896,7 @@ exports.academicSessionAttendance = async (req, res) => {
 // Complete an academic session
 exports.academicSessionComplete = async (req, res) => {
   try {
-    const { action } = req.body;
+    const { action, materialNotes } = req.body;
     const sessionId = req.params.sessionId;
 
     // Verify session exists
@@ -1919,26 +1919,73 @@ exports.academicSessionComplete = async (req, res) => {
     const nextLevel = forNextLevelSessions.length > 0 ? forNextLevelSessions[0].next_level : 2;
     const futureNextLevel = nextLevel;
 
+    // Determine material status based on action
+    const materialStatus = action === 'Complete material' ? 'completed' : 'continue';
+
     await db.promise().query(`
       UPDATE academic_sessions 
       SET 
         status = 'Completed',
         actual_end_time = NOW(),
         next_level = ?,
-        material_status = ?
+        material_status = ?,
+        material_notes = ?
       WHERE dsa_id = ?
     `, [
       action === 'Complete material' ? futureNextLevel : session[0].current_level,
-      action === 'Complete material' ? 'Complete' : 'Continue',
+      materialStatus,
+      materialNotes || null,
       sessionId
     ]);
+
+    // Update material assignment tracking
+    const [materialAssignments] = await db.promise().query(
+      `SELECT pma.id as assignment_id, pma.material_id
+       FROM period_material_assignments pma
+       JOIN daily_schedule ds ON pma.daily_schedule_id = ds.id
+       WHERE ds.id = ? AND pma.is_active = 1`,
+      [sessionId]
+    );
+
+    for (const assignment of materialAssignments) {
+      // Insert or update session material status
+      await db.promise().query(
+        `INSERT INTO session_material_status 
+         (session_id, material_assignment_id, status, completed_at, notes)
+         VALUES (?, ?, ?, NOW(), ?)
+         ON DUPLICATE KEY UPDATE
+         status = VALUES(status),
+         completed_at = VALUES(completed_at),
+         notes = VALUES(notes)`,
+        [sessionId, assignment.assignment_id, materialStatus, materialNotes]
+      );
+
+      // Update material continuation tracking
+      if (assignment.material_id) {
+        if (materialStatus === 'completed') {
+          await db.promise().query(
+            `UPDATE material_continuation_tracking 
+             SET completion_status = 'completed', completed_at = NOW()
+             WHERE material_id = ? AND section_id = ? AND subject_id = ?`,
+            [assignment.material_id, session[0].section_id, session[0].subject_id]
+          );
+        } else if (materialStatus === 'continue') {
+          await db.promise().query(
+            `UPDATE material_continuation_tracking 
+             SET total_sessions_used = total_sessions_used + 1,
+                 current_session_id = ?
+             WHERE material_id = ? AND section_id = ? AND subject_id = ?`,
+            [sessionId, assignment.material_id, session[0].section_id, session[0].subject_id]
+          );
+        }
+      }
+    }
 
     const [nextSessions] = await db.promise().query(`
       SELECT next_level FROM academic_sessions
       WHERE section_id = ? AND subject_id = ? AND status = 'Completed'
       ORDER BY end_time DESC LIMIT 1
     `, [session[0].section_id, session[0].subject_id, sessionId]);
-    // console.log('nextSessions', nextSessions);
 
     const prevLevel = nextSessions.length > 0 ? (nextSessions[0].next_level) : 1;
     const currentLevel = prevLevel;
@@ -1949,10 +1996,7 @@ exports.academicSessionComplete = async (req, res) => {
       ORDER BY end_time DESC
     `, [session[0].section_id, session[0].subject_id, sessionId]);
 
-    // console.log('toUpdateSessions', toUpdateSessions);
-
     for (const s of toUpdateSessions) {
-
       await db.promise().query(`
         UPDATE academic_sessions 
         SET current_level = ?, next_level = ?
@@ -1964,8 +2008,11 @@ exports.academicSessionComplete = async (req, res) => {
       ]);
     }
 
-    res.json({ success: true });
-    // await generateAcademicSessionsForNextNDays();
+    res.json({ 
+      success: true, 
+      material_status: materialStatus,
+      message: `Session completed with material ${materialStatus}`
+    });
   } catch (error) {
     console.error('Error completing academic session:', error);
     res.status(500).json({
@@ -2596,9 +2643,11 @@ exports.getAssessmentMaterials = (req, res) => {
       m.id, 
       m.file_name, 
       m.level, 
-      COALESCE(m.title, m.file_name) as title,
+      COALESCE(m.title, m.topic_title, m.file_name) as title,
       m.material_type,
-      m.file_url
+      m.file_url,
+      m.topic_title,
+      m.is_topic_based
     FROM materials m
     WHERE m.section_subject_activity_id IN (
       SELECT ssa.id 
@@ -2608,16 +2657,80 @@ exports.getAssessmentMaterials = (req, res) => {
         AND ssa.section_id = ? 
         AND at.activity_type = 'Assessment'
     )
-    AND m.level = ?
+    AND (
+      (m.is_topic_based = 0 AND m.level = ?) OR
+      (m.is_topic_based = 1)
+    )
     AND m.material_type IN ('PDF', 'Document')
-    ORDER BY m.title ASC
+    ORDER BY 
+      m.is_topic_based DESC,
+      m.title ASC,
+      m.level ASC
   `;
 
   db.query(query, [subjectId, sectionId, level], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, materials: results });
+    
+    // Group results by type
+    const topicBased = results.filter(r => r.is_topic_based);
+    const levelBased = results.filter(r => !r.is_topic_based);
+    
+    res.json({ 
+      success: true, 
+      materials: {
+        topic_based: topicBased,
+        level_based: levelBased,
+        all: results
+      }
+    });
     console.log("materials", results);
   });
+};
+
+// Upload assessment materials (new function)
+exports.uploadAssessmentMaterials = async (req, res) => {
+  const { assessmentSessionId, files, title, uploadedBy } = req.body;
+  
+  if (!assessmentSessionId || !files || !uploadedBy) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  try {
+    const uploadedMaterials = [];
+    
+    for (const file of files) {
+      const [result] = await db.promise().query(
+        `INSERT INTO assessment_uploaded_materials 
+         (assessment_session_id, file_name, file_url, file_type, title, uploaded_by) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [assessmentSessionId, file.fileName, file.fileUrl, file.fileType || 'PDF', title || file.fileName, uploadedBy]
+      );
+      
+      uploadedMaterials.push({
+        id: result.insertId,
+        file_name: file.fileName,
+        file_url: file.fileUrl,
+        title: title || file.fileName
+      });
+    }
+
+    // Update assessment session to reflect uploaded materials
+    await db.promise().query(
+      `UPDATE assessment_sessions 
+       SET has_uploaded_materials = 1, uploaded_materials_count = uploaded_materials_count + ?
+       WHERE id = ?`,
+      [files.length, assessmentSessionId]
+    );
+
+    res.json({
+      success: true,
+      message: "Assessment materials uploaded successfully",
+      uploaded_materials: uploadedMaterials
+    });
+  } catch (err) {
+    console.error("Error uploading assessment materials:", err);
+    res.status(500).json({ success: false, message: "Database error" });
+  }
 };
 
 // Cron job to create assessment sessions (run daily at 11:59 PM)
@@ -2797,3 +2910,224 @@ const checkOverdueLevels = async () => {
   }
 };
 exports.checkOverdueLevels = checkOverdueLevels;
+
+// New functions for enhanced workflow
+
+// Get activity types with current marking configuration
+exports.getActivityTypesWithConfig = async (req, res) => {
+  const { sectionId, subjectId } = req.body;
+  
+  if (!sectionId || !subjectId) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  try {
+    const [activityTypes] = await db.promise().query(`
+      SELECT 
+        at.id,
+        at.activity_type,
+        at.marking_type as default_marking_type,
+        COALESCE(atc.current_marking_type, at.marking_type) as current_marking_type,
+        at.is_active,
+        ssa.id as section_subject_activity_id
+      FROM activity_types at
+      JOIN section_subject_activities ssa ON at.id = ssa.activity_type
+      LEFT JOIN activity_type_configurations atc ON 
+        atc.section_id = ssa.section_id AND 
+        atc.subject_id = ssa.subject_id AND 
+        atc.activity_type_id = at.id
+      WHERE ssa.section_id = ? AND ssa.subject_id = ? AND ssa.is_active = 1
+      ORDER BY at.activity_type
+    `, [sectionId, subjectId]);
+
+    res.json({
+      success: true,
+      activity_types: activityTypes,
+      flexible_types: activityTypes.filter(at => at.default_marking_type === 'flexible')
+    });
+  } catch (err) {
+    console.error("Error fetching activity types:", err);
+    res.status(500).json({ success: false, message: "Database error" });
+  }
+};
+
+// Update marking type for flexible activities
+exports.updateActivityMarkingType = async (req, res) => {
+  const { sectionId, subjectId, activityTypeId, markingType, updatedBy } = req.body;
+  
+  if (!sectionId || !subjectId || !activityTypeId || !markingType || !updatedBy) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  if (!['attentiveness', 'marks'].includes(markingType)) {
+    return res.status(400).json({ success: false, message: "Invalid marking type" });
+  }
+
+  try {
+    // Check if activity type is flexible
+    const [activityType] = await db.promise().query(
+      `SELECT marking_type FROM activity_types WHERE id = ?`,
+      [activityTypeId]
+    );
+
+    if (!activityType.length || activityType[0].marking_type !== 'flexible') {
+      return res.status(400).json({ success: false, message: "Activity type is not configurable" });
+    }
+
+    // Insert or update configuration
+    await db.promise().query(`
+      INSERT INTO activity_type_configurations 
+      (section_id, subject_id, activity_type_id, current_marking_type, updated_by)
+      VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+      current_marking_type = VALUES(current_marking_type),
+      updated_by = VALUES(updated_by),
+      updated_at = CURRENT_TIMESTAMP
+    `, [sectionId, subjectId, activityTypeId, markingType, updatedBy]);
+
+    res.json({
+      success: true,
+      message: "Marking type updated successfully",
+      new_marking_type: markingType
+    });
+  } catch (err) {
+    console.error("Error updating marking type:", err);
+    res.status(500).json({ success: false, message: "Database error" });
+  }
+};
+
+// Get session materials for academic sessions
+exports.getSessionMaterials = async (req, res) => {
+  const { sessionId } = req.body;
+  
+  if (!sessionId) {
+    return res.status(400).json({ success: false, message: "Session ID required" });
+  }
+
+  try {
+    const [materials] = await db.promise().query(`
+      SELECT 
+        pma.id as assignment_id,
+        pma.topic_title,
+        m.id as material_id,
+        m.file_name,
+        m.file_url,
+        COALESCE(m.title, m.topic_title, pma.topic_title) as title,
+        m.material_type,
+        m.is_topic_based,
+        sms.status as session_status,
+        sms.notes as session_notes
+      FROM period_material_assignments pma
+      LEFT JOIN materials m ON pma.material_id = m.id
+      LEFT JOIN session_material_status sms ON pma.id = sms.material_assignment_id 
+        AND sms.session_id = ?
+      WHERE pma.daily_schedule_id = ? AND pma.is_active = 1
+      ORDER BY pma.assigned_at
+    `, [sessionId, sessionId]);
+
+    res.json({
+      success: true,
+      materials: materials,
+      has_materials: materials.length > 0
+    });
+  } catch (err) {
+    console.error("Error fetching session materials:", err);
+    res.status(500).json({ success: false, message: "Database error" });
+  }
+};
+
+// Get uploaded assessment materials for a session
+exports.getUploadedAssessmentMaterials = async (req, res) => {
+  const { assessmentSessionId } = req.body;
+  
+  if (!assessmentSessionId) {
+    return res.status(400).json({ success: false, message: "Assessment session ID required" });
+  }
+
+  try {
+    const [materials] = await db.promise().query(`
+      SELECT 
+        id,
+        file_name,
+        file_url,
+        COALESCE(title, file_name) as title,
+        file_type,
+        uploaded_at,
+        uploaded_by
+      FROM assessment_uploaded_materials
+      WHERE assessment_session_id = ? AND is_active = 1
+      ORDER BY uploaded_at DESC
+    `, [assessmentSessionId]);
+
+    res.json({
+      success: true,
+      uploaded_materials: materials,
+      count: materials.length
+    });
+  } catch (err) {
+    console.error("Error fetching uploaded assessment materials:", err);
+    res.status(500).json({ success: false, message: "Database error" });
+  }
+};
+
+// Get assessment session info (view only for mentors)
+exports.getAssessmentSessionInfo = async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    
+    if (!sessionId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Session ID is required' 
+      });
+    }
+
+    const query = `
+      SELECT 
+        ass.*,
+        ds.date,
+        ds.session_no,
+        ds.start_time,
+        ds.end_time,
+        s.subject_name,
+        sec.section_name,
+        g.grade_name,
+        at.activity_type
+      FROM assessment_sessions ass
+      JOIN daily_schedule ds ON ass.daily_schedule_id = ds.id
+      JOIN subjects s ON ds.subject_id = s.id
+      JOIN sections sec ON ds.section_id = sec.id
+      JOIN grades g ON sec.grade_id = g.id
+      JOIN activity_types at ON ds.activity = at.id
+      WHERE ass.id = ?
+    `;
+
+    db.query(query, [sessionId], (err, results) => {
+      if (err) {
+        console.error('Error fetching session info:', err);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Database error while fetching session info' 
+        });
+      }
+
+      if (results.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Session not found' 
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        session: results[0] 
+      });
+    });
+  } catch (error) {
+    console.error('Error in getAssessmentSessionInfo:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error' 
+    });
+  }
+};

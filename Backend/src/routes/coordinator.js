@@ -229,5 +229,25 @@ router.post('/coordinator/assignTask', coordinatorController.assignTask);
 router.post('/coordinator/getRequestedAssessments', coordinatorController.getRequestedAssessments);
 router.post('/coordinator/processAssessmentRequest', coordinatorController.processAssessmentRequest);
 
+// New Workflow Routes
+
+// Material Assignment
+router.post('/coordinator/assignMaterialToPeriod', coordinatorController.assignMaterialToPeriod);
+router.post('/coordinator/getMaterialsForAssignment', coordinatorController.getMaterialsForAssignment);
+router.post('/coordinator/getPeriodMaterialAssignments', coordinatorController.getPeriodMaterialAssignments);
+
+// Activity Type Configuration
+router.post('/coordinator/getActivityTypesWithConfig', coordinatorController.getActivityTypesWithConfig);
+router.post('/coordinator/getActivityTypeConfigurations', coordinatorController.getActivityTypeConfigurations);
+router.post('/coordinator/updateActivityTypeConfiguration', coordinatorController.updateActivityTypeConfiguration);
+router.post('/coordinator/getSectionSubjects', coordinatorController.getSectionSubjects);
+
+// Weekly Schedule Management
+router.post('/coordinator/getWeeklySchedule', coordinatorController.getWeeklySchedule);
+
+// Enhanced Material Management Routes (coordinator only upload)
+router.post('/coordinator/uploadMaterial', uploadMaterials.single('material'), coordinatorController.uploadMaterial);
+router.post('/coordinator/getMaterialsForSection', coordinatorController.getMaterialsForSection);
+router.post('/coordinator/deleteMaterial', coordinatorController.deleteMaterial);
 
 module.exports = router;

@@ -379,6 +379,15 @@ const styles = StyleSheet.create({
     color: '#495057',
     marginBottom: 12,
   },
+  materialSection: {
+    marginBottom: 16,
+  },
+  materialSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#495057',
+    marginBottom: 8,
+  },
   materialItem: {
     marginBottom: 12,
   },
@@ -394,6 +403,72 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#28a745',
     marginTop: 2,
+  },
+  materialSource: {
+    fontSize: 12,
+    color: '#007bff',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  materialBadge: {
+    fontSize: 12,
+    color: '#6f42c1',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  topicSection: {
+    backgroundColor: '#e7f3ff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  topicTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0d47a1',
+    marginBottom: 4,
+  },
+  materialStatus: {
+    fontSize: 14,
+    color: '#1565c0',
+  },
+  performanceSection: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  performanceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#495057',
+    marginBottom: 8,
+  },
+  performanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  performanceLabel: {
+    fontSize: 14,
+    color: '#6c757d',
+  },
+  performanceValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#495057',
+  },
+  highAttention: {
+    color: '#28a745',
+  },
+  moderateAttention: {
+    color: '#ffc107',
+  },
+  lowAttention: {
+    color: '#dc3545',
   },
   noMaterialsContainer: {
     padding: 20,

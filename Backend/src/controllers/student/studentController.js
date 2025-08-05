@@ -1206,12 +1206,13 @@ exports.getAssessmentDetails = async (req, res) => {
 
     // Find assessment session for this section, subject, and date
     const [[asmtSession]] = await db.promise().query(
-      `SELECT id FROM assessment_sessions WHERE section_id = ? AND subject_id = ? AND date = ? LIMIT 1`,
+      `SELECT id, has_uploaded_materials, uploaded_materials_count FROM assessment_sessions 
+       WHERE section_id = ? AND subject_id = ? AND date = ? LIMIT 1`,
       [sectionId, subjectRow.id, date]
     );
     if (!asmtSession) return res.json({ hasAssessment: false });
 
-    // Get all marks and materials for this assessment session
+    // Get all marks and pre-assessment materials for this assessment session
     const [marks] = await db.promise().query(
       `SELECT 
         asm.student_roll,
@@ -1225,17 +1226,33 @@ exports.getAssessmentDetails = async (req, res) => {
             'file_url', m.file_url,
             'title', COALESCE(m.title, m.file_name),
             'level', m.level,
-            'material_type', m.material_type
+            'material_type', m.material_type,
+            'source', 'pre_assessment'
           )
-        ) AS materials
+        ) AS pre_assessment_materials
       FROM assessment_session_marks asm
-      JOIN JSON_TABLE(
+      LEFT JOIN JSON_TABLE(
         asm.material_id,
         '$[*]' COLUMNS(material_id INT PATH '$')
       ) jt ON 1=1
-      JOIN materials m ON m.id = jt.material_id
+      LEFT JOIN materials m ON m.id = jt.material_id
       WHERE asm.as_id = ? AND asm.status = 'Present'
-      GROUP BY asm.student_roll;`,
+      GROUP BY asm.student_roll`,
+      [asmtSession.id]
+    );
+
+    // Get mentor uploaded assessment materials
+    const [uploadedMaterials] = await db.promise().query(
+      `SELECT 
+        id,
+        file_name,
+        file_url,
+        COALESCE(title, file_name) as title,
+        file_type,
+        uploaded_at
+      FROM assessment_uploaded_materials 
+      WHERE assessment_session_id = ? AND is_active = 1
+      ORDER BY uploaded_at DESC`,
       [asmtSession.id]
     );
 
@@ -1253,8 +1270,7 @@ exports.getAssessmentDetails = async (req, res) => {
       rank = sortedMarks.findIndex(m => m.roll === studentRoll) + 1;
     }
 
-    //Mark percentage to 80%
-
+    // Mark percentage to 80%
     if (student) {
       student.percentage = Math.round((student.mark / 100) * 80);
     }
@@ -1291,6 +1307,15 @@ exports.getAssessmentDetails = async (req, res) => {
     const highestScore = sortedMarks[0]?.mark || 0;
     const classAverage = Math.round(sortedMarks.reduce((a, b) => a + b.mark, 0) / sortedMarks.length);
 
+    // Combine materials
+    const allMaterials = {
+      pre_assessment: student ? (student.pre_assessment_materials || []) : [],
+      uploaded_by_mentor: uploadedMaterials.map(material => ({
+        ...material,
+        source: 'mentor_uploaded'
+      }))
+    };
+
     res.json({
       hasAssessment: true,
       assessmentSessionId: asmtSession.id,
@@ -1304,13 +1329,15 @@ exports.getAssessmentDetails = async (req, res) => {
       disciplinePercent,
       homeworkPercent,
       assessmentPercent: student ? student.percentage : null,
-      materials: student ? student.materials : [],
+      materials: allMaterials,
+      hasUploadedMaterials: asmtSession.has_uploaded_materials,
+      uploadedMaterialsCount: asmtSession.uploaded_materials_count,
       students: marks.map(m => ({
         roll: m.student_roll,
         mark: m.mark,
         percentage: m.percentage,
         level: m.current_level,
-        materials: m.materials
+        materials: allMaterials
       }))
     });
   } catch (err) {
@@ -1322,7 +1349,6 @@ exports.getAssessmentDetails = async (req, res) => {
 
 exports.getAcademicDetails = async (req, res) => {
   const { studentId, sectionId, subject, date } = req.body;
-  // console.log("Academic Details Request:", studentId, sectionId, subject, date);
 
   if (!studentId || !sectionId || !subject || !date) {
     return res.status(400).json({ success: false, message: "Missing required fields" });
@@ -1337,11 +1363,17 @@ exports.getAcademicDetails = async (req, res) => {
       `SELECT id FROM subjects WHERE subject_name = ?`, [subject]
     );
     if (!student || !subjectRow) return res.json({});
-    // console.log("Student Roll:", student.roll, "Subject ID:", subjectRow.id);
 
     // Find academic session(s) for this section, subject, and date
     const [sessions] = await db.promise().query(
-      `SELECT asa.performance, asa.attendance_status, asa.session_id, ds.session_no
+      `SELECT 
+        asa.performance, 
+        asa.attendance_status, 
+        asa.session_id, 
+        ds.session_no,
+        ds.id as daily_schedule_id,
+        ass.material_status,
+        ass.material_notes
        FROM academic_session_attendance asa
        JOIN daily_schedule ds ON asa.session_id = ds.id
        JOIN academic_sessions ass ON asa.session_id = ass.dsa_id
@@ -1350,80 +1382,75 @@ exports.getAcademicDetails = async (req, res) => {
     );
     if (!sessions || sessions.length === 0) return res.json({});
 
-    // Find the student's current level from the session(s)
-    let level1 = null;
-    if (sessions.length > 0) {
-      // Use the first session's session_no as level (or adjust as needed)
-      level1 = sessions[0].session_no;
-    }
-
-    const [[sectionRow]] = await db.promise().query(
-      `SELECT grade_id FROM sections WHERE id = ?`,
-      [sectionId]
-    );
-    if (!sectionRow) return res.json({});
-    const gradeId = sectionRow.grade_id;
-    // console.log("Section Grade ID:", gradeId, "Level:", level1);
-
-
-    // Fetch materials for this level, subject, and section
+    // Get assigned materials for this session from coordinator assignment
     let materials = [];
-    if (level1) {
-      // First, get the section_subject_activity_id for academic activities
-      const [sectionSubjectActivityRows] = await db.promise().query(
-        `SELECT ssa.id as section_subject_activity_id
-         FROM section_subject_activities ssa
-         JOIN activity_types act ON ssa.activity_type = act.id
-         WHERE ssa.section_id = ? AND ssa.subject_id = ? AND act.activity_type = 'Academic'
-         LIMIT 1`,
-        [sectionId, subjectRow.id]
+    let topicTitle = null;
+    let materialStatus = 'not_started';
+
+    if (sessions.length > 0) {
+      const dailyScheduleId = sessions[0].daily_schedule_id;
+      materialStatus = sessions[0].material_status || 'not_started';
+
+      // Get assigned materials from period_material_assignments
+      const [assignedMaterials] = await db.promise().query(
+        `SELECT 
+          pma.topic_title,
+          pma.material_id,
+          m.file_name,
+          m.file_url,
+          COALESCE(m.title, m.topic_title, pma.topic_title) as title,
+          m.material_type,
+          sms.status as session_status,
+          sms.notes as session_notes
+         FROM period_material_assignments pma
+         LEFT JOIN materials m ON pma.material_id = m.id
+         LEFT JOIN session_material_status sms ON pma.id = sms.material_assignment_id 
+           AND sms.session_id = ?
+         WHERE pma.daily_schedule_id = ? AND pma.is_active = 1
+         ORDER BY pma.assigned_at DESC`,
+        [sessions[0].session_id, dailyScheduleId]
       );
 
-      if (sectionSubjectActivityRows.length > 0) {
-        const sectionSubjectActivityId = sectionSubjectActivityRows[0].section_subject_activity_id;
-        
-        // Fetch materials using the proper mapping
-        const [materialRows] = await db.promise().query(
-          `SELECT 
-            m.id,
-            m.file_name, 
-            m.file_url, 
-            COALESCE(m.title, m.file_name) as title,
-            m.level,
-            m.material_type
-           FROM materials m
-           WHERE m.section_subject_activity_id = ? 
-             AND m.level = ?
-             AND m.material_type IN ('PDF', 'Document')
-           ORDER BY m.title ASC`,
-          [sectionSubjectActivityId, level1]
+      if (assignedMaterials.length > 0) {
+        materials = assignedMaterials;
+        topicTitle = assignedMaterials[0].topic_title;
+      }
+
+      // Fallback: if no assigned materials, try to get from materials table based on activity
+      if (!materials || materials.length === 0) {
+        const [sectionSubjectActivityRows] = await db.promise().query(
+          `SELECT ssa.id as section_subject_activity_id
+           FROM section_subject_activities ssa
+           JOIN activity_types act ON ssa.activity_type = act.id
+           WHERE ssa.section_id = ? AND ssa.subject_id = ? AND act.activity_type = 'Academic'
+           LIMIT 1`,
+          [sectionId, subjectRow.id]
         );
 
-        materials = materialRows;
-
-        // Fallback: if no materials found with activity mapping, try the old method
-        if (!materials || materials.length === 0) {
-          const [fallbackRows] = await db.promise().query(
+        if (sectionSubjectActivityRows.length > 0) {
+          const sectionSubjectActivityId = sectionSubjectActivityRows[0].section_subject_activity_id;
+          
+          // Get materials from materials table
+          const [materialRows] = await db.promise().query(
             `SELECT 
               m.id,
               m.file_name, 
               m.file_url, 
-              COALESCE(m.title, m.file_name) as title,
-              m.level,
-              m.material_type
+              COALESCE(m.title, m.topic_title, m.file_name) as title,
+              m.material_type,
+              m.topic_title,
+              m.is_topic_based
              FROM materials m
-             WHERE m.subject_id = ? 
-               AND m.grade_id = ? 
-               AND m.level = ?
+             WHERE m.section_subject_activity_id = ? 
                AND m.material_type IN ('PDF', 'Document')
              ORDER BY m.title ASC`,
-            [subjectRow.id, gradeId, level1]
+            [sectionSubjectActivityId]
           );
-          materials = fallbackRows;
+
+          materials = materialRows;
         }
       }
     }
-
 
     // Calculate attentiveness and academic percent
     let totalScore = 0, count = 0, level = null;
@@ -1470,7 +1497,10 @@ exports.getAcademicDetails = async (req, res) => {
       disciplinePercent,
       homeworkPercent,
       academicPercent,
-      materials
+      materials,
+      topicTitle,
+      materialStatus,
+      sessionNotes: sessions[0]?.material_notes || null
     });
   } catch (err) {
     console.error(err);
@@ -1511,12 +1541,21 @@ exports.getMaterialsAndCompletedLevels = async (req, res) => {
   }
 
   try {
-    // Get activities for this subject and section
+    // Get activities for this subject and section with new activity types
     const [activitiesRows] = await db.promise().query(
-      `SELECT ssa.id as section_subject_activity_id, act.id as activity_id, act.activity_type as activity_name
+      `SELECT 
+        ssa.id as section_subject_activity_id, 
+        act.id as activity_id, 
+        act.activity_type as activity_name,
+        act.marking_type,
+        COALESCE(atc.current_marking_type, act.marking_type) as current_marking_type
        FROM section_subject_activities ssa
        JOIN activity_types act ON ssa.activity_type = act.id
-       WHERE ssa.section_id = ? AND ssa.subject_id = ?
+       LEFT JOIN activity_type_configurations atc ON 
+         atc.section_id = ssa.section_id AND 
+         atc.subject_id = ssa.subject_id AND 
+         atc.activity_type_id = act.id
+       WHERE ssa.section_id = ? AND ssa.subject_id = ? AND ssa.is_active = 1
        ORDER BY act.activity_type`, 
       [section_id, subject_id]
     );
@@ -1529,7 +1568,7 @@ exports.getMaterialsAndCompletedLevels = async (req, res) => {
     const activitiesWithMaterials = [];
     
     for (const activity of activitiesRows) {
-      // Fetch materials for this activity
+      // Fetch materials for this activity (both topic-based and level-based)
       const [materials] = await db.promise().query(
         `SELECT 
           id, 
@@ -1537,14 +1576,45 @@ exports.getMaterialsAndCompletedLevels = async (req, res) => {
           material_type, 
           file_name, 
           file_url, 
-          COALESCE(title, file_name) as title
+          COALESCE(title, topic_title, file_name) as title,
+          topic_title,
+          is_topic_based,
+          can_be_continued
          FROM materials
          WHERE section_subject_activity_id = ?
-         ORDER BY level ASC, material_type ASC, title ASC`,
+         ORDER BY 
+           CASE WHEN is_topic_based = 1 THEN 0 ELSE 1 END,
+           topic_title ASC, 
+           level ASC, 
+           material_type ASC, 
+           title ASC`,
         [activity.section_subject_activity_id]
       );
 
-      // Fetch completed levels for this student and activity
+      // For topic-based materials, get completion tracking
+      let topicCompletionStatus = {};
+      if (materials.some(m => m.is_topic_based)) {
+        const [topicStatus] = await db.promise().query(
+          `SELECT 
+            mct.material_id,
+            mct.completion_status,
+            mct.total_sessions_used,
+            mct.completed_at
+           FROM material_continuation_tracking mct
+           WHERE mct.section_id = ? AND mct.subject_id = ?`,
+          [section_id, subject_id]
+        );
+        
+        topicStatus.forEach(status => {
+          topicCompletionStatus[status.material_id] = {
+            status: status.completion_status,
+            sessions_used: status.total_sessions_used,
+            completed_at: status.completed_at
+          };
+        });
+      }
+
+      // Fetch completed levels for this student and activity (for backward compatibility)
       const [completedLevelsRows] = await db.promise().query(
         `SELECT DISTINCT level
          FROM student_level_updates
@@ -1553,18 +1623,36 @@ exports.getMaterialsAndCompletedLevels = async (req, res) => {
       );
       const completedLevels = completedLevelsRows.map(row => row.level);
 
+      // Group materials by type
+      const groupedMaterials = {
+        topic_based: materials.filter(m => m.is_topic_based).map(m => ({
+          ...m,
+          completion_info: topicCompletionStatus[m.id] || { status: 'not_started', sessions_used: 0 }
+        })),
+        level_based: materials.filter(m => !m.is_topic_based)
+      };
+
       activitiesWithMaterials.push({
         activity_id: activity.activity_id,
         activity_name: activity.activity_name,
+        marking_type: activity.marking_type,
+        current_marking_type: activity.current_marking_type,
         section_subject_activity_id: activity.section_subject_activity_id,
-        materials,
-        completedLevels
+        materials: groupedMaterials,
+        completedLevels, // For backward compatibility
+        total_topic_materials: groupedMaterials.topic_based.length,
+        total_level_materials: groupedMaterials.level_based.length
       });
     }
 
     res.json({
       success: true,
-      activities: activitiesWithMaterials
+      activities: activitiesWithMaterials,
+      system_info: {
+        supports_topic_based: true,
+        supports_level_based: true,
+        flexible_marking_available: true
+      }
     });
   } catch (err) {
     console.error("Error fetching materials and completed levels:", err);
