@@ -240,28 +240,110 @@ const StudentScheduleScreen = () => {
 
   const fetchScheduleData = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/student/getStudentScheduleByMonth`, {
+      const response = await fetch(`${API_URL}/api/student/getDetailedStudentSchedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sectionId: sectionId,
+          studentId: studentData.id,
+          gradeId: studentData.grade_id,
           month: selectedMonth.toString().padStart(2, '0'),
-          year: selectedYear
+          year: selectedYear,
+          day: selectedDay,
+          includeDetails: true, // Flag to get comprehensive details
+          includeTeacherInfo: true,
+          includeClassroomInfo: true,
+          includeSubjectDetails: true
         })
       });
       const data = await response.json();
       if (data.success) {
-        const dayKey = String(Number(selectedDay));
-        const dayData = Array.isArray(data.schedule[dayKey]) ? data.schedule[dayKey] : [];
-        setAcademicData(dayData);
-        // console.log(dayData);
-        setRefresh(false);
-
+        // Handle both old and new response formats
+        let dayData = [];
+        if (data.schedule) {
+          // New detailed format
+          dayData = Array.isArray(data.schedule) ? data.schedule : [];
+        } else if (data.scheduleByDay) {
+          // Alternative format where data comes organized by day
+          const dayKey = String(Number(selectedDay));
+          dayData = Array.isArray(data.scheduleByDay[dayKey]) ? data.scheduleByDay[dayKey] : [];
+        }
+        
+        // Process and enhance the data with additional details
+        const processedData = dayData.map(item => ({
+          ...item,
+          // Ensure all required fields are present
+          id: item.id || `${item.subject_id}_${item.period_id}_${selectedDay}`,
+          subject: item.subject_name || item.subject,
+          time: item.formatted_time || item.time || `${convertTo12HourFormat(item.start_time)} - ${convertTo12HourFormat(item.end_time)}`,
+          activity: item.activity_type || item.activity || 'Class',
+          gradeId: item.grade_id || studentData.grade_id,
+          sectionName: item.section_name || studentData.section_name,
+          color: item.background_color || item.color || getRandomColor(),
+          // Enhanced teacher information
+          teacherName: item.teacher_name || item.mentor_name || 'N/A',
+          teacherEmail: item.teacher_email || '',
+          teacherPhone: item.teacher_phone || '',
+          filePath: item.teacher_profile_path || item.filePath,
+          // Enhanced subject information
+          subjectCode: item.subject_code || '',
+          subjectDescription: item.subject_description || '',
+          // Classroom information
+          classroom: item.classroom_name || item.room_number || '',
+          building: item.building_name || '',
+          floor: item.floor_number || '',
+          // Additional academic details
+          period: item.period_number || item.period,
+          duration: item.duration_minutes || 45,
+          attendanceRequired: item.attendance_required !== false,
+          // Status information
+          status: item.class_status || 'scheduled', // scheduled, cancelled, completed
+          notes: item.class_notes || '',
+          // Curriculum information
+          chapterName: item.current_chapter || '',
+          topicName: item.current_topic || '',
+          learningObjectives: item.learning_objectives || [],
+          // Assessment information
+          hasAssignment: item.has_assignment || false,
+          assignmentDueDate: item.assignment_due_date || null,
+          hasQuiz: item.has_quiz || false,
+          quizDate: item.quiz_date || null,
+        }));
+        
+        setAcademicData(processedData);
+        console.log('Enhanced academic data:', processedData);
         setRefresh(false);
       }
     } catch (error) {
-      console.error("Error fetching academic schedule:", error);
+      console.error("Error fetching detailed academic schedule:", error);
+      // Fallback to original API if new one fails
+      try {
+        const fallbackResponse = await fetch(`${API_URL}/api/student/getStudentScheduleByMonth`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sectionId: sectionId,
+            month: selectedMonth.toString().padStart(2, '0'),
+            year: selectedYear
+          })
+        });
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData.success) {
+          const dayKey = String(Number(selectedDay));
+          const dayData = Array.isArray(fallbackData.schedule[dayKey]) ? fallbackData.schedule[dayKey] : [];
+          setAcademicData(dayData);
+        }
+      } catch (fallbackError) {
+        console.error("Fallback API also failed:", fallbackError);
+      }
+      setRefresh(false);
     }
+  };
+
+  // Helper function to generate random colors for classes
+  const getRandomColor = () => {
+    const colors = ['#E8F5E9', '#FFEBEE', '#FFF3E0', '#F3E5F5', '#E1F5FE', '#FCE4EC'];
+    return colors[Math.floor(Math.random() * colors.length)];
   };
 
   useEffect(() => {
@@ -318,18 +400,68 @@ const StudentScheduleScreen = () => {
       style={[styles.academicItemContainer, { backgroundColor: item.color }]}
     >
       <View style={styles.academicItemInfoContainer}>
-        <Text style={[styles.academicItemSubject, { color: 'black' }]}>{item.subject}</Text>
-        <Text style={[styles.academicItemGrade, { color: 'black' }]}>Grade {item.gradeId} - Section {item.sectionName}</Text>
-        <Text style={{
-          ...styles.academicItemType, color: item.color === '#E8F5E9' ? '#4CAF50' :
-            item.color === '#FFEBEE' ? '#F44336' :
-              '#FF9800'
-        }}>
-          {item.activity}
+        <View style={styles.academicItemHeader}>
+          <Text style={[styles.academicItemSubject, { color: 'black' }]}>{item.subject}</Text>
+          {item.subjectCode && (
+            <Text style={[styles.academicItemSubjectCode, { color: '#666' }]}>({item.subjectCode})</Text>
+          )}
+        </View>
+        
+        <Text style={[styles.academicItemGrade, { color: 'black' }]}>
+          Grade {item.gradeId} - Section {item.sectionName}
+          {item.classroom && ` • Room ${item.classroom}`}
         </Text>
+        
+        <View style={styles.academicItemDetails}>
+          <Text style={{
+            ...styles.academicItemType, color: item.color === '#E8F5E9' ? '#4CAF50' :
+              item.color === '#FFEBEE' ? '#F44336' :
+                '#FF9800'
+          }}>
+            {item.activity}
+            {item.period && ` • Period ${item.period}`}
+          </Text>
+          
+          {item.teacherName && item.teacherName !== 'N/A' && (
+            <Text style={[styles.academicItemTeacher, { color: '#555' }]}>
+              Teacher: {item.teacherName}
+            </Text>
+          )}
+          
+          {item.chapterName && (
+            <Text style={[styles.academicItemChapter, { color: '#666' }]}>
+              📖 {item.chapterName}
+              {item.topicName && ` - ${item.topicName}`}
+            </Text>
+          )}
+          
+          <View style={styles.academicItemFlags}>
+            {item.hasAssignment && (
+              <Text style={[styles.academicItemFlag, { backgroundColor: '#FF9800', color: 'white' }]}>
+                📝 Assignment
+              </Text>
+            )}
+            {item.hasQuiz && (
+              <Text style={[styles.academicItemFlag, { backgroundColor: '#2196F3', color: 'white' }]}>
+                📊 Quiz
+              </Text>
+            )}
+            {item.status === 'cancelled' && (
+              <Text style={[styles.academicItemFlag, { backgroundColor: '#F44336', color: 'white' }]}>
+                ❌ Cancelled
+              </Text>
+            )}
+          </View>
+        </View>
       </View>
+      
       <View style={styles.academicItemTimeContainer}>
         <Text style={[styles.academicItemTime, { color: 'black' }]}>{item.time}</Text>
+        {item.duration && (
+          <Text style={[styles.academicItemDuration, { color: '#666' }]}>
+            {item.duration} min
+          </Text>
+        )}
         <Image source={getProfileImageSource(item.filePath)} style={styles.academicItemAvatar} />
       </View>
     </TouchableOpacity>

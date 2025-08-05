@@ -1051,8 +1051,8 @@ exports.getDetailedStudentSchedule = async (req, res) => {
         -- Subject information
         sub.id as subject_id,
         sub.subject_name,
-        sub.subject_code,
-        sub.description as subject_description,
+        -- sub.subject_code,
+        -- sub.description as subject_description,
         
         -- Teacher information  
         u.name AS teacher_name,
