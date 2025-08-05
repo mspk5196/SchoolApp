@@ -2477,14 +2477,14 @@ exports.updateAssessmentMarks = async (req, res) => {
       const passedStatus = percentage >= passPercent ? 'Passed' : 'Failed';
       const materialIds = student.material_ids || '[]';
 
-      const currentLevelInfo = await transaction.query(`
+      const [currentLevelInfo] = await transaction.query(`
         SELECT * FROM student_levels
         WHERE student_roll = ? AND subject_id = ? AND section_id = ?
       `, [student.student_roll, subject_id, section_id]);
 
-      const currentLevel = currentLevelInfo[0]?.level || 1;
+      const currentLevel = currentLevelInfo.length > 0 ? currentLevelInfo[0].level : 1;
 
-      const existing = await transaction.query(`
+      const [existing] = await transaction.query(`
         SELECT id FROM assessment_session_marks WHERE as_id = ? AND student_roll = ?
       `, [sessionId, student.student_roll]);
 
@@ -2538,7 +2538,7 @@ exports.updateAssessmentMarks = async (req, res) => {
 
     // Promote passed students (same as before)
     for (const student of studentsToPromote) {
-      const currentLevelInfo = await transaction.query(`
+      const [currentLevelInfo] = await transaction.query(`
         SELECT * FROM student_levels
         WHERE student_roll = ? AND subject_id = ? AND section_id = ?
       `, [student.student_roll, subject_id, section_id]);

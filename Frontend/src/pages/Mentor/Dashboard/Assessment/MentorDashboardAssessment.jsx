@@ -122,28 +122,28 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
 
   // Check if all students have marks when session is over
   useEffect(() => {
-  if (sessionOver && Object.keys(studentsByLevel).length > 0) {
-    const allStudents = Object.values(studentsByLevel).flat();
-    const allMarked = allStudents.every(student =>
-      marks[student.student_roll] !== undefined ||
-      isStudentAbsent(student.student_roll)
-    );
+    if (sessionOver && Object.keys(studentsByLevel).length > 0) {
+      const allStudents = Object.values(studentsByLevel).flat();
+      const allMarked = allStudents.every(student =>
+        marks[student.student_roll] !== undefined ||
+        isStudentAbsent(student.student_roll)
+      );
 
-    // Check if at least one material and total marks are set for each level
-    const levelsWithStudents = Object.keys(studentsByLevel);
-    const materialsReady = levelsWithStudents.every(
-      level =>
-        selectedMaterials[level] &&
-        selectedMaterials[level].length > 0 &&
-        totalMarksByLevel[level] &&
-        !isNaN(totalMarksByLevel[level]) &&
-        totalMarksByLevel[level] > 0
-    );
+      // Check if at least one material and total marks are set for each level
+      const levelsWithStudents = Object.keys(studentsByLevel);
+      const materialsReady = levelsWithStudents.every(
+        level =>
+          selectedMaterials[level] &&
+          selectedMaterials[level].length > 0 &&
+          totalMarksByLevel[level] &&
+          !isNaN(totalMarksByLevel[level]) &&
+          totalMarksByLevel[level] > 0
+      );
 
-    setCanComplete(allMarked && materialsReady);
-    setReadyToSave(allMarked);
-  }
-}, [sessionOver, marks, studentsByLevel, absentStudents, selectedMaterials, totalMarksByLevel]);
+      setCanComplete(allMarked && materialsReady);
+      setReadyToSave(allMarked);
+    }
+  }, [sessionOver, marks, studentsByLevel, absentStudents, selectedMaterials, totalMarksByLevel]);
 
   useEffect(() => {
     if (sessionOver && readyToSave && !sessionCompleted && Object.keys(materialsByLevel).length === 0) {
@@ -152,6 +152,8 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
   }, [sessionOver, readyToSave, sessionCompleted, materialsByLevel]);
 
   const fetchSessionDetails = async () => {
+    console.log('Fetching session details for sessionId:', sessionId);
+    
     try {
       const response = await fetch(`${API_URL}/api/mentor/getAssessmentSession`, {
         method: 'POST',
@@ -166,7 +168,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success) {
         setSessionDetails(data.session);
-        // console.log('Session Details:', data.session);
+        console.log('Session Details:', data.session);
 
         if (data.session.status === 'Completed') {
           setSessionStarted(true);
