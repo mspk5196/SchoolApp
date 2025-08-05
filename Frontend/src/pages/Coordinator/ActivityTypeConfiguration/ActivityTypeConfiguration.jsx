@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, Alert, FlatList, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 
 const ActivityTypeConfiguration = ({ navigation, route }) => {
   const { sectionId, sectionName, gradeId } = route.params;

@@ -81,6 +81,8 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
           leaveMap[leave.student_roll] = true;
         });
         setHasApprovedLeave(leaveMap);
+        console.log("Approved Leaves:", data.leaves);
+        
       }
     } catch (error) {
       console.error('Error checking approved leaves:', error);

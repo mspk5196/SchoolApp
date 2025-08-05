@@ -1,5 +1,5 @@
 const db = require('../../config/db');
-const { createAcademicSessionsByDate } = require('../mentor/mentorController');
+const { createAcademicSessionsByDate, createAssessmentSessionsByDate } = require('../mentor/mentorController');
 
 exports.getCoordinatorData = (req, res) => {
   const { phoneNumber } = req.body;
@@ -2075,6 +2075,7 @@ exports.addOrUpdateWeeklySchedule = async (req, res) => {
       // ✅ Sync academic sessions
       const today = new Date().toISOString().split('T')[0];
       await createAcademicSessionsByDate(today);
+      await createAssessmentSessionsByDate(today);
 
       return res.json({
         success: true,
@@ -2114,7 +2115,8 @@ async function generateAcademicSessionsForNextNDays(days = 20) {
     date.setDate(date.getDate() + i);
     const formattedDate = date.toISOString().split('T')[0];
     const created = await createAcademicSessionsByDate(formattedDate);
-    totalCreated += created;
+    const assessmentCreated = await createAssessmentSessionsByDate(formattedDate);
+    totalCreated += created + assessmentCreated;
   }
   return totalCreated;
 }
@@ -2155,6 +2157,11 @@ exports.adjustDailySchedule = async (req, res) => {
     }
 
     exports.updateVenueStatusBasedOnSchedule();
+    
+    // ✅ Sync academic and assessment sessions for this date
+    await createAcademicSessionsByDate(date);
+    await createAssessmentSessionsByDate(date);
+    
     return res.json({ success: true, message: 'Daily schedule adjusted successfully' });
   } catch (err) {
     console.error(err);
@@ -2231,6 +2238,10 @@ async function regenerateFutureDailySchedules(id) {
      WHERE original_schedule_id = ? AND date >= CURDATE() AND status = 'Active'`,
     [weekly[0].start_time, weekly[0].end_time, weekly[0].subject_id, weekly[0].mentors_id, weekly[0].activity, weekly[0].session_no, weekly[0].venue, id]
   );
+
+  // ✅ Regenerate academic and assessment sessions for next few days
+  const today = new Date().toISOString().split('T')[0];
+  await generateAcademicSessionsForNextNDays(7); // Regenerate for next week
 
   // Regenerate them
   // await generateDailySchedulesFromWeekly(weeklyScheduleId);

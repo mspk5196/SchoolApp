@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { API_URL } from '@env';
+import { API_URL } from '../../../utils/env.js';
 
 const AssessmentMaterialView = ({ navigation, route }) => {
   const { sessionId, sessionData } = route.params;
