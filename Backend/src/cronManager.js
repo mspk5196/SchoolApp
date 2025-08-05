@@ -69,29 +69,43 @@ function validateCronExpression(expression) {
     // Basic validation for cron expression format
     const parts = expression.split(' ');
     if (parts.length !== 5) {
-        throw new Error(`Invalid cron expression format: ${expression}`);
+        throw new Error(`Invalid cron expression format: ${expression}. Expected 5 parts, got ${parts.length}`);
     }
     
     const [minute, hour, day, month, weekday] = parts;
     
-    // Validate ranges
-    if (parseInt(minute) < 0 || parseInt(minute) > 59) {
-        throw new Error(`Invalid minute value: ${minute}`);
+    // Validate ranges (allow * for wildcards)
+    if (minute !== '*' && (isNaN(parseInt(minute)) || parseInt(minute) < 0 || parseInt(minute) > 59)) {
+        throw new Error(`Invalid minute value: ${minute}. Must be 0-59 or *`);
     }
-    if (parseInt(hour) < 0 || parseInt(hour) > 23) {
-        throw new Error(`Invalid hour value: ${hour}`);
+    if (hour !== '*' && (isNaN(parseInt(hour)) || parseInt(hour) < 0 || parseInt(hour) > 23)) {
+        throw new Error(`Invalid hour value: ${hour}. Must be 0-23 or *`);
+    }
+    if (day !== '*' && (isNaN(parseInt(day)) || parseInt(day) < 1 || parseInt(day) > 31)) {
+        throw new Error(`Invalid day value: ${day}. Must be 1-31 or *`);
+    }
+    if (month !== '*' && (isNaN(parseInt(month)) || parseInt(month) < 1 || parseInt(month) > 12)) {
+        throw new Error(`Invalid month value: ${month}. Must be 1-12 or *`);
+    }
+    if (weekday !== '*' && (isNaN(parseInt(weekday)) || parseInt(weekday) < 0 || parseInt(weekday) > 7)) {
+        throw new Error(`Invalid weekday value: ${weekday}. Must be 0-7 or *`);
     }
     
     return true;
 }
 
-function createSafeCronJob(expression, callback, options, jobName) {
+function createSafeCronJob(expression, callback, options, jobName, fallbackMinutes = []) {
     try {
         // Validate the expression first
         validateCronExpression(expression);
         
         console.log(`🕐 Scheduling ${jobName} with expression: ${expression}`);
         console.log(`🔧 Options:`, options);
+        
+        // Try to validate the expression with node-cron
+        if (!cron.validate(expression)) {
+            throw new Error(`Invalid cron expression according to node-cron: ${expression}`);
+        }
         
         cron.schedule(expression, callback, options);
         console.log(`✅ ${jobName} scheduled successfully`);
@@ -100,6 +114,26 @@ function createSafeCronJob(expression, callback, options, jobName) {
         console.error(`❌ Failed to schedule ${jobName}:`, error.message);
         console.error(`❌ Expression: ${expression}`);
         console.error(`❌ Options:`, options);
+        
+        // Try fallback times if provided
+        if (fallbackMinutes.length > 0) {
+            const parts = expression.split(' ');
+            for (const fallbackMinute of fallbackMinutes) {
+                try {
+                    const fallbackExpression = `${fallbackMinute} ${parts[1]} ${parts[2]} ${parts[3]} ${parts[4]}`;
+                    console.log(`🔄 Trying fallback expression: ${fallbackExpression}`);
+                    
+                    if (cron.validate(fallbackExpression)) {
+                        cron.schedule(fallbackExpression, callback, options);
+                        console.log(`✅ ${jobName} scheduled successfully with fallback time`);
+                        return true;
+                    }
+                } catch (fallbackError) {
+                    console.error(`❌ Fallback also failed: ${fallbackError.message}`);
+                }
+            }
+        }
+        
         return false;
     }
 }
@@ -144,21 +178,21 @@ if (shouldRunCrons) {
             console.error('❌ Assessment sessions creation failed:', error);
         }
     }, getCronOptions(), 'Assessment Cron Job');
-    // Academic sessions creator - runs at 12:05 AM IST daily
-    const academicTime = adjustTimeForUTC(0, 5);
+    // Academic sessions creator - runs at 12:10 AM IST daily (changed from 00:05 to avoid timezone issues)
+    const academicTime = adjustTimeForUTC(0, 10);
     const academicCronExpression = `${academicTime.minute} ${academicTime.hour} * * *`;
-    console.log('🕐 Academic cron - IST: 00:05, UTC equivalent:', academicTime);
+    console.log('🕐 Academic cron - IST: 00:10, UTC equivalent:', academicTime);
     console.log('🕐 Academic cron expression:', academicCronExpression);
     
     createSafeCronJob(academicCronExpression, async () => {
         console.log('🔄 Creating today academic sessions...');
         try {
             const result = await runDailyScheduleUpdate();
-            console.log('✅ Academic sessions created:', result);
+            console.log('✅ Academic/Assessment sessions created:', result);
         } catch (error) {
             console.error('❌ Academic sessions creation failed:', error);
         }
-    }, getCronOptions(), 'Academic Cron Job');
+    }, getCronOptions(), 'Academic Cron Job', [15, 20, 30]); // Fallback to 00:15, 00:20, or 00:30 if needed
 
     // Student backlogs checker - runs at 1:00 AM IST daily
     const backlogTime = adjustTimeForUTC(1, 0);

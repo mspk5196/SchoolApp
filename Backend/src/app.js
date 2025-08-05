@@ -24,7 +24,7 @@ app.get('/cron-status', (req, res) => {
     jobs: [
       { name: 'attendance-updater', schedule: '0 18 * * *', description: 'Daily attendance updates' },
       { name: 'assessment-sessions', schedule: '59 23 * * *', description: 'Create assessment sessions' },
-      { name: 'academic-sessions', schedule: '5 0 * * *', description: 'Create academic sessions' },
+      { name: 'academic-sessions', schedule: '10 0 * * *', description: 'Create academic sessions' },
       { name: 'overdue-check', schedule: '0 1 * * *', description: 'Check overdue levels' }
     ],
     timezone: process.env.TIMEZONE || 'Asia/Kolkata',

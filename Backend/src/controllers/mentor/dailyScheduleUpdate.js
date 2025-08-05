@@ -1,15 +1,16 @@
+const { createAssessmentSessionsByDate } = require('./assesmentCronJob');
 const { createTodayAcademicSessions } = require('./mentorController');
 require('dotenv').config();
 
 // Function to create today's academic sessions
 async function runDailyScheduleUpdate() {
   try {
-    console.log('🔄 Creating today academic sessions...');
+    console.log('🔄 Creating today academic/assessment sessions...');
     
     // Create a mock res object with minimal functionality
     const fakeRes = {
       json: (data) => {
-        console.log('✅ Academic sessions creation result:', data);
+        console.log('✅ Academic/assessment sessions creation result:', data);
         return data;
       },
       status: (code) => ({
@@ -21,7 +22,8 @@ async function runDailyScheduleUpdate() {
     };
     
     const result = await createTodayAcademicSessions({}, fakeRes);
-    return { success: true, result };
+    const result2 = await createAssessmentSessionsByDate({}, fakeRes);
+    return { success: true, result, result2 };
   } catch (error) {
     console.error('❌ Daily schedule update error:', error);
     throw error;
