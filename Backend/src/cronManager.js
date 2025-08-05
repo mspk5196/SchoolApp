@@ -22,7 +22,7 @@ const { runAttendanceUpdater } = require('./controllers/student/attendanceCron')
                     console.error(`❌ Fallback also failed: ${fallbackError.message}`);
                 }
             }
-        }ScheduleUpdate } = require('./controllers/mentor/dailyScheduleUpdate');
+        }ScheduleUpdate  = require('./controllers/mentor/dailyScheduleUpdate');
 const { createAssessmentSessionsByDate } = require('./controllers/mentor/assesmentCronJob');
 const { runOverdueCheck } = require('./controllers/mentor/studentBacklogsCron');
 
