@@ -152,8 +152,6 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
   }, [sessionOver, readyToSave, sessionCompleted, materialsByLevel]);
 
   const fetchSessionDetails = async () => {
-    console.log('Fetching session details for sessionId:', sessionId);
-    
     try {
       const response = await fetch(`${API_URL}/api/mentor/getAssessmentSession`, {
         method: 'POST',
@@ -168,7 +166,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success) {
         setSessionDetails(data.session);
-        console.log('Session Details:', data.session);
+        // console.log('Session Details:', data.session);
 
         if (data.session.status === 'Completed') {
           setSessionStarted(true);
@@ -180,7 +178,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
           // Store original levels from session data
           if (data.session.student_levels) {
             setOriginalLevels(data.session.student_levels);
-            console.log('Original Levels:', data.session.student_levels);
+            // console.log('Original Levels:', data.session.student_levels);
           }
 
           fetchMaterials();

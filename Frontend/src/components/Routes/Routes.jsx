@@ -48,13 +48,6 @@ import AddInfraEnrollment from '../../pages/Coordinator/Enrollment/Infrastructur
 import FilterPopup from '../../pages/Coordinator/Enrollment/InfrastructureEnrollment/FilterPopup';
 import InfrastructureEnrollment from '../../pages/Coordinator/Enrollment/InfrastructureEnrollment/InfrastructureEnrollment';
 import MentorEnrollment from '../../pages/Coordinator/Enrollment/MentorEnrollment/MentorEnrollment';
-
-// New Workflow Components
-import MaterialAssignmentScreen from '../../pages/Coordinator/MaterialAssignment/MaterialAssignmentScreen';
-import ActivityTypeConfiguration from '../../pages/Coordinator/ActivityTypeConfiguration/ActivityTypeConfiguration';
-import CoordinatorMaterialUpload from '../../pages/Coordinator/MaterialUpload/CoordinatorMaterialUpload';
-import CoordinatorMaterialManagement from '../../pages/Coordinator/CoordinatorMaterialManagement/CoordinatorMaterialManagement';
-import AssessmentMaterialView from '../../pages/Mentor/AssessmentMaterialUpload/AssessmentMaterialUpload';
 import StudentEnrollment from '../../pages/Coordinator/Enrollment/StudentEnrollment/StudentEnrollment';
 import SubjectAllotment from '../../pages/Coordinator/Enrollment/SubjectActivityEnrollment/SubjectAllotment';
 import { MenuProvider } from 'react-native-popup-menu';
@@ -356,16 +349,6 @@ const Routes = () => {
                         {/* Admin - Event Page */}
                         <Stack.Screen name="AdminAddEvent" component={AdminAddEvent} />
                         <Stack.Screen name="AdminEventDetails" component={AdminAddEvent} />
-
-                        {/* New Workflow Screens */}
-                        {/* Coordinator - Material Assignment */}
-                        <Stack.Screen name="MaterialAssignmentScreen" component={MaterialAssignmentScreen} />
-                        <Stack.Screen name="ActivityTypeConfiguration" component={ActivityTypeConfiguration} />
-                        <Stack.Screen name="CoordinatorMaterialUpload" component={CoordinatorMaterialUpload} />
-                        <Stack.Screen name="CoordinatorMaterialManagement" component={CoordinatorMaterialManagement} />
-                        
-                        {/* Mentor - Assessment Material Upload */}
-                        <Stack.Screen name="AssessmentMaterialView" component={AssessmentMaterialView} />
 
                     </Stack.Navigator>
                 </NavigationContainer>

@@ -819,7 +819,7 @@ const MentorDashboard = ({ route }) => {
             }
             renderItem={({ item }) => (
               <Pressable onPress={() => {
-                if (item.activity === 'Academic') {
+                if (item.activity === 'Academics') {
                   console.log("Hi", convertDateFormat(formatDate(date)));
                   // console.log(item.subject_id),
                   navigation.navigate("MentorDashboardAcademics", {

@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const mentorController = require('../controllers/mentor/mentorController');
 const surveyController = require('../controllers/mentor/survey');
-const { uploadAssessmentMaterial } = require('../middleware/uploadMiddleware');
 
 router.post('/mentor/getMentorData', mentorController.getMentorData);
 router.get('/mentor/getGrades', mentorController.getGrades);
@@ -116,21 +115,10 @@ router.post('/mentor/getMentorForSubject', mentorController.getMentorForSubject)
 router.post('/mentor/updateDailySchedule', mentorController.updateDailySchedule);
 router.post('/mentor/updateDailyScheduleActivity', mentorController.updateDailyScheduleActivity);
 
-//Dashboard Attentions
-router.post('/mentor/getOverdueStudents', mentorController.getOverdueStudents);
-router.post('/mentor/getCoordinatorTasks', mentorController.getCoordinatorTasks);
-router.post('/mentor/acceptTask', mentorController.acceptTask);
-
-// New Workflow Routes
-
-// Activity Type Management
-router.post('/mentor/getActivityTypesWithConfig', mentorController.getActivityTypesWithConfig);
-
-// Material Management (view only - coordinator uploads)
-router.post('/mentor/getSessionMaterials', mentorController.getSessionMaterials);
-router.post('/mentor/getUploadedAssessmentMaterials', mentorController.getUploadedAssessmentMaterials);
-router.post('/mentor/getAssessmentSessionInfo', mentorController.getAssessmentSessionInfo);
-
+//Dashboard Attention
+router.get('/mentor/getOverdueStudents', mentorController.getOverdueStudents);
+router.get('/mentor/getCoordinatorTasks', mentorController.getCoordinatorTasks);
+router.post('/mentor/accept-task', mentorController.acceptTask);
 router.post('/mentor/checkOverdueLevels', mentorController.checkOverdueLevels);
 
 module.exports = router;

@@ -299,93 +299,10 @@ const ClassDetailScreen = ({ selectedClass,
                 </View>
               )}
 
-              {/* Materials display for different activity types */}
-              {activeTab === 'assessment' && data.materials ? (
+              {/* PDF download for assessment */}
+              {Array.isArray(data.materials) && data.materials.length > 0 ? (
                 <View style={styles.materialsContainer}>
-                  <Text style={styles.materialsTitle}>📚 Assessment Materials</Text>
-                  
-                  {/* Pre-assessment materials */}
-                  {data.materials.pre_assessment && data.materials.pre_assessment.length > 0 && (
-                    <View style={styles.materialSection}>
-                      <Text style={styles.materialSectionTitle}>Study Materials</Text>
-                      {data.materials.pre_assessment.map((file, idx) => (
-                        <View key={`pre_${file.id || idx}`} style={styles.materialItem}>
-                          <TouchableOpacity
-                            onPress={() => openFileLikeWhatsApp(`${API_URL}/${file.file_url}`, file.file_name)}
-                            style={[styles.pdfButton, { marginRight: 10 }]}
-                          >
-                            <View style={styles.materialInfo}>
-                              <Text style={styles.pdfButtonText}>
-                                {file.title || file.file_name.replace(/%/g, ' ')}
-                              </Text>
-                              {file.level && (
-                                <Text style={styles.materialLevel}>
-                                  📊 Level {file.level}
-                                </Text>
-                              )}
-                              <Text style={styles.materialSource}>📖 Study Material</Text>
-                            </View>
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                  
-                  {/* Mentor uploaded materials */}
-                  {data.materials.uploaded_by_mentor && data.materials.uploaded_by_mentor.length > 0 && (
-                    <View style={styles.materialSection}>
-                      <Text style={styles.materialSectionTitle}>Assessment Materials</Text>
-                      {data.materials.uploaded_by_mentor.map((file, idx) => (
-                        <View key={`uploaded_${file.id || idx}`} style={styles.materialItem}>
-                          <TouchableOpacity
-                            onPress={() => openFileLikeWhatsApp(`${API_URL}/${file.file_url}`, file.file_name)}
-                            style={[styles.pdfButton, { marginRight: 10 }]}
-                          >
-                            <View style={styles.materialInfo}>
-                              <Text style={styles.pdfButtonText}>
-                                {file.title || file.file_name.replace(/%/g, ' ')}
-                              </Text>
-                              <Text style={styles.materialSource}>📝 Question Paper</Text>
-                            </View>
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                  
-                  {/* Assessment performance */}
-                  {data.score !== null && (
-                    <View style={styles.performanceSection}>
-                      <Text style={styles.performanceTitle}>Assessment Results</Text>
-                      <View style={styles.performanceRow}>
-                        <Text style={styles.performanceLabel}>Score:</Text>
-                        <Text style={styles.performanceValue}>{data.score}/100</Text>
-                      </View>
-                      {data.rank && (
-                        <View style={styles.performanceRow}>
-                          <Text style={styles.performanceLabel}>Rank:</Text>
-                          <Text style={styles.performanceValue}>{data.rank}</Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
-                </View>
-              ) : activeTab === 'academic' && data.materials && data.materials.length > 0 ? (
-                <View style={styles.materialsContainer}>
-                  <Text style={styles.materialsTitle}>📚 Class Materials</Text>
-                  
-                  {/* Topic information */}
-                  {data.topicTitle && (
-                    <View style={styles.topicSection}>
-                      <Text style={styles.topicTitle}>📖 Topic: {data.topicTitle}</Text>
-                      {data.materialStatus && (
-                        <Text style={styles.materialStatus}>
-                          Status: {data.materialStatus.charAt(0).toUpperCase() + data.materialStatus.slice(1)}
-                        </Text>
-                      )}
-                    </View>
-                  )}
-                  
+                  <Text style={styles.materialsTitle}>📚 Materials</Text>
                   {data.materials.map((file, idx) => (
                     <View key={`${file.id || idx}`} style={styles.materialItem}>
                       <TouchableOpacity
@@ -394,38 +311,22 @@ const ClassDetailScreen = ({ selectedClass,
                       >
                         <View style={styles.materialInfo}>
                           <Text style={styles.pdfButtonText}>
-                            {file.title || file.file_name.replace(/%/g, ' ')}
+                            {file.title || (file.file_name).replace(/%/g, ' ')}
                           </Text>
                           {file.material_type && (
                             <Text style={styles.materialType}>
                               📄 {file.material_type}
                             </Text>
                           )}
-                          {file.is_topic_based && (
-                            <Text style={styles.materialBadge}>🎯 Topic-based</Text>
+                          {file.level && (
+                            <Text style={styles.materialLevel}>
+                              📊 Level {file.level}
+                            </Text>
                           )}
                         </View>
                       </TouchableOpacity>
                     </View>
                   ))}
-                  
-                  {/* Attentiveness display */}
-                  {data.attentiveness && (
-                    <View style={styles.performanceSection}>
-                      <Text style={styles.performanceTitle}>Class Performance</Text>
-                      <View style={styles.performanceRow}>
-                        <Text style={styles.performanceLabel}>Attentiveness:</Text>
-                        <Text style={[
-                          styles.performanceValue,
-                          data.attentiveness === 'Highly Attentive' ? styles.highAttention :
-                          data.attentiveness === 'Moderately Attentive' ? styles.moderateAttention :
-                          styles.lowAttention
-                        ]}>
-                          {data.attentiveness}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
                 </View>
               ) : (
                 <View style={styles.noMaterialsContainer}>
