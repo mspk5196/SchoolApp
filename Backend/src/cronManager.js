@@ -1,28 +1,6 @@
 const cron = require('node-cron');
-const { runAttendanceUpdater } = require('./controllers/student/attendanceCron');        // Try fallback times if provided
-        if (fallbackMinutes.length > 0) {
-            const parts = expression.split(' ');
-            for (const fallbackMinute of fallbackMinutes) {
-                try {
-                    const fallbackExpression = `${fallbackMinute} ${parts[1]} ${parts[2]} ${parts[3]} ${parts[4]}`;
-                    console.log(`🔄 Trying fallback expression: ${fallbackExpression}`);
-                    
-                    if (cron.validate(fallbackExpression)) {
-                        const fallbackOptions = { ...options };
-                        // For midnight times with timezone issues, try without timezone
-                        if (fallbackExpression.includes('0 * * *') && options.timezone) {
-                            delete fallbackOptions.timezone;
-                        }
-                        
-                        cron.schedule(fallbackExpression, callback, fallbackOptions);
-                        console.log(`✅ ${jobName} scheduled successfully with fallback time`);
-                        return true;
-                    }
-                } catch (fallbackError) {
-                    console.error(`❌ Fallback also failed: ${fallbackError.message}`);
-                }
-            }
-        }ScheduleUpdate  = require('./controllers/mentor/dailyScheduleUpdate');
+const { runAttendanceUpdater } = require('./controllers/student/attendanceCron');
+const { runDailyScheduleUpdate } = require('./controllers/mentor/dailyScheduleUpdate');
 const { createAssessmentSessionsByDate } = require('./controllers/mentor/assesmentCronJob');
 const { runOverdueCheck } = require('./controllers/mentor/studentBacklogsCron');
 
