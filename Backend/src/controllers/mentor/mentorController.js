@@ -2436,14 +2436,9 @@ exports.updateAssessmentMarks = async (req, res) => {
     });
   }
 
-  let connection;
   try {
-    // Get a connection and start transaction
-    connection = await db.promise().getConnection();
-    await connection.beginTransaction();
-
-    // Get session details
-    const [sessionDetails] = await connection.query(`
+    // Use the promise-based transaction approach
+    const [sessionDetails] = await db.promise().query(`
       SELECT subject_id, section_id FROM assessment_sessions WHERE id = ?
     `, [sessionId]);
 
@@ -2454,14 +2449,14 @@ exports.updateAssessmentMarks = async (req, res) => {
     const { subject_id, section_id } = sessionDetails[0];
 
     // Update session status only (no total marks at session level now)
-    await connection.query(`
+    await db.promise().query(`
       UPDATE assessment_sessions
       SET status = 'Completed', actual_end_time = NOW()
       WHERE id = ?
     `, [sessionId]);
 
     // Get pass percentage
-    const [passPercentRows] = await connection.query(`
+    const [passPercentRows] = await db.promise().query(`
       SELECT ap.percent
       FROM level_pass_percent ap
       JOIN sections s ON ap.grade_id = s.grade_id
@@ -2480,19 +2475,19 @@ exports.updateAssessmentMarks = async (req, res) => {
       const passedStatus = percentage >= passPercent ? 'Passed' : 'Failed';
       const materialIds = student.material_ids || '[]';
 
-      const [currentLevelInfo] = await connection.query(`
+      const [currentLevelInfo] = await db.promise().query(`
         SELECT * FROM student_levels
         WHERE student_roll = ? AND subject_id = ? AND section_id = ?
       `, [student.student_roll, subject_id, section_id]);
 
       const currentLevel = currentLevelInfo.length > 0 ? currentLevelInfo[0].level : 1;
 
-      const [existing] = await connection.query(`
+      const [existing] = await db.promise().query(`
         SELECT id FROM assessment_session_marks WHERE as_id = ? AND student_roll = ?
       `, [sessionId, student.student_roll]);
 
       if (existing.length > 0) {
-        await connection.query(`
+        await db.promise().query(`
           UPDATE assessment_session_marks
           SET 
             mark = ?, 
@@ -2514,7 +2509,7 @@ exports.updateAssessmentMarks = async (req, res) => {
           existing[0].id
         ]);
       } else {
-        await connection.query(`
+        await db.promise().query(`
           INSERT INTO assessment_session_marks
           (as_id, student_roll, mark, status, total_marks, percentage, passed_status, current_level, material_id)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -2541,7 +2536,7 @@ exports.updateAssessmentMarks = async (req, res) => {
 
     // Promote passed students
     for (const student of studentsToPromote) {
-      const [currentLevelInfo] = await connection.query(`
+      const [currentLevelInfo] = await db.promise().query(`
         SELECT * FROM student_levels
         WHERE student_roll = ? AND subject_id = ? AND section_id = ?
       `, [student.student_roll, subject_id, section_id]);
@@ -2550,27 +2545,25 @@ exports.updateAssessmentMarks = async (req, res) => {
         const currentLevel = currentLevelInfo[0].level;
         const nextLevel = currentLevel + 1;
 
-        await connection.query(`
+        await db.promise().query(`
           UPDATE student_levels
           SET level = ?, status = 'OnGoing', updated_at = NOW()
           WHERE student_roll = ? AND subject_id = ? AND section_id = ?
         `, [nextLevel, student.student_roll, subject_id, section_id]);
 
-        await connection.query(`
+        await db.promise().query(`
           INSERT INTO student_level_updates
           (student_roll, subject_id, level, completed_at)
           VALUES (?, ?, ?, NOW())
         `, [student.student_roll, subject_id, currentLevel]);
       } else {
-        await connection.query(`
+        await db.promise().query(`
           INSERT INTO student_levels
           (student_roll, level, subject_id, section_id, status)
           VALUES (?, 1, ?, ?, 'OnGoing')
         `, [student.student_roll, subject_id, section_id]);
       }
     }
-
-    await connection.commit();
 
     res.json({
       success: true,
@@ -2579,19 +2572,12 @@ exports.updateAssessmentMarks = async (req, res) => {
     });
 
   } catch (error) {
-    if (connection) {
-      await connection.rollback();
-    }
     console.error('Error updating assessment marks:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update assessment marks',
       error: error.message,
     });
-  } finally {
-    if (connection) {
-      connection.release();
-    }
   }
 };
 
