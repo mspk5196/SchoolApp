@@ -1211,33 +1211,54 @@ exports.getAssessmentDetails = async (req, res) => {
     );
     if (!asmtSession) return res.json({ hasAssessment: false });
 
-    // Get all marks and materials for this assessment session
+    // Get all marks for this assessment session
     const [marks] = await db.promise().query(
       `SELECT 
         asm.student_roll,
-        ANY_VALUE(asm.mark) AS mark,
-        ANY_VALUE(asm.percentage) AS percentage,
-        ANY_VALUE(asm.current_level) AS current_level,
-        JSON_ARRAYAGG(
-          JSON_OBJECT(
-            'id', m.id,
-            'file_name', m.file_name,
-            'file_url', m.file_url,
-            'title', COALESCE(m.title, m.file_name),
-            'level', m.level,
-            'material_type', m.material_type
-          )
-        ) AS materials
+        asm.mark,
+        asm.percentage,
+        asm.current_level,
+        asm.material_id
       FROM assessment_session_marks asm
-      JOIN JSON_TABLE(
-        asm.material_id,
-        '$[*]' COLUMNS(material_id INT PATH '$')
-      ) jt ON 1=1
-      JOIN materials m ON m.id = jt.material_id
-      WHERE asm.as_id = ? AND asm.status = 'Present'
-      GROUP BY asm.student_roll;`,
+      WHERE asm.as_id = ? AND asm.status = 'Present'`,
       [asmtSession.id]
     );
+    
+    // Process materials for each student
+    for (let mark of marks) {
+      let materials = [];
+      if (mark.material_id) {
+        try {
+          let materialIds = [];
+          if (typeof mark.material_id === 'string') {
+            materialIds = JSON.parse(mark.material_id);
+          } else if (Array.isArray(mark.material_id)) {
+            materialIds = mark.material_id;
+          }
+          
+          if (materialIds && materialIds.length > 0) {
+            const placeholders = materialIds.map(() => '?').join(',');
+            const [materialRows] = await db.promise().query(
+              `SELECT 
+                id,
+                file_name,
+                file_url,
+                COALESCE(title, file_name) as title,
+                level,
+                material_type
+              FROM materials 
+              WHERE id IN (${placeholders})`,
+              materialIds
+            );
+            materials = materialRows;
+          }
+        } catch (parseError) {
+          console.error('Error parsing material_id JSON:', parseError);
+          materials = [];
+        }
+      }
+      mark.materials = materials;
+    }
 
     if (!marks || marks.length === 0) return res.json({ hasAssessment: false });
 
