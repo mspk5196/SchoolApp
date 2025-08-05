@@ -1362,7 +1362,7 @@ exports.getAcademicDetails = async (req, res) => {
 
     // Find academic session(s) for this section, subject, and date
     const [sessions] = await db.promise().query(
-      `SELECT asa.performance, asa.attendance_status, asa.session_id, ds.session_no
+      `SELECT asa.performance, asa.attendance_status, asa.session_id, ds.session_no, ass.current_level
        FROM academic_session_attendance asa
        JOIN daily_schedule ds ON asa.session_id = ds.id
        JOIN academic_sessions ass ON asa.session_id = ass.dsa_id
@@ -1375,7 +1375,7 @@ exports.getAcademicDetails = async (req, res) => {
     let level1 = null;
     if (sessions.length > 0) {
       // Use the first session's session_no as level (or adjust as needed)
-      level1 = sessions[0].session_no;
+      level1 = sessions[0].current_level;
     }
 
     const [[sectionRow]] = await db.promise().query(
@@ -1402,7 +1402,7 @@ exports.getAcademicDetails = async (req, res) => {
 
       if (sectionSubjectActivityRows.length > 0) {
         const sectionSubjectActivityId = sectionSubjectActivityRows[0].section_subject_activity_id;
-        console.log("Section Subject Activity ID:", sectionSubjectActivityId);
+        // console.log("Section Subject Activity ID:", sectionSubjectActivityId);
         
         // Fetch materials using the proper mapping
         const [materialRows] = await db.promise().query(
