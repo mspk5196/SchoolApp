@@ -64,7 +64,18 @@ const MentorDashboard = ({ route }) => {
   }, [selectedSchedule]);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/mentor/createTodayAssessmentSessions`, { method: 'POST' });
+    fetch(`${API_URL}/api/mentor/createTodayAssessmentSessions`, { method: 'POST' })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log('✅ Today assessment sessions created successfully');
+        } else {
+          console.error('❌ Failed to create today assessment sessions:', data.message);
+        }
+      })
+      .catch(error => {
+        console.error('❌ Error creating today assessment sessions:', error);
+      });
   }, [])
 
   useEffect(() => {

@@ -2184,8 +2184,9 @@ async function createAssessmentSessionsByDate(date) {
   console.log(date);
 
   const [schedules] = await db.promise().query(`
-    SELECT * FROM daily_schedule
-    WHERE date = ? AND activity = 5 AND mentors_id IS NOT NULL
+    SELECT * FROM daily_schedule ds
+    JOIN activity_types at ON ds.activity = at.id
+    WHERE ds.date = ? AND at.activity_type = 'Assessment' AND ds.mentors_id IS NOT NULL
   `, [date]);
 
   let created = 0;
