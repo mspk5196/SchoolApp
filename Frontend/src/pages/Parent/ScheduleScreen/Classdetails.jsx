@@ -75,6 +75,13 @@ const ClassDetailScreen = ({ selectedClass,
     }
   };
   const fetchAcademicDetails = async () => {
+    console.log("Fetching academic details for:", {
+      studentId: studentData.id || studentData.student_id,
+      sectionId: studentData.section_id,
+      subject: selectedClass.subject,
+      date: date
+    });
+    
     try {
       const res2 = await fetch(`${API_URL}/api/student/getAcademicDetails`, {
         method: 'POST',
@@ -88,6 +95,7 @@ const ClassDetailScreen = ({ selectedClass,
       });
       const academic = await res2.json();
       
+      console.log("Academic Details:", academic);
       if (academic && academic.success !== false) {
         let detailsData = {
           type: 'Academics',
@@ -99,7 +107,6 @@ const ClassDetailScreen = ({ selectedClass,
           materials: academic.materials || []
         };
         setData(detailsData);
-        console.log("Academic Details:", detailsData);
       } else {
         setData([]);
       }
@@ -115,7 +122,7 @@ const ClassDetailScreen = ({ selectedClass,
     if (selectedClass.activity === 'Assessment') {
       fetchAssessmentDetails();
     }
-    else if (selectedClass.activity === 'Academics') {
+    else if (selectedClass.activity === 'Academic') {
       fetchAcademicDetails();
     }
     else {

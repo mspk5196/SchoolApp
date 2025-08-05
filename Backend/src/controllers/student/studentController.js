@@ -1402,6 +1402,7 @@ exports.getAcademicDetails = async (req, res) => {
 
       if (sectionSubjectActivityRows.length > 0) {
         const sectionSubjectActivityId = sectionSubjectActivityRows[0].section_subject_activity_id;
+        console.log("Section Subject Activity ID:", sectionSubjectActivityId);
         
         // Fetch materials using the proper mapping
         const [materialRows] = await db.promise().query(
