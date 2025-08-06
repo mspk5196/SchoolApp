@@ -12,7 +12,8 @@ const {
   getAdminInbox,
   keysUpload,
   keys,
-  debugKeys
+  debugKeys,
+  clearLegacyMessages
 } = require('../controllers/messaging/messageController');
 
 
@@ -29,5 +30,6 @@ router.post('/messages/send-attachment', uploadAttachment.single('file'), sendAt
 router.post('/messages/keys/upload', keysUpload);
 router.get('/keys/:user_type/:user_id', keys);
 router.get('/debug/keys', debugKeys);
+router.post('/messages/clear-legacy', clearLegacyMessages);
 
 module.exports = router;

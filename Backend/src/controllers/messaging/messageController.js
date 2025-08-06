@@ -849,11 +849,51 @@ exports.keysUpload = async (req, res) => {
       }
     });
   }
+  
   try {
+    // Check if user already has a key
+    const [existingRows] = await db.promise().query(
+      `SELECT public_key, created_at FROM user_keys WHERE user_id = ? AND user_type = ?`,
+      [user_id, user_type]
+    );
+    
+    if (existingRows.length > 0) {
+      const oldKey = existingRows[0].public_key;
+      const oldKeyTime = existingRows[0].created_at;
+      const isKeyChange = oldKey !== public_key;
+      
+      console.log('🔄 Key replacement detected:', {
+        user_id,
+        user_type,
+        old_key_created: oldKeyTime,
+        old_key_preview: oldKey.substring(0, 20) + '...',
+        new_key_preview: public_key.substring(0, 20) + '...',
+        is_key_change: isKeyChange
+      });
+      
+      if (isKeyChange) {
+        console.log('⚠️ WARNING: Key change will make previous messages unreadable!');
+        
+        // Count messages that will become unreadable
+        const [messageCount] = await db.promise().query(
+          `SELECT COUNT(*) as count FROM messages 
+           WHERE ((sender_id = ? AND sender_type = ?) OR (receiver_id = ? AND receiver_type = ?))
+           AND message_text IS NOT NULL AND created_at < NOW()`,
+          [user_id, user_type, user_id, user_type]
+        );
+        
+        console.log('📊 Messages that may become unreadable:', messageCount[0].count);
+      }
+    } else {
+      console.log('🆕 First key upload for user:', { user_id, user_type });
+    }
+    
     await db.promise().query(
       `REPLACE INTO user_keys (user_id, user_type, public_key) VALUES (?, ?, ?)`,
       [user_id, user_type, public_key]
     );
+    
+    console.log('✅ Key uploaded successfully for:', { user_id, user_type });
     res.json({ success: true, message: 'Key uploaded successfully' });
   } catch (error) {
     console.error('Key upload error:', error);
@@ -867,12 +907,16 @@ exports.keys = async (req, res) => {
   
   try {
     const [rows] = await db.promise().query(
-      `SELECT public_key FROM user_keys WHERE user_id = ? AND user_type = ?`,
+      `SELECT public_key, created_at FROM user_keys WHERE user_id = ? AND user_type = ?`,
       [user_id, user_type]
     );
     if (rows.length > 0) {
-      console.log('✅ Key found for', user_type, user_id, '- Key:', rows[0].public_key.substring(0, 20) + '...');
-      return res.json({ success: true, public_key: rows[0].public_key });
+      console.log('✅ Key found for', user_type, user_id, '- Key:', rows[0].public_key.substring(0, 20) + '...', 'Created:', rows[0].created_at);
+      return res.json({ 
+        success: true, 
+        public_key: rows[0].public_key,
+        key_created_at: rows[0].created_at
+      });
     }
     console.log('❌ No key found for', user_type, user_id);
     // IMPORTANT: In a real-world scenario, the client MUST upload a key first.
@@ -885,43 +929,147 @@ exports.keys = async (req, res) => {
   }
 };
 
+// Clear legacy encrypted messages that can't be decrypted due to key changes
+exports.clearLegacyMessages = async (req, res) => {
+  const { user_id, user_type, confirm } = req.body;
+  
+  if (!user_id || !user_type) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'user_id and user_type are required' 
+    });
+  }
+  
+  if (confirm !== 'CLEAR_LEGACY_MESSAGES') {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Please provide confirm: "CLEAR_LEGACY_MESSAGES" to proceed' 
+    });
+  }
+  
+  try {
+    // Get current key timestamp
+    const [keyRows] = await db.promise().query(
+      `SELECT created_at FROM user_keys WHERE user_id = ? AND user_type = ?`,
+      [user_id, user_type]
+    );
+    
+    if (keyRows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'No key found for this user' 
+      });
+    }
+    
+    const keyCreatedAt = keyRows[0].created_at;
+    
+    // Find messages that were created before the current key
+    const [oldMessages] = await db.promise().query(
+      `SELECT message_id, created_at FROM messages 
+       WHERE ((sender_id = ? AND sender_type = ?) OR (receiver_id = ? AND receiver_type = ?))
+       AND message_text IS NOT NULL 
+       AND created_at < ?`,
+      [user_id, user_type, user_id, user_type, keyCreatedAt]
+    );
+    
+    console.log('🗑️ Found', oldMessages.length, 'legacy messages to clear for user', user_id, user_type);
+    
+    if (oldMessages.length > 0) {
+      const messageIds = oldMessages.map(msg => msg.message_id);
+      
+      // Clear the message text but keep the message record
+      await db.promise().query(
+        `UPDATE messages SET message_text = '[🔐 This message was encrypted with old keys and has been cleared]' 
+         WHERE message_id IN (?)`,
+        [messageIds]
+      );
+      
+      console.log('✅ Cleared', messageIds.length, 'legacy messages');
+    }
+    
+    res.json({ 
+      success: true, 
+      cleared_count: oldMessages.length,
+      message: `Cleared ${oldMessages.length} legacy encrypted messages`
+    });
+    
+  } catch (error) {
+    console.error('Clear legacy messages error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // Debug endpoint to help with key mismatch issues
 exports.debugKeys = async (req, res) => {
   const { student_id, mentor_id } = req.query;
   console.log('🔧 Debug keys request for student:', student_id, 'mentor:', mentor_id);
   
   try {
-    // Get both keys
+    // Get both keys with creation timestamps
     const [studentRows] = await db.promise().query(
-      `SELECT public_key FROM user_keys WHERE user_id = ? AND user_type = 'student'`,
+      `SELECT public_key, created_at FROM user_keys WHERE user_id = ? AND user_type = 'student'`,
       [student_id]
     );
     
     const [mentorRows] = await db.promise().query(
-      `SELECT public_key FROM user_keys WHERE user_id = ? AND user_type = 'mentor'`,
+      `SELECT public_key, created_at FROM user_keys WHERE user_id = ? AND user_type = 'mentor'`,
       [mentor_id]
     );
     
-    // Get recent messages between them
+    // Get recent messages between them with creation timestamps
     const [messageRows] = await db.promise().query(
-      `SELECT message_id, message_text, sender_type, created_at 
+      `SELECT message_id, message_text, sender_type, created_at, sender_id, receiver_id
        FROM messages 
        WHERE ((sender_id = ? AND sender_type = 'student' AND receiver_id = ? AND receiver_type = 'mentor')
               OR (sender_id = ? AND sender_type = 'mentor' AND receiver_id = ? AND receiver_type = 'student'))
        AND message_text IS NOT NULL 
-       ORDER BY created_at DESC LIMIT 5`,
+       ORDER BY created_at DESC LIMIT 10`,
       [student_id, mentor_id, mentor_id, student_id]
     );
     
+    console.log('🔧 Debug analysis:');
+    console.log('  Student key created:', studentRows.length > 0 ? studentRows[0].created_at : 'No key');
+    console.log('  Mentor key created:', mentorRows.length > 0 ? mentorRows[0].created_at : 'No key');
+    console.log('  Messages found:', messageRows.length);
+    
+    // Analyze if messages were encrypted before current keys
+    let keyMismatchAnalysis = {};
+    if (studentRows.length > 0 && mentorRows.length > 0) {
+      const studentKeyTime = new Date(studentRows[0].created_at);
+      const mentorKeyTime = new Date(mentorRows[0].created_at);
+      const latestKeyTime = studentKeyTime > mentorKeyTime ? studentKeyTime : mentorKeyTime;
+      
+      keyMismatchAnalysis = {
+        student_key_time: studentKeyTime,
+        mentor_key_time: mentorKeyTime,
+        latest_key_time: latestKeyTime,
+        messages_before_keys: messageRows.filter(msg => new Date(msg.created_at) < latestKeyTime).length,
+        messages_after_keys: messageRows.filter(msg => new Date(msg.created_at) >= latestKeyTime).length
+      };
+      
+      console.log('🔧 Key mismatch analysis:', keyMismatchAnalysis);
+    }
+    
     res.json({
       success: true,
-      student_key: studentRows.length > 0 ? studentRows[0].public_key : null,
-      mentor_key: mentorRows.length > 0 ? mentorRows[0].public_key : null,
+      student_key: studentRows.length > 0 ? {
+        key: studentRows[0].public_key,
+        created_at: studentRows[0].created_at
+      } : null,
+      mentor_key: mentorRows.length > 0 ? {
+        key: mentorRows[0].public_key,
+        created_at: mentorRows[0].created_at
+      } : null,
+      key_mismatch_analysis: keyMismatchAnalysis,
       recent_messages: messageRows.map(msg => ({
         id: msg.message_id,
         sender: msg.sender_type,
+        sender_id: msg.sender_id,
+        receiver_id: msg.receiver_id,
         encrypted_preview: msg.message_text ? msg.message_text.substring(0, 100) + '...' : null,
-        created_at: msg.created_at
+        created_at: msg.created_at,
+        is_before_current_keys: keyMismatchAnalysis.latest_key_time ? 
+          new Date(msg.created_at) < keyMismatchAnalysis.latest_key_time : false
       }))
     });
   } catch (error) {
@@ -942,5 +1090,6 @@ module.exports = {
   keysUpload: exports.keysUpload,
   keys: exports.keys,
   debugKeys: exports.debugKeys,
+  clearLegacyMessages: exports.clearLegacyMessages,
   uploadAttachment
 };
