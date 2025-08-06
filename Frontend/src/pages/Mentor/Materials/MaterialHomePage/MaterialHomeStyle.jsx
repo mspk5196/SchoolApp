@@ -2,8 +2,8 @@ import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
     HomeIcon: {
-        width: 25,
-        height: 25,
+        width: 23,
+        height: 23,
     },
     Header: {
         flexDirection: 'row',

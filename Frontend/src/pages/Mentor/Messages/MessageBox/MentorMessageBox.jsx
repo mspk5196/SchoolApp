@@ -104,23 +104,59 @@ const MentorMessageBox = ({ route, navigation }) => {
       }
       const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
       if (!res.ok) {
-        Alert.alert('Encryption Error', "Could not get recipient's key.");
+        if (res.status === 404) {
+          console.warn('Recipient key not found. They will need to open the app to generate encryption keys.');
+          // Don't show alert for 404, just log warning. The app can still function without encryption for now.
+          return false;
+        }
+        Alert.alert('Encryption Error', "Could not get recipient's key. Network error occurred.");
         return false;
       }
       const theirKeyData = await res.json();
+      if (!theirKeyData.success || !theirKeyData.public_key) {
+        console.warn('Invalid key data received from server.');
+        return false;
+      }
       sharedSecretRef.current = getSharedSecretAESKey(myPrivateKey, theirKeyData.public_key);
       return true;
     } catch (error) {
-      Alert.alert('Error', 'Could not establish a secure connection.');
+      console.error('Encryption setup error:', error);
+      // Only show alert for actual network/server errors, not missing keys
+      if (!error.message?.includes('404')) {
+        Alert.alert('Error', 'Could not establish a secure connection. Please check your internet connection.');
+      }
       return false;
     }
   };
 
   const decryptMessages = async (messageList) => {
-    if (!sharedSecretRef.current) return messageList;
+    if (!sharedSecretRef.current) {
+      console.warn('No shared secret available for decryption.');
+      return messageList.map(msg => {
+        if (msg.message_text) {
+          // Check if the message looks like it's encrypted (JSON format with iv and encrypted fields)
+          try {
+            const parsed = JSON.parse(msg.message_text);
+            if (parsed.iv && parsed.encrypted) {
+              return { ...msg, message_text: '[Encrypted Message - Cannot decrypt without recipient key]' };
+            }
+          } catch (e) {
+            // Not JSON, probably plain text
+          }
+          // Return as-is if it's plain text
+          return msg;
+        }
+        return msg;
+      });
+    }
     return messageList.map(msg => {
       if (msg.message_text) {
-        return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
+        try {
+          return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
+        } catch (error) {
+          console.warn('Failed to decrypt message:', error);
+          return { ...msg, message_text: '[Failed to decrypt message]' };
+        }
       }
       return msg;
     });
@@ -136,8 +172,8 @@ const MentorMessageBox = ({ route, navigation }) => {
 
         const encryptionReady = await setupEncryption(mentorData, contact);
         if (!encryptionReady) {
-          setIsLoading(false);
-          return;
+          console.warn('Encryption not available. Messages will be sent without encryption until the recipient opens the app.');
+          // Continue with app initialization even without encryption
         }
 
         socketRef.current = io(API_URL, { transports: ['websocket'] });
@@ -169,8 +205,11 @@ const MentorMessageBox = ({ route, navigation }) => {
           setMessages(prev => prev.map(m => data.messageIds.includes(m.message_id) ? { ...m, is_read: 1 } : m));
         });
 
+        setIsLoading(false);
+
       } catch (error) {
         console.error('Initialization failed:', error);
+        setIsLoading(false);
       }
     };
     initialize();
@@ -178,7 +217,7 @@ const MentorMessageBox = ({ route, navigation }) => {
   }, [contact]);
 
   const fetchMessages = async (mentorData) => {
-    if (!mentorData || !sharedSecretRef.current) return;
+    if (!mentorData) return;
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/messages/get`, {
@@ -192,7 +231,13 @@ const MentorMessageBox = ({ route, navigation }) => {
       });
       const data = await response.json();
       if (data.success) {
-        const decrypted = await decryptMessages(data.messages);
+        // Only decrypt if we have a shared secret, otherwise show messages as-is
+        const decrypted = sharedSecretRef.current ? 
+          await decryptMessages(data.messages) : 
+          data.messages.map(msg => ({ 
+            ...msg, 
+            message_text: msg.message_text ? '[Encrypted Message - Recipient key not available]' : null 
+          }));
         setMessages(decrypted);
 
         const unreadIds = data.messages
@@ -293,9 +338,12 @@ const MentorMessageBox = ({ route, navigation }) => {
   };
 
   const sendMessage = async () => {
-    if (message.trim() === '' || !sharedSecretRef.current || !currentUser) return;
+    if (message.trim() === '' || !currentUser) return;
 
-    const encryptedMessage = encryptText(message, sharedSecretRef.current);
+    // Try to encrypt if we have a shared secret, otherwise send as plain text
+    const messageToSend = sharedSecretRef.current ? 
+      encryptText(message, sharedSecretRef.current) : 
+      message;
 
     try {
       const response = await fetch(`${API_URL}/api/messages/send`, {
@@ -306,7 +354,7 @@ const MentorMessageBox = ({ route, navigation }) => {
           receiver_id: contact.receiver_id,
           sender_type: 'mentor',
           receiver_type: contact.receiver_type,
-          message_text: encryptedMessage,
+          message_text: messageToSend,
         }),
       });
 
@@ -316,6 +364,17 @@ const MentorMessageBox = ({ route, navigation }) => {
         // setMessages(prev => [...prev, newMsg]);
         socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
         setMessage('');
+
+        // If encryption wasn't available, try to set it up again for future messages
+        if (!sharedSecretRef.current) {
+          console.log('Attempting to retry encryption setup...');
+          setTimeout(async () => {
+            const encryptionReady = await setupEncryption(currentUser, contact);
+            if (encryptionReady) {
+              console.log('Encryption setup successful on retry.');
+            }
+          }, 1000);
+        }
       } else {
         Alert.alert('Error', 'Failed to send message');
       }
@@ -1039,6 +1098,15 @@ const MentorMessageBox = ({ route, navigation }) => {
               </View>
             }
           />
+        )}
+
+        {/* Encryption Status Indicator */}
+        {!sharedSecretRef.current && (
+          <View style={{ backgroundColor: '#fff3cd', padding: 8, borderTopWidth: 1, borderTopColor: '#ffeaa7' }}>
+            <Text style={{ color: '#856404', fontSize: 12, textAlign: 'center' }}>
+              🔓 Messages will be sent without encryption until the recipient opens the app
+            </Text>
+          </View>
         )}
 
         {/* Message Input */}
