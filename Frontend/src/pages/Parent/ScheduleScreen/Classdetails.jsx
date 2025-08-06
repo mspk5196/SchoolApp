@@ -249,7 +249,7 @@ const ClassDetailScreen = ({ selectedClass,
 
         {/* Date and session info */}
         <View style={styles.detailInfoContainer}>
-          {(selectedClass.activity === 'Assessment' || selectedClass.activity === 'Academics') && isFutureDateTime() ? (
+          {(selectedClass.activity === 'Assessment' || selectedClass.activity === 'Academics' || selectedClass.activity === 'Academic') && isFutureDateTime() ? (
             <Nodata />
           ) : (
             <>
@@ -295,7 +295,7 @@ const ClassDetailScreen = ({ selectedClass,
               )}
 
               {/* Academic details */}
-              {selectedClass.activity === 'Academics' && (
+              {selectedClass.activity === ('Academic') && (
                 <View style={styles.scoresContainer}>
                   <View style={styles.scoreincont}>
                     <View style={styles.scoreRow}>

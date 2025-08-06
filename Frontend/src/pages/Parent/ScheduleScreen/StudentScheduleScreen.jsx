@@ -419,7 +419,7 @@ const StudentScheduleScreen = () => {
                 '#FF9800'
           }}>
             {item.activity}
-            {item.period && ` • Period ${item.period}`}
+            {/* {item.period && ` • Period ${item.period}`} */}
           </Text>
           
           {item.teacherName && item.teacherName !== 'N/A' && (

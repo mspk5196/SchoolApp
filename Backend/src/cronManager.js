@@ -16,53 +16,39 @@ console.log('  - RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
 console.log('  - Should run crons:', shouldRunCrons);
 
 function getTimezone() {
-    // Check if the timezone is supported in the current environment
-    try {
-        Intl.DateTimeFormat(undefined, { timeZone: "Asia/Kolkata" });
-        return "Asia/Kolkata";
-    } catch (error) {
-        console.warn('⚠️ Asia/Kolkata timezone not supported, falling back to UTC+05:30');
-        return "UTC";
-    }
+    // Always use UTC to avoid timezone conversion issues in production
+    // We'll handle IST conversion manually in the cron expressions
+    return "UTC";
 }
 
 function getCronOptions() {
-    const timezone = getTimezone();
-    if (timezone === "UTC") {
-        // If we can't use Asia/Kolkata, we'll adjust the times to UTC equivalent
-        // Asia/Kolkata is UTC+05:30, so we subtract 5.5 hours from the times
-        return { scheduled: true };
-    }
-    return { scheduled: true, timezone: timezone };
+    // Always use UTC scheduling to avoid timezone issues
+    return { scheduled: true };
 }
 
 function adjustTimeForUTC(hour, minute = 0) {
     // Convert IST time to UTC (subtract 5.5 hours)
-    const timezone = getTimezone();
-    if (timezone === "UTC") {
-        // Convert IST (UTC+5:30) to UTC
-        let utcHour = hour - 5;
-        let utcMinute = minute - 30;
-        
-        // Handle minute overflow/underflow
-        if (utcMinute < 0) {
-            utcMinute += 60;
-            utcHour -= 1;
-        } else if (utcMinute >= 60) {
-            utcMinute -= 60;
-            utcHour += 1;
-        }
-        
-        // Handle hour overflow/underflow
-        if (utcHour < 0) {
-            utcHour += 24;
-        } else if (utcHour >= 24) {
-            utcHour -= 24;
-        }
-        
-        return { hour: utcHour, minute: utcMinute };
+    // IST is UTC+5:30, so we need to subtract 5 hours and 30 minutes
+    let utcHour = hour - 5;
+    let utcMinute = minute - 30;
+    
+    // Handle minute overflow/underflow
+    if (utcMinute < 0) {
+        utcMinute += 60;
+        utcHour -= 1;
+    } else if (utcMinute >= 60) {
+        utcMinute -= 60;
+        utcHour += 1;
     }
-    return { hour, minute };
+    
+    // Handle hour overflow/underflow
+    if (utcHour < 0) {
+        utcHour += 24;
+    } else if (utcHour >= 24) {
+        utcHour -= 24;
+    }
+    
+    return { hour: utcHour, minute: utcMinute };
 }
 
 function validateCronExpression(expression) {
@@ -107,23 +93,8 @@ function createSafeCronJob(expression, callback, options, jobName, fallbackMinut
             throw new Error(`Invalid cron expression according to node-cron: ${expression}`);
         }
         
-        // For midnight times, try with and without timezone to avoid issues
-        let scheduledSuccessfully = false;
-        try {
-            cron.schedule(expression, callback, options);
-            scheduledSuccessfully = true;
-        } catch (timezoneError) {
-            if (options.timezone && expression.includes('0 * * *')) {
-                console.log(`⚠️ Timezone issue detected, retrying without timezone`);
-                const optionsWithoutTimezone = { ...options };
-                delete optionsWithoutTimezone.timezone;
-                cron.schedule(expression, callback, optionsWithoutTimezone);
-                scheduledSuccessfully = true;
-            } else {
-                throw timezoneError;
-            }
-        }
-        
+        // Schedule the job
+        cron.schedule(expression, callback, options);
         console.log(`✅ ${jobName} scheduled successfully`);
         return true;
     } catch (error) {
@@ -156,10 +127,10 @@ function createSafeCronJob(expression, callback, options, jobName, fallbackMinut
 
 if (shouldRunCrons) {
     console.log('🕐 Starting cron jobs...');
-    console.log('🌍 Using timezone:', getTimezone());
+    console.log('🌍 Using timezone: UTC (converting IST times to UTC)');
 
     // Test time conversions
-    console.log('🧪 Testing time conversions:');
+    console.log('🧪 Testing IST to UTC time conversions:');
     console.log('  - IST 00:05 -> UTC:', adjustTimeForUTC(0, 5));
     console.log('  - IST 01:00 -> UTC:', adjustTimeForUTC(1, 0));
     console.log('  - IST 18:00 -> UTC:', adjustTimeForUTC(18, 0));
@@ -195,14 +166,13 @@ if (shouldRunCrons) {
         }
     }, getCronOptions(), 'Assessment Cron Job');
     
-    // Academic sessions creator - runs at 12:30 AM IST daily (simplified to avoid timezone issues)
-    // Use a simple static time that works reliably
-    const academicCronExpression = getTimezone() === 'Asia/Kolkata' 
-        ? '30 0 * * *'  // 12:30 AM IST
-        : '0 19 * * *'; // 7:00 PM UTC (12:30 AM IST next day)
+    // Academic sessions creator - runs at 12:30 AM IST daily
+    // Convert 00:30 IST to UTC
+    const academicTime = adjustTimeForUTC(0, 30);
+    const academicCronExpression = `${academicTime.minute} ${academicTime.hour} * * *`;
     
+    console.log('🕐 Academic cron - IST: 00:30, UTC equivalent:', academicTime);
     console.log('🕐 Academic cron expression:', academicCronExpression);
-    console.log('🕐 Academic cron timezone:', getTimezone());
     
     createSafeCronJob(academicCronExpression, async () => {
         console.log('🔄 Creating today academic sessions...');
