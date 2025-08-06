@@ -863,20 +863,69 @@ exports.keysUpload = async (req, res) => {
 
 exports.keys = async (req, res) => {
   const { user_type, user_id } = req.params;
+  console.log('🔍 Key fetch request:', { user_type, user_id });
+  
   try {
     const [rows] = await db.promise().query(
       `SELECT public_key FROM user_keys WHERE user_id = ? AND user_type = ?`,
       [user_id, user_type]
     );
     if (rows.length > 0) {
+      console.log('✅ Key found for', user_type, user_id, '- Key:', rows[0].public_key.substring(0, 20) + '...');
       return res.json({ success: true, public_key: rows[0].public_key });
     }
+    console.log('❌ No key found for', user_type, user_id);
     // IMPORTANT: In a real-world scenario, the client MUST upload a key first.
     // Returning a 404 is the correct behavior if no key is found.
     // The client-side logic is now responsible for handling this.
     res.status(404).json({ success: false, message: 'Public key not found for this user.' });
   } catch (error) {
     console.error('Key fetch error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Debug endpoint to help with key mismatch issues
+exports.debugKeys = async (req, res) => {
+  const { student_id, mentor_id } = req.query;
+  console.log('🔧 Debug keys request for student:', student_id, 'mentor:', mentor_id);
+  
+  try {
+    // Get both keys
+    const [studentRows] = await db.promise().query(
+      `SELECT public_key FROM user_keys WHERE user_id = ? AND user_type = 'student'`,
+      [student_id]
+    );
+    
+    const [mentorRows] = await db.promise().query(
+      `SELECT public_key FROM user_keys WHERE user_id = ? AND user_type = 'mentor'`,
+      [mentor_id]
+    );
+    
+    // Get recent messages between them
+    const [messageRows] = await db.promise().query(
+      `SELECT message_id, message_text, sender_type, created_at 
+       FROM messages 
+       WHERE ((sender_id = ? AND sender_type = 'student' AND receiver_id = ? AND receiver_type = 'mentor')
+              OR (sender_id = ? AND sender_type = 'mentor' AND receiver_id = ? AND receiver_type = 'student'))
+       AND message_text IS NOT NULL 
+       ORDER BY created_at DESC LIMIT 5`,
+      [student_id, mentor_id, mentor_id, student_id]
+    );
+    
+    res.json({
+      success: true,
+      student_key: studentRows.length > 0 ? studentRows[0].public_key : null,
+      mentor_key: mentorRows.length > 0 ? mentorRows[0].public_key : null,
+      recent_messages: messageRows.map(msg => ({
+        id: msg.message_id,
+        sender: msg.sender_type,
+        encrypted_preview: msg.message_text ? msg.message_text.substring(0, 100) + '...' : null,
+        created_at: msg.created_at
+      }))
+    });
+  } catch (error) {
+    console.error('Debug keys error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -892,5 +941,6 @@ module.exports = {
   getAdminInbox: exports.getAdminInbox,
   keysUpload: exports.keysUpload,
   keys: exports.keys,
+  debugKeys: exports.debugKeys,
   uploadAttachment
 };

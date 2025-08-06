@@ -11,7 +11,8 @@ const {
   getCoordinatorInbox,
   getAdminInbox,
   keysUpload,
-  keys
+  keys,
+  debugKeys
 } = require('../controllers/messaging/messageController');
 
 
@@ -27,5 +28,6 @@ router.post('/messages/send-attachment', uploadAttachment.single('file'), sendAt
 // New routes for E2EE key management
 router.post('/messages/keys/upload', keysUpload);
 router.get('/keys/:user_type/:user_id', keys);
+router.get('/debug/keys', debugKeys);
 
 module.exports = router;

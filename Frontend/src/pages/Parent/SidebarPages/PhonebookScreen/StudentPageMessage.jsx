@@ -370,6 +370,43 @@ const StudentPageMessage = ({ route, navigation }) => {
     }
   };
 
+  // Function to handle legacy encryption errors and suggest solutions
+  const handleLegacyEncryptionErrors = async (messages) => {
+    const encryptionErrors = messages.filter(msg => msg.isLegacyEncryptionError);
+    const totalMessages = messages.length;
+    const errorPercentage = (encryptionErrors.length / totalMessages) * 100;
+
+    console.log('🔍 Legacy encryption analysis:', {
+      totalMessages,
+      encryptionErrors: encryptionErrors.length,
+      errorPercentage: errorPercentage.toFixed(1) + '%'
+    });
+
+    // If more than 50% of messages have encryption errors, suggest key reset
+    if (errorPercentage > 50 && encryptionErrors.length > 2) {
+      console.log('⚠️ High encryption error rate detected, suggesting key reset');
+      
+      Alert.alert(
+        'Encryption Key Mismatch',
+        `${encryptionErrors.length} messages cannot be decrypted due to old encryption keys. Would you like to generate new keys? (This will only affect future messages)`,
+        [
+          { text: 'Keep Old Keys', style: 'cancel' },
+          { 
+            text: 'Generate New Keys', 
+            onPress: async () => {
+              const success = await forceKeyRegeneration();
+              if (success) {
+                Alert.alert('Success', 'New encryption keys generated. Future messages will encrypt properly.');
+              } else {
+                Alert.alert('Error', 'Failed to generate new keys. Please try again.');
+              }
+            }
+          }
+        ]
+      );
+    }
+  };
+
   const decryptMessages = async (messageList) => {
     if (!sharedSecretRef.current) {
       console.warn("No shared secret available for decryption.");
@@ -404,12 +441,26 @@ const StudentPageMessage = ({ route, navigation }) => {
           console.log('🔐 Attempting to decrypt message ID:', msg.message_id);
           console.log('🔐 Message text to decrypt:', msg.message_text.substring(0, 100) + '...');
           console.log('🔐 Shared secret available:', !!sharedSecretRef.current);
+          console.log('🔐 Shared secret (first 20 chars):', sharedSecretRef.current ? sharedSecretRef.current.substring(0, 20) + '...' : 'N/A');
           
           const decryptedText = decryptText(msg.message_text, sharedSecretRef.current);
           
           // Check if decryption actually worked (decryptText returns fallback on failure)
           if (decryptedText === "[Unable to decrypt message]" || !decryptedText) {
             console.error('🚨 Decryption returned fallback for message ID:', msg.message_id);
+            console.log('🔍 Attempting alternative decryption strategies...');
+            
+            // Log the encrypted data structure for analysis
+            try {
+              const encryptedData = JSON.parse(msg.message_text);
+              console.log('🔍 Encrypted message structure:', {
+                ivLength: encryptedData.iv ? encryptedData.iv.length : 0,
+                encryptedLength: encryptedData.encrypted ? encryptedData.encrypted.length : 0,
+                hasValidStructure: !!(encryptedData.iv && encryptedData.encrypted)
+              });
+            } catch (parseErr) {
+              console.log('🔍 Could not parse encrypted message structure');
+            }
             
             // Try one more approach - check if it's base64 encoded text
             try {
@@ -418,7 +469,13 @@ const StudentPageMessage = ({ route, navigation }) => {
               return { ...msg, message_text: base64Decoded };
             } catch (base64Error) {
               console.log('🔍 Base64 decode failed, showing error message for ID:', msg.message_id);
-              return { ...msg, message_text: "[Message could not be decrypted - please ask sender to resend]" };
+              
+              // For old messages that can't be decrypted, offer a recovery option
+              return { 
+                ...msg, 
+                message_text: "[🔐 This message was encrypted with old keys and cannot be decrypted. New messages will encrypt properly.]",
+                isLegacyEncryptionError: true
+              };
             }
           }
           
@@ -760,7 +817,11 @@ const StudentPageMessage = ({ route, navigation }) => {
         console.log('📊 Messages with text:', withText.length, 'with attachments:', withAttachments.length);
         
         // Use setMessages directly for initial fetch (replace all messages)
-        setMessages(decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
+        const sortedMessages = decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        setMessages(sortedMessages);
+
+        // Check for legacy encryption errors and suggest solutions
+        await handleLegacyEncryptionErrors(decrypted);
 
         const unreadIds = data.messages
           .filter(m => m.is_read === 0 && m.receiver_id === studentData.current.student_id)
