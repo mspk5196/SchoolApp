@@ -287,7 +287,8 @@ exports.getMaterials = async (req, res) => {
       file_name,
       file_url,
       COALESCE(title, file_name) as title,
-      section_subject_activity_id
+      section_subject_activity_id,
+      expected_date
     FROM materials 
     WHERE section_subject_activity_id = ?
     ORDER BY level ASC, material_type ASC, title ASC

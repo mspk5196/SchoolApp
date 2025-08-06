@@ -14,8 +14,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e9ecef',
   },
   backIcon: {
-    width: 24,
-    height: 24,
+    width: 17,
+    height: 17,
     marginRight: 15,
   },
   headerText: {
@@ -24,19 +24,33 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   scrollContainer: {
+    flex: 1,
     paddingVertical: 20,
   },
   scrollContent: {
     paddingHorizontal: 20,
   },
+  gridContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  gridWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
   activityCard: {
     paddingHorizontal: 20,
     paddingVertical: 15,
-    marginRight: 15,
+    marginBottom: 15,
     borderRadius: 10,
-    minWidth: 150,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 80,
+  },
+  gridItem: {
+    width: '48%', // Two columns with some spacing
+    marginRight: 0, // Remove the horizontal margin since we're using flexWrap
   },
   activityText: {
     fontSize: 16,

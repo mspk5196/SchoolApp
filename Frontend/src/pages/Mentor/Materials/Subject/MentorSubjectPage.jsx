@@ -182,6 +182,7 @@ const MentorSubjectPage = ({ route, navigation }) => {
 
                 setActiveTabs(defaultTabs);
                 setMaterials(groupedMaterials);
+                console.log("Fetched materials:", groupedMaterials);
             }
             else {
                 console.error("Backend error:", data.message);

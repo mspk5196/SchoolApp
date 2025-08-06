@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, Pressable, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { Text, View, Pressable, ScrollView, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import styles from './SubjectActivityStyle';
 import BackIcon from '../../../../assets/CoordinatorPage/Subjects/Back.svg';
 import { API_URL } from "../../../../utils/env.js";
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const MentorSubjectActivityPage = ({ navigation, route }) => {
   const { subject, subjectID, gradeID, grade } = route.params || {};
@@ -28,6 +30,7 @@ const MentorSubjectActivityPage = ({ navigation, route }) => {
         const currentSubject = data.gradeSubjects.find(s => s.subject_id === subjectID);
         if (currentSubject) {
           setActivities(currentSubject.activities);
+          console.log("Activities for subject:", currentSubject.activities);
         }
       } else {
         Alert.alert("Error", data.message || "Failed to fetch activities");
@@ -66,34 +69,37 @@ const MentorSubjectActivityPage = ({ navigation, route }) => {
         <BackIcon
           width={styles.backIcon.width}
           height={styles.backIcon.height}
+          style={styles.backIcon}
           onPress={() => navigation.goBack()}
         />
         <Text style={styles.headerText}>{subject} Activities</Text>
       </View>
 
       <ScrollView 
-        horizontal
-        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
         style={styles.scrollContainer}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.gridContainer}
       >
-        {activities.map((activity, index) => (
-          <Pressable
-            key={activity.activity_id}
-            style={[
-              styles.activityCard,
-              { backgroundColor: (index % 2) ? '#C9F7F5' : '#65558F12' }
-            ]}
-            onPress={() => handleActivityPress(activity)}
-          >
-            <Text style={[
-              styles.activityText,
-              { color: (index % 2) ? '#0FBEB3' : '#65558F' }
-            ]}>
-              {activity.activity_name}
-            </Text>
-          </Pressable>
-        ))}
+        <View style={styles.gridWrapper}>
+          {activities.map((activity, index) => (
+            <Pressable
+              key={activity.activity_id}
+              style={[
+                styles.activityCard,
+                styles.gridItem,
+                { backgroundColor: (index % 2) ? '#C9F7F5' : '#65558F12' }
+              ]}
+              onPress={() => handleActivityPress(activity)}
+            >
+              <Text style={[
+                styles.activityText,
+                { color: (index % 2) ? '#0FBEB3' : '#65558F' }
+              ]}>
+                {activity.activity_name}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </ScrollView>
     </View>
   );

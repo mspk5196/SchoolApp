@@ -14,7 +14,8 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
-  Linking
+  Linking,
+  RefreshControl
 } from 'react-native';
 import BackIcon from '../../../../assets/CoordinatorPage/DisciplineLog/leftarrow.svg';
 import AddIcon from '../../../../assets/CoordinatorPage/DisciplineLog/AddIcon.svg';
@@ -24,6 +25,7 @@ import SearchIcon from '../../../../assets/CoordinatorPage/DisciplineLog/search.
 import styles from './DisciplineLogStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL } from '../../../../utils/env.js'
+import Nodata from '../../../../components/General/Nodata';
 const Staff = '../../../../assets/CoordinatorPage/DisciplineLog/staff.png';
 
 const CoordinatorDisciplineLog = ({ navigation, route }) => {
@@ -34,8 +36,9 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
   const [showFacultyModal, setShowFacultyModal] = useState(false);
   const [facultySearch, setFacultySearch] = useState('');
   const [facultyList, setFacultyList] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [disciplineData, setDisciplineData] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Search states
   const [searchText, setSearchText] = useState('');
@@ -58,7 +61,6 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
 
   // Fetch discipline logs
   const fetchDisciplineLogs = async () => {
-    setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getDisciplineLogs`);
       const data = await response.json();
@@ -77,8 +79,11 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    fetchFaculty();
-    fetchDisciplineLogs();
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchFaculty(), fetchDisciplineLogs()]);
+    };
+    loadData();
   }, []);
 
   // Filter data when search text changes
@@ -172,6 +177,13 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
     })
   }
 
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchDisciplineLogs();
+    setRefreshing(false);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -198,9 +210,20 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#0C36FF" />
+          <Text style={{ marginTop: 10, fontSize: 16 }}>Loading discipline logs...</Text>
         </View>
       ) : (
-        <ScrollView style={styles.cardContainer}>
+        <ScrollView 
+          style={styles.cardContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#0C36FF']}
+              tintColor="#0C36FF"
+            />
+          }
+        >
           {filteredData.length > 0 ? (
             filteredData.map((item) => (
               <View key={item.id} style={styles.card}>
@@ -234,9 +257,7 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
               </View>
             ))
           ) : (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>No records found</Text>
-            </View>
+            <Nodata message="No discipline records found" />
           )}
         </ScrollView>
       )}

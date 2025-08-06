@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Pressable, Alert } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Pressable, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import { API_URL } from '../../../../utils/env.js'
 import BackIcon from "../../../../assets/CoordinatorPage/StudentProfile/leftarrow.svg";
 import styles from './StudentProfileStyles';
 const Staff = require('../../../../assets/CoordinatorPage/StudentProfile/staff.png');
 import Search from '../../../../assets/CoordinatorPage/StudentProfile/search.svg';
+import Nodata from '../../../../components/General/Nodata';
 
 const CoordinatorStudentProfile = ({ navigation, route }) => {
   const { coordinatorData, activeGrade } = route.params;
@@ -14,6 +15,8 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
   const [activeSection, setActiveSection] = useState(null);
   const [sections, setSections] = useState([])
   const [students, setStudents] = useState([])
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchSectionStudents();
@@ -22,6 +25,7 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
   useEffect(() => {
     const fetchSections = async () => {
       try {
+        setLoading(true);
         const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -42,6 +46,8 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
       } catch (error) {
         console.error('Error fetching sections data:', error);
         Alert.alert('Error', 'Failed to fetch sections data');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -49,6 +55,8 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
   }, [coordinatorData]);
 
   const fetchSectionStudents = async () => {
+    if (!activeSection) return;
+    
     try {
       const response = await fetch(`${API_URL}/api/coordinator/student/getSectionStudents`, {
         method: 'POST',
@@ -92,6 +100,23 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
     setFilteredStudents(filtered);
   };
 
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchSectionStudents();
+    setRefreshing(false);
+  };
+
+  // Loading component
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#0C36FF" />
+        <Text style={{ marginTop: 10, fontSize: 16 }}>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
 
     <View style={[styles.container, { flex: 1 }]}>
@@ -127,24 +152,38 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        {(searchText ? filteredStudents : students).map((student, index) => (
-          <TouchableOpacity
-            key={student.id}
-            style={styles.listItem}
-            onPress={()=>navigation.navigate('CoordinatorStudentProfileDetails',{student})}
-          >
-            {/* <Image source={Staff} style={styles.studentAvatar} /> */}
-            <Image source={getProfileImageSource(student.profile_photo)} style={styles.studentAvatar} />
-            <View style={styles.listContent}>
-              <Text style={styles.listName}>{student.name}</Text>
-              <Text style={styles.listId}>{student.roll}</Text>
-            </View>
-            <View style={styles.removeButton}>
-              <Text style={styles.removeText}>View</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+      <ScrollView 
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#0C36FF']}
+            tintColor="#0C36FF"
+          />
+        }
+      >
+        {(searchText ? filteredStudents : students).length === 0 ? (
+          <Nodata message="No students found" />
+        ) : (
+          (searchText ? filteredStudents : students).map((student, index) => (
+            <TouchableOpacity
+              key={student.id}
+              style={styles.listItem}
+              onPress={()=>navigation.navigate('CoordinatorStudentProfileDetails',{student})}
+            >
+              {/* <Image source={Staff} style={styles.studentAvatar} /> */}
+              <Image source={getProfileImageSource(student.profile_photo)} style={styles.studentAvatar} />
+              <View style={styles.listContent}>
+                <Text style={styles.listName}>{student.name}</Text>
+                <Text style={styles.listId}>{student.roll}</Text>
+              </View>
+              <View style={styles.removeButton}>
+                <Text style={styles.removeText}>View</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </View>
 

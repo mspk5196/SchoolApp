@@ -9,6 +9,8 @@ import {
   Image,
   TextInput,
   Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { API_URL } from '../../../../utils/env.js';
@@ -20,6 +22,7 @@ import Tick from '../../../../assets/CoordinatorPage/MentorMapping/tick.svg';
 import Person from '../../../../assets/CoordinatorPage/MentorMapping/person.svg';
 import OnePerson from '../../../../assets/CoordinatorPage/MentorMapping/oneperson.svg';
 import Hat from '../../../../assets/CoordinatorPage/MentorMapping/hat.svg';
+import Nodata from '../../../../components/General/Nodata';
 
 import styles from './MentorMappingStyles';
 
@@ -35,6 +38,8 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
   const [activeSection, setActiveSection] = useState('');
   const [mentors, setMentors] = useState([])
   const [faculties, setFaculties] = useState([])
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchGradeSections()
@@ -48,6 +53,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
 
   const fetchGradeSections = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -68,6 +74,8 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
     } catch (error) {
       console.error('Error fetching sections data:', error);
       Alert.alert('Error', 'Failed to fetch sections data');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -258,6 +266,35 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
     }
   };
 
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchSectionMentor();
+    setRefreshing(false);
+  };
+
+  // Loading component
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.SubNavbar}>
+          <View style={styles.header}>
+            <BackIcon
+              width={styles.BackIcon.width}
+              height={styles.BackIcon.height}
+              onPress={() => navigation.goBack()}
+            />
+            <Text style={styles.headerTxt}>Mentor Mapping</Text>
+          </View>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#0C36FF" />
+          <Text style={{ marginTop: 10, fontSize: 16 }}>Loading mentors...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // const handleSectionChange = (section) => {
   //   setActiveSection(section);
   //   console.log(section);
@@ -301,6 +338,15 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
           data={mentors}
           showsVerticalScrollIndicator={false}
           keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#0C36FF']}
+              tintColor="#0C36FF"
+            />
+          }
+          ListEmptyComponent={<Nodata message="No mentors found" />}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.card}

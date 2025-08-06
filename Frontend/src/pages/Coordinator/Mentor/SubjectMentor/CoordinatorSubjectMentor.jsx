@@ -10,6 +10,8 @@ import {
   Image,
   TextInput,
   Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { API_URL } from '../../../../utils/env.js';
 import Modal from 'react-native-modal';
@@ -20,6 +22,7 @@ import Tickbox from '../../../../assets/CoordinatorPage/SubjectMentor/tickbox.sv
 import Tick from '../../../../assets/CoordinatorPage/SubjectMentor/tick.svg';
 import Oneperson from '../../../../assets/CoordinatorPage/SubjectMentor/oneperson.svg';
 import Hat from '../../../../assets/CoordinatorPage/SubjectMentor/hat.svg';
+import Nodata from '../../../../components/General/Nodata';
 import styles from './SubjectMentorStyles';
 
 const CoordinatorSubjectMentor = ({ navigation, route }) => {
@@ -32,13 +35,19 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
   const [subjects, setSubject] = useState([]);
   const [enroledMentors, setEnroledMentors] = useState([]);
   const [availableMentors, setAvailableMentors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   
   // Create a reference for the horizontal scroll view
   const scrollViewRef = React.useRef(null);
 
   useEffect(() => {
-    fetchGradeMentor();
-    getGradeSubject();
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchGradeMentor(), getGradeSubject()]);
+      setLoading(false);
+    };
+    loadData();
   }, [coordinatorData]);
 
   useEffect(() => {
@@ -238,7 +247,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
     </TouchableOpacity>
   );
 
-  const getProfileImageSource = (profilePath) => {
+    const getProfileImageSource = (profilePath) => {
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
@@ -248,7 +257,37 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
     } else {
       return staff;
     }
+  
   };
+
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (activeSubject) {
+      await fetchEnroledSubjectMentors(activeSubject);
+    }
+    setRefreshing(false);
+  };
+
+  // Loading component
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <BackIcon
+            width={styles.BackIcon.width}
+            height={styles.BackIcon.height}
+            onPress={() => navigation.goBack()}
+          />
+          <Text style={styles.headerTxt}>Subject Mentor</Text>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#0C36FF" />
+          <Text style={{ marginTop: 10, fontSize: 16 }}>Loading subject mentors...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -295,6 +334,15 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
         data={enroledMentors}
         showsVerticalScrollIndicator={false}
         keyExtractor={item => item.id.toString()}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#0C36FF']}
+            tintColor="#0C36FF"
+          />
+        }
+        ListEmptyComponent={<Nodata message="No subject mentors found" />}
         renderItem={({ item }) => (
           <View style={styles.card}>
             {/* <Image source={staff} style={styles.avatar} /> */}

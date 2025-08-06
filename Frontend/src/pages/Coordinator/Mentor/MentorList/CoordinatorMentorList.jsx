@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Alert } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import BackIcon from "../../../../assets/CoordinatorPage/MentorList/leftarrow.svg";
 import styles from './MentorListStyles';
 import { API_URL } from '../../../../utils/env.js'
 const Staff = require('../../../../assets/CoordinatorPage/MentorList/staff.png');
 import Search from '../../../../assets/CoordinatorPage/MentorList/search.svg'
+import Nodata from '../../../../components/General/Nodata';
 
 const CoordinatorMentorList = ({ navigation, route }) => {
   const { coordinatorData, activeGrade } = route.params;
   const [searchText, setSearchText] = useState('');
   const [filteredMentor, setFilteredMentor] = useState([]);
-
   const [mentors, setMentor] = useState([])
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchGradeMentors()
@@ -19,6 +21,7 @@ const CoordinatorMentorList = ({ navigation, route }) => {
 
   const fetchGradeMentors = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeMentors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,6 +42,8 @@ const CoordinatorMentorList = ({ navigation, route }) => {
     } catch (error) {
       console.error('Error fetching mentors data:', error);
       Alert.alert('Error', 'Failed to fetch mentor data');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -56,6 +61,23 @@ const CoordinatorMentorList = ({ navigation, route }) => {
   const handleMentorPress = (mentor) => {
     navigation.navigate('CoordinatorMentorListDetails', { mentor });
   };
+
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchGradeMentors();
+    setRefreshing(false);
+  };
+
+  // Loading component
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#0C36FF" />
+        <Text style={{ marginTop: 10, fontSize: 16 }}>Loading mentors...</Text>
+      </View>
+    );
+  }
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
@@ -92,27 +114,41 @@ const CoordinatorMentorList = ({ navigation, route }) => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        {(searchText ? filteredMentor : mentors).map((mentor, index) => (
-          <TouchableOpacity
-            key={mentor.id}
-            style={styles.listItem}
-            onPress={() => handleMentorPress(mentor)}
-          >
-            {mentor.photo_url ? (
-              <Image source={getProfileImageSource(mentor.photo_url)} style={styles.studentAvatar} />
-            ) : (
-              <Image source={Staff} style={styles.studentAvatar} />
-            )}
-            <View style={styles.listContent}>
-              <Text style={styles.listName}>{mentor.name}</Text>
-              <Text style={styles.listId}>{mentor.roll}</Text>
-            </View>
-            <View style={styles.removeButton}>
-              <Text style={styles.removeText}>View</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+      <ScrollView 
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#0C36FF']}
+            tintColor="#0C36FF"
+          />
+        }
+      >
+        {(searchText ? filteredMentor : mentors).length === 0 ? (
+          <Nodata message="No mentors found" />
+        ) : (
+          (searchText ? filteredMentor : mentors).map((mentor, index) => (
+            <TouchableOpacity
+              key={mentor.id}
+              style={styles.listItem}
+              onPress={() => handleMentorPress(mentor)}
+            >
+              {mentor.photo_url ? (
+                <Image source={getProfileImageSource(mentor.photo_url)} style={styles.studentAvatar} />
+              ) : (
+                <Image source={Staff} style={styles.studentAvatar} />
+              )}
+              <View style={styles.listContent}>
+                <Text style={styles.listName}>{mentor.name}</Text>
+                <Text style={styles.listId}>{mentor.roll}</Text>
+              </View>
+              <View style={styles.removeButton}>
+                <Text style={styles.removeText}>View</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </View>
 
