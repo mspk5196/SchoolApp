@@ -35,8 +35,7 @@ import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
 
-import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from '../../../../utils/keyManager';
-import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
+// Encryption imports removed - now using direct messaging
 
 const CoordinatorMessageBox = ({ route, navigation }) => {
   const { contact, coordinator } = route.params;

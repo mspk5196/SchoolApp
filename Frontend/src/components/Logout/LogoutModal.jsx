@@ -2,16 +2,13 @@ import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import React, { Component, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import { clearAllEncryptionKeys } from '../../utils/keyManager';
+// Encryption utilities no longer needed - using direct messaging
 
 const LogoutModal = ({ visible, onClose, navigation }) => {
     const handleLogout = async () => {
         try {
             // Clear ALL AsyncStorage data for security
             await AsyncStorage.clear();
-            
-            // Also explicitly clear encryption keys (redundant but safe)
-            await clearAllEncryptionKeys();
             
             console.log('🚪 Complete logout: All data cleared');
             

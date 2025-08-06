@@ -6,7 +6,7 @@ import { Switch } from 'react-native-switch';
 import { API_URL } from '../../../utils/env.js';
 import { backupPrivateKey } from '../../../utils/backupPrivateKey';
 import { restorePrivateKey } from '../../../utils/restorePrivateKey';
-import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from '../../../utils/keyManager';
+// Encryption key management removed - now using direct messaging
 
 const Redirect = ({ route }) => {
   const navigation = useNavigation();
@@ -57,32 +57,7 @@ const Redirect = ({ route }) => {
     fetchRoles();
   }, []);
 
-  const manageKeys = async (userId, userType) => {
-    let privateKeyHex = await getPrivateKey(userId, userType);
-    if (privateKeyHex) {
-      console.log('Private key found locally.');
-      return; // Key exists, we are done
-    }
-
-    console.log('No local private key. Attempting to restore from server...');
-    try {
-      const restoredKey = await restorePrivateKey(userId, userType, password);
-      if (restoredKey) {
-        console.log('Private key successfully restored from server.');
-        return; // Key restored and stored in AsyncStorage, we are done
-      }
-    } catch (error) {
-      // This will catch 404s or other fetch errors, which is expected for a new user.
-      console.log('Could not restore key (this is normal for a first-time login):', error.message);
-    }
-
-    console.log('Generating new key pair as no key was found locally or on the server...');
-    const { privateKeyHex: newPrivateKey, publicKeyHex } = await generateAndStoreKeys(userId, userType);
-
-    console.log('Backing up new private key to server...');
-    await backupPrivateKey(newPrivateKey, userId, userType, password, publicKeyHex);
-    console.log('Key backup complete.');
-  };
+  // Key management function removed - using direct messaging
 
   const fetchStudentData = async () => {
     try {
@@ -96,7 +71,7 @@ const Redirect = ({ route }) => {
       if (data.success && data.student) {
         console.log('Student data fetched successfully:', data.student[0].student_id);
         
-        await manageKeys(data.student[0].student_id, 'student');
+        // Key management removed - using direct messaging
         await AsyncStorage.setItem('studentData', JSON.stringify(data.student));
         navigation.navigate('ParentRoute', { studentData: data.student });
       } else {
@@ -125,7 +100,7 @@ const Redirect = ({ route }) => {
         });
         const data2 = await response2.json();
 
-        await manageKeys(data.coordinatorData.id, 'coordinator');
+        // Key management removed - using direct messaging
         await AsyncStorage.setItem('coordinatorData', JSON.stringify(data.coordinatorData));
         await AsyncStorage.setItem('coordinatorGrades', JSON.stringify(data2.coordinatorGrades));
         navigation.navigate('CoordinatorMain', { coordinatorData: data.coordinatorData });
@@ -148,7 +123,7 @@ const Redirect = ({ route }) => {
 
       const data = await response.json();
       if (data.success && data.mentorData) {
-        await manageKeys(data.mentorData[0].id, 'mentor');
+        // Key management removed - using direct messaging
         await AsyncStorage.setItem('mentorData', JSON.stringify(data.mentorData));
         navigation.navigate('MentorMain', { mentorData: data.mentorData });
       } else {
@@ -171,7 +146,7 @@ const Redirect = ({ route }) => {
       const data = await response.json();
 
       if (data.success && data.adminData) {
-        await manageKeys(data.adminData.id, 'admin');
+        // Key management removed - using direct messaging
         await AsyncStorage.setItem('adminData', JSON.stringify(data.adminData));
         navigation.navigate('AdminMain', { adminData: data.adminData });
       } else {

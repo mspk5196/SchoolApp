@@ -26,7 +26,7 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../../utils/env.js';
 import { encryptPassword } from '../../../components/Login/encrypt/encryptPassword';
-import { generateAndStoreKeys } from '../../../utils/keyManager';
+// Encryption key generation removed - using direct messaging
 import Config from 'react-native-config';
 
 const Login = () => {

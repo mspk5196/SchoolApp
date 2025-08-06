@@ -16,14 +16,12 @@ import {
   PermissionsAndroid,
 } from 'react-native';
 import styles from './MessageBoxsty';
-// import Home from "../../../../assets/MentorPage/backarrow.svg";
 import AttachmentIcon from '../../../../assets/Genreal/messages/attachmentIcon.svg';
 import MicIcon from '../../../../assets/Genreal/messages/micIcon.svg';
 import SendIcon from '../../../../assets/Genreal/messages/sendIcon.svg';
 import DocumentIcon from '../../../../assets/Genreal/messages/icons8-document.svg';
 import PreviousIcon from '../../../../assets/Genreal/messages/PrevBtn.svg';
 import AudioIcon from '../../../../assets/Genreal/messages/audio-svgrepo-com.svg';
-// const Profile = require('../../../../assets/MentorPage/profile.png')
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import DocumentPicker from 'react-native-document-picker';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
@@ -35,12 +33,8 @@ import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
 
-import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from '../../../../utils/keyManager';
-import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
-
 const MentorMessageBox = ({ route, navigation }) => {
   const { contact } = route.params;
-  // console.log("hi",contact);
   
   // Helper functions to normalize contact field access across different naming conventions
   const getContactId = () => contact.receiver_id || contact.contact_id || contact.user_id;
@@ -48,1375 +42,543 @@ const MentorMessageBox = ({ route, navigation }) => {
   const getContactName = () => contact.receiver_name || contact.contact_name || contact.name || 'Unknown';
 
   const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [lastMessageId, setLastMessageId] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPlayingId, setCurrentPlayingId] = useState(null);
   const [isRecording, setRecording] = useState(false);
+  const [isAttachmentModalVisible, setAttachmentModalVisible] = useState(false);
+  
   const flatListRef = useRef(null);
+  const audioRecorderPlayer = useRef(new AudioRecorderPlayer());
   const socketRef = useRef(null);
-  const sharedSecretRef = useRef(null);
+  const mentorData = useRef(null);
 
-  // Custom function to add messages with deduplication
-  const addMessages = (newMessages) => {
-    setMessages(prev => {
-      const combined = [...prev, ...(Array.isArray(newMessages) ? newMessages : [newMessages])];
-      // Remove duplicates based on message_id
-      const unique = combined.filter((message, index, self) => 
-        index === self.findIndex(m => m.message_id === message.message_id)
-      );
-      
-      if (combined.length !== unique.length) {
-        console.log('🔄 Mentor - Prevented', combined.length - unique.length, 'duplicate messages');
-      }
-      
-      const sorted = unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      console.log('📊 Mentor - Total messages after update:', sorted.length);
-      return sorted;
-    });
-  };
-
-  // Debug function to check for duplicates
-  const checkForDuplicates = (messageArray) => {
-    const ids = messageArray.map(m => m.message_id);
-    const uniqueIds = [...new Set(ids)];
-    if (ids.length !== uniqueIds.length) {
-      console.error('🚨 MENTOR DUPLICATE MESSAGE IDS DETECTED!', {
-        total: ids.length,
-        unique: uniqueIds.length,
-        duplicates: ids.length - uniqueIds.length
-      });
-    }
-    return ids.length === uniqueIds.length;
-  };
-
-  const [playingAudioId, setPlayingAudioId] = useState(null);
-  const [imageViewerVisible, setImageViewerVisible] = useState(false);
-  const [currentImageUri, setCurrentImageUri] = useState('');
-  const [attachmentModalVisible, setAttachmentModalVisible] = useState(false);
-  const [audioPaused, setAudioPaused] = useState(false);
-  const [audioDurations, setAudioDurations] = useState({});
-  const [audioPositions, setAudioPositions] = useState({});
-  const [downloadProgress, setDownloadProgress] = useState(null);
-
-  const [currentUser, setCurrentUser] = useState(null);
-  const [encryptionRetryCount, setEncryptionRetryCount] = useState(0);
-  const [showEncryptionRetry, setShowEncryptionRetry] = useState(false);
-  const [encryptionStatus, setEncryptionStatus] = useState('pending'); // 'pending', 'failed', 'success'
-
-  const audioRecorderPlayer = useRef(null);
-  const manualTimerRef = useRef(null);
-  const recorderState = useRef({ isRunning: false });
-
-  const currentUserRef = useRef(null);
-
+  // Initialize socket connection
   useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
-
-  // Add an effect to monitor encryption status changes
-  useEffect(() => {
-    if (sharedSecretRef.current && encryptionStatus !== 'success') {
-      console.log('🔐 Encryption is now active');
-      setEncryptionStatus('success');
-      setShowEncryptionRetry(false);
-    }
-  }, [encryptionStatus]);
-
-  // const fetchMentorData = async () => {
-  //   try {
-  //     const storedData = await AsyncStorage.getItem('mentorData');
-  //     if (storedData) {
-  //       const mentorData = JSON.parse(storedData)[0];
-  //       setCurrentUser(mentorData);
-  //       fetchMessages(mentorData)
-  //     }
-  //   }
-  //   catch (error) {
-  //     console.error('Error initializing message box:', error);
-  //   }
-  // }
-
-  const setupEncryption = async (currentUser, otherUser, isRetry = false) => {
-    console.log("🔐 Mentor setting up encryption with contact:", otherUser);
+    socketRef.current = io(API_URL);
     
-    try {
-      let myPrivateKey = await getPrivateKey(currentUser.id, 'mentor');
-      if (!myPrivateKey) {
-        console.log("🔑 Generating new mentor keys...");
-        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys(currentUser.id, 'mentor');
-        myPrivateKey = privateKeyHex;
-        await fetch(`${API_URL}/api/messages/keys/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: currentUser.id,
-            user_type: 'mentor',
-            public_key: publicKeyHex,
-          }),
-        });
-        console.log("✅ Mentor key uploaded");
-      } else {
-        console.log("🔑 Using existing mentor private key");
-      }
-      
-      // Use the correct field names from the contact object - handle multiple naming conventions
-      const contactId = getContactId();
-      const contactType = getContactType();
-      
-      if (!contactId) {
-        console.error("❌ Could not determine user ID from contact object:", otherUser);
-        return false;
-      }
-      
-      console.log("🔍 Fetching user key for ID:", contactId, "type:", contactType);
-      const res = await fetch(`${API_URL}/api/keys/${contactType}/${contactId}`);
-      console.log("🔍 Student key fetch response status:", res.status);
-      if (!res.ok) {
-        if (res.status === 404) {
-          console.warn('❌ Student key not found. They will need to open the app to generate encryption keys.');
-          if (!isRetry) {
-            setShowEncryptionRetry(true);
-            setEncryptionStatus('failed');
-          }
-          return false;
-        }
-        console.error("❌ Network error fetching student key:", res.status);
-        Alert.alert('Encryption Error', "Could not get recipient's key. Network error occurred.");
-        return false;
-      }
-      
-      const theirKeyData = await res.json();
-      console.log("🔍 Student key data received:", theirKeyData);
-      
-      if (!theirKeyData.success || !theirKeyData.public_key) {
-        console.warn('❌ Invalid key data received from server.');
-        return false;
-      }
-      
-      sharedSecretRef.current = getSharedSecretAESKey(myPrivateKey, theirKeyData.public_key);
-      setShowEncryptionRetry(false);
-      setEncryptionStatus('success');
-      console.log('✅ Mentor encryption successfully established!');
-      return true;
-    } catch (error) {
-      console.error('❌ Mentor encryption setup error:', error);
-      console.error('❌ Error details:', error.message, error.stack);
-      // Only show alert for actual network/server errors, not missing keys
-      if (!error.message?.includes('404')) {
-        Alert.alert('Error', 'Could not establish a secure connection. Please check your internet connection.');
-      }
-      return false;
-    }
-  };
+    const socket = socketRef.current;
 
-  const retryEncryption = async () => {
-    if (!currentUser) return;
-    console.log('🔄 Retrying encryption setup...');
-    setEncryptionRetryCount(prev => prev + 1);
-    const success = await setupEncryption(currentUser, contact, true);
-    if (success) {
-      // Refresh messages to decrypt any previously encrypted ones
-      await fetchMessages(currentUser);
-    }
-  };
-
-  const decryptMessages = async (messageList) => {
-    if (!sharedSecretRef.current) {
-      console.warn('No shared secret available for decryption.');
-      return messageList.map(msg => {
-        if (msg.message_text) {
-          // Check if the message looks like it's encrypted (JSON format with iv and encrypted fields)
-          try {
-            const parsed = JSON.parse(msg.message_text);
-            if (parsed.iv && parsed.encrypted) {
-              return { ...msg, message_text: '[Encrypted Message - Cannot decrypt without recipient key]' };
-            }
-          } catch (e) {
-            // Not JSON, probably plain text
-          }
-          // Return as-is if it's plain text
-          return msg;
-        }
-        return msg;
-      });
-    }
-    return messageList.map(msg => {
-      if (msg.message_text) {
-        try {
-          return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
-        } catch (error) {
-          console.warn('Failed to decrypt message:', error);
-          return { ...msg, message_text: '[Failed to decrypt message]' };
-        }
-      }
-      return msg;
+    socket.on('receiveMessage', (data) => {
+      console.log('📨 Received new message:', data);
+      setMessages(prevMessages => [...prevMessages, data.message]);
+      scrollToBottom();
     });
-  };
 
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        const storedData = await AsyncStorage.getItem('mentorData');
-        if (!storedData) throw new Error('Mentor data not found');
-        const mentorData = JSON.parse(storedData)[0];
-        setCurrentUser(mentorData);
+    socket.on('messagesRead', (data) => {
+      console.log('✅ Messages marked as read:', data);
+      if (data.messageIds) {
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            data.messageIds.includes(msg.message_id)
+              ? { ...msg, is_read: 1 }
+              : msg
+          )
+        );
+      }
+    });
 
-        const encryptionReady = await setupEncryption(mentorData, contact);
-        if (!encryptionReady) {
-          console.warn('Encryption not available. Messages will be sent without encryption until the recipient opens the app.');
-          // Set up periodic retry for encryption
-          const retryInterval = setInterval(async () => {
-            if (!sharedSecretRef.current && encryptionRetryCount < 5) {
-              console.log('🔄 Periodic encryption retry attempt...');
-              const success = await setupEncryption(mentorData, contact, true);
-              if (success) {
-                clearInterval(retryInterval);
-              }
-            } else if (encryptionRetryCount >= 5) {
-              clearInterval(retryInterval);
-            }
-          }, 30000); // Retry every 30 seconds
-
-          // Clean up interval on unmount
-          return () => clearInterval(retryInterval);
-        }
-
-        socketRef.current = io(API_URL, { transports: ['websocket'] });
-        socketRef.current.emit('join', { userId: mentorData.id });
-        await fetchMessages(mentorData);
-
-
-        socketRef.current.on('receiveMessage', async (data) => {
-          const msg = data.message;
-          const contactId = getContactId();
-          const contactType = getContactType();
-          const isCurrentConversation =
-            (msg.sender_id === contactId && msg.sender_type === contactType && msg.receiver_id === mentorData.id && msg.receiver_type === 'mentor') ||
-            (msg.sender_id === mentorData.id && msg.sender_type === 'mentor' && msg.receiver_id === contactId && msg.receiver_type === contactType);
-
-          if (!isCurrentConversation) return;
-
-          // Skip if this is our own message (prevent duplicate on sender side)
-          if (msg.sender_id === mentorData.id && msg.sender_type === 'mentor') {
-            console.log('🔄 Mentor - Skipping own message to prevent duplicate');
-            return;
-          }
-
-          // If encryption is not available, try to set it up again
-          if (!sharedSecretRef.current && encryptionRetryCount < 3) {
-            console.log('📨 New message received, attempting encryption setup...');
-            const encryptionSuccess = await setupEncryption(mentorData, contact, true);
-            if (encryptionSuccess) {
-              console.log('✅ Encryption established after receiving message!');
-            }
-          }
-
-          const [decryptedMsg] = await decryptMessages([msg]);
-          console.log('✅ Mentor - Adding new received message:', decryptedMsg.message_id);
-          addMessages(decryptedMsg);
-
-          if (msg.receiver_id === mentorData.id) {
-            socketRef.current.emit('markAsRead', {
-              messageIds: [msg.message_id],
-              receiverId: mentorData.id, receiverType: 'mentor',
-              senderId: msg.sender_id, senderType: msg.sender_type
-            });
-          }
-        });
-
-        socketRef.current.on('messagesRead', (data) => {
-          setMessages(prev => prev.map(m => data.messageIds.includes(m.message_id) ? { ...m, is_read: 1 } : m));
-        });
-
-        setIsLoading(false);
-
-      } catch (error) {
-        console.error('Initialization failed:', error);
-        setIsLoading(false);
+    return () => {
+      if (socket) {
+        socket.disconnect();
       }
     };
-    initialize();
-    return () => socketRef.current?.disconnect();
-  }, [contact]);
+  }, []);
 
-  const fetchMessages = async (mentorData) => {
-    if (!mentorData) return;
-    setIsLoading(true);
+  // Load mentor data and initialize
+  useEffect(() => {
+    const initializeMentor = async () => {
+      try {
+        console.log('🚀 Initializing mentor message page...');
+        const storedData = await AsyncStorage.getItem('mentorData');
+        
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          
+          if (Array.isArray(parsedData) && parsedData.length > 0) {
+            const currentMentor = parsedData[0];
+            console.log('👤 Current mentor loaded:', currentMentor);
+            mentorData.current = currentMentor;
+            
+            // Join socket room with mentor ID
+            if (socketRef.current && currentMentor.id) {
+              socketRef.current.emit('join', currentMentor.id);
+              console.log('🔌 Socket joined with mentor ID:', currentMentor.id);
+            }
+            
+            // Fetch messages
+            await fetchMessages();
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error initializing mentor:', error);
+        Alert.alert('Error', 'Failed to load mentor data');
+      }
+    };
+
+    initializeMentor();
+  }, []);
+
+  const fetchMessages = async () => {
     try {
+      console.log('📥 Fetching messages...');
+      const currentMentor = mentorData.current;
       const contactId = getContactId();
       const contactType = getContactType();
       
+      if (!currentMentor?.id || !contactId) {
+        console.error('❌ Missing mentor or contact data');
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch(`${API_URL}/api/messages/get`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sender_id: mentorData.id, sender_type: 'mentor',
-          receiver_id: contactId, receiver_type: contactType,
-          last_message_id: 0,
-        }),
+          sender_id: currentMentor.id,
+          receiver_id: contactId,
+          sender_type: 'mentor',
+          receiver_type: contactType,
+          last_message_id: lastMessageId
+        })
       });
+
       const data = await response.json();
       if (data.success) {
-        // Only decrypt if we have a shared secret, otherwise show messages as-is
-        const decrypted = sharedSecretRef.current ? 
-          await decryptMessages(data.messages) : 
-          data.messages.map(msg => ({ 
-            ...msg, 
-            message_text: msg.message_text ? '[Encrypted Message - Recipient key not available]' : null 
-          }));
+        console.log('📥 Raw messages from server:', data.messages.length);
+        setMessages(data.messages);
         
-        console.log('📥 Mentor - Fetched messages count:', decrypted.length);
-        
-        // Use setMessages directly for initial fetch (replace all messages) and sort them
-        setMessages(decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
-
-        const unreadIds = data.messages
-          .filter(m => m.is_read === 0 && m.receiver_id === mentorData.id)
-          .map(m => m.message_id);
-
-        if (unreadIds.length > 0) {
-          const contactId = getContactId();
-          const contactType = getContactType();
-          socketRef.current.emit('markAsRead', {
-            messageIds: unreadIds,
-            receiverId: mentorData.id, receiverType: 'mentor',
-            senderId: contactId, senderType: contactType
-          });
+        if (data.messages.length > 0) {
+          setLastMessageId(Math.max(...data.messages.map(m => m.message_id)));
         }
+        
+        scrollToBottom();
+      } else {
+        console.error('❌ Failed to fetch messages:', data.message);
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error('❌ Error fetching messages:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (currentUser?.id && contact?.id) {
-      fetchMessages();
-    }
-  }, [currentUser, contact]);
-
-  // Monitor messages for duplicates
-  useEffect(() => {
-    if (messages.length > 0) {
-      checkForDuplicates(messages);
-    }
-  }, [messages]);
-
-  // Initialize audio recorder
-  useEffect(() => {
-    audioRecorderPlayer.current = new AudioRecorderPlayer();
-
-    // Cleanup function
-    return () => {
-      if (audioRecorderPlayer.current) {
-        audioRecorderPlayer.current.stopPlayer().catch(() => { });
-        audioRecorderPlayer.current.stopRecorder().catch(() => { });
-        audioRecorderPlayer.current.removePlayBackListener();
-        audioRecorderPlayer.current.removeRecordBackListener();
-      }
-      if (manualTimerRef.current) {
-        clearInterval(manualTimerRef.current);
-      }
-    };
-  }, []);
-
-  const [selectedMessages, setSelectedMessages] = useState([]);
-  const [isSelectMode, setIsSelectMode] = useState(false);
-
-  // Toggle message selection
-  const toggleMessageSelection = (messageId) => {
-    setSelectedMessages(prev => {
-      if (prev.includes(messageId)) {
-        return prev.filter(id => id !== messageId);
-      } else {
-        return [...prev, messageId];
-      }
-    });
-  };
-
-  // Enter selection mode
-  const handleLongPress = (messageId) => {
-    setIsSelectMode(true);
-    toggleMessageSelection(messageId);
-  };
-
-  // Exit selection mode
-  const cancelSelection = () => {
-    setIsSelectMode(false);
-    setSelectedMessages([]);
-  };
-
-  // Delete selected messages
-  const deleteSelectedMessages = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/messages/delete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message_ids: selectedMessages,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setMessages(prev => prev.filter(msg => !selectedMessages.includes(msg.message_id)));
-        cancelSelection();
-      } else {
-        Alert.alert('Error', 'Failed to delete messages');
-      }
-    } catch (error) {
-      console.error('Error deleting messages:', error);
-      Alert.alert('Error', 'Failed to delete messages');
-    }
-  };
-
   const sendMessage = async () => {
-    if (message.trim() === '' || !currentUser) return;
+    if (!message.trim()) return;
+    
+    const currentMentor = mentorData.current;
+    const contactId = getContactId();
+    const contactType = getContactType();
+    
+    if (!currentMentor?.id || !contactId) {
+      Alert.alert('Error', 'Missing mentor or contact data');
+      return;
+    }
 
-    // Try to encrypt if we have a shared secret, otherwise send as plain text
-    const messageToSend = sharedSecretRef.current ? 
-      encryptText(message, sharedSecretRef.current) : 
-      message;
+    const messageData = {
+      sender_id: currentMentor.id,
+      receiver_id: contactId,
+      sender_type: 'mentor',
+      receiver_type: contactType,
+      message_text: message.trim()
+    };
 
     try {
-      const contactId = getContactId();
-      const contactType = getContactType();
+      // Add optimistic message to UI
+      const optimisticMessage = {
+        message_id: Date.now(),
+        ...messageData,
+        created_at: new Date().toISOString(),
+        is_read: 0
+      };
       
+      setMessages(prev => [...prev, optimisticMessage]);
+      setMessage('');
+      scrollToBottom();
+
+      // Send to server
       const response = await fetch(`${API_URL}/api/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender_id: currentUser.id,
-          receiver_id: contactId,
-          sender_type: 'mentor',
-          receiver_type: contactType,
-          message_text: messageToSend,
-        }),
+        body: JSON.stringify(messageData)
       });
 
       const data = await response.json();
       if (data.success) {
-        setMessage('');
+        // Update with server response
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.message_id === optimisticMessage.message_id 
+              ? data.message 
+              : msg
+          )
+        );
         
-        // Add optimistic update for sent message (with decrypted text for display)
-        const optimisticMsg = { 
-          ...data.message, 
-          message_text: message, // Show decrypted version locally
-          created_at: new Date().toISOString(),
-          is_read: 0
-        };
-        
-        console.log('✅ Mentor - Adding optimistic sent message:', optimisticMsg.message_id);
-        addMessages(optimisticMsg);
-        
-        const contactId = getContactId();
-        socketRef.current.emit('sendMessage', { to: contactId, message: data.message });
-
-        // If encryption wasn't available, try to set it up again for future messages
-        if (!sharedSecretRef.current && encryptionRetryCount < 3) {
-          console.log('📤 Message sent, attempting encryption setup...');
-          setTimeout(async () => {
-            const encryptionReady = await setupEncryption(currentUser, contact, true);
-            if (encryptionReady) {
-              console.log('✅ Encryption setup successful after sending message.');
-            }
-          }, 2000); // Wait 2 seconds to allow recipient to process and generate keys
+        // Emit via socket for real-time delivery
+        if (socketRef.current) {
+          socketRef.current.emit('sendMessage', { 
+            to: contactId, 
+            message: data.message 
+          });
         }
       } else {
+        // Remove optimistic message on failure
+        setMessages(prev => 
+          prev.filter(msg => msg.message_id !== optimisticMessage.message_id)
+        );
         Alert.alert('Error', 'Failed to send message');
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message');
     }
   };
 
-  const startRecording = async () => {
-    if (recorderState.current.isRunning || isRecording) {
-      console.warn('⚠️ Recording already in progress. Ignored.');
+  const sendAttachment = async (fileUri, fileName, fileType) => {
+    const currentMentor = mentorData.current;
+    const contactId = getContactId();
+    const contactType = getContactType();
+    
+    if (!currentMentor?.id || !contactId) {
+      Alert.alert('Error', 'Missing mentor or contact data');
       return;
     }
 
-    try {
-      console.log('🎙️ Starting recording...');
-      const result = await audioRecorderPlayer.current.startRecorder();
-      recorderState.current.isRunning = true;
-      setRecording(true);
-
-      audioRecorderPlayer.current.addRecordBackListener(() => { });
-    } catch (error) {
-      console.error('❌ Error starting recording:', error);
-
-      try {
-        await audioRecorderPlayer.current.stopRecorder();
-        audioRecorderPlayer.current.removeRecordBackListener();
-      } catch (cleanupError) {
-        console.warn('⚠️ Cleanup failed:', cleanupError);
-      }
-
-      recorderState.current.isRunning = false;
-      setRecording(false);
-    }
-  };
-
-  const stopRecording = async () => {
-    if (!recorderState.current.isRunning) return;
+    const formData = new FormData();
+    formData.append('file', {
+      uri: fileUri,
+      type: mime.lookup(fileName) || 'application/octet-stream',
+      name: fileName,
+    });
+    formData.append('sender_id', currentMentor.id);
+    formData.append('receiver_id', contactId);
+    formData.append('sender_type', 'mentor');
+    formData.append('receiver_type', contactType);
 
     try {
-      console.log('⏹️ Stopping recording...');
-      const uri = await audioRecorderPlayer.current.stopRecorder();
-      audioRecorderPlayer.current.removeRecordBackListener();
-
-      recorderState.current.isRunning = false;
-      setRecording(false);
-
-      await uploadAttachment(
-        { uri, name: 'audio.mp3', type: 'audio/mp3' },
-        'audio'
-      );
-    } catch (error) {
-      console.error('❌ Error stopping recording:', error);
-      recorderState.current.isRunning = false;
-      setRecording(false);
-    }
-  };
-
-  // Fixed audio playback with proper timer updates
-  const playAudio = async (audioUri, messageId) => {
-    try {
-      if (playingAudioId && playingAudioId !== messageId) {
-        await stopCurrentAudio();
-      }
-
-      if (playingAudioId === messageId && audioPaused) {
-        await audioRecorderPlayer.current.resumePlayer();
-        setAudioPaused(false);
-        return;
-      }
-
-      if (playingAudioId === messageId && !audioPaused) {
-        await pauseAudio();
-        return;
-      }
-
-      const localPath = `${RNFS.CachesDirectoryPath}/audio-${messageId}.mp3`;
-      const exists = await RNFS.exists(localPath);
-
-      if (!exists) {
-        const download = await RNFS.downloadFile({
-          fromUrl: audioUri,
-          toFile: localPath,
-        }).promise;
-
-        if (download.statusCode !== 200) {
-          Alert.alert('Error', 'Audio download failed');
-          return;
-        }
-      }
-
-      await audioRecorderPlayer.current.stopPlayer(); // reset any previous playback
-      audioRecorderPlayer.current.removePlayBackListener(); // clear old listeners
-      const msgId = messageId;
-
-      await audioRecorderPlayer.current.startPlayer(localPath);
-      await audioRecorderPlayer.current.setVolume(1.0);
-
-      setPlayingAudioId(msgId);
-      setAudioPaused(false);
-
-      console.log(audioRecorderPlayer.current.addPlayBackListener);
-
-
-      audioRecorderPlayer.current.addPlayBackListener((e) => {
-        const current = Math.floor((e.currentPosition ?? e.position ?? 0) / 1000);
-        const total = Math.floor(e.duration / 1000);
-
-        // console.log('⏱️ Playing:', current, total);
-        // console.log("duration: ",e.duration,"position : ", e.currentPosition);
-
-
-        if (current !== audioPositions[msgId]) {
-          setAudioPositions((prev) => ({ ...prev, [msgId]: current }));
-        }
-
-        if (!audioDurations[msgId] && total > 0) {
-          setAudioDurations((prev) => ({ ...prev, [msgId]: total }));
-        }
-        // console.log('⏱️ Playing:', e.current_position, e.duration);
-        if (e.currentPosition !== 0 && e.duration !== 0 && e.currentPosition >= e.duration - 200) {
-          // Let player stop before UI reset
-          setTimeout(async () => {
-            await audioRecorderPlayer.current.stopPlayer();
-            audioRecorderPlayer.current.removePlayBackListener();
-            setPlayingAudioId(null);
-            setAudioPaused(false);
-            setAudioPositions((prev) => ({ ...prev, [msgId]: 0 }));
-          }, 100);
-        }
+      const response = await fetch(`${API_URL}/api/messages/send-attachment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'multipart/form-data' },
+        body: formData
       });
-    } catch (error) {
-      console.error('Audio play error:', error);
-      await stopCurrentAudio();
-    }
-  };
 
-
-  const stopCurrentAudio = async () => {
-    try {
-      await audioRecorderPlayer.current.stopPlayer();
-      audioRecorderPlayer.current.removePlayBackListener();
-      setPlayingAudioId(null);
-      setAudioPaused(false);
-    } catch (error) {
-      console.error('Error stopping audio:', error);
-    }
-  };
-
-
-  const pauseAudio = async () => {
-    try {
-      await audioRecorderPlayer.current.pausePlayer();
-      setAudioPaused(true);
-      if (manualTimerRef.current) {
-        clearInterval(manualTimerRef.current);
-      }
-    } catch (error) {
-      console.error('Error pausing audio:', error);
-    }
-  };
-
-  // Improved AudioTimer component
-  const AudioTimer = ({ messageId, audioPositions, audioDurations, isSent }) => {
-    const position = audioPositions[messageId] || 0;
-    const duration = audioDurations[messageId] || 0;
-
-    const formatTime = (seconds) => {
-      if (!Number.isFinite(seconds) || seconds < 0) return '00:00';
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    return (
-      <Text style={[{ marginLeft: 8, color: '#555', fontSize: 12 }, isSent ? styles.sentText : styles.receivedText]}>
-        {`${formatTime(position)} / ${formatTime(duration)}`}
-      </Text>
-    );
-  };
-
-  // Rest of your existing functions (permissions, file handling, etc.)
-  const requestSaveImagePermission = async () => {
-    if (Platform.OS === 'android') {
-      if (Platform.Version >= 33) {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
-          {
-            title: 'Permission Required',
-            message: 'App needs access to your images to save photos.',
-            buttonPositive: 'OK',
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      const data = await response.json();
+      if (data.success) {
+        setMessages(prev => [...prev, data.message]);
+        scrollToBottom();
+        
+        // Emit via socket for real-time delivery
+        if (socketRef.current) {
+          socketRef.current.emit('sendMessage', { 
+            to: contactId, 
+            message: data.message 
+          });
+        }
       } else {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          {
-            title: 'Permission Required',
-            message: 'App needs access to your storage to save photos.',
-            buttonPositive: 'OK',
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      }
-    }
-    return true;
-  };
-
-  const pickImage = async () => {
-    try {
-      const result = await launchImageLibrary({
-        mediaType: 'photo',
-        quality: 0.8,
-      });
-
-      if (!result.didCancel && result.assets && result.assets.length > 0) {
-        await uploadAttachment(result.assets[0], 'image');
-      }
-    } catch (error) {
-      console.error('Error picking image:', error);
-    }
-  };
-
-  const requestCameraPermission = async () => {
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.CAMERA,
-        {
-          title: 'Camera Permission',
-          message: 'App needs camera access to take photos',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
-    }
-    return true;
-  };
-
-  const takePhoto = async () => {
-    const hasPermission = await requestCameraPermission();
-    if (!hasPermission) {
-      Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-      return;
-    }
-    try {
-      const result = await launchCamera({
-        mediaType: 'photo',
-        quality: 0.8,
-        saveToPhotos: true,
-      });
-
-      if (result.didCancel) return;
-      if (result.errorCode) {
-        console.error('Camera error:', result.errorMessage);
-        Alert.alert('Camera Error', result.errorMessage || 'Could not open camera');
-        return;
-      }
-      if (result.assets && result.assets.length > 0) {
-        await uploadAttachment(result.assets[0], 'image');
-      }
-    } catch (error) {
-      console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Could not open camera');
-    }
-  };
-
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.pickSingle({
-        type: [DocumentPicker.types.pdf, DocumentPicker.types.doc, DocumentPicker.types.docx,
-        DocumentPicker.types.xls, DocumentPicker.types.xlsx],
-      });
-
-      const file = {
-        name: result.name,
-        uri: result.uri,
-        type: result.type
-      };
-
-      console.log('📄 Picked doc:', file);
-      await uploadAttachment(file, 'document');
-
-    } catch (err) {
-      if (!DocumentPicker.isCancel(err)) {
-        console.error('Error picking document:', err);
-        Alert.alert('Error', 'Could not select document');
-      }
-    }
-  };
-
-  const uploadAttachment = async (file, fileType) => {
-    // console.log();
-
-    let fileUri = file.uri;
-
-    try {
-      if (Platform.OS === 'android' && fileUri.startsWith('content://')) {
-        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${file.name}`;
-        await RNBlobUtil.fs.cp(fileUri, destPath);
-        fileUri = 'file://' + destPath;
-        console.log('✔ File copied to temp:', fileUri);
-      }
-
-      const contactId = getContactId();
-      const contactType = getContactType();
-      
-      const res = await RNBlobUtil.fetch(
-        'POST',
-        `${API_URL}/api/messages/send-attachment`,
-        { 'Content-Type': 'multipart/form-data' },
-        [
-          {
-            name: 'file',
-            filename: file.name || 'file',
-            type: file.type || `application/${fileType}`,
-            data: RNBlobUtil.wrap(fileUri.replace('file://', ''))
-          },
-          { name: 'sender_id', data: String(mentorData?.id || contact.sender_id) },
-          { name: 'receiver_id', data: String(contactId) },
-          { name: 'sender_type', data: 'mentor' },
-          { name: 'receiver_type', data: String(contactType) }
-        ]
-      );
-
-      const data = JSON.parse(res.data);
-
-      if (!data.success) {
         Alert.alert('Error', 'Failed to send attachment');
-      } else if (data.success) {
-        setMessage('');
-        
-        console.log('✅ Mentor - Adding attachment message:', data.message.message_id);
-        addMessages(data.message);
-        
-        const newMsg = data.message;
-        const contactId = getContactId();
-
-        socketRef.current.emit('sendMessage', {
-          to: contactId,
-          message: newMsg
-        });
-
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
       }
     } catch (error) {
-      console.error('Error uploading attachment:', error);
+      console.error('❌ Error sending attachment:', error);
       Alert.alert('Error', 'Failed to send attachment');
     }
   };
 
-  const CustomCheckBox = ({ checked, onPress }) => (
-    <TouchableOpacity
-      onPress={onPress}
-      style={{
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: checked ? '#4169E1' : '#ccc',
-        backgroundColor: checked ? '#4169E1' : 'transparent',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
-      }}
-    >
-      {checked && (
-        <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>✓</Text>
-      )}
-    </TouchableOpacity>
-  );
+  const scrollToBottom = () => {
+    if (flatListRef.current && messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  };
 
-  useEffect(() => {
-    AsyncStorage.getItem('mentorData').then(data => {
-      if (data) {
-        setCurrentUser(JSON.parse(data)[0]);
-      }
-    });
-  }, []);
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays <= 7) {
+      return date.toLocaleDateString([], { weekday: 'short' });
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
 
-  const renderMessage = ({ item }) => {
-    // const isSent = item.sender_type === 'mentor';
-    const isSent = (
-      currentUser &&
-      item.sender_id === currentUser.id &&
-      item.sender_type === 'mentor'
-    );
-    const isSelected = selectedMessages.includes(item.message_id);
+  const renderMessage = ({ item, index }) => {
+    const isMe = item.sender_type === 'mentor';
+    const showTime = index === 0 || 
+      (messages[index - 1] && 
+       new Date(item.created_at).getMinutes() !== new Date(messages[index - 1].created_at).getMinutes());
 
     return (
-      <TouchableOpacity
-        onLongPress={() => handleLongPress(item.message_id)}
-        onPress={() => {
-          if (isSelectMode) {
-            toggleMessageSelection(item.message_id);
-          }
-        }}
-        activeOpacity={0.7}
-      >
-        <View style={[
-          styles.messageWrapper,
-          isSelected && styles.selectedMessageWrapper
-        ]}>
-          {item.time && (
-            <View style={{ width: '100%', alignItems: 'center' }}>
-              <Text style={styles.timeStamp}>{item.time}</Text>
-            </View>
-          )}
-
-          <View style={[styles.messageContainer, isSent ? styles.sentMessage : styles.receivedMessage]}>
-            {/* Selection Mode Checkbox */}
-            {isSelectMode && (
-              <View style={[
-                styles.checkboxContainer,
-                isSent ? styles.checkboxRight : styles.checkboxLeft
-              ]}>
-                <CustomCheckBox
-                  checked={isSelected}
-                  onPress={() => toggleMessageSelection(item.message_id)}
-                />
+      <View style={[styles.messageContainer, isMe ? styles.myMessage : styles.theirMessage]}>
+        {item.message_text && (
+          <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.theirMessageText]}>
+            {item.message_text}
+          </Text>
+        )}
+        
+        {item.attachment_path && (
+          <TouchableOpacity
+            style={styles.attachmentContainer}
+            onPress={() => handleAttachmentPress(item)}
+          >
+            {item.attachment_type === 'image' && (
+              <Image 
+                source={{ uri: `${API_URL}${item.attachment_path}` }} 
+                style={styles.attachmentImage} 
+              />
+            )}
+            {item.attachment_type === 'audio' && (
+              <View style={styles.audioContainer}>
+                <AudioIcon width={24} height={24} />
+                <Text style={styles.audioText}>Audio Message</Text>
               </View>
             )}
-
-            <View style={[
-              styles.messageBubble,
-              isSent ? styles.sentBubble : styles.receivedBubble,
-              isSelected && styles.selectedMessageBubble
-            ]}>
-              {item.message_text && (
-                <Text style={[styles.messageText, isSent ? styles.sentText : styles.receivedText]}>
-                  {item.message_text}
-                </Text>
-              )}
-
-              {item.attachment_path && (
-                <>
-                  {item.attachment_type === 'image' ? (
-                    <TouchableOpacity
-                      onPress={async () => {
-                        const uri = `${API_URL}/uploads${item.attachment_path}`;
-                        const hasPermission = await requestSaveImagePermission();
-                        if (!hasPermission) {
-                          Alert.alert('Permission Denied', 'Cannot save image without permission.');
-                          return;
-                        }
-                        setCurrentImageUri(uri);
-                        setImageViewerVisible(true);
-                      }}
-                    >
-                      <Image
-                        source={{ uri: `${API_URL}/uploads${item.attachment_path}` }}
-                        style={styles.messageImage}
-                        resizeMode="contain"
-                      />
-                    </TouchableOpacity>
-                  ) : item.attachment_type === 'audio' ? (
-                    <TouchableOpacity
-                      style={[
-                        styles.audioAttachment,
-                        playingAudioId === item.message_id && !audioPaused && { backgroundColor: '#e0f7fa' }
-                      ]}
-                      activeOpacity={0.7}
-                      onPress={() => playAudio(`${API_URL}/uploads${item.attachment_path}`, item.message_id)}
-                    >
-                      {playingAudioId === item.message_id ? (
-                        audioPaused ? (
-                          <Text style={{ marginRight: 8 }}>▶️</Text>
-                        ) : (
-                          <Text style={{ marginRight: 8 }}>⏸️</Text>
-                        )
-                      ) : (
-                        <Text style={{ marginRight: 8 }}>▶️</Text>
-                      )}
-                      <AudioIcon width={24} height={24} />
-                      <Text style={[styles.audioText, isSent ? styles.sentText : styles.receivedText]}>
-                        {playingAudioId === item.message_id
-                          ? audioPaused
-                            ? 'Paused'
-                            : 'Playing...'
-                          : 'Audio Message'}
-                      </Text>
-                      <AudioTimer
-                        messageId={item.message_id}
-                        audioPositions={audioPositions}
-                        audioDurations={audioDurations}
-                        isSent={isSent}
-                      />
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.documentAttachment}
-                      onPress={() => downloadAndOpenDocument(
-                        `${API_URL}/uploads${item.attachment_path}`,
-                        item.attachment_path.split('/').pop()
-                      )}
-                    >
-                      <DocumentIcon width={24} height={24} />
-                      <Text style={[styles.documentText, isSent ? styles.sentText : styles.receivedText]}>
-                        {item.attachment_path.split('/').pop()}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 9 }}>
-                <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
-                  {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-                {isSent && (
-                  <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
-                    {(item.is_read && item.sender_id == currentUser.id) ? 'Read' : 'Unread'}
-                  </Text>
-                )}
+            {item.attachment_type === 'pdf' && (
+              <View style={styles.documentContainer}>
+                <DocumentIcon width={24} height={24} />
+                <Text style={styles.documentText}>Document</Text>
               </View>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+        )}
+        
+        {showTime && (
+          <Text style={[styles.messageTime, isMe ? styles.myMessageTime : styles.theirMessageTime]}>
+            {formatDate(item.created_at)}
+          </Text>
+        )}
+      </View>
     );
   };
 
-  // Add your existing document and image download functions here...
-  const requestStoragePermission = async (fileType = 'other') => {
-    if (Platform.OS === 'android') {
-      if (Platform.Version >= 33) {
-        if (fileType === 'image') {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
-            {
-              title: 'Permission Required',
-              message: 'App needs access to your images to save photos.',
-              buttonPositive: 'OK',
-            }
-          );
-          return granted === PermissionsAndroid.RESULTS.GRANTED;
-        }
-        return true;
-      } else {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          {
-            title: 'Storage Permission',
-            message: 'App needs access to your storage to save files.',
-            buttonPositive: 'OK',
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      }
-    }
-    return true;
-  };
-
-  const downloadAndOpenDocument = async (fileUrl, fileName) => {
-    const ext = fileName.split('.').pop().toLowerCase();
-    const isPdf = ext === 'pdf';
-    const localFile = `${RNFS.DocumentDirectoryPath}/${fileName}`;
-
-    const downloadAndOpen = async () => {
-      const hasPermission = await requestStoragePermission('other');
-      if (!hasPermission) {
-        Alert.alert('Permission Denied', 'Cannot save file without permission.');
-        return;
-      }
-      setDownloadProgress(0);
+  const handleAttachmentPress = async (message) => {
+    if (message.attachment_type === 'image') {
+      Linking.openURL(`${API_URL}${message.attachment_path}`);
+    } else if (message.attachment_type === 'pdf') {
       try {
-        const downloadResult = await RNFS.downloadFile({
-          fromUrl: fileUrl,
-          toFile: localFile,
-          progress: (res) => {
-            const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);
-            setDownloadProgress(percent);
-          },
-          progressDivider: 1,
-        }).promise;
-
-        setDownloadProgress(null);
-
-        if (downloadResult.statusCode === 200) {
-          const mimeType = mime.lookup(fileName) || undefined;
-          await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
-        } else {
-          Alert.alert('Download failed', 'Could not download the file.');
-        }
-      } catch (err) {
-        setDownloadProgress(null);
-        Linking.openURL(fileUrl);
-        console.error('File open error:', err);
+        const localFile = `${RNFS.DocumentDirectoryPath}/temp_document.pdf`;
+        const download = await RNBlobUtil.config({
+          fileCache: true,
+          path: localFile
+        }).fetch('GET', `${API_URL}${message.attachment_path}`);
+        
+        await FileViewer.open(download.path());
+      } catch (error) {
+        Alert.alert('Error', 'Could not open document');
       }
-    };
-
-    if (isPdf) {
-      Alert.alert('PDF Options', 'What do you want to do?', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Just View',
-          onPress: async () => {
-            Linking.openURL(fileUrl);
-          }
-        },
-        {
-          text: 'Download',
-          onPress: downloadAndOpen
-        }
-      ]);
-    } else {
-      Alert.alert('Download', 'Do you want to download and open this file?', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Download',
-          onPress: downloadAndOpen
-        }
-      ]);
+    } else if (message.attachment_type === 'audio') {
+      handleAudioPlayback(message);
     }
   };
 
-  const downloadAndOpenImage = async (fileUrl, fileName) => {
-    const localFile = `${RNFS.DownloadDirectoryPath}/${fileName}`;
-
+  const handleAudioPlayback = async (message) => {
     try {
-      setDownloadProgress(0);
-      const downloadResult = await RNFS.downloadFile({
-        fromUrl: fileUrl,
-        toFile: localFile,
-        progress: (res) => {
-          const percent = Math.floor((res.bytesWritten / res.contentLength) * 100);
-          setDownloadProgress(percent);
-        },
-        progressDivider: 1,
-      }).promise;
-
-      setDownloadProgress(null);
-
-      if (downloadResult.statusCode === 200) {
-        const mimeType = mime.lookup(fileName) || undefined;
-        await FileViewer.open(localFile, { showOpenWithDialog: true, mimeType });
+      if (currentPlayingId === message.message_id) {
+        await audioRecorderPlayer.current.stopPlayer();
+        setCurrentPlayingId(null);
       } else {
-        Alert.alert('Download failed', 'Could not download the file.');
+        await audioRecorderPlayer.current.stopPlayer();
+        await audioRecorderPlayer.current.startPlayer(`${API_URL}${message.attachment_path}`);
+        setCurrentPlayingId(message.message_id);
+        
+        audioRecorderPlayer.current.addPlayBackListener((e) => {
+          if (e.currentPosition === e.duration) {
+            setCurrentPlayingId(null);
+          }
+        });
       }
-    } catch (err) {
-      setDownloadProgress(null);
-      if (
-        err &&
-        (err.message?.includes('No app associated') ||
-          err.message?.includes('no activity found to handle Intent'))
-      ) {
-        Alert.alert(
-          'No App Found',
-          'No app is installed to open this file type. Would you like to open it in your browser?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Open in Browser',
-              onPress: () => Linking.openURL(fileUrl),
-            },
-          ]
-        );
-      } else {
-        Alert.alert('Error', 'Could not open the file.');
-      }
-      console.error('File open error:', err);
+    } catch (error) {
+      Alert.alert('Error', 'Could not play audio');
     }
   };
+
+  const selectImage = () => {
+    setAttachmentModalVisible(false);
+    Alert.alert(
+      "Select Image",
+      "Choose from where you want to select an image",
+      [
+        { text: "Camera", onPress: openCamera },
+        { text: "Gallery", onPress: openGallery },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
+  };
+
+  const openCamera = () => {
+    launchCamera({ mediaType: 'photo', quality: 0.7 }, (response) => {
+      if (response.assets && response.assets[0]) {
+        const asset = response.assets[0];
+        sendAttachment(asset.uri, asset.fileName, 'image');
+      }
+    });
+  };
+
+  const openGallery = () => {
+    launchImageLibrary({ mediaType: 'photo', quality: 0.7 }, (response) => {
+      if (response.assets && response.assets[0]) {
+        const asset = response.assets[0];
+        sendAttachment(asset.uri, asset.fileName, 'image');
+      }
+    });
+  };
+
+  const selectDocument = async () => {
+    setAttachmentModalVisible(false);
+    try {
+      const result = await DocumentPicker.pick({
+        type: [DocumentPicker.types.pdf, DocumentPicker.types.doc, DocumentPicker.types.docx]
+      });
+      
+      if (result[0]) {
+        sendAttachment(result[0].uri, result[0].name, 'pdf');
+      }
+    } catch (error) {
+      if (!DocumentPicker.isCancel(error)) {
+        Alert.alert('Error', 'Failed to select document');
+      }
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+      );
+      
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        const path = `${RNFS.DocumentDirectoryPath}/audio_${Date.now()}.mp4`;
+        await audioRecorderPlayer.current.startRecorder(path);
+        setRecording(true);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to start recording');
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      const result = await audioRecorderPlayer.current.stopRecorder();
+      setRecording(false);
+      
+      if (result) {
+        const fileName = `audio_${Date.now()}.mp4`;
+        sendAttachment(result, fileName, 'audio');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to stop recording');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007bff" />
+          <Text style={styles.loadingText}>Loading messages...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      {isSelectMode ? (
-        <View style={styles.selectionHeader}>
-          <TouchableOpacity onPress={cancelSelection}>
-            <Text style={{ color: 'white' }}>✕</Text>
-          </TouchableOpacity>
-          <Text style={styles.selectionText}>
-            {selectedMessages.length} selected
-          </Text>
-          <TouchableOpacity
-            style={styles.selectionButton}
-            onPress={deleteSelectedMessages}
-          >
-            <Text style={styles.selectionButtonText}>Delete</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}>
-            <PreviousIcon width={24} height={24} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {contact.receiver_name}
-          </Text>
-        </View>
-      )}
-
-      {/* Messages */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : null}
-        style={styles.messagesContainer}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
-
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#4169E1" />
-          </View>
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item, index) => {
-              // Double-check for unique keys
-              const key = `${item.message_id}-${index}`;
-              return key;
-            }}
-            contentContainerStyle={styles.messagesList}
-            onContentSizeChange={() => {
-              // Check for duplicates before scrolling
-              checkForDuplicates(messages);
-              flatListRef.current?.scrollToEnd({ animated: true });
-            }}
-            extraData={{ audioPositions, audioDurations, selectedMessages }}
-            removeClippedSubviews={false}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No messages yet</Text>
-              </View>
-            }
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <PreviousIcon width={24} height={24} />
+        </TouchableOpacity>
+        
+        <View style={styles.contactInfo}>
+          <Image 
+            source={
+              contact.profile 
+                ? { uri: `${API_URL}/${contact.profile}` }
+                : require('../../../../assets/MentorPage/profile.png')
+            } 
+            style={styles.profileImage} 
           />
-        )}
+          <Text style={styles.contactName}>{getContactName()}</Text>
+        </View>
+        
+        <View style={styles.headerRight} />
+      </View>
 
-        {/* Encryption Status Indicator */}
-        {encryptionStatus !== 'success' && showEncryptionRetry && (
-          <View style={{ backgroundColor: '#fff3cd', padding: 8, borderTopWidth: 1, borderTopColor: '#ffeaa7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ color: '#856404', fontSize: 12, flex: 1 }}>
-              🔓 Messages not encrypted - recipient needs to open app first
-            </Text>
-            <TouchableOpacity 
-              onPress={retryEncryption}
-              style={{ backgroundColor: '#856404', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 4, marginLeft: 8 }}
-            >
-              <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
-                Retry
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {encryptionStatus === 'success' && (
-          <View style={{ backgroundColor: '#d4edda', padding: 8, borderTopWidth: 1, borderTopColor: '#c3e6cb' }}>
-            <Text style={{ color: '#155724', fontSize: 12, textAlign: 'center' }}>
-              🔐 End-to-end encryption active
-            </Text>
-          </View>
-        )}
+      {/* Messages List */}
+      <KeyboardAvoidingView 
+        style={styles.messagesContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.message_id.toString()}
+          style={styles.messagesList}
+          onContentSizeChange={scrollToBottom}
+        />
 
-        {/* Message Input */}
+        {/* Input Area */}
         <View style={styles.inputContainer}>
-          <TouchableOpacity
-            style={styles.attachButton}
+          <TouchableOpacity 
+            style={styles.attachmentButton}
             onPress={() => setAttachmentModalVisible(true)}
           >
             <AttachmentIcon width={24} height={24} />
           </TouchableOpacity>
 
           <TextInput
-            style={styles.input}
-            placeholder="Type a message"
+            style={styles.textInput}
             value={message}
             onChangeText={setMessage}
-            placeholderTextColor="#999"
+            placeholder="Type a message..."
             multiline
+            maxLength={1000}
           />
 
-          {isRecording ? (
-            <TouchableOpacity
-              style={[styles.sendButton, { backgroundColor: 'red' }]}
-              onPress={stopRecording}
-            >
-              <Text style={{ color: 'white' }}>Stop</Text>
-            </TouchableOpacity>
-          ) : message.trim() === '' ? (
-            <TouchableOpacity
-              style={styles.sendButton}
-              onPress={startRecording}
-            >
-              <MicIcon width={24} height={24} />
+          {message.trim() ? (
+            <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+              <SendIcon width={24} height={24} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.sendButton, { backgroundColor: '#4169E1' }]}
-              onPress={sendMessage}
+              style={styles.micButton}
+              onPressIn={startRecording}
+              onPressOut={stopRecording}
             >
-              <SendIcon width={24} height={24} color="#fff" />
+              <MicIcon width={24} height={24} />
             </TouchableOpacity>
           )}
-
         </View>
       </KeyboardAvoidingView>
+
+      {/* Attachment Modal */}
       <Modal
-        visible={attachmentModalVisible}
-        transparent
-        animationType="fade"
+        visible={isAttachmentModalVisible}
+        transparent={true}
+        animationType="slide"
         onRequestClose={() => setAttachmentModalVisible(false)}
       >
-        <TouchableOpacity
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.3)',
-            justifyContent: 'flex-end',
-          }}
-          activeOpacity={1}
-          onPressOut={() => setAttachmentModalVisible(false)}
-        >
-          <View style={{
-            backgroundColor: '#fff',
-            padding: 20,
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-          }}>
-            <TouchableOpacity style={{ padding: 12 }} onPress={() => { setAttachmentModalVisible(false); pickImage(); }}>
-              <Text style={{ fontSize: 16 }}>Photo from Gallery</Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.attachmentModal}>
+            <TouchableOpacity style={styles.attachmentOption} onPress={selectImage}>
+              <Text style={styles.attachmentOptionText}>📷 Photo</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={{ padding: 12 }} onPress={() => { setAttachmentModalVisible(false); takePhoto(); }}>
-              <Text style={{ fontSize: 16 }}>Take Photo</Text>
+            <TouchableOpacity style={styles.attachmentOption} onPress={selectDocument}>
+              <Text style={styles.attachmentOptionText}>📄 Document</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={{ padding: 12 }} onPress={() => { setAttachmentModalVisible(false); pickDocument(); }}>
-              <Text style={{ fontSize: 16 }}>Document</Text>
+            <TouchableOpacity 
+              style={styles.attachmentOption} 
+              onPress={() => setAttachmentModalVisible(false)}
+            >
+              <Text style={styles.attachmentOptionText}>❌ Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={{ padding: 12 }} onPress={() => setAttachmentModalVisible(false)}>
-              <Text style={{ fontSize: 16, color: 'red' }}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      <Modal visible={imageViewerVisible} transparent={true} onRequestClose={() => setImageViewerVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }}>
-          <TouchableOpacity
-            style={{ position: 'absolute', top: 40, right: 20, zIndex: 2, backgroundColor: '#fff', padding: 8, borderRadius: 20 }}
-            onPress={async () => {
-              // console.log(currentImageUri);
-              try {
-                const filename = currentImageUri.split('/').pop();
-                downloadAndOpenImage(currentImageUri, filename)
-              } catch (error) {
-                Alert.alert('Error', 'Could not save image');
-                console.error('Image download error:', error);
-              }
-            }}
-          >
-            <Text style={{ color: '#4169E1', fontWeight: 'bold' }}>Download</Text>
-          </TouchableOpacity>
-          {/* <TouchableOpacity style={{ flex: 2 }} onPress={() => setImageViewerVisible(false)}> */}
-          <Image
-            source={{ uri: currentImageUri }}
-            style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-          />
-          {/* </TouchableOpacity> */}
-        </View>
-      </Modal>
-
-      <Modal
-        visible={downloadProgress !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => { }} // disables Android back button
-      >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.4)',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          <View style={{
-            backgroundColor: '#fff',
-            padding: 30,
-            borderRadius: 10,
-            alignItems: 'center'
-          }}>
-            <ActivityIndicator size="large" color="#007bff" style={{ marginBottom: 10 }} />
-            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 5, color: 'black' }}>
-              Downloading...
-            </Text>
-            <Text style={{ fontSize: 16, color: 'black' }}>
-              {downloadProgress}%
-            </Text>
           </View>
         </View>
       </Modal>

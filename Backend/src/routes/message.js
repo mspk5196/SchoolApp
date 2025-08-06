@@ -9,11 +9,7 @@ const {
   getMentorInbox,
   getMentorMessages,
   getCoordinatorInbox,
-  getAdminInbox,
-  keysUpload,
-  keys,
-  debugKeys,
-  clearLegacyMessages
+  getAdminInbox
 } = require('../controllers/messaging/messageController');
 
 
@@ -25,11 +21,5 @@ router.post('/mentor-inbox', getMentorInbox);
 router.post('/coordinator-inbox', getCoordinatorInbox);
 router.post('/admin-inbox', getAdminInbox);
 router.post('/messages/send-attachment', uploadAttachment.single('file'), sendAttachment);
-
-// New routes for E2EE key management
-router.post('/messages/keys/upload', keysUpload);
-router.get('/keys/:user_type/:user_id', keys);
-router.get('/debug/keys', debugKeys);
-router.post('/messages/clear-legacy', clearLegacyMessages);
 
 module.exports = router;

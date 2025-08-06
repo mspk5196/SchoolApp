@@ -28,18 +28,19 @@ import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import DocumentPicker from 'react-native-document-picker';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { API_URL } from '../../../../utils/env.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import RNFS from 'react-native-fs';
 import RNBlobUtil from 'react-native-blob-util';
 import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Encryption imports removed - now using direct messaging
+import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from '../../../../utils/keyManager';
+import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
 
-const AdminMessageBox = ({ route, navigation }) => {
-  const { contact } = route.params;
-  // console.log("hi",contact);
+const CoordinatorMessageBox = ({ route, navigation }) => {
+  const { contact, coordinator } = route.params;
+  // console.log(contact);
 
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,11 +61,11 @@ const AdminMessageBox = ({ route, navigation }) => {
       );
       
       if (combined.length !== unique.length) {
-        console.log('🔄 Admin - Prevented', combined.length - unique.length, 'duplicate messages');
+        console.log('🔄 Coordinator - Prevented', combined.length - unique.length, 'duplicate messages');
       }
       
       const sorted = unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      console.log('📊 Admin - Total messages after update:', sorted.length);
+      console.log('📊 Coordinator - Total messages after update:', sorted.length);
       return sorted;
     });
   };
@@ -74,7 +75,7 @@ const AdminMessageBox = ({ route, navigation }) => {
     const ids = messageArray.map(m => m.message_id);
     const uniqueIds = [...new Set(ids)];
     if (ids.length !== uniqueIds.length) {
-      console.error('🚨 ADMIN DUPLICATE MESSAGE IDS DETECTED!', {
+      console.error('🚨 COORDINATOR DUPLICATE MESSAGE IDS DETECTED!', {
         total: ids.length,
         unique: uniqueIds.length,
         duplicates: ids.length - uniqueIds.length
@@ -92,36 +93,25 @@ const AdminMessageBox = ({ route, navigation }) => {
   const [audioPositions, setAudioPositions] = useState({});
   const [downloadProgress, setDownloadProgress] = useState(null);
 
-  const [currentUser, setCurrentUser] = useState(null);
-
   const audioRecorderPlayer = useRef(null);
   const manualTimerRef = useRef(null);
   const recorderState = useRef({ isRunning: false });
 
+  const [currentUser, setCurrentUser] = useState(null);
+
   const currentUserRef = useRef(null);
 
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   useEffect(() => {
-    const fetchAdminData = async () => {
-      try {
-        const storedData = await AsyncStorage.getItem('adminData');
-        if (storedData) {
-          const adminData = JSON.parse(storedData);
-          setCurrentUser({ ...adminData, type: 'admin' }); // Add type for consistency
-        }
-      } catch (error) {
-        console.error('Error fetching admin data:', error);
-        setIsLoading(false);
-      }
-    };
-    fetchAdminData();
 
-    // Cleanup audio player
     return () => {
       audioRecorderPlayer.current.stopPlayer().catch(() => { });
       audioRecorderPlayer.current.removePlayBackListener();
     };
-  }, []);
+  }, [coordinator]);
 
   // Monitor messages for duplicates
   useEffect(() => {
@@ -129,6 +119,99 @@ const AdminMessageBox = ({ route, navigation }) => {
       checkForDuplicates(messages);
     }
   }, [messages]);
+
+  const setupEncryption = async (currentUser, otherUser) => {
+    try {
+
+      let myPrivateKey = await getPrivateKey(currentUser.id, 'coordinator');
+      console.log(myPrivateKey);
+      if (!myPrivateKey) {
+        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys(currentUser.id, 'coordinator');
+        myPrivateKey = privateKeyHex;
+        await fetch(`${API_URL}/api/messages/keys/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: currentUser.id,
+            user_type: 'coordinator',
+            public_key: publicKeyHex,
+          }),
+        });
+      }
+      const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
+      if (!res.ok) {
+        Alert.alert('Encryption Error', "Could not get recipient's key.");
+        return false;
+      }
+      const theirKeyData = await res.json();
+      sharedSecretRef.current = getSharedSecretAESKey(myPrivateKey, theirKeyData.public_key);
+      return true;
+    } catch (error) {
+      Alert.alert('Error', 'Could not establish a secure connection.');
+      return false;
+    }
+  };
+
+  const decryptMessages = async (messageList) => {
+    if (!sharedSecretRef.current) return messageList;
+    return messageList.map(msg => {
+      if (msg.message_text) {
+        return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
+      }
+      return msg;
+    });
+  };
+
+  useEffect(() => {
+    const initialize = async () => {
+      if (!coordinator) return;
+      const coordinatorUser = { ...coordinator, type: 'coordinator' };
+      setCurrentUser(coordinatorUser);
+
+      const encryptionReady = await setupEncryption(coordinatorUser, contact);
+      if (!encryptionReady) {
+        setIsLoading(false);
+        return;
+      }
+      socketRef.current = io(API_URL, { transports: ['websocket'] });
+      socketRef.current.emit('join', { userId: coordinator.id });
+      await fetchMessages(coordinator);
+
+
+      socketRef.current.on('receiveMessage', async (data) => {
+        const msg = data.message;
+        const isCurrentConversation =
+          (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type && msg.receiver_id === coordinator.id && msg.receiver_type === 'coordinator') ||
+          (msg.sender_id === coordinator.id && msg.sender_type === 'coordinator' && msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type);
+
+        if (!isCurrentConversation) return;
+
+        // Skip if this is our own message (prevent duplicate on sender side)
+        if (msg.sender_id === coordinator.id && msg.sender_type === 'coordinator') {
+          console.log('🔄 Coordinator - Skipping own message to prevent duplicate');
+          return;
+        }
+
+        const [decryptedMsg] = await decryptMessages([msg]);
+        console.log('✅ Coordinator - Adding new received message:', decryptedMsg.message_id);
+        addMessages(decryptedMsg);
+
+        if (msg.receiver_id === coordinator.id) {
+          socketRef.current.emit('markAsRead', {
+            messageIds: [msg.message_id],
+            receiverId: coordinator.id, receiverType: 'coordinator',
+            senderId: msg.sender_id, senderType: msg.sender_type
+          });
+        }
+      });
+
+      socketRef.current.on('messagesRead', (data) => {
+        setMessages(prev => prev.map(m => data.messageIds.includes(m.message_id) ? { ...m, is_read: 1 } : m));
+      });
+    };
+    initialize();
+    return () => socketRef.current?.disconnect();
+  }, [coordinator, contact]);
 
   // Initialize audio recorder
   useEffect(() => {
@@ -148,146 +231,33 @@ const AdminMessageBox = ({ route, navigation }) => {
     };
   }, []);
 
-  // Fetch all messages between this mentor and student
-
-  const setupEncryption = async (currentUser, otherUser) => {
-    try {
-      let myPrivateKey = await getPrivateKey(currentUser.id, 'admin');
-      if (!myPrivateKey) {
-        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys(currentUser.id, 'admin');
-        myPrivateKey = privateKeyHex;
-        await fetch(`${API_URL}/api/messages/keys/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: currentUser.id,
-            user_type: 'admin',
-            public_key: publicKeyHex,
-          }),
-        });
-      }
-
-      const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
-      if (!res.ok) {
-        Alert.alert('Encryption Error', "Could not get recipient's key. They may need to open the app once to generate it.");
-        return false;
-      }
-      const theirKeyData = await res.json();
-      const theirPublicKey = theirKeyData.public_key;
-
-      const aesKey = getSharedSecretAESKey(myPrivateKey, theirPublicKey);
-      sharedSecretRef.current = aesKey;
-      return true;
-    } catch (error) {
-      console.error('Encryption setup failed:', error);
-      Alert.alert('Error', 'Could not establish a secure connection.');
-      return false;
-    }
-  };
-
-  const decryptMessages = async (messageList) => {
-    if (!sharedSecretRef.current) {
-      return messageList.map(msg => ({ ...msg, message_text: msg.message_text ? "[Decryption Key Error]" : null }));
-    }
-    return messageList.map(msg => {
-      if (msg.message_text) {
-        return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
-      }
-      return msg;
-    });
-  };
-
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        const storedData = await AsyncStorage.getItem('adminData');
-        if (!storedData) throw new Error('Admin data not found');
-        const adminData = JSON.parse(storedData);
-        setCurrentUser(adminData);
-
-        const encryptionReady = await setupEncryption(adminData, contact);
-        if (!encryptionReady) {
-          setIsLoading(false);
-          return;
-        }
-
-        socketRef.current = io(API_URL, { transports: ['websocket'] });
-        socketRef.current.emit('join', { userId: adminData.id });
-        await fetchMessages(adminData);
-
-
-        socketRef.current.on('receiveMessage', async (data) => {
-          const msg = data.message;
-          const isCurrentConversation =
-            (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type && msg.receiver_id === adminData.id && msg.receiver_type === 'admin') ||
-            (msg.sender_id === adminData.id && msg.sender_type === 'admin' && msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type);
-
-          if (!isCurrentConversation) return;
-
-          // Skip if this is our own message (prevent duplicate on sender side)
-          if (msg.sender_id === adminData.id && msg.sender_type === 'admin') {
-            console.log('🔄 Admin - Skipping own message to prevent duplicate');
-            return;
-          }
-
-          const [decryptedMsg] = await decryptMessages([msg]);
-          console.log('✅ Admin - Adding new received message:', decryptedMsg.message_id);
-          addMessages(decryptedMsg);
-
-          if (msg.receiver_id === adminData.id) {
-            socketRef.current.emit('markAsRead', {
-              messageIds: [msg.message_id],
-              receiverId: adminData.id, receiverType: 'admin',
-              senderId: msg.sender_id, senderType: msg.sender_type
-            });
-          }
-        });
-
-        socketRef.current.on('messagesRead', (data) => {
-          setMessages(prev => prev.map(m => data.messageIds.includes(m.message_id) ? { ...m, is_read: 1 } : m));
-        });
-
-      } catch (error) {
-        console.error('Initialization failed:', error);
-        setIsLoading(false);
-      }
-    };
-
-    initialize();
-    return () => socketRef.current?.disconnect();
-  }, [contact]);
-
-  const fetchMessages = async (adminData) => {
-    if (!adminData || !sharedSecretRef.current) return;
+  const fetchMessages = async (coordData) => {
+    if (!coordData || !sharedSecretRef.current) return;
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/messages/get`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sender_id: adminData.id,
-          sender_type: 'admin',
-          receiver_id: contact.receiver_id,
-          receiver_type: contact.receiver_type,
-          last_message_id: 0,
+          sender_id: coordData.id, sender_type: 'coordinator',
+          receiver_id: contact.receiver_id, receiver_type: contact.receiver_type,
         }),
       });
       const data = await response.json();
       if (data.success) {
         const decrypted = await decryptMessages(data.messages);
-        console.log('📥 Admin - Fetched messages count:', decrypted.length);
+        console.log('📥 Coordinator - Fetched messages count:', decrypted.length);
         
         // Use setMessages directly for initial fetch (replace all messages) and sort them
         setMessages(decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
 
         const unreadIds = data.messages
-          .filter(m => m.is_read === 0 && m.receiver_id === adminData.id)
+          .filter(m => m.is_read === 0 && m.receiver_id === coordData.id)
           .map(m => m.message_id);
-
-        if (unreadIds.length > 0 && socketRef.current) {
+        if (unreadIds.length > 0) {
           socketRef.current.emit('markAsRead', {
             messageIds: unreadIds,
-            receiverId: adminData.id, receiverType: 'admin',
+            receiverId: coordData.id, receiverType: 'coordinator',
             senderId: contact.receiver_id, senderType: contact.receiver_type
           });
         }
@@ -298,6 +268,10 @@ const AdminMessageBox = ({ route, navigation }) => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchMessages();
+  }, []);
 
   const [selectedMessages, setSelectedMessages] = useState([]);
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -364,7 +338,7 @@ const AdminMessageBox = ({ route, navigation }) => {
         body: JSON.stringify({
           sender_id: currentUser.id,
           receiver_id: contact.receiver_id,
-          sender_type: 'admin',
+          sender_type: 'coordinator',
           receiver_type: contact.receiver_type,
           message_text: encryptedMessage,
         }),
@@ -382,7 +356,7 @@ const AdminMessageBox = ({ route, navigation }) => {
           is_read: 0
         };
         
-        console.log('✅ Admin - Adding optimistic sent message:', optimisticMsg.message_id);
+        console.log('✅ Coordinator - Adding optimistic sent message:', optimisticMsg.message_id);
         addMessages(optimisticMsg);
         
         socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
@@ -680,13 +654,14 @@ const AdminMessageBox = ({ route, navigation }) => {
   };
 
   const uploadAttachment = async (file, fileType) => {
-    if (!currentUser) return;
     let fileUri = file.uri;
+
     try {
       if (Platform.OS === 'android' && fileUri.startsWith('content://')) {
-        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${file.name || 'tempfile'}`;
+        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${file.name}`;
         await RNBlobUtil.fs.cp(fileUri, destPath);
         fileUri = 'file://' + destPath;
+        console.log('✔ File copied to temp:', fileUri);
       }
 
       const res = await RNBlobUtil.fetch(
@@ -694,27 +669,43 @@ const AdminMessageBox = ({ route, navigation }) => {
         `${API_URL}/api/messages/send-attachment`,
         { 'Content-Type': 'multipart/form-data' },
         [
-          { name: 'file', filename: file.name || 'attachment', type: file.type, data: RNBlobUtil.wrap(fileUri.replace('file://', '')) },
-          { name: 'sender_id', data: String(currentUser.id) },
-          { name: 'receiver_id', data: String(contact.receiver_id) },
-          { name: 'sender_type', data: 'admin' },
-          { name: 'receiver_type', data: String(contact.receiver_type) }
+          {
+            name: 'file',
+            filename: file.name || 'file',
+            type: file.type || `application/${fileType}`,
+            data: RNBlobUtil.wrap(fileUri.replace('file://', ''))
+          },
+          { name: 'sender_id', data: contact.sender_id.toString() },
+          { name: 'receiver_id', data: contact.receiver_id.toString() },
+          { name: 'sender_type', data: 'coordinator' },
+          { name: 'receiver_type', data: contact.receiver_type.toString() }
         ]
       );
 
       const data = JSON.parse(res.data);
-      if (data.success) {
+
+      if (!data.success) {
+        Alert.alert('Error', 'Failed to send attachment');
+      } else if (data.success) {
         setMessage('');
         
-        console.log('✅ Admin - Adding attachment message:', data.message.message_id);
+        console.log('✅ Coordinator - Adding attachment message:', data.message.message_id);
         addMessages(data.message);
         
-        socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
-      } else {
-        Alert.alert('Error', 'Failed to send attachment');
+        const newMsg = data.message;
+
+        socketRef.current.emit('sendMessage', {
+          to: contact.receiver_id,
+          message: newMsg
+        });
+
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
       }
     } catch (error) {
       console.error('Error uploading attachment:', error);
+      Alert.alert('Error', 'Failed to send attachment');
     }
   };
 
@@ -739,16 +730,9 @@ const AdminMessageBox = ({ route, navigation }) => {
     </TouchableOpacity>
   );
 
-  useEffect(() => {
-    AsyncStorage.getItem('adminData').then(data => {
-      if (data) {
-        setCurrentUser(JSON.parse(data));
-      }
-    });
-  }, []);
-
   const renderMessage = ({ item }) => {
-    const isSent = currentUser && item.sender_id === currentUser.id && item.sender_type === 'admin';
+    // const isSent = item.sender_type === 'coordinator';
+    const isSent = currentUser && item.sender_id === currentUser.id && item.sender_type === 'coordinator';
     const isSelected = selectedMessages.includes(item.message_id);
 
     return (
@@ -867,18 +851,15 @@ const AdminMessageBox = ({ route, navigation }) => {
                 </>
               )}
 
-              <View>
-                {/* The important part to check is the read receipt */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 9 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 9 }}>
+                <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
+                  {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+                {isSent && (
                   <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
-                    {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {(item.is_read && item.sender_id == coordinator.id) ? 'Read' : 'Unread'}
                   </Text>
-                  {isSent && (
-                    <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
-                      {item.is_read ? 'Read' : 'Unread'}
-                    </Text>
-                  )}
-                </View>
+                )}
               </View>
             </View>
           </View>
@@ -1113,6 +1094,7 @@ const AdminMessageBox = ({ route, navigation }) => {
             onChangeText={setMessage}
             placeholderTextColor="#999"
             multiline
+            // numberOfLines={4}
           />
 
           {isRecording ? (
@@ -1162,13 +1144,13 @@ const AdminMessageBox = ({ route, navigation }) => {
             borderTopRightRadius: 16,
           }}>
             <TouchableOpacity style={{ padding: 12 }} onPress={() => { setAttachmentModalVisible(false); pickImage(); }}>
-              <Text style={{ fontSize: 16 }}>Photo from Gallery</Text>
+              <Text style={{ fontSize: 16, color:'black' }}>Photo from Gallery</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{ padding: 12 }} onPress={() => { setAttachmentModalVisible(false); takePhoto(); }}>
-              <Text style={{ fontSize: 16 }}>Take Photo</Text>
+              <Text style={{ fontSize: 16, color:'black' }}>Take Photo</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{ padding: 12 }} onPress={() => { setAttachmentModalVisible(false); pickDocument(); }}>
-              <Text style={{ fontSize: 16 }}>Document</Text>
+              <Text style={{ fontSize: 16, color:'black' }}>Document</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{ padding: 12 }} onPress={() => setAttachmentModalVisible(false)}>
               <Text style={{ fontSize: 16, color: 'red' }}>Cancel</Text>
@@ -1235,4 +1217,4 @@ const AdminMessageBox = ({ route, navigation }) => {
   );
 };
 
-export default AdminMessageBox;
+export default CoordinatorMessageBox;

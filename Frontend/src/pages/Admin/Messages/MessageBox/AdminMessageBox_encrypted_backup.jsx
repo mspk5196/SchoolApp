@@ -35,7 +35,8 @@ import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Encryption imports removed - now using direct messaging
+import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from '../../../../utils/keyManager';
+import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
 
 const AdminMessageBox = ({ route, navigation }) => {
   const { contact } = route.params;

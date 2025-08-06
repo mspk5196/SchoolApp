@@ -28,18 +28,24 @@ import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import DocumentPicker from 'react-native-document-picker';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { API_URL } from '../../../../utils/env.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import RNFS from 'react-native-fs';
 import RNBlobUtil from 'react-native-blob-util';
 import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Encryption imports removed - now using direct messaging
+import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from '../../../../utils/keyManager';
+import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
 
-const AdminMessageBox = ({ route, navigation }) => {
+const MentorMessageBox = ({ route, navigation }) => {
   const { contact } = route.params;
   // console.log("hi",contact);
+  
+  // Helper functions to normalize contact field access across different naming conventions
+  const getContactId = () => contact.receiver_id || contact.contact_id || contact.user_id;
+  const getContactType = () => contact.receiver_type || contact.contact_type || contact.user_type || 'student';
+  const getContactName = () => contact.receiver_name || contact.contact_name || contact.name || 'Unknown';
 
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,11 +66,11 @@ const AdminMessageBox = ({ route, navigation }) => {
       );
       
       if (combined.length !== unique.length) {
-        console.log('🔄 Admin - Prevented', combined.length - unique.length, 'duplicate messages');
+        console.log('🔄 Mentor - Prevented', combined.length - unique.length, 'duplicate messages');
       }
       
       const sorted = unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      console.log('📊 Admin - Total messages after update:', sorted.length);
+      console.log('📊 Mentor - Total messages after update:', sorted.length);
       return sorted;
     });
   };
@@ -74,7 +80,7 @@ const AdminMessageBox = ({ route, navigation }) => {
     const ids = messageArray.map(m => m.message_id);
     const uniqueIds = [...new Set(ids)];
     if (ids.length !== uniqueIds.length) {
-      console.error('🚨 ADMIN DUPLICATE MESSAGE IDS DETECTED!', {
+      console.error('🚨 MENTOR DUPLICATE MESSAGE IDS DETECTED!', {
         total: ids.length,
         unique: uniqueIds.length,
         duplicates: ids.length - uniqueIds.length
@@ -93,6 +99,9 @@ const AdminMessageBox = ({ route, navigation }) => {
   const [downloadProgress, setDownloadProgress] = useState(null);
 
   const [currentUser, setCurrentUser] = useState(null);
+  const [encryptionRetryCount, setEncryptionRetryCount] = useState(0);
+  const [showEncryptionRetry, setShowEncryptionRetry] = useState(false);
+  const [encryptionStatus, setEncryptionStatus] = useState('pending'); // 'pending', 'failed', 'success'
 
   const audioRecorderPlayer = useRef(null);
   const manualTimerRef = useRef(null);
@@ -100,28 +109,293 @@ const AdminMessageBox = ({ route, navigation }) => {
 
   const currentUserRef = useRef(null);
 
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  // Add an effect to monitor encryption status changes
+  useEffect(() => {
+    if (sharedSecretRef.current && encryptionStatus !== 'success') {
+      console.log('🔐 Encryption is now active');
+      setEncryptionStatus('success');
+      setShowEncryptionRetry(false);
+    }
+  }, [encryptionStatus]);
+
+  // const fetchMentorData = async () => {
+  //   try {
+  //     const storedData = await AsyncStorage.getItem('mentorData');
+  //     if (storedData) {
+  //       const mentorData = JSON.parse(storedData)[0];
+  //       setCurrentUser(mentorData);
+  //       fetchMessages(mentorData)
+  //     }
+  //   }
+  //   catch (error) {
+  //     console.error('Error initializing message box:', error);
+  //   }
+  // }
+
+  const setupEncryption = async (currentUser, otherUser, isRetry = false) => {
+    console.log("🔐 Mentor setting up encryption with contact:", otherUser);
+    
+    try {
+      let myPrivateKey = await getPrivateKey(currentUser.id, 'mentor');
+      if (!myPrivateKey) {
+        console.log("🔑 Generating new mentor keys...");
+        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys(currentUser.id, 'mentor');
+        myPrivateKey = privateKeyHex;
+        await fetch(`${API_URL}/api/messages/keys/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: currentUser.id,
+            user_type: 'mentor',
+            public_key: publicKeyHex,
+          }),
+        });
+        console.log("✅ Mentor key uploaded");
+      } else {
+        console.log("🔑 Using existing mentor private key");
+      }
+      
+      // Use the correct field names from the contact object - handle multiple naming conventions
+      const contactId = getContactId();
+      const contactType = getContactType();
+      
+      if (!contactId) {
+        console.error("❌ Could not determine user ID from contact object:", otherUser);
+        return false;
+      }
+      
+      console.log("🔍 Fetching user key for ID:", contactId, "type:", contactType);
+      const res = await fetch(`${API_URL}/api/keys/${contactType}/${contactId}`);
+      console.log("🔍 Student key fetch response status:", res.status);
+      if (!res.ok) {
+        if (res.status === 404) {
+          console.warn('❌ Student key not found. They will need to open the app to generate encryption keys.');
+          if (!isRetry) {
+            setShowEncryptionRetry(true);
+            setEncryptionStatus('failed');
+          }
+          return false;
+        }
+        console.error("❌ Network error fetching student key:", res.status);
+        Alert.alert('Encryption Error', "Could not get recipient's key. Network error occurred.");
+        return false;
+      }
+      
+      const theirKeyData = await res.json();
+      console.log("🔍 Student key data received:", theirKeyData);
+      
+      if (!theirKeyData.success || !theirKeyData.public_key) {
+        console.warn('❌ Invalid key data received from server.');
+        return false;
+      }
+      
+      sharedSecretRef.current = getSharedSecretAESKey(myPrivateKey, theirKeyData.public_key);
+      setShowEncryptionRetry(false);
+      setEncryptionStatus('success');
+      console.log('✅ Mentor encryption successfully established!');
+      return true;
+    } catch (error) {
+      console.error('❌ Mentor encryption setup error:', error);
+      console.error('❌ Error details:', error.message, error.stack);
+      // Only show alert for actual network/server errors, not missing keys
+      if (!error.message?.includes('404')) {
+        Alert.alert('Error', 'Could not establish a secure connection. Please check your internet connection.');
+      }
+      return false;
+    }
+  };
+
+  const retryEncryption = async () => {
+    if (!currentUser) return;
+    console.log('🔄 Retrying encryption setup...');
+    setEncryptionRetryCount(prev => prev + 1);
+    const success = await setupEncryption(currentUser, contact, true);
+    if (success) {
+      // Refresh messages to decrypt any previously encrypted ones
+      await fetchMessages(currentUser);
+    }
+  };
+
+  const decryptMessages = async (messageList) => {
+    if (!sharedSecretRef.current) {
+      console.warn('No shared secret available for decryption.');
+      return messageList.map(msg => {
+        if (msg.message_text) {
+          // Check if the message looks like it's encrypted (JSON format with iv and encrypted fields)
+          try {
+            const parsed = JSON.parse(msg.message_text);
+            if (parsed.iv && parsed.encrypted) {
+              return { ...msg, message_text: '[Encrypted Message - Cannot decrypt without recipient key]' };
+            }
+          } catch (e) {
+            // Not JSON, probably plain text
+          }
+          // Return as-is if it's plain text
+          return msg;
+        }
+        return msg;
+      });
+    }
+    return messageList.map(msg => {
+      if (msg.message_text) {
+        try {
+          return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
+        } catch (error) {
+          console.warn('Failed to decrypt message:', error);
+          return { ...msg, message_text: '[Failed to decrypt message]' };
+        }
+      }
+      return msg;
+    });
+  };
 
   useEffect(() => {
-    const fetchAdminData = async () => {
+    const initialize = async () => {
       try {
-        const storedData = await AsyncStorage.getItem('adminData');
-        if (storedData) {
-          const adminData = JSON.parse(storedData);
-          setCurrentUser({ ...adminData, type: 'admin' }); // Add type for consistency
+        const storedData = await AsyncStorage.getItem('mentorData');
+        if (!storedData) throw new Error('Mentor data not found');
+        const mentorData = JSON.parse(storedData)[0];
+        setCurrentUser(mentorData);
+
+        const encryptionReady = await setupEncryption(mentorData, contact);
+        if (!encryptionReady) {
+          console.warn('Encryption not available. Messages will be sent without encryption until the recipient opens the app.');
+          // Set up periodic retry for encryption
+          const retryInterval = setInterval(async () => {
+            if (!sharedSecretRef.current && encryptionRetryCount < 5) {
+              console.log('🔄 Periodic encryption retry attempt...');
+              const success = await setupEncryption(mentorData, contact, true);
+              if (success) {
+                clearInterval(retryInterval);
+              }
+            } else if (encryptionRetryCount >= 5) {
+              clearInterval(retryInterval);
+            }
+          }, 30000); // Retry every 30 seconds
+
+          // Clean up interval on unmount
+          return () => clearInterval(retryInterval);
         }
+
+        socketRef.current = io(API_URL, { transports: ['websocket'] });
+        socketRef.current.emit('join', { userId: mentorData.id });
+        await fetchMessages(mentorData);
+
+
+        socketRef.current.on('receiveMessage', async (data) => {
+          const msg = data.message;
+          const contactId = getContactId();
+          const contactType = getContactType();
+          const isCurrentConversation =
+            (msg.sender_id === contactId && msg.sender_type === contactType && msg.receiver_id === mentorData.id && msg.receiver_type === 'mentor') ||
+            (msg.sender_id === mentorData.id && msg.sender_type === 'mentor' && msg.receiver_id === contactId && msg.receiver_type === contactType);
+
+          if (!isCurrentConversation) return;
+
+          // Skip if this is our own message (prevent duplicate on sender side)
+          if (msg.sender_id === mentorData.id && msg.sender_type === 'mentor') {
+            console.log('🔄 Mentor - Skipping own message to prevent duplicate');
+            return;
+          }
+
+          // If encryption is not available, try to set it up again
+          if (!sharedSecretRef.current && encryptionRetryCount < 3) {
+            console.log('📨 New message received, attempting encryption setup...');
+            const encryptionSuccess = await setupEncryption(mentorData, contact, true);
+            if (encryptionSuccess) {
+              console.log('✅ Encryption established after receiving message!');
+            }
+          }
+
+          const [decryptedMsg] = await decryptMessages([msg]);
+          console.log('✅ Mentor - Adding new received message:', decryptedMsg.message_id);
+          addMessages(decryptedMsg);
+
+          if (msg.receiver_id === mentorData.id) {
+            socketRef.current.emit('markAsRead', {
+              messageIds: [msg.message_id],
+              receiverId: mentorData.id, receiverType: 'mentor',
+              senderId: msg.sender_id, senderType: msg.sender_type
+            });
+          }
+        });
+
+        socketRef.current.on('messagesRead', (data) => {
+          setMessages(prev => prev.map(m => data.messageIds.includes(m.message_id) ? { ...m, is_read: 1 } : m));
+        });
+
+        setIsLoading(false);
+
       } catch (error) {
-        console.error('Error fetching admin data:', error);
+        console.error('Initialization failed:', error);
         setIsLoading(false);
       }
     };
-    fetchAdminData();
+    initialize();
+    return () => socketRef.current?.disconnect();
+  }, [contact]);
 
-    // Cleanup audio player
-    return () => {
-      audioRecorderPlayer.current.stopPlayer().catch(() => { });
-      audioRecorderPlayer.current.removePlayBackListener();
-    };
-  }, []);
+  const fetchMessages = async (mentorData) => {
+    if (!mentorData) return;
+    setIsLoading(true);
+    try {
+      const contactId = getContactId();
+      const contactType = getContactType();
+      
+      const response = await fetch(`${API_URL}/api/messages/get`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sender_id: mentorData.id, sender_type: 'mentor',
+          receiver_id: contactId, receiver_type: contactType,
+          last_message_id: 0,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Only decrypt if we have a shared secret, otherwise show messages as-is
+        const decrypted = sharedSecretRef.current ? 
+          await decryptMessages(data.messages) : 
+          data.messages.map(msg => ({ 
+            ...msg, 
+            message_text: msg.message_text ? '[Encrypted Message - Recipient key not available]' : null 
+          }));
+        
+        console.log('📥 Mentor - Fetched messages count:', decrypted.length);
+        
+        // Use setMessages directly for initial fetch (replace all messages) and sort them
+        setMessages(decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
+
+        const unreadIds = data.messages
+          .filter(m => m.is_read === 0 && m.receiver_id === mentorData.id)
+          .map(m => m.message_id);
+
+        if (unreadIds.length > 0) {
+          const contactId = getContactId();
+          const contactType = getContactType();
+          socketRef.current.emit('markAsRead', {
+            messageIds: unreadIds,
+            receiverId: mentorData.id, receiverType: 'mentor',
+            senderId: contactId, senderType: contactType
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser?.id && contact?.id) {
+      fetchMessages();
+    }
+  }, [currentUser, contact]);
 
   // Monitor messages for duplicates
   useEffect(() => {
@@ -147,157 +421,6 @@ const AdminMessageBox = ({ route, navigation }) => {
       }
     };
   }, []);
-
-  // Fetch all messages between this mentor and student
-
-  const setupEncryption = async (currentUser, otherUser) => {
-    try {
-      let myPrivateKey = await getPrivateKey(currentUser.id, 'admin');
-      if (!myPrivateKey) {
-        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys(currentUser.id, 'admin');
-        myPrivateKey = privateKeyHex;
-        await fetch(`${API_URL}/api/messages/keys/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: currentUser.id,
-            user_type: 'admin',
-            public_key: publicKeyHex,
-          }),
-        });
-      }
-
-      const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
-      if (!res.ok) {
-        Alert.alert('Encryption Error', "Could not get recipient's key. They may need to open the app once to generate it.");
-        return false;
-      }
-      const theirKeyData = await res.json();
-      const theirPublicKey = theirKeyData.public_key;
-
-      const aesKey = getSharedSecretAESKey(myPrivateKey, theirPublicKey);
-      sharedSecretRef.current = aesKey;
-      return true;
-    } catch (error) {
-      console.error('Encryption setup failed:', error);
-      Alert.alert('Error', 'Could not establish a secure connection.');
-      return false;
-    }
-  };
-
-  const decryptMessages = async (messageList) => {
-    if (!sharedSecretRef.current) {
-      return messageList.map(msg => ({ ...msg, message_text: msg.message_text ? "[Decryption Key Error]" : null }));
-    }
-    return messageList.map(msg => {
-      if (msg.message_text) {
-        return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
-      }
-      return msg;
-    });
-  };
-
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        const storedData = await AsyncStorage.getItem('adminData');
-        if (!storedData) throw new Error('Admin data not found');
-        const adminData = JSON.parse(storedData);
-        setCurrentUser(adminData);
-
-        const encryptionReady = await setupEncryption(adminData, contact);
-        if (!encryptionReady) {
-          setIsLoading(false);
-          return;
-        }
-
-        socketRef.current = io(API_URL, { transports: ['websocket'] });
-        socketRef.current.emit('join', { userId: adminData.id });
-        await fetchMessages(adminData);
-
-
-        socketRef.current.on('receiveMessage', async (data) => {
-          const msg = data.message;
-          const isCurrentConversation =
-            (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type && msg.receiver_id === adminData.id && msg.receiver_type === 'admin') ||
-            (msg.sender_id === adminData.id && msg.sender_type === 'admin' && msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type);
-
-          if (!isCurrentConversation) return;
-
-          // Skip if this is our own message (prevent duplicate on sender side)
-          if (msg.sender_id === adminData.id && msg.sender_type === 'admin') {
-            console.log('🔄 Admin - Skipping own message to prevent duplicate');
-            return;
-          }
-
-          const [decryptedMsg] = await decryptMessages([msg]);
-          console.log('✅ Admin - Adding new received message:', decryptedMsg.message_id);
-          addMessages(decryptedMsg);
-
-          if (msg.receiver_id === adminData.id) {
-            socketRef.current.emit('markAsRead', {
-              messageIds: [msg.message_id],
-              receiverId: adminData.id, receiverType: 'admin',
-              senderId: msg.sender_id, senderType: msg.sender_type
-            });
-          }
-        });
-
-        socketRef.current.on('messagesRead', (data) => {
-          setMessages(prev => prev.map(m => data.messageIds.includes(m.message_id) ? { ...m, is_read: 1 } : m));
-        });
-
-      } catch (error) {
-        console.error('Initialization failed:', error);
-        setIsLoading(false);
-      }
-    };
-
-    initialize();
-    return () => socketRef.current?.disconnect();
-  }, [contact]);
-
-  const fetchMessages = async (adminData) => {
-    if (!adminData || !sharedSecretRef.current) return;
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/messages/get`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender_id: adminData.id,
-          sender_type: 'admin',
-          receiver_id: contact.receiver_id,
-          receiver_type: contact.receiver_type,
-          last_message_id: 0,
-        }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        const decrypted = await decryptMessages(data.messages);
-        console.log('📥 Admin - Fetched messages count:', decrypted.length);
-        
-        // Use setMessages directly for initial fetch (replace all messages) and sort them
-        setMessages(decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
-
-        const unreadIds = data.messages
-          .filter(m => m.is_read === 0 && m.receiver_id === adminData.id)
-          .map(m => m.message_id);
-
-        if (unreadIds.length > 0 && socketRef.current) {
-          socketRef.current.emit('markAsRead', {
-            messageIds: unreadIds,
-            receiverId: adminData.id, receiverType: 'admin',
-            senderId: contact.receiver_id, senderType: contact.receiver_type
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const [selectedMessages, setSelectedMessages] = useState([]);
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -353,20 +476,26 @@ const AdminMessageBox = ({ route, navigation }) => {
   };
 
   const sendMessage = async () => {
-    if (message.trim() === '' || !sharedSecretRef.current || !currentUser) return;
+    if (message.trim() === '' || !currentUser) return;
 
-    const encryptedMessage = encryptText(message, sharedSecretRef.current);
+    // Try to encrypt if we have a shared secret, otherwise send as plain text
+    const messageToSend = sharedSecretRef.current ? 
+      encryptText(message, sharedSecretRef.current) : 
+      message;
 
     try {
+      const contactId = getContactId();
+      const contactType = getContactType();
+      
       const response = await fetch(`${API_URL}/api/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sender_id: currentUser.id,
-          receiver_id: contact.receiver_id,
-          sender_type: 'admin',
-          receiver_type: contact.receiver_type,
-          message_text: encryptedMessage,
+          receiver_id: contactId,
+          sender_type: 'mentor',
+          receiver_type: contactType,
+          message_text: messageToSend,
         }),
       });
 
@@ -382,10 +511,22 @@ const AdminMessageBox = ({ route, navigation }) => {
           is_read: 0
         };
         
-        console.log('✅ Admin - Adding optimistic sent message:', optimisticMsg.message_id);
+        console.log('✅ Mentor - Adding optimistic sent message:', optimisticMsg.message_id);
         addMessages(optimisticMsg);
         
-        socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
+        const contactId = getContactId();
+        socketRef.current.emit('sendMessage', { to: contactId, message: data.message });
+
+        // If encryption wasn't available, try to set it up again for future messages
+        if (!sharedSecretRef.current && encryptionRetryCount < 3) {
+          console.log('📤 Message sent, attempting encryption setup...');
+          setTimeout(async () => {
+            const encryptionReady = await setupEncryption(currentUser, contact, true);
+            if (encryptionReady) {
+              console.log('✅ Encryption setup successful after sending message.');
+            }
+          }, 2000); // Wait 2 seconds to allow recipient to process and generate keys
+        }
       } else {
         Alert.alert('Error', 'Failed to send message');
       }
@@ -680,41 +821,64 @@ const AdminMessageBox = ({ route, navigation }) => {
   };
 
   const uploadAttachment = async (file, fileType) => {
-    if (!currentUser) return;
+    // console.log();
+
     let fileUri = file.uri;
+
     try {
       if (Platform.OS === 'android' && fileUri.startsWith('content://')) {
-        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${file.name || 'tempfile'}`;
+        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${file.name}`;
         await RNBlobUtil.fs.cp(fileUri, destPath);
         fileUri = 'file://' + destPath;
+        console.log('✔ File copied to temp:', fileUri);
       }
 
+      const contactId = getContactId();
+      const contactType = getContactType();
+      
       const res = await RNBlobUtil.fetch(
         'POST',
         `${API_URL}/api/messages/send-attachment`,
         { 'Content-Type': 'multipart/form-data' },
         [
-          { name: 'file', filename: file.name || 'attachment', type: file.type, data: RNBlobUtil.wrap(fileUri.replace('file://', '')) },
-          { name: 'sender_id', data: String(currentUser.id) },
-          { name: 'receiver_id', data: String(contact.receiver_id) },
-          { name: 'sender_type', data: 'admin' },
-          { name: 'receiver_type', data: String(contact.receiver_type) }
+          {
+            name: 'file',
+            filename: file.name || 'file',
+            type: file.type || `application/${fileType}`,
+            data: RNBlobUtil.wrap(fileUri.replace('file://', ''))
+          },
+          { name: 'sender_id', data: String(mentorData?.id || contact.sender_id) },
+          { name: 'receiver_id', data: String(contactId) },
+          { name: 'sender_type', data: 'mentor' },
+          { name: 'receiver_type', data: String(contactType) }
         ]
       );
 
       const data = JSON.parse(res.data);
-      if (data.success) {
+
+      if (!data.success) {
+        Alert.alert('Error', 'Failed to send attachment');
+      } else if (data.success) {
         setMessage('');
         
-        console.log('✅ Admin - Adding attachment message:', data.message.message_id);
+        console.log('✅ Mentor - Adding attachment message:', data.message.message_id);
         addMessages(data.message);
         
-        socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
-      } else {
-        Alert.alert('Error', 'Failed to send attachment');
+        const newMsg = data.message;
+        const contactId = getContactId();
+
+        socketRef.current.emit('sendMessage', {
+          to: contactId,
+          message: newMsg
+        });
+
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
       }
     } catch (error) {
       console.error('Error uploading attachment:', error);
+      Alert.alert('Error', 'Failed to send attachment');
     }
   };
 
@@ -740,15 +904,20 @@ const AdminMessageBox = ({ route, navigation }) => {
   );
 
   useEffect(() => {
-    AsyncStorage.getItem('adminData').then(data => {
+    AsyncStorage.getItem('mentorData').then(data => {
       if (data) {
-        setCurrentUser(JSON.parse(data));
+        setCurrentUser(JSON.parse(data)[0]);
       }
     });
   }, []);
 
   const renderMessage = ({ item }) => {
-    const isSent = currentUser && item.sender_id === currentUser.id && item.sender_type === 'admin';
+    // const isSent = item.sender_type === 'mentor';
+    const isSent = (
+      currentUser &&
+      item.sender_id === currentUser.id &&
+      item.sender_type === 'mentor'
+    );
     const isSelected = selectedMessages.includes(item.message_id);
 
     return (
@@ -867,18 +1036,15 @@ const AdminMessageBox = ({ route, navigation }) => {
                 </>
               )}
 
-              <View>
-                {/* The important part to check is the read receipt */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 9 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 9 }}>
+                <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
+                  {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+                {isSent && (
                   <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
-                    {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {(item.is_read && item.sender_id == currentUser.id) ? 'Read' : 'Unread'}
                   </Text>
-                  {isSent && (
-                    <Text style={[styles.messageTime, isSent ? styles.sentTime : styles.receivedTime]}>
-                      {item.is_read ? 'Read' : 'Unread'}
-                    </Text>
-                  )}
-                </View>
+                )}
               </View>
             </View>
           </View>
@@ -886,7 +1052,6 @@ const AdminMessageBox = ({ route, navigation }) => {
       </TouchableOpacity>
     );
   };
-
 
   // Add your existing document and image download functions here...
   const requestStoragePermission = async (fileType = 'other') => {
@@ -1097,6 +1262,30 @@ const AdminMessageBox = ({ route, navigation }) => {
           />
         )}
 
+        {/* Encryption Status Indicator */}
+        {encryptionStatus !== 'success' && showEncryptionRetry && (
+          <View style={{ backgroundColor: '#fff3cd', padding: 8, borderTopWidth: 1, borderTopColor: '#ffeaa7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ color: '#856404', fontSize: 12, flex: 1 }}>
+              🔓 Messages not encrypted - recipient needs to open app first
+            </Text>
+            <TouchableOpacity 
+              onPress={retryEncryption}
+              style={{ backgroundColor: '#856404', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 4, marginLeft: 8 }}
+            >
+              <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                Retry
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {encryptionStatus === 'success' && (
+          <View style={{ backgroundColor: '#d4edda', padding: 8, borderTopWidth: 1, borderTopColor: '#c3e6cb' }}>
+            <Text style={{ color: '#155724', fontSize: 12, textAlign: 'center' }}>
+              🔐 End-to-end encryption active
+            </Text>
+          </View>
+        )}
+
         {/* Message Input */}
         <View style={styles.inputContainer}>
           <TouchableOpacity
@@ -1235,4 +1424,4 @@ const AdminMessageBox = ({ route, navigation }) => {
   );
 };
 
-export default AdminMessageBox;
+export default MentorMessageBox;
