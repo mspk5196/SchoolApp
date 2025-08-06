@@ -2261,34 +2261,57 @@ exports.deleteWeeklySchedule = (req, res) => {
       }
       if (results.length > 0) {
         const dailyScheduleIds = results.map(row => row.id);
-        const deleteQuery = 'DELETE FROM daily_schedule WHERE id IN (?)';
-        const query2 = 'DELETE FROM acadamic_sessions WHERE dsa_id IN (?)';
-        const query3 = 'DELETE FROM assessment_sessions WHERE dsa_id IN (?)';
-        db.query(deleteQuery, [dailyScheduleIds], (err) => {
+        
+        // First check if there are any non-completed assessment sessions
+        const checkQuery = 'SELECT COUNT(*) as count FROM assessment_sessions WHERE dsa_id IN (?) AND status != "completed"';
+        
+        db.query(checkQuery, [dailyScheduleIds], (err, checkResults) => {
           if (err) {
             console.error(err);
-            return res.status(500).json({ success: false, message: 'Database error' });
+            return res.status(500).json({ success: false, message: 'Database error checking assessment sessions' });
           }
-          db.query(query2, [dailyScheduleIds], (err, results) => {
+          
+          const nonCompletedCount = checkResults[0].count;
+          
+          if (nonCompletedCount > 0) {
+            return res.status(400).json({ 
+              success: false, 
+              message: 'Cannot delete schedule: There are assessment sessions in progress or pending completion' 
+            });
+          }
+          
+          // Proceed with deletion if all assessment sessions are completed
+          const query2 = 'DELETE FROM acadamic_sessions WHERE dsa_id IN (?)';
+          const query3 = 'DELETE FROM assessment_sessions WHERE dsa_id IN (?) AND status = "completed"';
+          const deleteQuery = 'DELETE FROM daily_schedule WHERE id IN (?)';
+          
+          // First delete completed assessment_sessions
+          db.query(query3, [dailyScheduleIds], (err) => {
             if (err) {
               console.error(err);
-              return res.status(500).json({ success: false, message: 'Database error' });
+              return res.status(500).json({ success: false, message: 'Database error deleting assessment sessions' });
             }
-            if (results.affectedRows === 0) {
-              return res.status(404).json({ success: false, message: 'Schedule item not found' });
-            }
-            db.query(query3, [dailyScheduleIds], (err, results) => {
+            
+            // Then delete acadamic_sessions
+            db.query(query2, [dailyScheduleIds], (err) => {
               if (err) {
                 console.error(err);
-                return res.status(500).json({ success: false, message: 'Database error' });
+                return res.status(500).json({ success: false, message: 'Database error deleting academic sessions' });
               }
-              if (results.affectedRows === 0) {
-                return res.status(404).json({ success: false, message: 'Schedule item not found' });
-              }
-              res.json({ success: true, message: 'Schedule item deleted successfully' });
-            })
-          })
-        })
+              
+              // Finally delete daily_schedule
+              db.query(deleteQuery, [dailyScheduleIds], (err) => {
+                if (err) {
+                  console.error(err);
+                  return res.status(500).json({ success: false, message: 'Database error deleting daily schedule' });
+                }
+                res.json({ success: true, message: 'Schedule item deleted successfully' });
+              });
+            });
+          });
+        });
+      } else {
+        res.json({ success: true, message: 'Schedule item deleted successfully' });
       }
     })
   });

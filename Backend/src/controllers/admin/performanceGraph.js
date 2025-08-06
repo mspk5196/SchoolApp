@@ -39,10 +39,12 @@ exports.getPerformanceData = async (req, res) => {
 
         // 4. Get expected levels and dates from materials table
         const [expectedLevels] = await db.promise().query(`
-      SELECT DISTINCT m.subject_id, m.level, m.expected_date
+      SELECT DISTINCT ssa.subject_id, m.level, m.expected_date
       FROM materials m
-      WHERE m.grade_id = ?
-      ORDER BY m.subject_id, m.level
+      JOIN section_subject_activities ssa ON m.section_subject_activity_id = ssa.id
+      JOIN sections sec ON ssa.section_id = sec.id
+      WHERE sec.grade_id = ?
+      ORDER BY ssa.subject_id, m.level
     `, [student[0].grade_id]);
 
         console.log(subjects);
