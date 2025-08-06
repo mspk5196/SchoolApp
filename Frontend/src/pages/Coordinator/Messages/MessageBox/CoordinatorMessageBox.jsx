@@ -35,7 +35,6 @@ import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
 
-// Encryption imports removed - now using direct messaging
 
 const CoordinatorMessageBox = ({ route, navigation }) => {
   const { contact, coordinator } = route.params;
@@ -119,37 +118,6 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
     }
   }, [messages]);
 
-  const setupEncryption = async (currentUser, otherUser) => {
-    try {
-
-      let myPrivateKey = await getPrivateKey(currentUser.id, 'coordinator');
-      console.log(myPrivateKey);
-      if (!myPrivateKey) {
-        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys(currentUser.id, 'coordinator');
-        myPrivateKey = privateKeyHex;
-        await fetch(`${API_URL}/api/messages/keys/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: currentUser.id,
-            user_type: 'coordinator',
-            public_key: publicKeyHex,
-          }),
-        });
-      }
-      const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
-      if (!res.ok) {
-        Alert.alert('Encryption Error', "Could not get recipient's key.");
-        return false;
-      }
-      const theirKeyData = await res.json();
-      sharedSecretRef.current = getSharedSecretAESKey(myPrivateKey, theirKeyData.public_key);
-      return true;
-    } catch (error) {
-      Alert.alert('Error', 'Could not establish a secure connection.');
-      return false;
-    }
-  };
 
   const decryptMessages = async (messageList) => {
     if (!sharedSecretRef.current) return messageList;
@@ -167,11 +135,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
       const coordinatorUser = { ...coordinator, type: 'coordinator' };
       setCurrentUser(coordinatorUser);
 
-      const encryptionReady = await setupEncryption(coordinatorUser, contact);
-      if (!encryptionReady) {
-        setIsLoading(false);
-        return;
-      }
+     
       socketRef.current = io(API_URL, { transports: ['websocket'] });
       socketRef.current.emit('join', { userId: coordinator.id });
       await fetchMessages(coordinator);
@@ -231,7 +195,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
   }, []);
 
   const fetchMessages = async (coordData) => {
-    if (!coordData || !sharedSecretRef.current) return;
+    
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/messages/get`, {
@@ -244,11 +208,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
       });
       const data = await response.json();
       if (data.success) {
-        const decrypted = await decryptMessages(data.messages);
-        console.log('📥 Coordinator - Fetched messages count:', decrypted.length);
-        
-        // Use setMessages directly for initial fetch (replace all messages) and sort them
-        setMessages(decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
+        setMessages(data.messages);
 
         const unreadIds = data.messages
           .filter(m => m.is_read === 0 && m.receiver_id === coordData.id)
@@ -269,8 +229,8 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
   };
 
   useEffect(() => {
-    fetchMessages();
-  }, []);
+    fetchMessages(coordinator);
+  }, [coordinator]);
 
   const [selectedMessages, setSelectedMessages] = useState([]);
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -326,9 +286,6 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
   };
 
   const sendMessage = async () => {
-    if (message.trim() === '' || !sharedSecretRef.current || !currentUser) return;
-
-    const encryptedMessage = encryptText(message, sharedSecretRef.current);
 
     try {
       const response = await fetch(`${API_URL}/api/messages/send`, {
@@ -339,7 +296,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
           receiver_id: contact.receiver_id,
           sender_type: 'coordinator',
           receiver_type: contact.receiver_type,
-          message_text: encryptedMessage,
+          message_text: message,
         }),
       });
 

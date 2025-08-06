@@ -35,7 +35,6 @@ import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Encryption imports removed - now using direct messaging
 
 const AdminMessageBox = ({ route, navigation }) => {
   const { contact } = route.params;
@@ -148,54 +147,6 @@ const AdminMessageBox = ({ route, navigation }) => {
     };
   }, []);
 
-  // Fetch all messages between this mentor and student
-
-  const setupEncryption = async (currentUser, otherUser) => {
-    try {
-      let myPrivateKey = await getPrivateKey(currentUser.id, 'admin');
-      if (!myPrivateKey) {
-        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys(currentUser.id, 'admin');
-        myPrivateKey = privateKeyHex;
-        await fetch(`${API_URL}/api/messages/keys/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: currentUser.id,
-            user_type: 'admin',
-            public_key: publicKeyHex,
-          }),
-        });
-      }
-
-      const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
-      if (!res.ok) {
-        Alert.alert('Encryption Error', "Could not get recipient's key. They may need to open the app once to generate it.");
-        return false;
-      }
-      const theirKeyData = await res.json();
-      const theirPublicKey = theirKeyData.public_key;
-
-      const aesKey = getSharedSecretAESKey(myPrivateKey, theirPublicKey);
-      sharedSecretRef.current = aesKey;
-      return true;
-    } catch (error) {
-      console.error('Encryption setup failed:', error);
-      Alert.alert('Error', 'Could not establish a secure connection.');
-      return false;
-    }
-  };
-
-  const decryptMessages = async (messageList) => {
-    if (!sharedSecretRef.current) {
-      return messageList.map(msg => ({ ...msg, message_text: msg.message_text ? "[Decryption Key Error]" : null }));
-    }
-    return messageList.map(msg => {
-      if (msg.message_text) {
-        return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
-      }
-      return msg;
-    });
-  };
 
   useEffect(() => {
     const initialize = async () => {
@@ -204,12 +155,6 @@ const AdminMessageBox = ({ route, navigation }) => {
         if (!storedData) throw new Error('Admin data not found');
         const adminData = JSON.parse(storedData);
         setCurrentUser(adminData);
-
-        const encryptionReady = await setupEncryption(adminData, contact);
-        if (!encryptionReady) {
-          setIsLoading(false);
-          return;
-        }
 
         socketRef.current = io(API_URL, { transports: ['websocket'] });
         socketRef.current.emit('join', { userId: adminData.id });
@@ -258,7 +203,6 @@ const AdminMessageBox = ({ route, navigation }) => {
   }, [contact]);
 
   const fetchMessages = async (adminData) => {
-    if (!adminData || !sharedSecretRef.current) return;
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/messages/get`, {
@@ -274,11 +218,7 @@ const AdminMessageBox = ({ route, navigation }) => {
       });
       const data = await response.json();
       if (data.success) {
-        const decrypted = await decryptMessages(data.messages);
-        console.log('📥 Admin - Fetched messages count:', decrypted.length);
-        
-        // Use setMessages directly for initial fetch (replace all messages) and sort them
-        setMessages(decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
+        setMessages(data.messages);
 
         const unreadIds = data.messages
           .filter(m => m.is_read === 0 && m.receiver_id === adminData.id)
@@ -353,9 +293,6 @@ const AdminMessageBox = ({ route, navigation }) => {
   };
 
   const sendMessage = async () => {
-    if (message.trim() === '' || !sharedSecretRef.current || !currentUser) return;
-
-    const encryptedMessage = encryptText(message, sharedSecretRef.current);
 
     try {
       const response = await fetch(`${API_URL}/api/messages/send`, {
@@ -366,7 +303,7 @@ const AdminMessageBox = ({ route, navigation }) => {
           receiver_id: contact.receiver_id,
           sender_type: 'admin',
           receiver_type: contact.receiver_type,
-          message_text: encryptedMessage,
+          message_text: message,
         }),
       });
 

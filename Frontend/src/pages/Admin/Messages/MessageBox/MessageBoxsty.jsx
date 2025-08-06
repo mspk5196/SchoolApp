@@ -262,6 +262,163 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 8,
+  },
+  contactInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginLeft: 16,
+  },
+  profileImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  headerRight: {
+    width: 40,
+  },
+  messagesContainer: {
+    flex: 1,
+  },
+  messagesList: {
+    padding: 16,
+  },
+  myMessage: {
+    alignSelf: 'flex-end',
+  },
+  theirMessage: {
+    alignSelf: 'flex-start',
+  },
+  myMessageText: {
+    color: '#fff',
+  },
+  theirMessageText: {
+    color: '#333',
+  },
+  myMessageTime: {
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'right',
+  },
+  theirMessageTime: {
+    color: 'rgba(0,0,0,0.5)',
+    textAlign: 'left',
+  },
+  messageText: {
+    fontSize: 16,
+    padding: 12,
+    backgroundColor: '#007bff',
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  messageTime: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  attachmentContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  attachmentImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 12,
+  },
+  audioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 12,
+    minWidth: 150,
+  },
+  audioText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#333',
+  },
+  documentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 12,
+    minWidth: 150,
+  },
+  documentText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#333',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  attachmentButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  textInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    maxHeight: 100,
+    fontSize: 16,
+  },
+  sendButton: {
+    backgroundColor: '#007bff',
+    borderRadius: 20,
+    padding: 8,
+    marginLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  micButton: {
+    backgroundColor: '#28a745',
+    borderRadius: 20,
+    padding: 8,
+    marginLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  attachmentModal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  attachmentOption: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  attachmentOptionText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
