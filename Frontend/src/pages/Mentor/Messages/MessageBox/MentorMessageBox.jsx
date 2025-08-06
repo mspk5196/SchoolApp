@@ -41,6 +41,11 @@ import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../uti
 const MentorMessageBox = ({ route, navigation }) => {
   const { contact } = route.params;
   // console.log("hi",contact);
+  
+  // Helper functions to normalize contact field access across different naming conventions
+  const getContactId = () => contact.receiver_id || contact.contact_id || contact.user_id;
+  const getContactType = () => contact.receiver_type || contact.contact_type || contact.user_type || 'student';
+  const getContactName = () => contact.receiver_name || contact.contact_name || contact.name || 'Unknown';
 
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +66,9 @@ const MentorMessageBox = ({ route, navigation }) => {
   const [downloadProgress, setDownloadProgress] = useState(null);
 
   const [currentUser, setCurrentUser] = useState(null);
+  const [encryptionRetryCount, setEncryptionRetryCount] = useState(0);
+  const [showEncryptionRetry, setShowEncryptionRetry] = useState(false);
+  const [encryptionStatus, setEncryptionStatus] = useState('pending'); // 'pending', 'failed', 'success'
 
   const audioRecorderPlayer = useRef(null);
   const manualTimerRef = useRef(null);
@@ -71,6 +79,15 @@ const MentorMessageBox = ({ route, navigation }) => {
   useEffect(() => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
+
+  // Add an effect to monitor encryption status changes
+  useEffect(() => {
+    if (sharedSecretRef.current && encryptionStatus !== 'success') {
+      console.log('🔐 Encryption is now active');
+      setEncryptionStatus('success');
+      setShowEncryptionRetry(false);
+    }
+  }, [encryptionStatus]);
 
   // const fetchMentorData = async () => {
   //   try {
@@ -86,10 +103,13 @@ const MentorMessageBox = ({ route, navigation }) => {
   //   }
   // }
 
-  const setupEncryption = async (currentUser, otherUser) => {
+  const setupEncryption = async (currentUser, otherUser, isRetry = false) => {
+    console.log("🔐 Mentor setting up encryption with contact:", otherUser);
+    
     try {
       let myPrivateKey = await getPrivateKey();
       if (!myPrivateKey) {
+        console.log("🔑 Generating new mentor keys...");
         const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
         myPrivateKey = privateKeyHex;
         await fetch(`${API_URL}/api/messages/keys/upload`, {
@@ -101,31 +121,69 @@ const MentorMessageBox = ({ route, navigation }) => {
             public_key: publicKeyHex,
           }),
         });
+        console.log("✅ Mentor key uploaded");
+      } else {
+        console.log("🔑 Using existing mentor private key");
       }
-      const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
+      
+      // Use the correct field names from the contact object - handle multiple naming conventions
+      const contactId = getContactId();
+      const contactType = getContactType();
+      
+      if (!contactId) {
+        console.error("❌ Could not determine user ID from contact object:", otherUser);
+        return false;
+      }
+      
+      console.log("🔍 Fetching user key for ID:", contactId, "type:", contactType);
+      const res = await fetch(`${API_URL}/api/keys/${contactType}/${contactId}`);
+      console.log("🔍 Student key fetch response status:", res.status);
       if (!res.ok) {
         if (res.status === 404) {
-          console.warn('Recipient key not found. They will need to open the app to generate encryption keys.');
-          // Don't show alert for 404, just log warning. The app can still function without encryption for now.
+          console.warn('❌ Student key not found. They will need to open the app to generate encryption keys.');
+          if (!isRetry) {
+            setShowEncryptionRetry(true);
+            setEncryptionStatus('failed');
+          }
           return false;
         }
+        console.error("❌ Network error fetching student key:", res.status);
         Alert.alert('Encryption Error', "Could not get recipient's key. Network error occurred.");
         return false;
       }
+      
       const theirKeyData = await res.json();
+      console.log("🔍 Student key data received:", theirKeyData);
+      
       if (!theirKeyData.success || !theirKeyData.public_key) {
-        console.warn('Invalid key data received from server.');
+        console.warn('❌ Invalid key data received from server.');
         return false;
       }
+      
       sharedSecretRef.current = getSharedSecretAESKey(myPrivateKey, theirKeyData.public_key);
+      setShowEncryptionRetry(false);
+      setEncryptionStatus('success');
+      console.log('✅ Mentor encryption successfully established!');
       return true;
     } catch (error) {
-      console.error('Encryption setup error:', error);
+      console.error('❌ Mentor encryption setup error:', error);
+      console.error('❌ Error details:', error.message, error.stack);
       // Only show alert for actual network/server errors, not missing keys
       if (!error.message?.includes('404')) {
         Alert.alert('Error', 'Could not establish a secure connection. Please check your internet connection.');
       }
       return false;
+    }
+  };
+
+  const retryEncryption = async () => {
+    if (!currentUser) return;
+    console.log('🔄 Retrying encryption setup...');
+    setEncryptionRetryCount(prev => prev + 1);
+    const success = await setupEncryption(currentUser, contact, true);
+    if (success) {
+      // Refresh messages to decrypt any previously encrypted ones
+      await fetchMessages(currentUser);
     }
   };
 
@@ -173,7 +231,21 @@ const MentorMessageBox = ({ route, navigation }) => {
         const encryptionReady = await setupEncryption(mentorData, contact);
         if (!encryptionReady) {
           console.warn('Encryption not available. Messages will be sent without encryption until the recipient opens the app.');
-          // Continue with app initialization even without encryption
+          // Set up periodic retry for encryption
+          const retryInterval = setInterval(async () => {
+            if (!sharedSecretRef.current && encryptionRetryCount < 5) {
+              console.log('🔄 Periodic encryption retry attempt...');
+              const success = await setupEncryption(mentorData, contact, true);
+              if (success) {
+                clearInterval(retryInterval);
+              }
+            } else if (encryptionRetryCount >= 5) {
+              clearInterval(retryInterval);
+            }
+          }, 30000); // Retry every 30 seconds
+
+          // Clean up interval on unmount
+          return () => clearInterval(retryInterval);
         }
 
         socketRef.current = io(API_URL, { transports: ['websocket'] });
@@ -183,11 +255,22 @@ const MentorMessageBox = ({ route, navigation }) => {
 
         socketRef.current.on('receiveMessage', async (data) => {
           const msg = data.message;
+          const contactId = getContactId();
+          const contactType = getContactType();
           const isCurrentConversation =
-            (msg.sender_id === contact.receiver_id && msg.sender_type === contact.receiver_type && msg.receiver_id === mentorData.id && msg.receiver_type === 'mentor') ||
-            (msg.sender_id === mentorData.id && msg.sender_type === 'mentor' && msg.receiver_id === contact.receiver_id && msg.receiver_type === contact.receiver_type);
+            (msg.sender_id === contactId && msg.sender_type === contactType && msg.receiver_id === mentorData.id && msg.receiver_type === 'mentor') ||
+            (msg.sender_id === mentorData.id && msg.sender_type === 'mentor' && msg.receiver_id === contactId && msg.receiver_type === contactType);
 
           if (!isCurrentConversation) return;
+
+          // If encryption is not available, try to set it up again
+          if (!sharedSecretRef.current && encryptionRetryCount < 3) {
+            console.log('📨 New message received, attempting encryption setup...');
+            const encryptionSuccess = await setupEncryption(mentorData, contact, true);
+            if (encryptionSuccess) {
+              console.log('✅ Encryption established after receiving message!');
+            }
+          }
 
           const [decryptedMsg] = await decryptMessages([msg]);
           setMessages(prev => [...prev, decryptedMsg]);
@@ -220,12 +303,15 @@ const MentorMessageBox = ({ route, navigation }) => {
     if (!mentorData) return;
     setIsLoading(true);
     try {
+      const contactId = getContactId();
+      const contactType = getContactType();
+      
       const response = await fetch(`${API_URL}/api/messages/get`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sender_id: mentorData.id, sender_type: 'mentor',
-          receiver_id: contact.receiver_id, receiver_type: contact.receiver_type,
+          receiver_id: contactId, receiver_type: contactType,
           last_message_id: 0,
         }),
       });
@@ -245,10 +331,12 @@ const MentorMessageBox = ({ route, navigation }) => {
           .map(m => m.message_id);
 
         if (unreadIds.length > 0) {
+          const contactId = getContactId();
+          const contactType = getContactType();
           socketRef.current.emit('markAsRead', {
             messageIds: unreadIds,
             receiverId: mentorData.id, receiverType: 'mentor',
-            senderId: contact.receiver_id, senderType: contact.receiver_type
+            senderId: contactId, senderType: contactType
           });
         }
       }
@@ -346,34 +434,36 @@ const MentorMessageBox = ({ route, navigation }) => {
       message;
 
     try {
+      const contactId = getContactId();
+      const contactType = getContactType();
+      
       const response = await fetch(`${API_URL}/api/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sender_id: currentUser.id,
-          receiver_id: contact.receiver_id,
+          receiver_id: contactId,
           sender_type: 'mentor',
-          receiver_type: contact.receiver_type,
+          receiver_type: contactType,
           message_text: messageToSend,
         }),
       });
 
       const data = await response.json();
       if (data.success) {
-        // const newMsg = { ...data.message, message_text: message };
-        // setMessages(prev => [...prev, newMsg]);
-        socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
+        const contactId = getContactId();
+        socketRef.current.emit('sendMessage', { to: contactId, message: data.message });
         setMessage('');
 
         // If encryption wasn't available, try to set it up again for future messages
-        if (!sharedSecretRef.current) {
-          console.log('Attempting to retry encryption setup...');
+        if (!sharedSecretRef.current && encryptionRetryCount < 3) {
+          console.log('📤 Message sent, attempting encryption setup...');
           setTimeout(async () => {
-            const encryptionReady = await setupEncryption(currentUser, contact);
+            const encryptionReady = await setupEncryption(currentUser, contact, true);
             if (encryptionReady) {
-              console.log('Encryption setup successful on retry.');
+              console.log('✅ Encryption setup successful after sending message.');
             }
-          }, 1000);
+          }, 2000); // Wait 2 seconds to allow recipient to process and generate keys
         }
       } else {
         Alert.alert('Error', 'Failed to send message');
@@ -681,6 +771,9 @@ const MentorMessageBox = ({ route, navigation }) => {
         console.log('✔ File copied to temp:', fileUri);
       }
 
+      const contactId = getContactId();
+      const contactType = getContactType();
+      
       const res = await RNBlobUtil.fetch(
         'POST',
         `${API_URL}/api/messages/send-attachment`,
@@ -692,10 +785,10 @@ const MentorMessageBox = ({ route, navigation }) => {
             type: file.type || `application/${fileType}`,
             data: RNBlobUtil.wrap(fileUri.replace('file://', ''))
           },
-          { name: 'sender_id', data: String(contact.sender_id) },
-          { name: 'receiver_id', data: String(contact.receiver_id) },
+          { name: 'sender_id', data: String(mentorData?.id || contact.sender_id) },
+          { name: 'receiver_id', data: String(contactId) },
           { name: 'sender_type', data: 'mentor' },
-          { name: 'receiver_type', data: String(contact.receiver_type) }
+          { name: 'receiver_type', data: String(contactType) }
         ]
       );
 
@@ -710,9 +803,10 @@ const MentorMessageBox = ({ route, navigation }) => {
         //   return [...prev, data.message];
         // });
         const newMsg = data.message;
+        const contactId = getContactId();
 
         socketRef.current.emit('sendMessage', {
-          to: contact.receiver_id,
+          to: contactId,
           message: newMsg
         });
 
@@ -1101,10 +1195,25 @@ const MentorMessageBox = ({ route, navigation }) => {
         )}
 
         {/* Encryption Status Indicator */}
-        {!sharedSecretRef.current && (
-          <View style={{ backgroundColor: '#fff3cd', padding: 8, borderTopWidth: 1, borderTopColor: '#ffeaa7' }}>
-            <Text style={{ color: '#856404', fontSize: 12, textAlign: 'center' }}>
-              🔓 Messages will be sent without encryption until the recipient opens the app
+        {encryptionStatus !== 'success' && showEncryptionRetry && (
+          <View style={{ backgroundColor: '#fff3cd', padding: 8, borderTopWidth: 1, borderTopColor: '#ffeaa7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ color: '#856404', fontSize: 12, flex: 1 }}>
+              🔓 Messages not encrypted - recipient needs to open app first
+            </Text>
+            <TouchableOpacity 
+              onPress={retryEncryption}
+              style={{ backgroundColor: '#856404', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 4, marginLeft: 8 }}
+            >
+              <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                Retry
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {encryptionStatus === 'success' && (
+          <View style={{ backgroundColor: '#d4edda', padding: 8, borderTopWidth: 1, borderTopColor: '#c3e6cb' }}>
+            <Text style={{ color: '#155724', fontSize: 12, textAlign: 'center' }}>
+              🔐 End-to-end encryption active
             </Text>
           </View>
         )}

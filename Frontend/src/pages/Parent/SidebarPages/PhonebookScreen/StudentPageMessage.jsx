@@ -59,46 +59,142 @@ const StudentPageMessage = ({ route, navigation }) => {
   const [audioDurations, setAudioDurations] = useState({});
   const [audioPositions, setAudioPositions] = useState({});
   const [downloadProgress, setDownloadProgress] = useState(null);
+  const [encryptionRetryCount, setEncryptionRetryCount] = useState(0);
+  const [showEncryptionRetry, setShowEncryptionRetry] = useState(false);
+  const [encryptionStatus, setEncryptionStatus] = useState('pending'); // 'pending', 'failed', 'success'
 
   const audioRecorderPlayer = useRef(null);
   const manualTimerRef = useRef(null);
   const recorderState = useRef({ isRunning: false });
 
   // E2EE Key and Shared Secret Setup
-  const setupEncryption = async (currentUser, otherUser) => {
-    console.log("Setting up encryption for user:", currentUser.student_id, "with contact:", otherUser);
+  const setupEncryption = async (currentUser, otherUser, isRetry = false) => {
+    console.log("🔐 Setting up encryption for user:", currentUser?.student_id, "with contact:", otherUser);
+    console.log("🔐 Current user full object:", JSON.stringify(currentUser, null, 2));
+    
+    // Validate inputs
+    if (!currentUser || !currentUser.student_id) {
+      console.error("❌ Invalid current user:", currentUser);
+      console.error("❌ Student ID missing or undefined");
+      Alert.alert('Setup Error', 'Invalid user data for encryption setup. Student ID is missing.');
+      return false;
+    }
+    
+    if (!otherUser || !otherUser.mentor_id) {
+      console.error("❌ Invalid contact:", otherUser);
+      Alert.alert('Setup Error', 'Invalid contact data for encryption setup.');
+      return false;
+    }
+    
+    console.log("✅ Validation passed - Student ID:", currentUser.student_id, "Mentor ID:", otherUser.mentor_id);
     
     try {
       let myPrivateKey = await getPrivateKey();
+      console.log("🔐 Retrieved private key result:", myPrivateKey ? "Found" : "Not found");
+      
       if (!myPrivateKey) {
-        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
-        myPrivateKey = privateKeyHex;
-        await fetch(`${API_URL}/api/messages/keys/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        console.log("🔑 No private key found, generating new keys...");
+        try {
+          const keyResult = await generateAndStoreKeys();
+          console.log("🔑 Key generation result:", keyResult);
+          
+          if (!keyResult || !keyResult.privateKeyHex || !keyResult.publicKeyHex) {
+            console.error("❌ Key generation failed - invalid result:", keyResult);
+            Alert.alert('Key Generation Error', 'Failed to generate encryption keys locally.');
+            return false;
+          }
+          
+          myPrivateKey = keyResult.privateKeyHex;
+          const publicKeyHex = keyResult.publicKeyHex;
+          
+          console.log("📤 Uploading student public key to server...");
+          console.log("📤 Key upload payload:", {
             user_id: currentUser.student_id,
             user_type: 'student',
-            public_key: publicKeyHex,
-          }),
-        });
+            public_key: publicKeyHex.substring(0, 20) + "..." // Log first 20 chars only
+          });
+          
+          const uploadResponse = await fetch(`${API_URL}/api/messages/keys/upload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: currentUser.student_id,
+              user_type: 'student',
+              public_key: publicKeyHex,
+            }),
+          });
+          
+          console.log("📤 Upload response status:", uploadResponse.status);
+          const uploadResult = await uploadResponse.json();
+          console.log("📤 Key upload response:", uploadResult);
+          
+          if (!uploadResponse.ok || !uploadResult.success) {
+            console.error("❌ Failed to upload student key:", uploadResult);
+            Alert.alert('Key Upload Error', 'Failed to upload encryption key to server. Please check your connection.');
+            return false;
+          }
+          console.log("✅ Student key uploaded successfully");
+        } catch (keyGenError) {
+          console.error("❌ Key generation/upload error:", keyGenError);
+          Alert.alert('Encryption Setup Error', 'Failed to generate or upload encryption keys.');
+          return false;
+        }
+      } else {
+        console.log("🔑 Using existing private key");
       }
 
+      console.log("🔍 Fetching mentor key for ID:", otherUser.mentor_id);
       const res = await fetch(`${API_URL}/api/keys/${'mentor'}/${otherUser.mentor_id}`);
+      console.log("🔍 Mentor key fetch response status:", res.status);
+      
       if (!res.ok) {
-        Alert.alert('Encryption Error', 'Could not get recipient\'s key. They may need to open the app once to generate it.');
+        if (res.status === 404) {
+          console.warn('❌ Mentor key not found. They will need to open the app to generate encryption keys.');
+          if (!isRetry) {
+            setShowEncryptionRetry(true);
+            setEncryptionStatus('failed');
+          }
+          return false;
+        }
+        console.error("❌ Network error fetching mentor key:", res.status);
+        Alert.alert('Encryption Error', 'Could not get recipient\'s key. Network error occurred.');
         return false;
       }
+      
       const theirKeyData = await res.json();
+      console.log("🔍 Mentor key data received:", theirKeyData);
+      
+      if (!theirKeyData.success || !theirKeyData.public_key) {
+        console.warn('❌ Invalid key data received from server.');
+        return false;
+      }
       const theirPublicKey = theirKeyData.public_key;
 
       const aesKey = getSharedSecretAESKey(myPrivateKey, theirPublicKey);
       sharedSecretRef.current = aesKey;
+      setShowEncryptionRetry(false);
+      setEncryptionStatus('success');
+      console.log('✅ Encryption successfully established!');
       return true;
     } catch (error) {
-      console.error('Encryption setup failed:', error);
-      Alert.alert('Error', 'Could not establish a secure connection.');
+      console.error('❌ Encryption setup error:', error);
+      console.error('❌ Error details:', error.message, error.stack);
+      // Only show alert for actual network/server errors, not missing keys
+      if (!error.message?.includes('404')) {
+        Alert.alert('Error', 'Could not establish a secure connection. Please check your internet connection.');
+      }
       return false;
+    }
+  };
+
+  const retryEncryption = async () => {
+    if (!studentData.current) return;
+    console.log('🔄 Retrying encryption setup...');
+    setEncryptionRetryCount(prev => prev + 1);
+    const success = await setupEncryption(studentData.current, contact, true);
+    if (success) {
+      // Refresh messages to decrypt any previously encrypted ones
+      await fetchMessages();
     }
   };
 
@@ -137,22 +233,87 @@ const StudentPageMessage = ({ route, navigation }) => {
   useEffect(() => {
     const initialize = async () => {
       try {
+        console.log("🚀 Initializing student message page...");
         const storedData = await AsyncStorage.getItem('studentData');
+        console.log("📱 Retrieved stored data:", storedData ? "Found" : "Not found");
+        console.log("📱 Raw stored data:", storedData);
+        
         if (!storedData) throw new Error('Student data not found');
-        const currentUser = JSON.parse(storedData)[0];
+        const parsedData = JSON.parse(storedData);
+        console.log("📱 Parsed data structure:", JSON.stringify(parsedData, null, 2));
+        
+        const currentUser = parsedData[0];
+        console.log("👤 Current user loaded:", JSON.stringify(currentUser, null, 2));
+        console.log("👤 Student ID specifically:", currentUser?.student_id);
+        console.log("👤 All user properties:", Object.keys(currentUser || {}));
+        
+        if (!currentUser) {
+          throw new Error('No user data in stored array');
+        }
+        
+        if (!currentUser.student_id && !currentUser.id) {
+          console.error("❌ No student_id or id field found in user data");
+          throw new Error('Student ID missing from user data');
+        }
+        
+        // Use id field if student_id is not available
+        if (!currentUser.student_id && currentUser.id) {
+          console.log("🔧 Using 'id' field as student_id:", currentUser.id);
+          currentUser.student_id = currentUser.id;
+        }
+        
         studentData.current = currentUser;
 
-        const encryptionReady = await setupEncryption(currentUser, contact);
-        if (!encryptionReady) {
+        console.log("🔐 Starting encryption setup...");
+        
+        // Final validation before encryption setup
+        if (!currentUser.student_id) {
+          console.error("❌ Cannot proceed: student_id is still undefined after parsing");
+          Alert.alert('Error', 'Student ID is missing. Please restart the app and try again.');
           setIsLoading(false);
           return;
         }
-
+        
+        const encryptionReady = await setupEncryption(currentUser, contact);
+        console.log("🔐 Encryption setup result:", encryptionReady);
+        
+        // Force key generation test
+        if (!encryptionReady) {
+          console.log("🔧 Testing key generation independently...");
+          try {
+            const testKeys = await generateAndStoreKeys();
+            console.log("🔧 Test key generation successful:", testKeys ? "Yes" : "No");
+            
+            if (testKeys && testKeys.publicKeyHex) {
+              console.log("🔧 Test upload attempt...");
+              const testUpload = await fetch(`${API_URL}/api/messages/keys/upload`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  user_id: currentUser.student_id,
+                  user_type: 'student',
+                  public_key: testKeys.publicKeyHex,
+                }),
+              });
+              const testResult = await testUpload.json();
+              console.log("🔧 Test upload result:", testResult);
+            }
+          } catch (testError) {
+            console.error("🔧 Test key generation failed:", testError);
+          }
+        }
+        
+        // Continue regardless of encryption status
+        
         socketRef.current = io(API_URL, { transports: ['websocket'] });
-        socketRef.current.emit('join', { userId: currentUser.student_id });
+        if (currentUser.student_id) {
+          socketRef.current.emit('join', { userId: currentUser.student_id });
+          console.log("🔌 Socket joined with user ID:", currentUser.student_id);
+        } else {
+          console.error("❌ Cannot join socket - student_id is undefined");
+        }
 
         await fetchMessages();
-
 
         socketRef.current.on('receiveMessage', async (data) => {
           const msg = data.message;
@@ -162,8 +323,13 @@ const StudentPageMessage = ({ route, navigation }) => {
 
           if (!isCurrentConversation) return;
 
-          const [decryptedMsg] = await decryptMessages([msg]);
+          // Try encryption retry if message received but no shared secret
+          if (!sharedSecretRef.current && encryptionRetryCount < 10) {
+            console.log('🔄 Message received - attempting encryption retry...');
+            await retryEncryption();
+          }
 
+          const [decryptedMsg] = await decryptMessages([msg]);
           setMessages(prev => [...prev, decryptedMsg]);
 
           if (msg.receiver_id === currentUser.student_id) {
@@ -179,6 +345,7 @@ const StudentPageMessage = ({ route, navigation }) => {
           setMessages(prev => prev.map(m => data.messageIds.includes(m.message_id) ? { ...m, is_read: 1 } : m));
         });
 
+        setIsLoading(false);
       } catch (error) {
         console.error('Initialization failed:', error);
         setIsLoading(false);
@@ -187,16 +354,25 @@ const StudentPageMessage = ({ route, navigation }) => {
 
     initialize();
 
+    // Set up periodic encryption retry
+    const retryInterval = setInterval(() => {
+      if (sharedSecretRef.current === null && encryptionRetryCount < 10) {
+        console.log('🔄 Periodic encryption retry attempt...');
+        retryEncryption();
+      }
+    }, 30000); // Retry every 30 seconds
+
     return () => {
+      clearInterval(retryInterval);
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
       audioRecorderPlayer.current.stopPlayer().catch(() => { });
     };
-  }, [contact]);
+  }, [contact, encryptionRetryCount]);
 
   const fetchMessages = async () => {
-    if (!studentData.current || !sharedSecretRef.current) return;
+    if (!studentData.current) return;
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/messages/get`, {
@@ -219,13 +395,13 @@ const StudentPageMessage = ({ route, navigation }) => {
           .filter(m => m.is_read === 0 && m.receiver_id === studentData.current.student_id)
           .map(m => m.message_id);
 
-        if (unreadIds.length > 0) {
+        if (unreadIds.length > 0 && socketRef.current) {
           socketRef.current.emit('markAsRead', {
             messageIds: unreadIds,
             receiverId: studentData.current?.student_id, 
             receiverType: 'student',
-            senderId: contact.sender_id, 
-            senderType: contact.sender_type
+            senderId: contact.mentor_id, 
+            senderType: 'mentor'
           });
         }
       }
@@ -296,9 +472,21 @@ const StudentPageMessage = ({ route, navigation }) => {
   };
 
   const sendMessage = async () => {
-    if (message.trim() === '' || !sharedSecretRef.current) return;
+    if (message.trim() === '') return;
+    
+    // Try encryption retry if no shared secret
+    if (!sharedSecretRef.current && encryptionRetryCount < 10) {
+      console.log('🔄 Attempting encryption setup before sending message...');
+      await retryEncryption();
+    }
 
-    const encryptedMessage = encryptText(message, sharedSecretRef.current);
+    const messageToSend = sharedSecretRef.current 
+      ? encryptText(message, sharedSecretRef.current)
+      : message;
+
+    if (!sharedSecretRef.current) {
+      console.warn('Encryption not available. Messages will be sent without encryption until the recipient opens the app.');
+    }
 
     try {
       const response = await fetch(`${API_URL}/api/messages/send`, {
@@ -309,7 +497,7 @@ const StudentPageMessage = ({ route, navigation }) => {
           receiver_id: contact.mentor_id,
           sender_type: 'student',
           receiver_type: 'mentor',
-          message_text: encryptedMessage,
+          message_text: messageToSend,
         }),
       });
 
@@ -1040,6 +1228,29 @@ const StudentPageMessage = ({ route, navigation }) => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
             {contact.mentor_name} ({contact.subject_name})
+          </Text>
+        </View>
+      )}
+
+      {/* Encryption Status Indicator */}
+      {encryptionStatus === 'failed' && (
+        <View style={styles.encryptionStatus}>
+          <Text style={styles.encryptionText}>
+            🔓 Encryption unavailable - {contact.mentor_name} needs to open their app
+          </Text>
+          {showEncryptionRetry && (
+            <TouchableOpacity onPress={retryEncryption} style={styles.retryButton}>
+              <Text style={styles.retryButtonText}>
+                Retry ({encryptionRetryCount}/10)
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+      {encryptionStatus === 'success' && (
+        <View style={[styles.encryptionStatus, { backgroundColor: '#e7f5e7' }]}>
+          <Text style={[styles.encryptionText, { color: '#2d5a2d' }]}>
+            🔒 Messages are encrypted
           </Text>
         </View>
       )}

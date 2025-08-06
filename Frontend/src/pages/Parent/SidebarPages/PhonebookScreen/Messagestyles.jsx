@@ -337,6 +337,34 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     margin: 4,
   },
+
+  // Encryption status styles
+  encryptionStatus: {
+    backgroundColor: '#fff3cd',
+    padding: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f0ad4e',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  encryptionText: {
+    color: '#856404',
+    fontSize: 12,
+    flex: 1,
+  },
+  retryButton: {
+    backgroundColor: '#f0ad4e',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
 });
 
 
