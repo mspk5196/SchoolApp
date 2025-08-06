@@ -6,7 +6,7 @@ import { Switch } from 'react-native-switch';
 import { API_URL } from '../../../utils/env.js';
 import { backupPrivateKey } from '../../../utils/backupPrivateKey';
 import { restorePrivateKey } from '../../../utils/restorePrivateKey';
-import { generateAndStoreKeys, getPrivateKey } from '../../../utils/keyManager';
+import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from '../../../utils/keyManager';
 
 const Redirect = ({ route }) => {
   const navigation = useNavigation();
@@ -58,7 +58,7 @@ const Redirect = ({ route }) => {
   }, []);
 
   const manageKeys = async (userId, userType) => {
-    let privateKeyHex = await getPrivateKey();
+    let privateKeyHex = await getPrivateKey(userId, userType);
     if (privateKeyHex) {
       console.log('Private key found locally.');
       return; // Key exists, we are done
@@ -77,7 +77,7 @@ const Redirect = ({ route }) => {
     }
 
     console.log('Generating new key pair as no key was found locally or on the server...');
-    const { privateKeyHex: newPrivateKey, publicKeyHex } = await generateAndStoreKeys();
+    const { privateKeyHex: newPrivateKey, publicKeyHex } = await generateAndStoreKeys(userId, userType);
 
     console.log('Backing up new private key to server...');
     await backupPrivateKey(newPrivateKey, userId, userType, password, publicKeyHex);
@@ -94,7 +94,9 @@ const Redirect = ({ route }) => {
 
       const data = await response.json();
       if (data.success && data.student) {
-        await manageKeys(data.student.id, 'student');
+        console.log('Student data fetched successfully:', data.student[0].student_id);
+        
+        await manageKeys(data.student[0].student_id, 'student');
         await AsyncStorage.setItem('studentData', JSON.stringify(data.student));
         navigation.navigate('ParentRoute', { studentData: data.student });
       } else {

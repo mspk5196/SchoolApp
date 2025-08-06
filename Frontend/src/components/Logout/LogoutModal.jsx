@@ -2,18 +2,19 @@ import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import React, { Component, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import { clearAllEncryptionKeys } from '../../utils/keyManager';
 
 const LogoutModal = ({ visible, onClose, navigation }) => {
-    const clearAllExcept = async (exceptKey) => {
-        const keys = await AsyncStorage.getAllKeys();
-        const keysToRemove = keys.filter(key => key !== exceptKey);
-        await AsyncStorage.multiRemove(keysToRemove);
-    };
     const handleLogout = async () => {
         try {
-            // await clearAllExcept('ecdhPrivateKey');
-            await AsyncStorage.clear(); // Clear all data
-            // Alert.alert('Logged Out', 'You have successfully logged out.');
+            // Clear ALL AsyncStorage data for security
+            await AsyncStorage.clear();
+            
+            // Also explicitly clear encryption keys (redundant but safe)
+            await clearAllEncryptionKeys();
+            
+            console.log('🚪 Complete logout: All data cleared');
+            
             onClose && onClose();
             navigation.reset({
                 index: 0,

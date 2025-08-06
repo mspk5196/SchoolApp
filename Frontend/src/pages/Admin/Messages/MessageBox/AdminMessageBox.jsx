@@ -35,7 +35,7 @@ import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { generateAndStoreKeys, getPrivateKey } from '../../../../utils/keyManager';
+import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from '../../../../utils/keyManager';
 import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
 
 const AdminMessageBox = ({ route, navigation }) => {
@@ -50,6 +50,39 @@ const AdminMessageBox = ({ route, navigation }) => {
   const flatListRef = useRef(null);
   const socketRef = useRef(null);
   const sharedSecretRef = useRef(null);
+
+  // Custom function to add messages with deduplication
+  const addMessages = (newMessages) => {
+    setMessages(prev => {
+      const combined = [...prev, ...(Array.isArray(newMessages) ? newMessages : [newMessages])];
+      // Remove duplicates based on message_id
+      const unique = combined.filter((message, index, self) => 
+        index === self.findIndex(m => m.message_id === message.message_id)
+      );
+      
+      if (combined.length !== unique.length) {
+        console.log('🔄 Admin - Prevented', combined.length - unique.length, 'duplicate messages');
+      }
+      
+      const sorted = unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      console.log('📊 Admin - Total messages after update:', sorted.length);
+      return sorted;
+    });
+  };
+
+  // Debug function to check for duplicates
+  const checkForDuplicates = (messageArray) => {
+    const ids = messageArray.map(m => m.message_id);
+    const uniqueIds = [...new Set(ids)];
+    if (ids.length !== uniqueIds.length) {
+      console.error('🚨 ADMIN DUPLICATE MESSAGE IDS DETECTED!', {
+        total: ids.length,
+        unique: uniqueIds.length,
+        duplicates: ids.length - uniqueIds.length
+      });
+    }
+    return ids.length === uniqueIds.length;
+  };
 
   const [playingAudioId, setPlayingAudioId] = useState(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
@@ -91,6 +124,12 @@ const AdminMessageBox = ({ route, navigation }) => {
     };
   }, []);
 
+  // Monitor messages for duplicates
+  useEffect(() => {
+    if (messages.length > 0) {
+      checkForDuplicates(messages);
+    }
+  }, [messages]);
 
   // Initialize audio recorder
   useEffect(() => {
@@ -114,9 +153,9 @@ const AdminMessageBox = ({ route, navigation }) => {
 
   const setupEncryption = async (currentUser, otherUser) => {
     try {
-      let myPrivateKey = await getPrivateKey();
+      let myPrivateKey = await getPrivateKey(currentUser.id, 'admin');
       if (!myPrivateKey) {
-        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
+        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys(currentUser.id, 'admin');
         myPrivateKey = privateKeyHex;
         await fetch(`${API_URL}/api/messages/keys/upload`, {
           method: 'POST',
@@ -186,8 +225,15 @@ const AdminMessageBox = ({ route, navigation }) => {
 
           if (!isCurrentConversation) return;
 
+          // Skip if this is our own message (prevent duplicate on sender side)
+          if (msg.sender_id === adminData.id && msg.sender_type === 'admin') {
+            console.log('🔄 Admin - Skipping own message to prevent duplicate');
+            return;
+          }
+
           const [decryptedMsg] = await decryptMessages([msg]);
-          setMessages(prev => [...prev, decryptedMsg]);
+          console.log('✅ Admin - Adding new received message:', decryptedMsg.message_id);
+          addMessages(decryptedMsg);
 
           if (msg.receiver_id === adminData.id) {
             socketRef.current.emit('markAsRead', {
@@ -230,7 +276,10 @@ const AdminMessageBox = ({ route, navigation }) => {
       const data = await response.json();
       if (data.success) {
         const decrypted = await decryptMessages(data.messages);
-        setMessages(decrypted);
+        console.log('📥 Admin - Fetched messages count:', decrypted.length);
+        
+        // Use setMessages directly for initial fetch (replace all messages) and sort them
+        setMessages(decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
 
         const unreadIds = data.messages
           .filter(m => m.is_read === 0 && m.receiver_id === adminData.id)
@@ -324,10 +373,20 @@ const AdminMessageBox = ({ route, navigation }) => {
 
       const data = await response.json();
       if (data.success) {
-        // const newMsg = { ...data.message, message_text: message };
-        // setMessages(prev => [...prev, newMsg]);
-        socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
         setMessage('');
+        
+        // Add optimistic update for sent message (with decrypted text for display)
+        const optimisticMsg = { 
+          ...data.message, 
+          message_text: message, // Show decrypted version locally
+          created_at: new Date().toISOString(),
+          is_read: 0
+        };
+        
+        console.log('✅ Admin - Adding optimistic sent message:', optimisticMsg.message_id);
+        addMessages(optimisticMsg);
+        
+        socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
       } else {
         Alert.alert('Error', 'Failed to send message');
       }
@@ -646,12 +705,11 @@ const AdminMessageBox = ({ route, navigation }) => {
 
       const data = JSON.parse(res.data);
       if (data.success) {
-        // ✅ Let the socket handle the UI update
         setMessage('');
-        // setMessages(prev => {
-        //   if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
-        //   return [...prev, data.message];
-        // });
+        
+        console.log('✅ Admin - Adding attachment message:', data.message.message_id);
+        addMessages(data.message);
+        
         socketRef.current.emit('sendMessage', { to: contact.receiver_id, message: data.message });
       } else {
         Alert.alert('Error', 'Failed to send attachment');
@@ -696,7 +754,6 @@ const AdminMessageBox = ({ route, navigation }) => {
 
     return (
       <TouchableOpacity
-        key={item.message_id}
         onLongPress={() => handleLongPress(item.message_id)}
         onPress={() => {
           if (isSelectMode) {
@@ -1020,12 +1077,19 @@ const AdminMessageBox = ({ route, navigation }) => {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={item => item.message_id.toString()}
+            keyExtractor={(item, index) => {
+              // Double-check for unique keys
+              const key = `${item.message_id}-${index}`;
+              return key;
+            }}
             contentContainerStyle={styles.messagesList}
-            onContentSizeChange={() =>
-              flatListRef.current.scrollToEnd({ animated: true })
-            }
-            extraData={{ audioPositions, audioDurations }}  // ✅ This line triggers re-render on audio timer updates
+            onContentSizeChange={() => {
+              // Check for duplicates before scrolling
+              checkForDuplicates(messages);
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }}
+            extraData={{ audioPositions, audioDurations, selectedMessages }}
+            removeClippedSubviews={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No messages yet</Text>

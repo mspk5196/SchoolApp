@@ -30,31 +30,9 @@ exports.login = (req, res) => {
   });
 };
 
-exports.uploadPrivateKey = (req, res) => {
-    const { user_id, user_type, encrypted_private_key } = req.body;
-    if (!user_id || !user_type || !encrypted_private_key) {
-        return res.status(400).json({ success: false, message: 'Missing fields' });
-    }
-    const sql = `
-        INSERT INTO user_private_keys (user_id, user_type, encrypted_private_key)
-        VALUES (?, ?, ?)
-        ON DUPLICATE KEY UPDATE encrypted_private_key = VALUES(encrypted_private_key)
-    `;
-    db.query(sql, [user_id, user_type, encrypted_private_key], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'DB error' });
-        res.json({ success: true });
-    });
-};
+// SECURITY NOTE: Private key functions removed for security.
+// Private keys should NEVER be stored on the server - they should only exist 
+// locally on user devices to maintain end-to-end encryption.
 
-exports.getPrivateKey = async (req, res) => {
-    const { user_id, user_type } = req.query;
-    if (!user_id || !user_type) return res.status(400).json({ success: false });
-    db.query(
-        'SELECT encrypted_private_key FROM user_private_keys WHERE user_id=? AND user_type=?',
-        [user_id, user_type],
-        (err, results) => {
-            if (err || results.length === 0) return res.status(404).json({ success: false });
-            res.json({ encrypted_private_key: results[0].encrypted_private_key });
-        }
-    );
-};
+// Removed: uploadPrivateKey and getPrivateKey functions 
+// These were security vulnerabilities that could compromise E2EE

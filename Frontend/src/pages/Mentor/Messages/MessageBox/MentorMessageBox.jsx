@@ -35,7 +35,7 @@ import FileViewer from 'react-native-file-viewer';
 import mime from 'react-native-mime-types';
 import io from 'socket.io-client';
 
-import { generateAndStoreKeys, getPrivateKey } from '../../../../utils/keyManager';
+import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from '../../../../utils/keyManager';
 import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
 
 const MentorMessageBox = ({ route, navigation }) => {
@@ -55,6 +55,39 @@ const MentorMessageBox = ({ route, navigation }) => {
   const flatListRef = useRef(null);
   const socketRef = useRef(null);
   const sharedSecretRef = useRef(null);
+
+  // Custom function to add messages with deduplication
+  const addMessages = (newMessages) => {
+    setMessages(prev => {
+      const combined = [...prev, ...(Array.isArray(newMessages) ? newMessages : [newMessages])];
+      // Remove duplicates based on message_id
+      const unique = combined.filter((message, index, self) => 
+        index === self.findIndex(m => m.message_id === message.message_id)
+      );
+      
+      if (combined.length !== unique.length) {
+        console.log('🔄 Mentor - Prevented', combined.length - unique.length, 'duplicate messages');
+      }
+      
+      const sorted = unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      console.log('📊 Mentor - Total messages after update:', sorted.length);
+      return sorted;
+    });
+  };
+
+  // Debug function to check for duplicates
+  const checkForDuplicates = (messageArray) => {
+    const ids = messageArray.map(m => m.message_id);
+    const uniqueIds = [...new Set(ids)];
+    if (ids.length !== uniqueIds.length) {
+      console.error('🚨 MENTOR DUPLICATE MESSAGE IDS DETECTED!', {
+        total: ids.length,
+        unique: uniqueIds.length,
+        duplicates: ids.length - uniqueIds.length
+      });
+    }
+    return ids.length === uniqueIds.length;
+  };
 
   const [playingAudioId, setPlayingAudioId] = useState(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
@@ -107,10 +140,10 @@ const MentorMessageBox = ({ route, navigation }) => {
     console.log("🔐 Mentor setting up encryption with contact:", otherUser);
     
     try {
-      let myPrivateKey = await getPrivateKey();
+      let myPrivateKey = await getPrivateKey(currentUser.id, 'mentor');
       if (!myPrivateKey) {
         console.log("🔑 Generating new mentor keys...");
-        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
+        const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys(currentUser.id, 'mentor');
         myPrivateKey = privateKeyHex;
         await fetch(`${API_URL}/api/messages/keys/upload`, {
           method: 'POST',
@@ -263,6 +296,12 @@ const MentorMessageBox = ({ route, navigation }) => {
 
           if (!isCurrentConversation) return;
 
+          // Skip if this is our own message (prevent duplicate on sender side)
+          if (msg.sender_id === mentorData.id && msg.sender_type === 'mentor') {
+            console.log('🔄 Mentor - Skipping own message to prevent duplicate');
+            return;
+          }
+
           // If encryption is not available, try to set it up again
           if (!sharedSecretRef.current && encryptionRetryCount < 3) {
             console.log('📨 New message received, attempting encryption setup...');
@@ -273,7 +312,8 @@ const MentorMessageBox = ({ route, navigation }) => {
           }
 
           const [decryptedMsg] = await decryptMessages([msg]);
-          setMessages(prev => [...prev, decryptedMsg]);
+          console.log('✅ Mentor - Adding new received message:', decryptedMsg.message_id);
+          addMessages(decryptedMsg);
 
           if (msg.receiver_id === mentorData.id) {
             socketRef.current.emit('markAsRead', {
@@ -324,7 +364,11 @@ const MentorMessageBox = ({ route, navigation }) => {
             ...msg, 
             message_text: msg.message_text ? '[Encrypted Message - Recipient key not available]' : null 
           }));
-        setMessages(decrypted);
+        
+        console.log('📥 Mentor - Fetched messages count:', decrypted.length);
+        
+        // Use setMessages directly for initial fetch (replace all messages) and sort them
+        setMessages(decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
 
         const unreadIds = data.messages
           .filter(m => m.is_read === 0 && m.receiver_id === mentorData.id)
@@ -353,6 +397,12 @@ const MentorMessageBox = ({ route, navigation }) => {
     }
   }, [currentUser, contact]);
 
+  // Monitor messages for duplicates
+  useEffect(() => {
+    if (messages.length > 0) {
+      checkForDuplicates(messages);
+    }
+  }, [messages]);
 
   // Initialize audio recorder
   useEffect(() => {
@@ -451,9 +501,21 @@ const MentorMessageBox = ({ route, navigation }) => {
 
       const data = await response.json();
       if (data.success) {
+        setMessage('');
+        
+        // Add optimistic update for sent message (with decrypted text for display)
+        const optimisticMsg = { 
+          ...data.message, 
+          message_text: message, // Show decrypted version locally
+          created_at: new Date().toISOString(),
+          is_read: 0
+        };
+        
+        console.log('✅ Mentor - Adding optimistic sent message:', optimisticMsg.message_id);
+        addMessages(optimisticMsg);
+        
         const contactId = getContactId();
         socketRef.current.emit('sendMessage', { to: contactId, message: data.message });
-        setMessage('');
 
         // If encryption wasn't available, try to set it up again for future messages
         if (!sharedSecretRef.current && encryptionRetryCount < 3) {
@@ -798,10 +860,10 @@ const MentorMessageBox = ({ route, navigation }) => {
         Alert.alert('Error', 'Failed to send attachment');
       } else if (data.success) {
         setMessage('');
-        // setMessages(prev => {
-        //   if (prev.some(msg => msg.message_id === data.message.message_id)) return prev;
-        //   return [...prev, data.message];
-        // });
+        
+        console.log('✅ Mentor - Adding attachment message:', data.message.message_id);
+        addMessages(data.message);
+        
         const newMsg = data.message;
         const contactId = getContactId();
 
@@ -860,7 +922,6 @@ const MentorMessageBox = ({ route, navigation }) => {
 
     return (
       <TouchableOpacity
-        key={item.message_id}
         onLongPress={() => handleLongPress(item.message_id)}
         onPress={() => {
           if (isSelectMode) {
@@ -1180,12 +1241,19 @@ const MentorMessageBox = ({ route, navigation }) => {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={item => item.message_id.toString()}
+            keyExtractor={(item, index) => {
+              // Double-check for unique keys
+              const key = `${item.message_id}-${index}`;
+              return key;
+            }}
             contentContainerStyle={styles.messagesList}
-            onContentSizeChange={() =>
-              flatListRef.current.scrollToEnd({ animated: true })
-            }
-            extraData={{ audioPositions, audioDurations }}  // ✅ This line triggers re-render on audio timer updates
+            onContentSizeChange={() => {
+              // Check for duplicates before scrolling
+              checkForDuplicates(messages);
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }}
+            extraData={{ audioPositions, audioDurations, selectedMessages }}
+            removeClippedSubviews={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No messages yet</Text>

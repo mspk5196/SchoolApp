@@ -6,7 +6,7 @@ import SearchIcon from "../../../../assets/MentorPage/search.svg";
 import { API_URL } from '../../../../utils/env.js';
 import { useFocusEffect } from "@react-navigation/native";
 import io from 'socket.io-client';
-import { generateAndStoreKeys, getPrivateKey } from "../../../../utils/keyManager";
+import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from "../../../../utils/keyManager";
 import { decryptText, getSharedSecretAESKey } from "../../../../utils/messageEncryption";
 
 const Profile = require('../../../../assets/MentorPage/profile.png');

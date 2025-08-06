@@ -36,7 +36,7 @@ import { CheckBox } from 'react-native-elements';
 import mime from 'react-native-mime-types';
 
 // E2EE Imports
-import { generateAndStoreKeys, getPrivateKey, getPublicKey } from '../../../../utils/keyManager';
+import { generateAndStoreKeys, getPrivateKey, getPublicKey, deletePrivateKey, clearAllEncryptionKeys } from '../../../../utils/keyManager';
 import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
 
 const StudentPageMessage = ({ route, navigation }) => {
@@ -50,6 +50,39 @@ const StudentPageMessage = ({ route, navigation }) => {
   const studentData = useRef(null);
   const socketRef = useRef(null);
   const sharedSecretRef = useRef(null); // To cache the AES key
+
+  // Custom function to add messages with deduplication
+  const addMessages = (newMessages) => {
+    setMessages(prev => {
+      const combined = [...prev, ...(Array.isArray(newMessages) ? newMessages : [newMessages])];
+      // Remove duplicates based on message_id
+      const unique = combined.filter((message, index, self) => 
+        index === self.findIndex(m => m.message_id === message.message_id)
+      );
+      
+      if (combined.length !== unique.length) {
+        console.log('🔄 Prevented', combined.length - unique.length, 'duplicate messages');
+      }
+      
+      const sorted = unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      console.log('📊 Total messages after update:', sorted.length);
+      return sorted;
+    });
+  };
+
+  // Debug function to check for duplicates
+  const checkForDuplicates = (messageArray) => {
+    const ids = messageArray.map(m => m.message_id);
+    const uniqueIds = [...new Set(ids)];
+    if (ids.length !== uniqueIds.length) {
+      console.error('🚨 DUPLICATE MESSAGE IDS DETECTED!', {
+        total: ids.length,
+        unique: uniqueIds.length,
+        duplicates: ids.length - uniqueIds.length
+      });
+    }
+    return ids.length === uniqueIds.length;
+  };
 
   const [playingAudioId, setPlayingAudioId] = useState(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
@@ -98,13 +131,13 @@ const StudentPageMessage = ({ route, navigation }) => {
     console.log("✅ Validation passed - Student ID:", currentUser.student_id, "Mentor ID:", otherUser.mentor_id);
     
     try {
-      let myPrivateKey = await getPrivateKey();
+      let myPrivateKey = await getPrivateKey(currentUser.student_id, 'student');
       console.log("🔐 Retrieved private key result:", myPrivateKey ? "Found" : "Not found");
       
       if (!myPrivateKey) {
         console.log("🔑 No private key found, generating new keys...");
         try {
-          const keyResult = await generateAndStoreKeys();
+          const keyResult = await generateAndStoreKeys(currentUser.student_id, 'student');
           console.log("🔑 Key generation result:", keyResult);
           
           if (!keyResult || !keyResult.privateKeyHex || !keyResult.publicKeyHex) {
@@ -164,7 +197,7 @@ const StudentPageMessage = ({ route, navigation }) => {
             console.log("⚠️ Server doesn't have our public key! Re-uploading...");
             
             // Get our public key from the private key and re-upload
-            const ourPublicKey = await getPublicKey();
+            const ourPublicKey = await getPublicKey(currentUser.student_id, 'student');
             
             if (ourPublicKey) {
               console.log("📤 Re-uploading student public key to server...");
@@ -260,14 +293,177 @@ const StudentPageMessage = ({ route, navigation }) => {
     }
   };
 
+  // Debug function to test key consistency
+  const testKeyConsistency = async () => {
+    try {
+      console.log('🧪 Testing key consistency...');
+      const currentPrivateKey = await getPrivateKey(studentData.current.student_id, 'student');
+      console.log('🧪 Current private key:', currentPrivateKey ? 'Found' : 'Missing');
+      
+      if (currentPrivateKey && sharedSecretRef.current) {
+        // Test encryption/decryption with current keys
+        const testMessage = 'Test message 123';
+        console.log('🧪 Testing with message:', testMessage);
+        
+        const encrypted = encryptText(testMessage, sharedSecretRef.current);
+        console.log('🧪 Encrypted result:', encrypted.substring(0, 50) + '...');
+        
+        const decrypted = decryptText(encrypted, sharedSecretRef.current);
+        console.log('🧪 Decrypted result:', decrypted);
+        
+        if (decrypted === testMessage) {
+          console.log('✅ Key consistency test PASSED');
+          return true;
+        } else {
+          console.log('❌ Key consistency test FAILED');
+          return false;
+        }
+      }
+    } catch (error) {
+      console.error('🧪 Key consistency test error:', error);
+      return false;
+    }
+  };
+
+  // Function to force key regeneration
+  const forceKeyRegeneration = async () => {
+    try {
+      console.log('🔄 Forcing key regeneration...');
+      
+      // Delete existing keys
+      await deletePrivateKey(studentData.current.student_id, 'student');
+      console.log('🗑️ Deleted existing private key');
+      
+      // Generate new keys
+      const newKeys = await generateAndStoreKeys(studentData.current.student_id, 'student');
+      console.log('🔑 Generated new keys');
+      
+      // Upload new public key
+      const uploadResponse = await fetch(`${API_URL}/api/messages/keys/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: studentData.current.student_id,
+          user_type: 'student',
+          public_key: newKeys.publicKeyHex,
+        }),
+      });
+      
+      const uploadResult = await uploadResponse.json();
+      console.log('📤 New key upload result:', uploadResult);
+      
+      if (uploadResult.success) {
+        // Re-establish encryption
+        const encryptionSuccess = await setupEncryption(studentData.current, contact, true);
+        if (encryptionSuccess) {
+          console.log('✅ Key regeneration successful');
+          await fetchMessages(); // Refresh messages
+          return true;
+        }
+      }
+      
+      console.log('❌ Key regeneration failed');
+      return false;
+    } catch (error) {
+      console.error('🔄 Key regeneration error:', error);
+      return false;
+    }
+  };
+
   const decryptMessages = async (messageList) => {
     if (!sharedSecretRef.current) {
       console.warn("No shared secret available for decryption.");
-      return messageList.map(msg => ({ ...msg, message_text: msg.message_text ? "[Decryption Key Error]" : null }));
+      return messageList.map(msg => ({ 
+        ...msg, 
+        message_text: msg.message_text ? "[Decryption Key Error - Contact support]" : null 
+      }));
     }
+    
     return messageList.map(msg => {
       if (msg.message_text) {
-        return { ...msg, message_text: decryptText(msg.message_text, sharedSecretRef.current) };
+        try {
+          // First, check if the message looks like it's encrypted (JSON format)
+          let isEncrypted = false;
+          let jsonData = null;
+          
+          try {
+            jsonData = JSON.parse(msg.message_text);
+            isEncrypted = jsonData.hasOwnProperty('iv') && jsonData.hasOwnProperty('encrypted');
+          } catch (parseError) {
+            // Not JSON, might be plain text
+            isEncrypted = false;
+          }
+
+          if (!isEncrypted) {
+            // Message appears to be plain text, return as-is
+            console.log('📝 Plain text message detected for ID:', msg.message_id, 'Text:', msg.message_text.substring(0, 30) + '...');
+            return { ...msg, message_text: msg.message_text };
+          }
+
+          // Attempt decryption for encrypted messages
+          console.log('🔐 Attempting to decrypt message ID:', msg.message_id);
+          console.log('🔐 Message text to decrypt:', msg.message_text.substring(0, 100) + '...');
+          console.log('🔐 Shared secret available:', !!sharedSecretRef.current);
+          
+          const decryptedText = decryptText(msg.message_text, sharedSecretRef.current);
+          
+          // Check if decryption actually worked (decryptText returns fallback on failure)
+          if (decryptedText === "[Unable to decrypt message]" || !decryptedText) {
+            console.error('🚨 Decryption returned fallback for message ID:', msg.message_id);
+            
+            // Try one more approach - check if it's base64 encoded text
+            try {
+              const base64Decoded = atob(msg.message_text);
+              console.log('🔍 Trying base64 decode for message ID:', msg.message_id);
+              return { ...msg, message_text: base64Decoded };
+            } catch (base64Error) {
+              console.log('🔍 Base64 decode failed, showing error message for ID:', msg.message_id);
+              return { ...msg, message_text: "[Message could not be decrypted - please ask sender to resend]" };
+            }
+          }
+          
+          // Validate that decrypted text is not empty
+          if (!decryptedText || decryptedText.trim() === '') {
+            console.error('🚨 Decryption returned empty text for message ID:', msg.message_id);
+            return { ...msg, message_text: "[Empty message]" };
+          }
+          
+          console.log('🔓 Successfully decrypted message ID:', msg.message_id, 'Result:', decryptedText.substring(0, 30) + '...');
+          return { ...msg, message_text: decryptedText };
+        } catch (decryptError) {
+          console.error('🚨 Decryption failed for message ID:', msg.message_id, decryptError);
+          console.error('🚨 Error message:', decryptError.message);
+          console.error('🚨 Error stack:', decryptError.stack);
+          
+          // Enhanced logging for malformed UTF-8 errors
+          if (decryptError.message && decryptError.message.includes('Malformed UTF-8')) {
+            console.log('🔍 Malformed UTF-8 detected for message ID:', msg.message_id);
+            console.log('🔍 Raw encrypted data:', msg.message_text);
+            console.log('🔍 This might be a key mismatch or corrupted message');
+            
+            // Try to parse the JSON structure to see if it's valid encryption format
+            try {
+              const encryptedData = JSON.parse(msg.message_text);
+              console.log('🔍 Encrypted data structure:', {
+                hasIv: !!encryptedData.iv,
+                hasEncrypted: !!encryptedData.encrypted,
+                ivLength: encryptedData.iv ? encryptedData.iv.length : 0,
+                encryptedLength: encryptedData.encrypted ? encryptedData.encrypted.length : 0
+              });
+              
+              // Return a more informative error message
+              return { 
+                ...msg, 
+                message_text: "[🔐 Encrypted message - key mismatch detected. Try refreshing the conversation or contact support.]" 
+              };
+            } catch (parseErr) {
+              console.log('🔍 Could not parse encrypted data structure');
+              return { ...msg, message_text: "[🔐 Corrupted encrypted message]" };
+            }
+          }
+          
+          return { ...msg, message_text: "[Message could not be decrypted - encryption error]" };
+        }
       }
       return msg;
     });
@@ -293,9 +489,12 @@ const StudentPageMessage = ({ route, navigation }) => {
 
 
   useEffect(() => {
+    console.log("🔄 useEffect triggered - currentUser:", studentData);
+    
     const initialize = async () => {
       try {
         console.log("🚀 Initializing student message page...");
+        
         const storedData = await AsyncStorage.getItem('studentData');
         console.log("📱 Retrieved stored data:", storedData ? "Found" : "Not found");
         console.log("📱 Raw stored data:", storedData);
@@ -305,6 +504,10 @@ const StudentPageMessage = ({ route, navigation }) => {
         console.log("📱 Parsed data structure:", JSON.stringify(parsedData, null, 2));
         
         const currentUser = parsedData[0];
+        
+        // Check if we have a stored encryption key after currentUser is defined
+        const existingPrivateKey = await getPrivateKey(currentUser.student_id, 'student');
+        console.log("🔑 Existing private key status:", existingPrivateKey ? "Found" : "Not found");
         console.log("👤 Current user loaded:", JSON.stringify(currentUser, null, 2));
         console.log("👤 Student ID specifically:", currentUser?.student_id);
         console.log("👤 Regular ID field:", currentUser?.id);
@@ -351,6 +554,7 @@ const StudentPageMessage = ({ route, navigation }) => {
         studentData.current = currentUser;
 
         console.log("🔐 Starting encryption setup...");
+        console.log("🔑 Will use existing key:", existingPrivateKey ? "Yes" : "Will generate new");
         
         // Final validation before encryption setup
         if (!currentUser.student_id || typeof currentUser.student_id !== 'number') {
@@ -380,6 +584,24 @@ const StudentPageMessage = ({ route, navigation }) => {
         const encryptionReady = await setupEncryption(currentUser, contact);
         console.log("🔐 Encryption setup result:", encryptionReady);
         
+        // Test key consistency if encryption succeeded
+        if (encryptionReady) {
+          console.log("🧪 Testing key consistency after encryption setup...");
+          const keyConsistencyOk = await testKeyConsistency();
+          
+          if (!keyConsistencyOk) {
+            console.log("⚠️ Key consistency failed, attempting key regeneration...");
+            const regenerationSuccess = await forceKeyRegeneration();
+            if (regenerationSuccess) {
+              console.log("✅ Key regeneration successful, continuing...");
+            } else {
+              console.log("❌ Key regeneration failed, messages may not decrypt properly");
+            }
+          } else {
+            console.log("✅ Key consistency test passed");
+          }
+        }
+        
         // Verify student_id is still intact after encryption setup
         console.log("🔍 Post-encryption validation:");
         console.log("  - currentUser.student_id after encryption:", currentUser.student_id);
@@ -396,7 +618,7 @@ const StudentPageMessage = ({ route, navigation }) => {
         if (!encryptionReady) {
           console.log("🔧 Testing key generation independently...");
           try {
-            const testKeys = await generateAndStoreKeys();
+            const testKeys = await generateAndStoreKeys(currentUser.student_id, 'student');
             console.log("🔧 Test key generation successful:", testKeys ? "Yes" : "No");
             
             if (testKeys && testKeys.publicKeyHex) {
@@ -408,7 +630,7 @@ const StudentPageMessage = ({ route, navigation }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   user_id: currentUser.student_id,
-                  user_type: 'student',
+                  user_type: 'student', 
                   public_key: testKeys.publicKeyHex,
                 }),
               });
@@ -440,6 +662,12 @@ const StudentPageMessage = ({ route, navigation }) => {
 
           if (!isCurrentConversation) return;
 
+          // Skip if this is our own message (prevent duplicate on sender side)
+          if (msg.sender_id === currentUser.student_id && msg.sender_type === 'student') {
+            console.log('🔄 Skipping own message to prevent duplicate');
+            return;
+          }
+
           // Try encryption retry if message received but no shared secret
           if (!sharedSecretRef.current && encryptionRetryCount < 10) {
             console.log('🔄 Message received - attempting encryption retry...');
@@ -447,7 +675,10 @@ const StudentPageMessage = ({ route, navigation }) => {
           }
 
           const [decryptedMsg] = await decryptMessages([msg]);
-          setMessages(prev => [...prev, decryptedMsg]);
+          
+          // Use addMessages to prevent duplicates
+          console.log('✅ Adding new received message:', decryptedMsg.message_id);
+          addMessages(decryptedMsg);
 
           if (msg.receiver_id === currentUser.student_id) {
             socketRef.current.emit('markAsRead', {
@@ -505,8 +736,31 @@ const StudentPageMessage = ({ route, navigation }) => {
       });
       const data = await response.json();
       if (data.success) {
+        console.log('📥 Raw messages from server:', data.messages.length);
+        
+        // Log some sample message data for debugging
+        if (data.messages.length > 0) {
+          data.messages.slice(0, 3).forEach((msg, index) => {
+            console.log(`🔍 Sample message ${index + 1}:`, {
+              id: msg.message_id,
+              hasText: !!msg.message_text,
+              textLength: msg.message_text ? msg.message_text.length : 0,
+              textStart: msg.message_text ? msg.message_text.substring(0, 50) + '...' : 'null',
+              attachment: !!msg.attachment_path
+            });
+          });
+        }
+        
         const decrypted = await decryptMessages(data.messages);
-        setMessages(decrypted);
+        console.log('📥 Fetched messages count:', decrypted.length);
+        
+        // Log how many messages have visible text after decryption
+        const withText = decrypted.filter(m => m.message_text && m.message_text.trim() !== '');
+        const withAttachments = decrypted.filter(m => m.attachment_path);
+        console.log('📊 Messages with text:', withText.length, 'with attachments:', withAttachments.length);
+        
+        // Use setMessages directly for initial fetch (replace all messages)
+        setMessages(decrypted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
 
         const unreadIds = data.messages
           .filter(m => m.is_read === 0 && m.receiver_id === studentData.current.student_id)
@@ -534,6 +788,13 @@ const StudentPageMessage = ({ route, navigation }) => {
       fetchMessages();
     }
   }, [studentData, contact]);
+
+  // Monitor messages for duplicates
+  useEffect(() => {
+    if (messages.length > 0) {
+      checkForDuplicates(messages);
+    }
+  }, [messages]);
 
   const [selectedMessages, setSelectedMessages] = useState([]);
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -621,8 +882,18 @@ const StudentPageMessage = ({ route, navigation }) => {
       const data = await response.json();
       if (data.success) {
         setMessage('');
-        // const newMsg = { ...data.message, message_text: message }; // Optimistic update with plain text
-        // setMessages(prev => [...prev, newMsg]);
+        
+        // Add optimistic update for sent message (with decrypted text for display)
+        const optimisticMsg = { 
+          ...data.message, 
+          message_text: message, // Show decrypted version locally
+          created_at: new Date().toISOString(),
+          is_read: 0
+        };
+        
+        console.log('✅ Adding optimistic sent message:', optimisticMsg.message_id);
+        addMessages(optimisticMsg);
+        
         socketRef.current.emit('sendMessage', { to: contact.mentor_id, message: data.message });
       } else {
         Alert.alert('Error', 'Failed to send message');
@@ -1002,7 +1273,8 @@ const StudentPageMessage = ({ route, navigation }) => {
 
       const data = JSON.parse(res.data);
       if (data.success) {
-        // setMessages(prev => [...prev, data.message]);
+        console.log('✅ Adding attachment message:', data.message.message_id);
+        addMessages(data.message);
         socketRef.current.emit('sendMessage', { to: contact.mentor_id, message: data.message });
       } else {
         Alert.alert('Error', 'Failed to send attachment');
@@ -1039,7 +1311,6 @@ const StudentPageMessage = ({ route, navigation }) => {
 
     return (
       <TouchableOpacity
-        key={item.message_id}
         onLongPress={() => handleLongPress(item.message_id)}
         onPress={() => {
           if (isSelectMode) {
@@ -1387,12 +1658,19 @@ const StudentPageMessage = ({ route, navigation }) => {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={item => item.message_id.toString()}
+            keyExtractor={(item, index) => {
+              // Double-check for unique keys
+              const key = `${item.message_id}-${index}`;
+              return key;
+            }}
             contentContainerStyle={styles.messagesList}
-            onContentSizeChange={() =>
-              flatListRef.current.scrollToEnd({ animated: true })
-            }
-            extraData={{ audioPositions, audioDurations }}  // ✅ This line triggers re-render on audio timer updates
+            onContentSizeChange={() => {
+              // Check for duplicates before scrolling
+              checkForDuplicates(messages);
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }}
+            extraData={{ audioPositions, audioDurations, selectedMessages }}
+            removeClippedSubviews={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No messages yet</Text>
