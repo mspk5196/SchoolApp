@@ -822,11 +822,32 @@ function notifyReceiver(receiver_id, receiver_type, message) {
 // E2EE Key Management
 exports.keysUpload = async (req, res) => {
   const { user_id, user_type, public_key } = req.body;
-  console.log('📥 Key upload request received:', { user_id, user_type, public_key: public_key ? 'Present' : 'Missing' });
+  console.log('📥 Key upload request received:', { 
+    user_id: user_id, 
+    user_type: user_type, 
+    public_key: public_key ? 'Present' : 'Missing',
+    user_id_type: typeof user_id,
+    user_id_value: user_id
+  });
   
   if (!user_id || !user_type || !public_key) {
-    console.log('❌ Missing fields in key upload:', { user_id, user_type, public_key: public_key ? 'Present' : 'Missing' });
-    return res.status(400).json({ success: false, message: 'Missing fields' });
+    console.log('❌ Missing fields in key upload:', { 
+      user_id: user_id, 
+      user_type: user_type, 
+      public_key: public_key ? 'Present' : 'Missing',
+      user_id_missing: !user_id,
+      user_type_missing: !user_type,
+      public_key_missing: !public_key
+    });
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Missing fields',
+      details: {
+        user_id_provided: !!user_id,
+        user_type_provided: !!user_type,
+        public_key_provided: !!public_key
+      }
+    });
   }
   try {
     await db.promise().query(

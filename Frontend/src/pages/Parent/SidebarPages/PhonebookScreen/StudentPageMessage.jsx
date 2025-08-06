@@ -36,7 +36,7 @@ import { CheckBox } from 'react-native-elements';
 import mime from 'react-native-mime-types';
 
 // E2EE Imports
-import { generateAndStoreKeys, getPrivateKey } from '../../../../utils/keyManager';
+import { generateAndStoreKeys, getPrivateKey, getPublicKey } from '../../../../utils/keyManager';
 import { getSharedSecretAESKey, encryptText, decryptText } from '../../../../utils/messageEncryption';
 
 const StudentPageMessage = ({ route, navigation }) => {
@@ -69,6 +69,15 @@ const StudentPageMessage = ({ route, navigation }) => {
 
   // E2EE Key and Shared Secret Setup
   const setupEncryption = async (currentUser, otherUser, isRetry = false) => {
+    console.log("🔐 === SETUP ENCRYPTION START ===");
+    console.log("🔐 Parameters received:");
+    console.log("  - currentUser:", currentUser);
+    console.log("  - currentUser?.student_id:", currentUser?.student_id);
+    console.log("  - typeof currentUser?.student_id:", typeof currentUser?.student_id);
+    console.log("  - otherUser:", otherUser);
+    console.log("  - otherUser?.mentor_id:", otherUser?.mentor_id);
+    console.log("  - isRetry:", isRetry);
+    
     console.log("🔐 Setting up encryption for user:", currentUser?.student_id, "with contact:", otherUser);
     console.log("🔐 Current user full object:", JSON.stringify(currentUser, null, 2));
     
@@ -108,6 +117,9 @@ const StudentPageMessage = ({ route, navigation }) => {
           const publicKeyHex = keyResult.publicKeyHex;
           
           console.log("📤 Uploading student public key to server...");
+          console.log("📤 CRITICAL CHECK - currentUser.student_id right before upload:", currentUser.student_id);
+          console.log("📤 CRITICAL CHECK - typeof currentUser.student_id:", typeof currentUser.student_id);
+          console.log("📤 CRITICAL CHECK - currentUser object:", JSON.stringify(currentUser, null, 2));
           console.log("📤 Key upload payload:", {
             user_id: currentUser.student_id,
             user_type: 'student',
@@ -141,6 +153,56 @@ const StudentPageMessage = ({ route, navigation }) => {
         }
       } else {
         console.log("🔑 Using existing private key");
+        
+        // Even with existing private key, verify server has our public key
+        console.log("🔍 Verifying server has our public key...");
+        try {
+          const checkKeyResponse = await fetch(`${API_URL}/api/keys/student/${currentUser.student_id}`);
+          console.log("🔍 Our key check response status:", checkKeyResponse.status);
+          
+          if (checkKeyResponse.status === 404) {
+            console.log("⚠️ Server doesn't have our public key! Re-uploading...");
+            
+            // Get our public key from the private key and re-upload
+            const ourPublicKey = await getPublicKey();
+            
+            if (ourPublicKey) {
+              console.log("📤 Re-uploading student public key to server...");
+              console.log("📤 CRITICAL CHECK - currentUser.student_id for re-upload:", currentUser.student_id);
+              console.log("📤 Re-upload payload:", {
+                user_id: currentUser.student_id,
+                user_type: 'student',
+                public_key: ourPublicKey.substring(0, 20) + "..."
+              });
+              
+              const reUploadResponse = await fetch(`${API_URL}/api/messages/keys/upload`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  user_id: currentUser.student_id,
+                  user_type: 'student',
+                  public_key: ourPublicKey,
+                }),
+              });
+              
+              console.log("📤 Re-upload response status:", reUploadResponse.status);
+              const reUploadResult = await reUploadResponse.json();
+              console.log("📤 Re-upload result:", reUploadResult);
+              
+              if (!reUploadResponse.ok || !reUploadResult.success) {
+                console.error("❌ Failed to re-upload student key:", reUploadResult);
+              } else {
+                console.log("✅ Student key successfully re-uploaded to server");
+              }
+            } else {
+              console.error("❌ Could not derive public key from private key");
+            }
+          } else if (checkKeyResponse.ok) {
+            console.log("✅ Server already has our public key");
+          }
+        } catch (keyCheckError) {
+          console.warn("⚠️ Could not verify server key status:", keyCheckError);
+        }
       }
 
       console.log("🔍 Fetching mentor key for ID:", otherUser.mentor_id);
@@ -245,7 +307,13 @@ const StudentPageMessage = ({ route, navigation }) => {
         const currentUser = parsedData[0];
         console.log("👤 Current user loaded:", JSON.stringify(currentUser, null, 2));
         console.log("👤 Student ID specifically:", currentUser?.student_id);
+        console.log("👤 Regular ID field:", currentUser?.id);
         console.log("👤 All user properties:", Object.keys(currentUser || {}));
+        console.log("👤 Field analysis:");
+        console.log("  - student_id:", typeof currentUser?.student_id, currentUser?.student_id);
+        console.log("  - id:", typeof currentUser?.id, currentUser?.id);
+        console.log("  - studentId:", typeof currentUser?.studentId, currentUser?.studentId);
+        console.log("  - Id:", typeof currentUser?.Id, currentUser?.Id);
         
         if (!currentUser) {
           throw new Error('No user data in stored array');
@@ -256,10 +324,28 @@ const StudentPageMessage = ({ route, navigation }) => {
           throw new Error('Student ID missing from user data');
         }
         
-        // Use id field if student_id is not available
-        if (!currentUser.student_id && currentUser.id) {
-          console.log("🔧 Using 'id' field as student_id:", currentUser.id);
-          currentUser.student_id = currentUser.id;
+        // Create a function to find the best ID field
+        const findStudentId = (user) => {
+          const possibleFields = ['student_id', 'id', 'studentId', 'Id', 'roll'];
+          for (const field of possibleFields) {
+            if (user[field] && typeof user[field] === 'number') {
+              console.log(`🔧 Found valid ID in field '${field}':`, user[field]);
+              return user[field];
+            }
+          }
+          return null;
+        };
+        
+        const foundId = findStudentId(currentUser);
+        if (!foundId) {
+          console.error("❌ No valid numeric ID field found in user data");
+          throw new Error('No valid student ID found in user data');
+        }
+        
+        // Ensure student_id is set
+        if (!currentUser.student_id) {
+          console.log("🔧 Setting student_id to:", foundId);
+          currentUser.student_id = foundId;
         }
         
         studentData.current = currentUser;
@@ -267,15 +353,44 @@ const StudentPageMessage = ({ route, navigation }) => {
         console.log("🔐 Starting encryption setup...");
         
         // Final validation before encryption setup
-        if (!currentUser.student_id) {
-          console.error("❌ Cannot proceed: student_id is still undefined after parsing");
-          Alert.alert('Error', 'Student ID is missing. Please restart the app and try again.');
+        if (!currentUser.student_id || typeof currentUser.student_id !== 'number') {
+          console.error("❌ Cannot proceed: student_id is invalid:", {
+            value: currentUser.student_id,
+            type: typeof currentUser.student_id
+          });
+          Alert.alert('Error', 'Student ID is invalid. Please restart the app and try again.');
           setIsLoading(false);
           return;
         }
         
+        console.log("✅ Final validation passed - Student ID:", currentUser.student_id);
+        
+        // Add detailed logging before encryption setup
+        console.log("🔍 Pre-encryption validation:");
+        console.log("  - currentUser exists:", !!currentUser);
+        console.log("  - currentUser.student_id:", currentUser.student_id);
+        console.log("  - typeof currentUser.student_id:", typeof currentUser.student_id);
+        console.log("  - contact exists:", !!contact);
+        console.log("  - contact.mentor_id:", contact?.mentor_id);
+        
+        // Backup the student_id to prevent corruption
+        const studentIdBackup = currentUser.student_id;
+        console.log("💾 Student ID backup created:", studentIdBackup);
+        
         const encryptionReady = await setupEncryption(currentUser, contact);
         console.log("🔐 Encryption setup result:", encryptionReady);
+        
+        // Verify student_id is still intact after encryption setup
+        console.log("🔍 Post-encryption validation:");
+        console.log("  - currentUser.student_id after encryption:", currentUser.student_id);
+        console.log("  - studentData.current.student_id:", studentData.current?.student_id);
+        
+        // Restore student_id if it got corrupted
+        if (!currentUser.student_id && studentIdBackup) {
+          console.log("🚨 Student ID corrupted! Restoring from backup:", studentIdBackup);
+          currentUser.student_id = studentIdBackup;
+          studentData.current.student_id = studentIdBackup;
+        }
         
         // Force key generation test
         if (!encryptionReady) {
@@ -286,6 +401,8 @@ const StudentPageMessage = ({ route, navigation }) => {
             
             if (testKeys && testKeys.publicKeyHex) {
               console.log("🔧 Test upload attempt...");
+              console.log("🔧 CRITICAL CHECK - currentUser.student_id in test:", currentUser.student_id);
+              console.log("🔧 CRITICAL CHECK - typeof currentUser.student_id in test:", typeof currentUser.student_id);
               const testUpload = await fetch(`${API_URL}/api/messages/keys/upload`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
