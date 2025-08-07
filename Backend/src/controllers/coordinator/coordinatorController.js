@@ -1593,6 +1593,184 @@ exports.getAllSubjects = (req, res) => {
   });
 };
 
+// Helper function to check schedule conflicts
+async function checkScheduleConflicts(grade_id, exam_date, start_time, end_time, recurrence) {
+  return new Promise((resolve, reject) => {
+    // Get all sections for the grade
+    const getSectionsSql = `SELECT id, section_name FROM sections WHERE grade_id = ?`;
+    
+    db.query(getSectionsSql, [grade_id], (err, sections) => {
+      if (err) {
+        return reject(err);
+      }
+
+      if (sections.length === 0) {
+        return resolve([]);
+      }
+
+      const sectionIds = sections.map(s => s.id);
+      const placeholders = sectionIds.map(() => '?').join(',');
+
+      // Check conflicts in daily_schedule for the specific date
+      const checkConflictsSql = `
+        SELECT ds.*, s.section_name, sub.subject_name, at.activity_type
+        FROM daily_schedule ds
+        JOIN sections s ON ds.section_id = s.id
+        JOIN subjects sub ON ds.subject_id = sub.id
+        LEFT JOIN activity_types at ON ds.activity = at.id
+        WHERE ds.section_id IN (${placeholders})
+        AND ds.date = ?
+        AND (
+          (ds.start_time < ? AND ds.end_time > ?) OR
+          (ds.start_time < ? AND ds.end_time > ?) OR
+          (ds.start_time >= ? AND ds.end_time <= ?)
+        )
+      `;
+
+      const params = [...sectionIds, exam_date, end_time, start_time, end_time, start_time, start_time, end_time];
+
+      db.query(checkConflictsSql, params, (err, conflicts) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(conflicts);
+      });
+    });
+  });
+}
+
+// Helper function to schedule recurring exam conflict deletions
+function scheduleExamConflictDeletions(examId, grade_id, exam_date, start_time, end_time, recurrence) {
+  const cron = require('node-cron');
+  
+  // Determine cron pattern based on recurrence
+  let cronPattern;
+  const examTime = new Date(`2000-01-01 ${start_time}`);
+  const hour = examTime.getHours();
+  const minute = examTime.getMinutes();
+
+  switch (recurrence) {
+    case 'Daily':
+      cronPattern = `${minute} ${hour} * * *`;
+      break;
+    case 'Every Mon':
+      cronPattern = `${minute} ${hour} * * 1`;
+      break;
+    case 'Every Tue':
+      cronPattern = `${minute} ${hour} * * 2`;
+      break;
+    case 'Every Wed':
+      cronPattern = `${minute} ${hour} * * 3`;
+      break;
+    case 'Every Thu':
+      cronPattern = `${minute} ${hour} * * 4`;
+      break;
+    case 'Every Fri':
+      cronPattern = `${minute} ${hour} * * 5`;
+      break;
+    case 'Every Sat':
+      cronPattern = `${minute} ${hour} * * 6`;
+      break;
+    case 'Every Sun':
+      cronPattern = `${minute} ${hour} * * 0`;
+      break;
+    default:
+      return; // No recurring pattern
+  }
+
+  // Schedule the cron job
+  cron.schedule(cronPattern, async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await deleteConflictingSchedules(grade_id, today, start_time, end_time);
+      console.log(`Deleted conflicting schedules for exam ${examId} on ${today}`);
+    } catch (error) {
+      console.error(`Error deleting conflicting schedules for exam ${examId}:`, error);
+    }
+  });
+
+  console.log(`Scheduled recurring conflict deletion for exam ${examId} with pattern: ${cronPattern}`);
+}
+
+// Helper function to delete conflicting schedules
+async function deleteConflictingSchedules(grade_id, date, start_time, end_time) {
+  return new Promise((resolve, reject) => {
+    // Get sections for the grade
+    const getSectionsSql = `SELECT id FROM sections WHERE grade_id = ?`;
+    
+    db.query(getSectionsSql, [grade_id], (err, sections) => {
+      if (err) {
+        return reject(err);
+      }
+
+      if (sections.length === 0) {
+        return resolve();
+      }
+
+      const sectionIds = sections.map(s => s.id);
+      const placeholders = sectionIds.map(() => '?').join(',');
+
+      // Find conflicting schedules
+      const findConflictsSql = `
+        SELECT id FROM daily_schedule
+        WHERE section_id IN (${placeholders})
+        AND date = ?
+        AND (
+          (start_time < ? AND end_time > ?) OR
+          (start_time < ? AND end_time > ?) OR
+          (start_time >= ? AND end_time <= ?)
+        )
+      `;
+
+      const params = [...sectionIds, date, end_time, start_time, end_time, start_time, start_time, end_time];
+
+      db.query(findConflictsSql, params, (err, conflictingSchedules) => {
+        if (err) {
+          return reject(err);
+        }
+
+        if (conflictingSchedules.length === 0) {
+          return resolve();
+        }
+
+        const scheduleIds = conflictingSchedules.map(s => s.id);
+
+        // Delete related records first
+        const deleteAssessmentSessionsSql = `
+          DELETE FROM assessment_sessions 
+          WHERE dsa_id IN (${scheduleIds.map(() => '?').join(',')})
+        `;
+
+        const deleteAcademicSessionsSql = `
+          DELETE FROM academic_sessions 
+          WHERE session_id IN (${scheduleIds.map(() => '?').join(',')})
+        `;
+
+        const deleteDailyScheduleSql = `
+          DELETE FROM daily_schedule 
+          WHERE id IN (${scheduleIds.map(() => '?').join(',')})
+        `;
+
+        // Execute deletions in sequence
+        db.query(deleteAssessmentSessionsSql, scheduleIds, (err) => {
+          if (err) console.error('Error deleting assessment sessions:', err);
+          
+          db.query(deleteAcademicSessionsSql, scheduleIds, (err) => {
+            if (err) console.error('Error deleting academic sessions:', err);
+            
+            db.query(deleteDailyScheduleSql, scheduleIds, (err) => {
+              if (err) {
+                return reject(err);
+              }
+              resolve();
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
 //ExamShedule
 exports.createExamSchedule = async (req, res) => {
   const { grade_id, subject_id, exam_date, start_time, end_time, recurrence, forceCreate = false } = req.body;
@@ -3857,184 +4035,6 @@ exports.processAssessmentRequest = async (req, res) => {
           assessment.levels
         ]
       );
-
-// Helper function to check schedule conflicts
-async function checkScheduleConflicts(grade_id, exam_date, start_time, end_time, recurrence) {
-  return new Promise((resolve, reject) => {
-    // Get all sections for the grade
-    const getSectionsSql = `SELECT id, section_name FROM sections WHERE grade_id = ?`;
-    
-    db.query(getSectionsSql, [grade_id], (err, sections) => {
-      if (err) {
-        return reject(err);
-      }
-
-      if (sections.length === 0) {
-        return resolve([]);
-      }
-
-      const sectionIds = sections.map(s => s.id);
-      const placeholders = sectionIds.map(() => '?').join(',');
-
-      // Check conflicts in daily_schedule for the specific date
-      const checkConflictsSql = `
-        SELECT ds.*, s.section_name, sub.subject_name, at.activity_type
-        FROM daily_schedule ds
-        JOIN sections s ON ds.section_id = s.id
-        JOIN subjects sub ON ds.subject_id = sub.id
-        LEFT JOIN activity_types at ON ds.activity = at.id
-        WHERE ds.section_id IN (${placeholders})
-        AND ds.date = ?
-        AND (
-          (ds.start_time < ? AND ds.end_time > ?) OR
-          (ds.start_time < ? AND ds.end_time > ?) OR
-          (ds.start_time >= ? AND ds.end_time <= ?)
-        )
-      `;
-
-      const params = [...sectionIds, exam_date, end_time, start_time, end_time, start_time, start_time, end_time];
-
-      db.query(checkConflictsSql, params, (err, conflicts) => {
-        if (err) {
-          return reject(err);
-        }
-        resolve(conflicts);
-      });
-    });
-  });
-}
-
-// Helper function to schedule recurring exam conflict deletions
-function scheduleExamConflictDeletions(examId, grade_id, exam_date, start_time, end_time, recurrence) {
-  const cron = require('node-cron');
-  
-  // Determine cron pattern based on recurrence
-  let cronPattern;
-  const examTime = new Date(`2000-01-01 ${start_time}`);
-  const hour = examTime.getHours();
-  const minute = examTime.getMinutes();
-
-  switch (recurrence) {
-    case 'Daily':
-      cronPattern = `${minute} ${hour} * * *`;
-      break;
-    case 'Every Mon':
-      cronPattern = `${minute} ${hour} * * 1`;
-      break;
-    case 'Every Tue':
-      cronPattern = `${minute} ${hour} * * 2`;
-      break;
-    case 'Every Wed':
-      cronPattern = `${minute} ${hour} * * 3`;
-      break;
-    case 'Every Thu':
-      cronPattern = `${minute} ${hour} * * 4`;
-      break;
-    case 'Every Fri':
-      cronPattern = `${minute} ${hour} * * 5`;
-      break;
-    case 'Every Sat':
-      cronPattern = `${minute} ${hour} * * 6`;
-      break;
-    case 'Every Sun':
-      cronPattern = `${minute} ${hour} * * 0`;
-      break;
-    default:
-      return; // No recurring pattern
-  }
-
-  // Schedule the cron job
-  cron.schedule(cronPattern, async () => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      await deleteConflictingSchedules(grade_id, today, start_time, end_time);
-      console.log(`Deleted conflicting schedules for exam ${examId} on ${today}`);
-    } catch (error) {
-      console.error(`Error deleting conflicting schedules for exam ${examId}:`, error);
-    }
-  });
-
-  console.log(`Scheduled recurring conflict deletion for exam ${examId} with pattern: ${cronPattern}`);
-}
-
-// Helper function to delete conflicting schedules
-async function deleteConflictingSchedules(grade_id, date, start_time, end_time) {
-  return new Promise((resolve, reject) => {
-    // Get sections for the grade
-    const getSectionsSql = `SELECT id FROM sections WHERE grade_id = ?`;
-    
-    db.query(getSectionsSql, [grade_id], (err, sections) => {
-      if (err) {
-        return reject(err);
-      }
-
-      if (sections.length === 0) {
-        return resolve();
-      }
-
-      const sectionIds = sections.map(s => s.id);
-      const placeholders = sectionIds.map(() => '?').join(',');
-
-      // Find conflicting schedules
-      const findConflictsSql = `
-        SELECT id FROM daily_schedule
-        WHERE section_id IN (${placeholders})
-        AND date = ?
-        AND (
-          (start_time < ? AND end_time > ?) OR
-          (start_time < ? AND end_time > ?) OR
-          (start_time >= ? AND end_time <= ?)
-        )
-      `;
-
-      const params = [...sectionIds, date, end_time, start_time, end_time, start_time, start_time, end_time];
-
-      db.query(findConflictsSql, params, (err, conflictingSchedules) => {
-        if (err) {
-          return reject(err);
-        }
-
-        if (conflictingSchedules.length === 0) {
-          return resolve();
-        }
-
-        const scheduleIds = conflictingSchedules.map(s => s.id);
-
-        // Delete related records first
-        const deleteAssessmentSessionsSql = `
-          DELETE FROM assessment_sessions 
-          WHERE dsa_id IN (${scheduleIds.map(() => '?').join(',')})
-        `;
-
-        const deleteAcademicSessionsSql = `
-          DELETE FROM academic_sessions 
-          WHERE session_id IN (${scheduleIds.map(() => '?').join(',')})
-        `;
-
-        const deleteDailyScheduleSql = `
-          DELETE FROM daily_schedule 
-          WHERE id IN (${scheduleIds.map(() => '?').join(',')})
-        `;
-
-        // Execute deletions in sequence
-        db.query(deleteAssessmentSessionsSql, scheduleIds, (err) => {
-          if (err) console.error('Error deleting assessment sessions:', err);
-          
-          db.query(deleteAcademicSessionsSql, scheduleIds, (err) => {
-            if (err) console.error('Error deleting academic sessions:', err);
-            
-            db.query(deleteDailyScheduleSql, scheduleIds, (err) => {
-              if (err) {
-                return reject(err);
-              }
-              resolve();
-            });
-          });
-        });
-      });
-    });
-  });
-}
 
       // 4. Update request status
       await conn.query(
