@@ -3,6 +3,7 @@ const { runAttendanceUpdater } = require('./controllers/student/attendanceCron')
 const { runDailyScheduleUpdate } = require('./controllers/mentor/dailyScheduleUpdate');
 const { createAssessmentSessionsByDate } = require('./controllers/mentor/assesmentCronJob');
 const { runOverdueCheck } = require('./controllers/mentor/studentBacklogsCron');
+const { runExamConflictDeletion } = require('./controllers/coordinator/examConflictCron');
 
 // Only start cron jobs if this is the designated worker process or in Railway production
 const shouldRunCrons = process.env.CRON_WORKER === 'true' ||
@@ -198,6 +199,17 @@ if (shouldRunCrons) {
             console.error('❌ Overdue levels check failed:', error);
         }
     }, getCronOptions(), 'Backlog Cron Job');
+
+    // Exam conflict deletion - runs every 5 minutes to handle recurring exams
+    createSafeCronJob('*/5 * * * *', async () => {
+        console.log('🔄 Running exam conflict deletion check...');
+        try {
+            await runExamConflictDeletion();
+            console.log('✅ Exam conflict deletion check completed');
+        } catch (error) {
+            console.error('❌ Exam conflict deletion check failed:', error);
+        }
+    }, getCronOptions(), 'Exam Conflict Deletion Cron Job');
 
     console.log('✅ All cron jobs initialized');
 } else {

@@ -101,20 +101,86 @@ export const ExamProvider = ({ children, gradeId }) => {
       });
       
       const data = await response.json();
+      
+      // Check if there are conflicts
+      if (response.status === 409 && data.hasConflicts) {
+        return {
+          success: false,
+          hasConflicts: true,
+          conflicts: data.conflicts,
+          sessionData: newSession
+        };
+      }
+      
       if (data.success) {
         setSessions(prev => [...prev, { 
           ...newSession,
           id: data.id,
           color: getSubjectColor(newSession.subject)
         }]);
-        return true;
+        return { success: true };
       } else {
         console.error('Error adding session:', data.message);
-        return false;
+        return { success: false, message: data.message };
       }
     } catch (error) {
       console.error('Error adding session:', error);
-      return false;
+      return { success: false, message: 'Network error' };
+    }
+  };
+
+  // Function to handle conflict resolution
+  const handleConflictResolution = async (sessionData, deleteConflicts = false) => {
+    try {
+      const [startTime, endTime] = sessionData.time.split(' - ');
+      
+      // If user chose to delete conflicts, do that first
+      if (deleteConflicts) {
+        const deleteResponse = await fetch(`${API_URL}/api/coordinator/deleteConflictingSchedules`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            grade_id: gradeId,
+            exam_date: sessionData.date,
+            start_time: convertTo24HourFormat(startTime),
+            end_time: convertTo24HourFormat(endTime)
+          }),
+        });
+        
+        if (!deleteResponse.ok) {
+          throw new Error('Failed to delete conflicting schedules');
+        }
+      }
+      
+      // Now create the exam schedule with force flag
+      const response = await fetch(`${API_URL}/api/coordinator/createExamSchedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grade_id: gradeId,
+          subject_id: sessionData.subject_id,
+          exam_date: sessionData.date,
+          start_time: convertTo24HourFormat(startTime),
+          end_time: convertTo24HourFormat(endTime),
+          recurrence: sessionData.frequency === 'One Time' ? 'Only Once' : sessionData.frequency,
+          forceCreate: true
+        }),
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setSessions(prev => [...prev, { 
+          ...sessionData,
+          id: data.id,
+          color: getSubjectColor(sessionData.subject)
+        }]);
+        return { success: true };
+      } else {
+        return { success: false, message: data.message };
+      }
+    } catch (error) {
+      console.error('Error handling conflict resolution:', error);
+      return { success: false, message: 'Network error' };
     }
   };
   
@@ -182,7 +248,8 @@ export const ExamProvider = ({ children, gradeId }) => {
       loading,
       addSession, 
       updateSession, 
-      deleteSession
+      deleteSession,
+      handleConflictResolution
     }}>
       {children}
     </ExamContext.Provider>

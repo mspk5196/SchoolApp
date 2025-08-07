@@ -12,11 +12,12 @@ import AddIcon from '../../../../assets/CoordinatorPage/ExamSchedule/Add.svg';
 import MenuIcon from '../../../../assets/CoordinatorPage/ExamSchedule/Menu.svg';
 import styles, { modalStyles, frequencyStyles } from './ExamScheduleStyle';
 import { ExamProvider, useExams } from './ExamContext';
+import ConflictResolutionModal from './ConflictResolutionModal';
 import { API_URL } from "../../../../utils/env.js";
    
 const CoordinatorExamSchedule = ({ navigation, route }) => {
   const { activeGrade } = route.params;
-  const { sessions, loading, addSession, updateSession, deleteSession } = useExams();
+  const { sessions, loading, addSession, updateSession, deleteSession, handleConflictResolution } = useExams();
   const [subjects, setSubjects] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(null);
@@ -34,6 +35,13 @@ const CoordinatorExamSchedule = ({ navigation, route }) => {
     hour: '09',
     minute: '00',
     period: 'AM',
+  });
+
+  // Conflict resolution state
+  const [conflictModalVisible, setConflictModalVisible] = useState(false);
+  const [conflictData, setConflictData] = useState({
+    conflicts: [],
+    sessionData: null
   });
 
   // Time picker data
@@ -174,23 +182,57 @@ const CoordinatorExamSchedule = ({ navigation, route }) => {
       frequency: selectedFrequency === "Don't Repeat" ? 'Only Once' : selectedFrequency,
     };
 
-    let success;
+    let result;
     if (isEditing && editingId) {
       setLoading(true);
-      success = await updateSession(editingId, newSession);
+      result = await updateSession(editingId, newSession);
+      setLoading(false);
     } else {
       setLoading(true);
-      success = await addSession(newSession);
+      result = await addSession(newSession);
+      setLoading(false);
+      
+      // Check if there were conflicts
+      if (result && result.hasConflicts) {
+        setConflictData({
+          conflicts: result.conflicts,
+          sessionData: newSession
+        });
+        setConflictModalVisible(true);
+        return;
+      }
     }
 
-    if (success) {
+    if (result && (result.success || result === true)) {
       // Reset form and close modals
-      setLoading(false);
       setFrequencyModalVisible(false);
       setModalVisible(false);
       resetForm();
+    } else if (result && result.message) {
+      Alert.alert('Error', result.message);
     }
+  };
+
+  // Handle conflict resolution
+  const handleConflictDelete = async () => {
+    setLoading(true);
+    const result = await handleConflictResolution(conflictData.sessionData, true);
     setLoading(false);
+    
+    if (result && result.success) {
+      setConflictModalVisible(false);
+      setFrequencyModalVisible(false);
+      setModalVisible(false);
+      resetForm();
+      Alert.alert('Success', 'Exam schedule created and conflicting schedules deleted');
+    } else {
+      Alert.alert('Error', result?.message || 'Failed to create exam schedule');
+    }
+  };
+
+  const handleConflictCancel = () => {
+    setConflictModalVisible(false);
+    setConflictData({ conflicts: [], sessionData: null });
   };
 
   // Handle delete session
@@ -610,6 +652,15 @@ const CoordinatorExamSchedule = ({ navigation, route }) => {
             </View>
           </TouchableOpacity>
         </Modal>
+
+        {/* Conflict Resolution Modal */}
+        <ConflictResolutionModal
+          visible={conflictModalVisible}
+          conflicts={conflictData.conflicts}
+          sessionData={conflictData.sessionData}
+          onCancel={handleConflictCancel}
+          onDeleteAndCreate={handleConflictDelete}
+        />
       </SafeAreaView>
     </MenuProvider>
   );

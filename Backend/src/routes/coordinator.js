@@ -160,6 +160,7 @@ router.get('/coordinator/getExamSchedule', coordinatorController.getExamSchedule
 router.post('/coordinator/createExamSchedule', coordinatorController.createExamSchedule);
 router.post('/coordinator/updateExamSchedule', coordinatorController.updateExamSchedule);
 router.post('/coordinator/deleteExamSchedule', coordinatorController.deleteExamSchedule);
+router.post('/coordinator/deleteConflictingSchedules', coordinatorController.deleteConflictingSchedules);
 //WeeklySchedule
 router.get('/coordinator/weekly-schedule/getWeeklySchedule', coordinatorController.getWeeklySchedule);
 router.post('/coordinator/weekly-schedule/addOrUpdateWeeklySchedule', coordinatorController.addOrUpdateWeeklySchedule);
