@@ -2247,8 +2247,8 @@ exports.getAssessmentSession = async (req, res) => {
         TIMEDIFF(asess.end_time, asess.start_time) AS duration,
         -- asess.total_marks,
         -- asess.material_id,
-        m.file_name,
-        m.file_url
+        -- m.file_name,
+        -- m.file_url
       FROM assessment_sessions asess
       JOIN subjects sub ON asess.subject_id = sub.id
       JOIN sections sec ON asess.section_id = sec.id
