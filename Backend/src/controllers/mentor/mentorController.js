@@ -2244,7 +2244,7 @@ exports.getAssessmentSession = async (req, res) => {
         sec.grade_id AS grade,
         DATE_FORMAT(asess.start_time, '%Y-%m-%d %H:%i:%s') AS start_time,
         DATE_FORMAT(asess.end_time, '%Y-%m-%d %H:%i:%s') AS end_time,
-        TIMEDIFF(asess.end_time, asess.start_time) AS duration,
+        TIMEDIFF(asess.end_time, asess.start_time) AS duration
         -- asess.total_marks,
         -- asess.material_id,
         -- m.file_name,
