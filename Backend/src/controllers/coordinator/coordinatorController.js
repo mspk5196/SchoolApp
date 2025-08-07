@@ -2496,7 +2496,7 @@ exports.deleteWeeklySchedule = (req, res) => {
           }
           
           // Proceed with deletion if all assessment sessions are completed
-          const query2 = 'DELETE FROM acadamic_sessions WHERE dsa_id IN (?)';
+          const query2 = 'DELETE FROM academic_sessions WHERE dsa_id IN (?)';
           const query3 = 'DELETE FROM assessment_sessions WHERE dsa_id IN (?) AND status = "completed"';
           const deleteQuery = 'DELETE FROM daily_schedule WHERE id IN (?)';
           
