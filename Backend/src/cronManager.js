@@ -3,7 +3,7 @@ const { runAttendanceUpdater } = require('./controllers/student/attendanceCron')
 const { runDailyScheduleUpdate } = require('./controllers/mentor/dailyScheduleUpdate');
 const { createAssessmentSessionsByDate } = require('./controllers/mentor/assesmentCronJob');
 const { runOverdueCheck } = require('./controllers/mentor/studentBacklogsCron');
-const { runExamConflictDeletion } = require('./controllers/coordinator/examConflictCron');
+const { runExamConflictDeletion } = require('./controllers/coordinator/examConflictDeletionCron');
 
 // Only start cron jobs if this is the designated worker process or in Railway production
 const shouldRunCrons = process.env.CRON_WORKER === 'true' ||
@@ -61,21 +61,49 @@ function validateCronExpression(expression) {
     
     const [minute, hour, day, month, weekday] = parts;
     
-    // Validate ranges (allow * for wildcards)
-    if (minute !== '*' && (isNaN(parseInt(minute)) || parseInt(minute) < 0 || parseInt(minute) > 59)) {
-        throw new Error(`Invalid minute value: ${minute}. Must be 0-59 or *`);
+    // Helper function to validate cron field values
+    function validateCronField(value, min, max, fieldName) {
+        if (value === '*') return true;
+        
+        // Handle step values like */5
+        if (value.includes('*/')) {
+            const stepPart = value.split('*/')[1];
+            const step = parseInt(stepPart);
+            return !isNaN(step) && step > 0 && step <= max;
+        }
+        
+        // Handle range values like 1-5
+        if (value.includes('-')) {
+            const [start, end] = value.split('-').map(v => parseInt(v));
+            return !isNaN(start) && !isNaN(end) && start >= min && end <= max && start <= end;
+        }
+        
+        // Handle list values like 1,3,5
+        if (value.includes(',')) {
+            const values = value.split(',').map(v => parseInt(v));
+            return values.every(v => !isNaN(v) && v >= min && v <= max);
+        }
+        
+        // Handle single values
+        const numValue = parseInt(value);
+        return !isNaN(numValue) && numValue >= min && numValue <= max;
     }
-    if (hour !== '*' && (isNaN(parseInt(hour)) || parseInt(hour) < 0 || parseInt(hour) > 23)) {
-        throw new Error(`Invalid hour value: ${hour}. Must be 0-23 or *`);
+    
+    // Validate each field
+    if (!validateCronField(minute, 0, 59, 'minute')) {
+        throw new Error(`Invalid minute value: ${minute}. Must be 0-59, *, */n, or valid range/list`);
     }
-    if (day !== '*' && (isNaN(parseInt(day)) || parseInt(day) < 1 || parseInt(day) > 31)) {
-        throw new Error(`Invalid day value: ${day}. Must be 1-31 or *`);
+    if (!validateCronField(hour, 0, 23, 'hour')) {
+        throw new Error(`Invalid hour value: ${hour}. Must be 0-23, *, */n, or valid range/list`);
     }
-    if (month !== '*' && (isNaN(parseInt(month)) || parseInt(month) < 1 || parseInt(month) > 12)) {
-        throw new Error(`Invalid month value: ${month}. Must be 1-12 or *`);
+    if (!validateCronField(day, 1, 31, 'day')) {
+        throw new Error(`Invalid day value: ${day}. Must be 1-31, *, */n, or valid range/list`);
     }
-    if (weekday !== '*' && (isNaN(parseInt(weekday)) || parseInt(weekday) < 0 || parseInt(weekday) > 7)) {
-        throw new Error(`Invalid weekday value: ${weekday}. Must be 0-7 or *`);
+    if (!validateCronField(month, 1, 12, 'month')) {
+        throw new Error(`Invalid month value: ${month}. Must be 1-12, *, */n, or valid range/list`);
+    }
+    if (!validateCronField(weekday, 0, 7, 'weekday')) {
+        throw new Error(`Invalid weekday value: ${weekday}. Must be 0-7, *, */n, or valid range/list`);
     }
     
     return true;
