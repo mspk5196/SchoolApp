@@ -148,6 +148,10 @@ import StudentSubjectActivityPage from '../../pages/Parent/MaterialScreen/Studen
 
 // Enhanced Hierarchy System Pages
 import TopicHierarchyManagement from '../../pages/Coordinator/TopicHierarchy/TopicHierarchyManagement';
+// import BatchManagementHome from '../../pages/Coordinator/BatchManagement/BatchManagementHome';
+import TopicHierarchySubject from '../../pages/Coordinator/Material/TopicHierarchy/TopicHierarchySubject';
+import AddTopicPage from '../../pages/Coordinator/Material/TopicHierarchy/AddTopicPage';
+import TopicDetailsPage from '../../pages/Coordinator/Material/TopicHierarchy/TopicDetailsPage';
 import BatchManagementHome from '../../pages/Coordinator/BatchManagement/BatchManagementHome';
 import BatchDetails from '../../pages/Coordinator/BatchManagement/BatchDetails';
 import EnhancedAssessmentManagement from '../../pages/Mentor/AssesmentRequest/EnhancedAssessmentManagement';
@@ -221,6 +225,9 @@ const Routes = () => {
                         <Stack.Screen name="LevelPromotion" component={LevelPromotion} />
                         <Stack.Screen name="SubjectPage" component={SubjectPage} />
                         <Stack.Screen name="SubjectActivityPage" component={SubjectActivityPage} options={{ headerShown: false }} />
+                        <Stack.Screen name="TopicHierarchySubject" component={TopicHierarchySubject} options={{ headerShown: false }} />
+                        <Stack.Screen name="AddTopicPage" component={AddTopicPage} options={{ headerShown: false }} />
+                        <Stack.Screen name="TopicDetailsPage" component={TopicDetailsPage} options={{ headerShown: false }} />
                         {/* CoordinatorLogs - Only one page*/}
                         {/* CoordinatorScheduleHome */}
                         <Stack.Screen name="CoordinatorAcademicSchedule" component={CoordinatorAcademicSchedule} />

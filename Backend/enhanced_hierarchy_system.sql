@@ -484,154 +484,80 @@ JOIN topic_hierarchy th ON sa.topic_id = th.id
 WHERE sa.status IN ('Passed', 'Failed')
 GROUP BY sa.student_roll, th.subject_id;
 
-DELIMITER //
+-- ============================================
+-- 8. BATCH REALLOCATION LOGIC (TiDB Compatible)
+-- ============================================
 
--- Stored procedure for daily batch reallocation (TiDB Compatible)
-CREATE PROCEDURE reallocate_student_batches()
-BEGIN
-    DECLARE done INT DEFAULT FALSE;
-    DECLARE student_roll VARCHAR(45);
-    DECLARE subject_id INT;
-    DECLARE current_batch_level INT;
-    DECLARE performance_score DECIMAL(5,2);
-    DECLARE homework_rate DECIMAL(5,2);
-    DECLARE assessment_avg DECIMAL(5,2);
-    DECLARE new_batch_level INT;
-    DECLARE new_batch_id INT;
-    DECLARE current_batch_id INT;
-    
-    DECLARE student_cursor CURSOR FOR
-        SELECT 
-            sba.student_roll,
-            sb.subject_id,
-            sb.batch_level,
-            sba.batch_id,
-            COALESCE(AVG(sap.performance_score), 0) as avg_performance,
-            COALESCE(hcr.completion_rate, 0) as homework_rate,
-            COALESCE(aa.average_score, 0) as assessment_avg
-        FROM student_batch_assignments sba
-        JOIN section_batches sb ON sba.batch_id = sb.id
-        LEFT JOIN student_activity_participation sap ON sba.student_roll = sap.student_roll
-        LEFT JOIN v_homework_completion_rates hcr ON sba.student_roll = hcr.student_roll AND sb.subject_id = hcr.subject_id
-        LEFT JOIN v_assessment_averages aa ON sba.student_roll = aa.student_roll AND sb.subject_id = aa.subject_id
-        WHERE sba.is_current = 1
-        GROUP BY sba.student_roll, sb.subject_id, sb.batch_level, sba.batch_id, hcr.completion_rate, aa.average_score;
-    
-    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
-    
-    OPEN student_cursor;
-    
-    read_loop: LOOP
-        FETCH student_cursor INTO student_roll, subject_id, current_batch_level, current_batch_id,
-                                  performance_score, homework_rate, assessment_avg;
-        IF done THEN
-            LEAVE read_loop;
-        END IF;
-        
-        -- Calculate overall performance score
-        SET performance_score = (performance_score * 0.4) + (homework_rate * 0.3) + (assessment_avg * 0.3);
-        
-        -- Determine new batch level based on performance
-        CASE 
-            WHEN performance_score >= 85 THEN SET new_batch_level = 1;
-            WHEN performance_score >= 70 THEN SET new_batch_level = 2;
-            WHEN performance_score >= 55 THEN SET new_batch_level = 3;
-            ELSE SET new_batch_level = 4;
-        END CASE;
-        
-        -- If batch change needed
-        IF new_batch_level != current_batch_level THEN
-            -- Get new batch ID
-            SELECT id INTO new_batch_id 
-            FROM section_batches 
-            WHERE subject_id = subject_id AND batch_level = new_batch_level 
-            AND is_active = 1
-            LIMIT 1;
-            
-            IF new_batch_id IS NOT NULL THEN
-                -- Update current assignment
-                UPDATE student_batch_assignments 
-                SET is_current = 0 
-                WHERE student_roll = student_roll AND batch_id = current_batch_id AND is_current = 1;
-                
-                -- Create new assignment
-                INSERT INTO student_batch_assignments 
-                (student_roll, batch_id, assigned_by, is_current)
-                VALUES 
-                (student_roll, new_batch_id, 0, 1);
-                
-                -- Record in history
-                INSERT INTO student_batch_history 
-                (student_roll, subject_id, from_batch_id, to_batch_id, allocation_reason, 
-                 allocation_date, performance_score, homework_completion_rate, assessment_avg_score, 
-                 allocated_by, effective_from)
-                VALUES 
-                (student_roll, subject_id, current_batch_id, new_batch_id,
-                 CASE WHEN new_batch_level < current_batch_level THEN 'Performance_Upgrade' ELSE 'Performance_Downgrade' END,
-                 CURDATE(), performance_score, homework_rate, assessment_avg, 'System', CURDATE());
-            END IF;
-        END IF;
-        
-    END LOOP;
-    
-    CLOSE student_cursor;
-END //
+-- Note: TiDB doesn't support stored procedures with cursors and loops
+-- Instead, we'll use simple UPDATE statements and views for batch reallocation
+-- The application will handle the logic in JavaScript/Node.js
 
--- Procedure to auto-assign remedial sessions
-CREATE PROCEDURE assign_remedial_session(
-    IN p_student_roll VARCHAR(45),
-    IN p_subject_id INT,
-    IN p_grade_id INT,
-    IN p_penalty_reason ENUM('Homework_Incomplete','Assessment_Failed','Both')
-)
-BEGIN
-    DECLARE mentor_id INT;
-    DECLARE eca_schedule_id INT;
-    DECLARE session_date DATE;
-    DECLARE start_time TIME;
-    DECLARE end_time TIME;
-    DECLARE venue_id INT;
-    
-    -- Find next ECA period for student
-    SELECT ds.id, ds.date, ds.start_time, ds.end_time, ds.venue
-    INTO eca_schedule_id, session_date, start_time, end_time, venue_id
-    FROM daily_schedule_new ds
-    WHERE ds.is_eca = 1 
-    AND ds.date >= CURDATE()
-    AND ds.section_id = (SELECT section_id FROM students WHERE roll = p_student_roll LIMIT 1)
-    ORDER BY ds.date, ds.start_time
-    LIMIT 1;
-    
-    -- Find available mentor for the subject and grade
-    SELECT m.id INTO mentor_id
-    FROM mentors m 
-    JOIN mentor_grade_subject_assignments mgsa ON m.id = mgsa.mentor_id 
-    WHERE mgsa.grade_id = p_grade_id 
-    AND mgsa.subject_id = p_subject_id 
-    AND mgsa.is_active = 1 
-    AND m.id NOT IN (
-        SELECT DISTINCT assigned_mentor_id 
-        FROM daily_schedule_new ds 
-        WHERE ds.date = session_date 
-        AND ds.start_time <= start_time 
-        AND ds.end_time >= end_time
-        AND assigned_mentor_id IS NOT NULL
-    ) 
-    ORDER BY mgsa.is_primary DESC
-    LIMIT 1;
-    
-    -- Create remedial session
-    IF mentor_id IS NOT NULL AND eca_schedule_id IS NOT NULL THEN
-        INSERT INTO remedial_classwork_sessions 
-        (student_roll, original_eca_schedule_id, assigned_mentor_id, subject_id, grade_id,
-         session_date, start_time, end_time, venue_id, penalty_reason, status)
-        VALUES 
-        (p_student_roll, eca_schedule_id, mentor_id, p_subject_id, p_grade_id,
-         session_date, start_time, end_time, venue_id, p_penalty_reason, 'Scheduled');
-    END IF;
-END //
+-- Performance calculation view for batch reallocation
+CREATE OR REPLACE VIEW v_student_performance_scores AS
+SELECT 
+    sba.student_roll,
+    sb.subject_id,
+    sb.batch_level as current_batch_level,
+    sba.batch_id as current_batch_id,
+    COALESCE(AVG(sap.performance_score), 0) as activity_performance,
+    COALESCE(hcr.completion_rate, 0) as homework_rate,
+    COALESCE(aa.average_score, 0) as assessment_avg,
+    -- Calculate overall performance score (40% activity, 30% homework, 30% assessment)
+    (COALESCE(AVG(sap.performance_score), 0) * 0.4) + 
+    (COALESCE(hcr.completion_rate, 0) * 0.3) + 
+    (COALESCE(aa.average_score, 0) * 0.3) as overall_performance,
+    -- Determine recommended batch level
+    CASE 
+        WHEN (COALESCE(AVG(sap.performance_score), 0) * 0.4) + 
+             (COALESCE(hcr.completion_rate, 0) * 0.3) + 
+             (COALESCE(aa.average_score, 0) * 0.3) >= 85 THEN 1
+        WHEN (COALESCE(AVG(sap.performance_score), 0) * 0.4) + 
+             (COALESCE(hcr.completion_rate, 0) * 0.3) + 
+             (COALESCE(aa.average_score, 0) * 0.3) >= 70 THEN 2
+        WHEN (COALESCE(AVG(sap.performance_score), 0) * 0.4) + 
+             (COALESCE(hcr.completion_rate, 0) * 0.3) + 
+             (COALESCE(aa.average_score, 0) * 0.3) >= 55 THEN 3
+        ELSE 4
+    END as recommended_batch_level
+FROM student_batch_assignments sba
+JOIN section_batches sb ON sba.batch_id = sb.id
+LEFT JOIN student_activity_participation sap ON sba.student_roll = sap.student_roll
+LEFT JOIN v_homework_completion_rates hcr ON sba.student_roll = hcr.student_roll AND sb.subject_id = hcr.subject_id
+LEFT JOIN v_assessment_averages aa ON sba.student_roll = aa.student_roll AND sb.subject_id = aa.subject_id
+WHERE sba.is_current = 1
+GROUP BY sba.student_roll, sb.subject_id, sb.batch_level, sba.batch_id, hcr.completion_rate, aa.average_score;
 
-DELIMITER ;
+-- View to identify students who need batch reallocation
+CREATE OR REPLACE VIEW v_students_for_reallocation AS
+SELECT 
+    vps.*,
+    sb_new.id as new_batch_id
+FROM v_student_performance_scores vps
+JOIN section_batches sb_new ON sb_new.subject_id = vps.subject_id 
+    AND sb_new.batch_level = vps.recommended_batch_level
+    AND sb_new.is_active = 1
+WHERE vps.current_batch_level != vps.recommended_batch_level;
+
+-- Simple table for batch reallocation queue (to be processed by application)
+CREATE TABLE IF NOT EXISTS `batch_reallocation_queue` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `student_roll` varchar(45) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  `from_batch_id` int(11) NOT NULL,
+  `to_batch_id` int(11) NOT NULL,
+  `performance_score` decimal(5,2) NOT NULL,
+  `homework_rate` decimal(5,2) NOT NULL,
+  `assessment_avg` decimal(5,2) NOT NULL,
+  `reason` enum('Performance_Upgrade','Performance_Downgrade') NOT NULL,
+  `status` enum('Pending','Processed','Failed') DEFAULT 'Pending',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  `processed_at` timestamp NULL,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`subject_id`) REFERENCES `subjects`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`from_batch_id`) REFERENCES `section_batches`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`to_batch_id`) REFERENCES `section_batches`(`id`) ON DELETE CASCADE,
+  INDEX `idx_status_created` (`status`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
 -- 9. SAMPLE DATA INSERTIONS
@@ -738,96 +664,47 @@ LEFT JOIN venues v ON ds.venue_id = v.id
 ORDER BY ds.date, ds.period_number, pa.start_time;
 
 -- ============================================
--- 11. TRIGGERS FOR AUTOMATIC UPDATES
+-- 11. BATCH COUNT MANAGEMENT (TiDB Standard SQL Only)
 -- ============================================
 
-DELIMITER //
+-- Note: TiDB doesn't support stored procedures, triggers, or delimiters
+-- All batch count updates will be handled in application logic (Node.js backend)
 
--- Update batch student count when student is assigned
-CREATE TRIGGER update_batch_count_on_assignment
-AFTER INSERT ON student_batch_assignments
-FOR EACH ROW
-BEGIN
-    UPDATE section_batches 
-    SET current_students_count = (
-        SELECT COUNT(*) 
-        FROM student_batch_assignments 
-        WHERE batch_id = NEW.batch_id AND is_current = 1
-    )
-    WHERE id = NEW.batch_id;
-END //
+-- View to get current batch student counts (for verification)
+CREATE OR REPLACE VIEW v_batch_student_counts AS
+SELECT 
+    sb.id as batch_id,
+    sb.batch_name,
+    sb.subject_id,
+    sb.section_id,
+    sb.current_students_count as stored_count,
+    COUNT(sba.student_roll) as actual_count,
+    CASE 
+        WHEN sb.current_students_count = COUNT(sba.student_roll) THEN 'CORRECT'
+        ELSE 'NEEDS_UPDATE'
+    END as count_status
+FROM section_batches sb
+LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id AND sba.is_current = 1
+GROUP BY sb.id, sb.batch_name, sb.subject_id, sb.section_id, sb.current_students_count;
 
--- Update batch student count when student assignment changes
-CREATE TRIGGER update_batch_count_on_update
-AFTER UPDATE ON student_batch_assignments
-FOR EACH ROW
-BEGIN
-    -- Update old batch count
-    IF OLD.batch_id != NEW.batch_id OR OLD.is_current != NEW.is_current THEN
-        UPDATE section_batches 
-        SET current_students_count = (
-            SELECT COUNT(*) 
-            FROM student_batch_assignments 
-            WHERE batch_id = OLD.batch_id AND is_current = 1
-        )
-        WHERE id = OLD.batch_id;
-        
-        -- Update new batch count
-        UPDATE section_batches 
-        SET current_students_count = (
-            SELECT COUNT(*) 
-            FROM student_batch_assignments 
-            WHERE batch_id = NEW.batch_id AND is_current = 1
-        )
-        WHERE id = NEW.batch_id;
-    END IF;
-END //
-
--- Auto-update penalty tracking when homework is marked incomplete
-CREATE TRIGGER update_penalty_on_homework_fail
-AFTER UPDATE ON student_homework_tracking
-FOR EACH ROW
-BEGIN
-    IF NEW.status = 'Missing' OR NEW.status = 'Marked_Incomplete' THEN
-        INSERT INTO student_penalty_tracking 
-        (student_roll, subject_id, grade_id, penalty_type, homework_miss_count)
-        VALUES (
-            NEW.student_roll, 
-            NEW.subject_id, 
-            (SELECT grade_id FROM students s JOIN sections sec ON s.section_id = sec.id WHERE s.roll = NEW.student_roll LIMIT 1),
-            'Homework_Incomplete',
-            1
-        )
-        ON DUPLICATE KEY UPDATE 
-        homework_miss_count = homework_miss_count + 1,
-        is_on_penalty = CASE WHEN homework_miss_count + 1 >= penalty_threshold THEN 1 ELSE 0 END,
-        penalty_start_date = CASE WHEN homework_miss_count + 1 >= penalty_threshold AND penalty_start_date IS NULL THEN CURDATE() ELSE penalty_start_date END;
-    END IF;
-END //
-
--- Auto-update penalty tracking when assessment is failed
-CREATE TRIGGER update_penalty_on_assessment_fail
-AFTER UPDATE ON student_assessments
-FOR EACH ROW
-BEGIN
-    IF NEW.status = 'Failed' THEN
-        INSERT INTO student_penalty_tracking 
-        (student_roll, subject_id, grade_id, penalty_type, failed_assessment_count)
-        VALUES (
-            NEW.student_roll, 
-            (SELECT subject_id FROM topic_hierarchy WHERE id = NEW.topic_id),
-            (SELECT grade_id FROM students s JOIN sections sec ON s.section_id = sec.id WHERE s.roll = NEW.student_roll LIMIT 1),
-            'Assessment_Failed',
-            1
-        )
-        ON DUPLICATE KEY UPDATE 
-        failed_assessment_count = failed_assessment_count + 1,
-        is_on_penalty = CASE WHEN failed_assessment_count + 1 >= penalty_threshold THEN 1 ELSE 0 END,
-        penalty_start_date = CASE WHEN failed_assessment_count + 1 >= penalty_threshold AND penalty_start_date IS NULL THEN CURDATE() ELSE penalty_start_date END;
-    END IF;
-END //
-
-DELIMITER ;
+-- Application will use these UPDATE queries to maintain batch counts:
+-- 
+-- Update single batch count:
+-- UPDATE section_batches 
+-- SET current_students_count = (
+--     SELECT COUNT(*) 
+--     FROM student_batch_assignments 
+--     WHERE batch_id = ? AND is_current = 1
+-- )
+-- WHERE id = ?;
+--
+-- Fix all batch counts:
+-- UPDATE section_batches sb
+-- SET current_students_count = (
+--     SELECT COUNT(*)
+--     FROM student_batch_assignments sba
+--     WHERE sba.batch_id = sb.id AND sba.is_current = 1
+-- );
 
 -- ============================================
 -- 12. INDEXES FOR PERFORMANCE
@@ -842,12 +719,41 @@ CREATE INDEX idx_batch_section_subject ON section_batches(section_id, subject_id
 CREATE INDEX idx_penalty_student_subject ON student_penalty_tracking(student_roll, subject_id);
 
 -- ============================================
--- MIGRATION NOTES
+-- MIGRATION NOTES - TiDB STANDARD SQL ONLY
 -- ============================================
 -- 1. Backup existing daily_schedule table before running this migration
 -- 2. Update application code to use daily_schedule_new table
 -- 3. Migrate existing data if needed
--- 4. Run the batch reallocation procedure daily via cron job
--- 5. Monitor performance and adjust indexes as needed
+-- 4. TiDB Compatibility Requirements:
+--    - NO stored procedures (not supported by TiDB)
+--    - NO triggers (not supported by TiDB) 
+--    - NO delimiters (not supported by TiDB)
+--    - Only standard SQL queries, views, and tables
+-- 5. All business logic moved to Node.js backend controllers
+-- 6. Batch count updates handled via direct UPDATE queries in application
+-- 7. Performance calculations done via views queried from application
+-- 8. Monitor performance and adjust indexes as needed
+
+-- APPLICATION IMPLEMENTATION NOTES:
+-- 1. Use v_student_performance_scores view to get performance calculations
+-- 2. Use v_students_for_reallocation view to identify batch changes needed
+-- 3. Insert into batch_reallocation_queue table for processing
+-- 4. Process queue in batchManagementController.js with direct SQL queries
+-- 5. Update batch counts using direct UPDATE statements in application
+-- 6. Use v_batch_student_counts view to monitor count accuracy
+
+-- BACKEND CONTROLLER RESPONSIBILITIES:
+-- 1. Student batch assignment: Execute UPDATE query to maintain current_students_count
+-- 2. Batch reallocation: Query views and execute INSERT/UPDATE statements
+-- 3. Penalty tracking: Direct INSERT/UPDATE to student_penalty_tracking table
+-- 4. Performance calculation: Query views for real-time performance metrics
+-- 5. All complex logic implemented in JavaScript/Node.js, not SQL
+
+-- EXAMPLE UPDATE QUERIES FOR BACKEND:
+-- Update single batch count:
+-- UPDATE section_batches SET current_students_count = (SELECT COUNT(*) FROM student_batch_assignments WHERE batch_id = ? AND is_current = 1) WHERE id = ?;
+-- 
+-- Fix all batch counts:
+-- UPDATE section_batches sb SET current_students_count = (SELECT COUNT(*) FROM student_batch_assignments sba WHERE sba.batch_id = sb.id AND sba.is_current = 1);
 
 -- End of Migration Script

@@ -236,6 +236,8 @@ router.post('/coordinator/processAssessmentRequest', coordinatorController.proce
 // Enhanced Topic Hierarchy Routes
 router.get('/topics/hierarchy/:subjectId/:gradeId', TopicHierarchyController.getTopicHierarchy);
 router.post('/topics/create', TopicHierarchyController.createTopic);
+router.put('/topics/:topicId', TopicHierarchyController.updateTopic);
+router.delete('/topics/:topicId', TopicHierarchyController.deleteTopic);
 router.get('/topics/:topicId/materials', TopicHierarchyController.getTopicMaterials);
 router.post('/topics/materials/add', TopicHierarchyController.addTopicMaterial);
 router.get('/topics/assessment-eligible/:studentRoll/:subjectId', TopicHierarchyController.getAssessmentEligibleTopics);

@@ -14,10 +14,10 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../../utils/env.js';
 
-const TopicHierarchyManagement = ({ navigation }) => {
+const TopicHierarchyManagement = ({ navigation, route }) => {
+  const { coordinatorData, coordinatorGrades, activeGrade } = route.params || {};
   const [topicHierarchy, setTopicHierarchy] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -51,13 +51,13 @@ const TopicHierarchyManagement = ({ navigation }) => {
 
   const fetchSubjects = async () => {
     try {
-      const token = await AsyncStorage.getItem('coordinatorToken');
-      const response = await fetch(`${API_URL}/coordinator/hierarchy/subjects`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await fetch(`${API_URL}/api/coordinator/getSubjects`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
       });
       const result = await response.json();
       if (result.success) {
-        setSubjects(result.data);
+        setSubjects(result.subjects);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch subjects');
@@ -65,18 +65,20 @@ const TopicHierarchyManagement = ({ navigation }) => {
   };
 
   const fetchTopicHierarchy = async () => {
-    if (!selectedSubject) return;
+    if (!selectedSubject || !activeGrade) return;
     
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('coordinatorToken');
       const response = await fetch(
-        `${API_URL}/coordinator/hierarchy/topics/${selectedSubject}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${API_URL}/api/coordinator/topics/hierarchy/${selectedSubject}/${activeGrade}`,
+        { 
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' } 
+        }
       );
       const result = await response.json();
       if (result.success) {
-        setTopicHierarchy(result.data);
+        setTopicHierarchy(result.data.hierarchy || []);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch topic hierarchy');
@@ -87,21 +89,28 @@ const TopicHierarchyManagement = ({ navigation }) => {
 
   const createTopic = async () => {
     try {
-      const token = await AsyncStorage.getItem('coordinatorToken');
       const payload = {
-        ...formData,
-        subject_id: selectedSubject,
+        subjectId: selectedSubject,
+        parentId: formData.parent_id,
+        level: formData.parent_id ? 2 : 1, // Calculate level based on parent
+        topicName: formData.topic_name,
+        topicCode: formData.topic_code,
+        orderSequence: formData.order_sequence,
+        hasAssessment: formData.has_assessment,
+        hasHomework: formData.has_homework,
+        isBottomLevel: formData.is_bottom_level,
+        expectedCompletionDays: formData.expected_completion_days,
+        passPercentage: formData.pass_percentage,
       };
 
       const url = editingTopic 
-        ? `${API_URL}/coordinator/hierarchy/topics/${editingTopic.id}`
-        : `${API_URL}/coordinator/hierarchy/topics`;
+        ? `${API_URL}/api/coordinator/topics/${editingTopic.id}`
+        : `${API_URL}/api/coordinator/topics/create`;
 
       const response = await fetch(url, {
         method: editingTopic ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -131,12 +140,11 @@ const TopicHierarchyManagement = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await AsyncStorage.getItem('coordinatorToken');
               const response = await fetch(
-                `${API_URL}/coordinator/hierarchy/topics/${topicId}`,
+                `${API_URL}/api/coordinator/topics/${topicId}`,
                 {
                   method: 'DELETE',
-                  headers: { Authorization: `Bearer ${token}` },
+                  headers: { 'Content-Type': 'application/json' },
                 }
               );
               const result = await response.json();
@@ -306,7 +314,10 @@ const TopicHierarchyManagement = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Topic Hierarchy Management</Text>
+        <View>
+          <Text style={styles.title}>Topic Hierarchy Management</Text>
+          {activeGrade && <Text style={styles.subtitle}>Grade {activeGrade}</Text>}
+        </View>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => openCreateModal()}
@@ -470,6 +481,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
   addButton: {
     flexDirection: 'row',

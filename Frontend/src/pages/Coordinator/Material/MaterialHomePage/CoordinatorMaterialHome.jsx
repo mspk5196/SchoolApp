@@ -136,13 +136,21 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
       <View style={styles.enhancedButtonsContainer}>
         <TouchableOpacity 
           style={styles.enhancedButton}
-          onPress={() => navigation.navigate('TopicHierarchyManagement')}
+          onPress={() => navigation.navigate('TopicHierarchyManagement', {
+            coordinatorData,
+            coordinatorGrades,
+            activeGrade
+          })}
         >
           <Text style={styles.enhancedButtonText}>📚 Topic Hierarchy</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.enhancedButton}
-          onPress={() => navigation.navigate('BatchManagementHome')}
+          onPress={() => navigation.navigate('BatchManagementHome', {
+            coordinatorData,
+            coordinatorGrades,
+            activeGrade
+          })}
         >
           <Text style={styles.enhancedButtonText}>👥 Batch Management</Text>
         </TouchableOpacity>
@@ -173,12 +181,13 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
           renderItem={({ item }) => (
             <Pressable
               onPress={() => {
-                navigation.navigate('SubjectActivityPage', {
+                navigation.navigate('TopicHierarchySubject', {
                   grade: `Grade ${activeGrade}`,
                   gradeID: activeGrade,
                   subject: item.subject_name,
                   subjectID: item.subject_id,
-                  activities: item.activities
+                  coordinatorData,
+                  coordinatorGrades
                 });
               }}
             >

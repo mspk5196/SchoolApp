@@ -315,6 +315,100 @@ class TopicHierarchyController {
             });
         }
     }
+
+    // Delete topic from hierarchy
+    static async deleteTopic(req, res) {
+        try {
+            const { topicId } = req.params;
+            
+            // Check if topic has children
+            const childCheckQuery = `
+                SELECT COUNT(*) as child_count 
+                FROM topic_hierarchy 
+                WHERE parent_id = ?
+            `;
+            
+            const [childResult] = await db.execute(childCheckQuery, [topicId]);
+            
+            if (childResult[0].child_count > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Cannot delete topic that has sub-topics. Please delete sub-topics first.'
+                });
+            }
+            
+            // Delete the topic (cascade will handle materials, homework, etc.)
+            const deleteQuery = `
+                DELETE FROM topic_hierarchy 
+                WHERE id = ?
+            `;
+            
+            const [result] = await db.execute(deleteQuery, [topicId]);
+            
+            if (result.affectedRows === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Topic not found'
+                });
+            }
+            
+            res.json({
+                success: true,
+                message: 'Topic deleted successfully'
+            });
+        } catch (error) {
+            console.error('Delete topic error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to delete topic',
+                error: error.message
+            });
+        }
+    }
+
+    // Update topic
+    static async updateTopic(req, res) {
+        try {
+            const { topicId } = req.params;
+            const {
+                topicName, topicCode, orderSequence, hasAssessment, 
+                hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+            } = req.body;
+
+            const query = `
+                UPDATE topic_hierarchy 
+                SET topic_name = ?, topic_code = ?, order_sequence = ?,
+                    has_assessment = ?, has_homework = ?, is_bottom_level = ?,
+                    expected_completion_days = ?, pass_percentage = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `;
+
+            const [result] = await db.execute(query, [
+                topicName, topicCode, orderSequence, hasAssessment,
+                hasHomework, isBottomLevel, expectedCompletionDays, passPercentage, topicId
+            ]);
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Topic not found'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'Topic updated successfully'
+            });
+        } catch (error) {
+            console.error('Update topic error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to update topic',
+                error: error.message
+            });
+        }
+    }
 }
 
 module.exports = TopicHierarchyController;
