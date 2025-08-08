@@ -70,6 +70,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
   const fetchTopicHierarchy = async () => {
     if (!selectedSubject || !activeGrade) return;
+    setTopicHierarchy([]);
     
     setLoading(true);
     try {
@@ -255,11 +256,9 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
             onPress={() => toggleExpanded(item.id)}
             disabled={!hasChildren}
           >
-            <Icon
-              name={hasChildren ? (isExpanded ? 'expand-less' : 'expand-more') : 'radio-button-unchecked'}
-              size={20}
-              color={hasChildren ? '#007AFF' : '#ccc'}
-            />
+            <Text style={[styles.expandIcon, { color: hasChildren ? '#007AFF' : '#ccc' }]}>
+              {hasChildren ? (isExpanded ? '▼' : '▶') : '●'}
+            </Text>
           </TouchableOpacity>
 
           <View style={styles.topicInfo}>
@@ -277,25 +276,25 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               style={styles.actionButton}
               onPress={() => openCreateModal(item.id)}
             >
-              <Icon name="add" size={20} color="#007AFF" />
+              <Text style={styles.actionButtonText}>+</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => openEditModal(item)}
             >
-              <Icon name="edit" size={20} color="#FF9500" />
+              <Text style={styles.actionButtonText}>✏</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => deleteTopic(item.id)}
             >
-              <Icon name="delete" size={20} color="#FF3B30" />
+              <Text style={styles.actionButtonText}>🗑</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => navigation.navigate('TopicMaterials', { topicId: item.id, topicName: item.topic_name })}
             >
-              <Icon name="folder" size={20} color="#34C759" />
+              <Text style={styles.actionButtonText}>📁</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -351,13 +350,6 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
           <Text style={styles.title}>Topic Hierarchy Management</Text>
           {activeGrade && <Text style={styles.subtitle}>Grade {activeGrade}</Text>}
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => openCreateModal()}
-        >
-          <Icon name="add" size={24} color="#fff" />
-          <Text style={styles.addButtonText}>Add Root Topic</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.subjectSelector}>
@@ -378,6 +370,17 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         </Picker>
       </View>
 
+      {selectedSubject && (
+        <View style={styles.addTopicSection}>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => openCreateModal()}
+          >
+            <Text style={styles.addButtonText}>+ Add Root Topic</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {loading ? (
         <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
       ) : (
@@ -397,7 +400,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               {editingTopic ? 'Edit Topic' : 'Create New Topic'}
             </Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Icon name="close" size={24} color="#333" />
+              <Text style={styles.closeButton}>✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -539,6 +542,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  addTopicSection: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    alignItems: 'center',
+  },
   label: {
     fontSize: 16,
     fontWeight: '600',
@@ -568,6 +578,10 @@ const styles = StyleSheet.create({
   },
   expandButton: {
     marginRight: 8,
+  },
+  expandIcon: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   topicInfo: {
     flex: 1,
@@ -601,6 +615,15 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 8,
     marginLeft: 4,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    fontSize: 24,
+    color: '#333',
+    fontWeight: 'bold',
   },
   modalContainer: {
     flex: 1,

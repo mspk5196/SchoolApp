@@ -78,45 +78,65 @@ exports.createTopic = async (req, res) => {
             hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
         } = req.body;
 
-        console.log('Creating topic with data:', {
-            subjectId, parentId, level, topicName, topicCode, orderSequence,
-            hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
-        });
+        // console.log('Creating topic with data:', {
+        //     subjectId, parentId, level, topicName, topicCode, orderSequence,
+        //     hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+        // });
 
-        const query = `
+        const sql = `
                 INSERT INTO topic_hierarchy 
                 (subject_id, parent_id, level, topic_name, topic_code, order_sequence,
                  has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
-        console.log('Executing query:', query);
+        // console.log('Executing query:', sql);
         console.log('With parameters:', [
             subjectId, parentId, level, topicName, topicCode, orderSequence,
             hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
         ]);
 
-        const result = await db.execute(query, [
+        // const result = await db.execute(query, [
+        //     subjectId, parentId, level, topicName, topicCode, orderSequence,
+        //     hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+        // ]);
+
+        db.query(sql, [
             subjectId, parentId, level, topicName, topicCode, orderSequence,
             hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
-        ]);
+        ], (error, result) => {
+            if (error) {
+                console.error('Insert topic error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to create topic',
+                    error: error.message
+                });
+            }
+            if (result.affectedRows === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Failed to create topic',
+                    error: 'No rows affected'
+                });
+            }
+            // TiDB compatibility: Handle different result formats
+            let topicId;
+            if (Array.isArray(result) && result[0]) {
+                topicId = result[0].insertId || 'created_successfully';
+            } else if (result && result.insertId) {
+                topicId = result.insertId;
+            } else {
+                topicId = 'created_successfully';
+            }
 
-        console.log('Insert result:', result);
+            res.json({
+                success: true,
+                message: 'Topic created successfully',
+                data: { topicId: topicId }
+            });
 
-        // TiDB compatibility: Handle different result formats
-        let topicId;
-        if (Array.isArray(result) && result[0]) {
-            topicId = result[0].insertId || 'created_successfully';
-        } else if (result && result.insertId) {
-            topicId = result.insertId;
-        } else {
-            topicId = 'created_successfully';
-        }
-
-        res.json({
-            success: true,
-            message: 'Topic created successfully',
-            data: { topicId: topicId }
+            // console.log('Insert result:', result);
         });
     } catch (error) {
         console.error('Create topic error:', error);
@@ -422,7 +442,7 @@ exports.updateTopic = async (req, res) => {
             hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
         } = req.body;
 
-        const query = `
+        const sql = `
                 UPDATE topic_hierarchy 
                 SET topic_name = ?, topic_code = ?, order_sequence = ?,
                     has_assessment = ?, has_homework = ?, is_bottom_level = ?,
@@ -431,21 +451,34 @@ exports.updateTopic = async (req, res) => {
                 WHERE id = ?
             `;
 
-        const [result] = await db.execute(query, [
+        // const [result] = await db.execute(sql, [
+        //     topicName, topicCode, orderSequence, hasAssessment,
+        //     hasHomework, isBottomLevel, expectedCompletionDays, passPercentage, topicId
+        // ]);
+
+        db.query(sql, [
             topicName, topicCode, orderSequence, hasAssessment,
             hasHomework, isBottomLevel, expectedCompletionDays, passPercentage, topicId
-        ]);
+        ], (error, results) => {
+            if (error) {
+                console.error('Update topic error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to update topic',
+                    error: error.message
+                });
+            }
+            if (results.affectedRows === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Topic not found'
+                });
+            }
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Topic not found'
+            res.json({
+                success: true,
+                message: 'Topic updated successfully'
             });
-        }
-
-        res.json({
-            success: true,
-            message: 'Topic updated successfully'
         });
     } catch (error) {
         console.error('Update topic error:', error);
@@ -456,6 +489,3 @@ exports.updateTopic = async (req, res) => {
         });
     }
 }
-// }
-
-// module.exports = TopicHierarchyController;
