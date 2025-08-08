@@ -6,29 +6,14 @@ class TopicHierarchyController {
         try {
             const { subjectId, gradeId } = req.params;
             
+            // Use simple query instead of recursive CTE for TiDB compatibility
             const query = `
-                WITH RECURSIVE topic_tree AS (
-                    -- Base case: top-level topics
-                    SELECT 
-                        id, subject_id, parent_id, level, topic_name, topic_code, 
-                        order_sequence, has_assessment, has_homework, is_bottom_level,
-                        expected_completion_days, pass_percentage, 0 as depth,
-                        CAST(topic_name AS CHAR(1000)) as path
-                    FROM topic_hierarchy 
-                    WHERE subject_id = ? AND parent_id IS NULL
-                    
-                    UNION ALL
-                    
-                    -- Recursive case: child topics
-                    SELECT 
-                        th.id, th.subject_id, th.parent_id, th.level, th.topic_name, th.topic_code,
-                        th.order_sequence, th.has_assessment, th.has_homework, th.is_bottom_level,
-                        th.expected_completion_days, th.pass_percentage, tt.depth + 1,
-                        CONCAT(tt.path, ' > ', th.topic_name)
-                    FROM topic_hierarchy th
-                    INNER JOIN topic_tree tt ON th.parent_id = tt.id
-                )
-                SELECT * FROM topic_tree 
+                SELECT 
+                    id, subject_id, parent_id, level, topic_name, topic_code, 
+                    order_sequence, has_assessment, has_homework, is_bottom_level,
+                    expected_completion_days, pass_percentage, created_at, updated_at
+                FROM topic_hierarchy 
+                WHERE subject_id = ?
                 ORDER BY level, order_sequence
             `;
             
