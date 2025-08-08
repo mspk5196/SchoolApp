@@ -28,9 +28,7 @@ exports.getTopicHierarchy = async (req, res) => {
             console.log('Hierarchy query result:', result);
 
             let hierarchy;
-            if (Array.isArray(result) && result[0]) {
-                hierarchy = result[0];
-            } else if (Array.isArray(result)) {
+            if (Array.isArray(result) && result.length > 0) {
                 hierarchy = result;
             } else {
                 hierarchy = [];
@@ -40,6 +38,9 @@ exports.getTopicHierarchy = async (req, res) => {
 
             // Build nested structure
             const buildTree = (items, parentId = null) => {
+                if (!Array.isArray(items)) {
+                    return [];
+                }
                 return items
                     .filter(item => item.parent_id === parentId)
                     .map(item => ({
