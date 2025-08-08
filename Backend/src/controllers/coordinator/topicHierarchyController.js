@@ -24,16 +24,16 @@ class TopicHierarchyController {
             console.log('Hierarchy query result:', result);
             
             // TiDB compatibility: Handle different result formats
-            let hierarchy;
-            if (Array.isArray(result) && result[0]) {
-                hierarchy = result[0];
-            } else if (Array.isArray(result)) {
-                hierarchy = result;
-            } else {
-                hierarchy = [];
-            }
+            // let hierarchy;
+            // if (Array.isArray(result) && result[0]) {
+            //     hierarchy = result[0];
+            // } else if (Array.isArray(result)) {
+            //     hierarchy = result;
+            // } else {
+            //     hierarchy = [];
+            // }
             
-            console.log('Processed hierarchy data:', hierarchy);
+            console.log('Processed hierarchy data:', result);
             
             // Build nested structure
             const buildTree = (items, parentId = null) => {
@@ -45,13 +45,13 @@ class TopicHierarchyController {
                     }));
             };
             
-            const tree = buildTree(hierarchy);
+            const tree = buildTree(result);
             
             console.log('Built tree structure:', tree);
             
             res.json({
                 success: true,
-                data: {
+                data: { 
                     overallData:result,
                     hierarchy: tree,
                     total_topics: hierarchy.length
