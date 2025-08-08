@@ -51,15 +51,19 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
   const fetchSubjects = async () => {
     try {
+      console.log('Fetching subjects from:', `${API_URL}/api/coordinator/getSubjects`);
       const response = await fetch(`${API_URL}/api/coordinator/getSubjects`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
+      console.log('Subjects response status:', response.status);
       const result = await response.json();
+      console.log('Subjects result:', result);
       if (result.success) {
         setSubjects(result.subjects);
       }
     } catch (error) {
+      console.error('Fetch subjects error:', error);
       Alert.alert('Error', 'Failed to fetch subjects');
     }
   };
@@ -70,7 +74,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_URL}/api/coordinator/topics/hierarchy/${selectedSubject}/${activeGrade}`,
+        `${API_URL}/api/topics/hierarchy/${selectedSubject}/${activeGrade}`,
         { 
           method: 'GET',
           headers: { 'Content-Type': 'application/json' } 
@@ -89,6 +93,20 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
   const createTopic = async () => {
     try {
+      // Validation
+      if (!formData.topic_name.trim()) {
+        Alert.alert('Error', 'Topic name is required');
+        return;
+      }
+      if (!formData.topic_code.trim()) {
+        Alert.alert('Error', 'Topic code is required');
+        return;
+      }
+      if (!selectedSubject) {
+        Alert.alert('Error', 'Please select a subject first');
+        return;
+      }
+
       const payload = {
         subjectId: selectedSubject,
         parentId: formData.parent_id,
@@ -103,9 +121,13 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         passPercentage: formData.pass_percentage,
       };
 
+      console.log('Sending payload:', payload);
+
       const url = editingTopic 
-        ? `${API_URL}/api/coordinator/topics/${editingTopic.id}`
-        : `${API_URL}/api/coordinator/topics/create`;
+        ? `${API_URL}/api/topics/${editingTopic.id}`
+        : `${API_URL}/api/topics/create`;
+
+      console.log('Request URL:', url);
 
       const response = await fetch(url, {
         method: editingTopic ? 'PUT' : 'POST',
@@ -115,17 +137,23 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         body: JSON.stringify(payload),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
       const result = await response.json();
+      console.log('Response result:', result);
+
       if (result.success) {
         Alert.alert('Success', `Topic ${editingTopic ? 'updated' : 'created'} successfully`);
         setModalVisible(false);
         resetForm();
         fetchTopicHierarchy();
       } else {
-        Alert.alert('Error', result.message);
+        Alert.alert('Error', result.message || result.error || 'Unknown error occurred');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to save topic');
+      console.error('Create topic error:', error);
+      Alert.alert('Error', `Failed to save topic: ${error.message}`);
     }
   };
 
@@ -141,7 +169,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
           onPress: async () => {
             try {
               const response = await fetch(
-                `${API_URL}/api/coordinator/topics/${topicId}`,
+                `${API_URL}/api/topics/${topicId}`,
                 {
                   method: 'DELETE',
                   headers: { 'Content-Type': 'application/json' },

@@ -71,6 +71,11 @@ class TopicHierarchyController {
                 hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
             } = req.body;
 
+            console.log('Creating topic with data:', {
+                subjectId, parentId, level, topicName, topicCode, orderSequence,
+                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+            });
+
             const query = `
                 INSERT INTO topic_hierarchy 
                 (subject_id, parent_id, level, topic_name, topic_code, order_sequence,
@@ -78,18 +83,30 @@ class TopicHierarchyController {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
+            console.log('Executing query:', query);
+            console.log('With parameters:', [
+                subjectId, parentId, level, topicName, topicCode, orderSequence,
+                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+            ]);
+
             const [result] = await db.execute(query, [
                 subjectId, parentId, level, topicName, topicCode, orderSequence,
                 hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
             ]);
 
+            console.log('Insert result:', result);
+
+            // TiDB compatibility: insertId might not be available
+            const topicId = result.insertId || 'created_successfully';
+
             res.json({
                 success: true,
                 message: 'Topic created successfully',
-                data: { topicId: result.insertId }
+                data: { topicId: topicId }
             });
         } catch (error) {
             console.error('Create topic error:', error);
+            console.error('Error stack:', error.stack);
             res.status(500).json({
                 success: false,
                 message: 'Failed to create topic',
