@@ -32,7 +32,23 @@ class TopicHierarchyController {
                 ORDER BY level, order_sequence
             `;
             
-            const [hierarchy] = await db.execute(query, [subjectId]);
+            console.log('Executing hierarchy query for subjectId:', subjectId, 'gradeId:', gradeId);
+            
+            const result = await db.execute(query, [subjectId]);
+            
+            console.log('Hierarchy query result:', result);
+            
+            // TiDB compatibility: Handle different result formats
+            let hierarchy;
+            if (Array.isArray(result) && result[0]) {
+                hierarchy = result[0];
+            } else if (Array.isArray(result)) {
+                hierarchy = result;
+            } else {
+                hierarchy = [];
+            }
+            
+            console.log('Processed hierarchy data:', hierarchy);
             
             // Build nested structure
             const buildTree = (items, parentId = null) => {
@@ -45,6 +61,8 @@ class TopicHierarchyController {
             };
             
             const tree = buildTree(hierarchy);
+            
+            console.log('Built tree structure:', tree);
             
             res.json({
                 success: true,
@@ -352,9 +370,17 @@ class TopicHierarchyController {
                 WHERE parent_id = ?
             `;
             
-            const [childResult] = await db.execute(childCheckQuery, [topicId]);
+            const childResult = await db.execute(childCheckQuery, [topicId]);
             
-            if (childResult[0].child_count > 0) {
+            // TiDB compatibility: Handle different result formats
+            let childCount = 0;
+            if (Array.isArray(childResult) && childResult[0] && childResult[0][0]) {
+                childCount = childResult[0][0].child_count || 0;
+            } else if (Array.isArray(childResult) && childResult[0]) {
+                childCount = childResult[0].child_count || 0;
+            }
+            
+            if (childCount > 0) {
                 return res.status(400).json({
                     success: false,
                     message: 'Cannot delete topic that has sub-topics. Please delete sub-topics first.'
@@ -367,9 +393,17 @@ class TopicHierarchyController {
                 WHERE id = ?
             `;
             
-            const [result] = await db.execute(deleteQuery, [topicId]);
+            const result = await db.execute(deleteQuery, [topicId]);
             
-            if (result.affectedRows === 0) {
+            // TiDB compatibility: Handle different result formats
+            let affectedRows = 0;
+            if (Array.isArray(result) && result[0]) {
+                affectedRows = result[0].affectedRows || 0;
+            } else if (result && result.affectedRows) {
+                affectedRows = result.affectedRows;
+            }
+            
+            if (affectedRows === 0) {
                 return res.status(404).json({
                     success: false,
                     message: 'Topic not found'
