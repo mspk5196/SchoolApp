@@ -7,7 +7,7 @@ exports.getTopicHierarchy = async (req, res) => {
         const { subjectId, gradeId } = req.params;
 
         // Use simple query instead of recursive CTE for TiDB compatibility
-        const query = `
+        const sql = `
                 SELECT 
                     id, subject_id, parent_id, level, topic_name, topic_code, 
                     order_sequence, has_assessment, has_homework, is_bottom_level,
@@ -19,43 +19,45 @@ exports.getTopicHierarchy = async (req, res) => {
 
         console.log('Executing hierarchy query for subjectId:', subjectId, 'gradeId:', gradeId);
 
-        const result = await db.execute(query, [subjectId]);
+        // const result = await db.query(query, [subjectId]);
 
-        console.log('Hierarchy query result:', result);
+        db.query(sql, [subjectId], (err, result) => {
+            if (err) return res.status(500).json({ success: false });
+            if (result.length === 0) return res.status(404).json({ success: false });
 
-        // TiDB compatibility: Handle different result formats
-        // let hierarchy;
-        // if (Array.isArray(result) && result[0]) {
-        //     hierarchy = result[0];
-        // } else if (Array.isArray(result)) {
-        //     hierarchy = result;
-        // } else {
-        //     hierarchy = [];
-        // }
+            console.log('Hierarchy query result:', result);
 
-        console.log('Processed hierarchy data:', result);
-
-        // Build nested structure
-        const buildTree = (items, parentId = null) => {
-            return items
-                .filter(item => item.parent_id === parentId)
-                .map(item => ({
-                    ...item,
-                    children: buildTree(items, item.id)
-                }));
-        };
-
-        const tree = buildTree(result);
-
-        console.log('Built tree structure:', tree);
-
-        res.json({
-            success: true,
-            data: {
-                overallData: result,
-                hierarchy: tree,
-                total_topics: hierarchy.length
+            let hierarchy;
+            if (Array.isArray(result) && result[0]) {
+                hierarchy = result[0];
+            } else if (Array.isArray(result)) {
+                hierarchy = result;
+            } else {
+                hierarchy = [];
             }
+
+            console.log('Processed hierarchy data:', hierarchy);
+
+            // Build nested structure
+            const buildTree = (items, parentId = null) => {
+                return items
+                    .filter(item => item.parent_id === parentId)
+                    .map(item => ({
+                        ...item,
+                        children: buildTree(items, item.id)
+                    }));
+            };
+
+            const tree = buildTree(hierarchy);
+
+            console.log('Built tree structure:', tree);
+            res.json({
+                success: true, data: {
+                    overallData: result,
+                    hierarchy: tree,
+                    total_topics: hierarchy.length
+                }
+            });
         });
     } catch (error) {
         console.error('Get topic hierarchy error:', error);
