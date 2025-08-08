@@ -82,6 +82,11 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       );
       const result = await response.json();
       if (result.success) {
+        console.log(
+          `Fetched topic hierarchy for subject ${selectedSubject} and grade ${activeGrade}:`,
+          result.data
+        );
+        
         setTopicHierarchy(result.data.hierarchy || []);
       }
     } catch (error) {

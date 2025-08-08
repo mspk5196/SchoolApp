@@ -67,6 +67,7 @@ class TopicHierarchyController {
             res.json({
                 success: true,
                 data: {
+                    overallData:result,
                     hierarchy: tree,
                     total_topics: hierarchy.length
                 }

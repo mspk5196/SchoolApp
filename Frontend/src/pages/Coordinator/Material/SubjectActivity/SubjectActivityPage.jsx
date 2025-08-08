@@ -23,7 +23,7 @@ const SubjectActivityPage = ({ navigation, route }) => {
         setLoading(true);
       }
 
-      const response = await fetch(`${API_URL}/api/coordinator/topics/hierarchy/${subjectID}/${gradeID}`, {
+      const response = await fetch(`${API_URL}/api/topics/hierarchy/${subjectID}/${gradeID}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" }
       });
