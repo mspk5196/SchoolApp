@@ -435,7 +435,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               <TextInput
                 style={styles.input}
                 value={formData.order_sequence.toString()}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, order_sequence: parseInt(text) || 1 }))}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, order_sequence: parseInt(text) || 0 }))}
                 keyboardType="numeric"
                 placeholder="Order sequence"
               />
@@ -446,7 +446,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               <TextInput
                 style={styles.input}
                 value={formData.expected_completion_days.toString()}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, expected_completion_days: parseInt(text) || 7 }))}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, expected_completion_days: parseInt(text) || 0 }))}
                 keyboardType="numeric"
                 placeholder="Expected completion days"
               />

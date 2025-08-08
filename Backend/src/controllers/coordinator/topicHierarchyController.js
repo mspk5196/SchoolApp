@@ -160,9 +160,34 @@ exports.getTopicMaterials = async (req, res) => {
                 });
             }
 
+            // Parse file data for each material
+            const processedMaterials = materials.map(material => {
+                try {
+                    // Try to parse file_url as JSON (for multiple files)
+                    if (material.file_url && material.file_url.startsWith('[')) {
+                        material.files = JSON.parse(material.file_url);
+                    } else {
+                        // Single file format - convert to array
+                        material.files = material.file_name ? [{
+                            name: material.file_name,
+                            url: material.file_url,
+                            type: material.file_type
+                        }] : [];
+                    }
+                } catch (e) {
+                    // Fallback for single file
+                    material.files = material.file_name ? [{
+                        name: material.file_name,
+                        url: material.file_url,
+                        type: material.file_type
+                    }] : [];
+                }
+                return material;
+            });
+
             res.json({
                 success: true,
-                data: materials
+                data: processedMaterials
             });
         });
     } catch (error) {
@@ -175,30 +200,57 @@ exports.getTopicMaterials = async (req, res) => {
     }
 }
 
-// Add material to topic
-exports.addTopicMaterial = async (req, res) => {
+// Add material to topic with file upload
+exports.uploadTopicMaterials = async (req, res) => {
     try {
         const {
-            topicId, materialType, activityName, fileName, fileUrl,
-            fileType, estimatedDuration, difficultyLevel, instructions
+            topicId, materialType, activityName,
+            estimatedDuration, difficultyLevel, instructions
         } = req.body;
 
+        console.log('Uploading topic materials with data:', {
+            topicId, materialType, activityName,
+            estimatedDuration, difficultyLevel, instructions
+        });
+
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No files uploaded'
+            });
+        }
+
+        // Process each uploaded file
+        const fileData = req.files.map(file => ({
+            name: file.originalname,
+            url: `/uploads/materials/${file.filename}`,
+            type: getFileTypeFromExtension(file.originalname),
+            size: file.size
+        }));
+
+        // For multiple files, we'll store the first file in the main columns
+        // and all files in a JSON format in file_url (we'll extend this field)
+        const primaryFile = fileData[0];
+        const allFilesJson = JSON.stringify(fileData);
+
+        // Store material with file references
         const sql = `
-                INSERT INTO topic_materials 
-                (topic_id, material_type, activity_name, file_name, file_url, 
-                 file_type, estimated_duration, difficulty_level, instructions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
+            INSERT INTO topic_materials 
+            (topic_id, material_type, activity_name, file_name, file_url, file_type,
+             estimated_duration, difficulty_level, instructions)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
 
         db.query(sql, [
-            topicId, materialType, activityName, fileName, fileUrl,
-            fileType, estimatedDuration, difficultyLevel, instructions
+            topicId, materialType, activityName, 
+            primaryFile.name, allFilesJson, primaryFile.type,
+            estimatedDuration, difficultyLevel, instructions
         ], (error, result) => {
             if (error) {
-                console.error('Add topic material error:', error);
+                console.error('Upload topic materials error:', error);
                 return res.status(500).json({
                     success: false,
-                    message: 'Failed to add material',
+                    message: 'Failed to save material',
                     error: error.message
                 });
             }
@@ -212,19 +264,91 @@ exports.addTopicMaterial = async (req, res) => {
 
             res.json({
                 success: true,
-                message: 'Material added successfully',
-                data: { materialId: materialId }
+                message: 'Materials uploaded successfully',
+                data: { 
+                    materialId: materialId,
+                    files: fileData 
+                }
             });
         });
     } catch (error) {
-        console.error('Add topic material error:', error);
+        console.error('Upload topic materials error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to add material',
+            message: 'Failed to upload materials',
             error: error.message
         });
     }
+};
+
+// Helper function to determine file type
+function getFileTypeFromExtension(fileName) {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    switch (extension) {
+        case 'pdf': return 'PDF';
+        case 'mp4':
+        case 'avi':
+        case 'mov':
+        case 'mkv':
+        case 'webm': return 'Video';
+        case 'doc':
+        case 'docx':
+        case 'txt': return 'Text';
+        case 'jpg':
+        case 'jpeg':
+        case 'png':
+        case 'gif': return 'Image';
+        case 'mp3':
+        case 'wav':
+        case 'aac': return 'Audio';
+        default: return 'Document';
+    }
 }
+
+// Delete material
+exports.deleteMaterial = async (req, res) => {
+    try {
+        const { materialId } = req.params;
+
+        const sql = `
+            UPDATE topic_materials 
+            SET is_active = 0 
+            WHERE id = ?
+        `;
+
+        db.query(sql, [materialId], (error, result) => {
+            if (error) {
+                console.error('Delete material error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to delete material',
+                    error: error.message
+                });
+            }
+
+            const affectedRows = result.affectedRows || 0;
+
+            if (affectedRows === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Material not found'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'Material deleted successfully'
+            });
+        });
+    } catch (error) {
+        console.error('Delete material error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete material',
+            error: error.message
+        });
+    }
+};
 
 // Get student progress for all topics in a subject
 exports.getStudentProgress = async (req, res) => {

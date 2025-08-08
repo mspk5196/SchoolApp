@@ -240,6 +240,12 @@ router.put('/topics/:topicId', TopicHierarchyController.updateTopic);
 router.delete('/topics/:topicId', TopicHierarchyController.deleteTopic);
 router.get('/topics/:topicId/materials', TopicHierarchyController.getTopicMaterials);
 router.post('/topics/materials/add', TopicHierarchyController.addTopicMaterial);
+router.post(
+  '/topics/materials/upload',
+  uploadMaterials.array('files', 10),  // frontend must use `files` as the field name
+  TopicHierarchyController.uploadTopicMaterials
+);
+router.delete('/topics/materials/:materialId', TopicHierarchyController.deleteMaterial);
 router.get('/topics/assessment-eligible/:studentRoll/:subjectId', TopicHierarchyController.getAssessmentEligibleTopics);
 router.get('/students/:studentRoll/progress/:subjectId', TopicHierarchyController.getStudentProgress);
 router.post('/students/progress/update', TopicHierarchyController.updateStudentProgress);

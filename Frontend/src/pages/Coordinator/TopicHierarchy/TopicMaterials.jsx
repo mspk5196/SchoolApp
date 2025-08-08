@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import DocumentPicker from 'react-native-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../../utils/env.js';
@@ -28,8 +27,7 @@ const TopicMaterials = ({ route, navigation }) => {
   const [formData, setFormData] = useState({
     material_type: 'Academic',
     activity_name: '',
-    file_name: '',
-    file_url: '',
+    files: [], // Changed to support multiple files
     file_type: 'PDF',
     estimated_duration: 30,
     difficulty_level: 'Medium',
@@ -43,10 +41,12 @@ const TopicMaterials = ({ route, navigation }) => {
   const fetchMaterials = async () => {
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('coordinatorToken');
       const response = await fetch(
-        `${API_URL}/coordinator/hierarchy/materials/${topicId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${API_URL}/api/topics/${topicId}/materials`,
+        { 
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' } 
+        }
       );
       const result = await response.json();
       if (result.success) {
@@ -63,14 +63,20 @@ const TopicMaterials = ({ route, navigation }) => {
     try {
       const result = await DocumentPicker.pick({
         type: [DocumentPicker.types.allFiles],
+        allowMultiSelection: true, // Allow multiple file selection
       });
       
-      const file = result[0];
+      // Process multiple files
+      const newFiles = result.map(file => ({
+        name: file.name,
+        uri: file.uri,
+        type: getFileType(file.name),
+        size: file.size || 0
+      }));
+
       setFormData(prev => ({
         ...prev,
-        file_name: file.name,
-        file_url: file.uri,
-        file_type: getFileType(file.name),
+        files: [...prev.files, ...newFiles],
       }));
     } catch (error) {
       if (!DocumentPicker.isCancel(error)) {
@@ -85,44 +91,90 @@ const TopicMaterials = ({ route, navigation }) => {
       case 'pdf': return 'PDF';
       case 'mp4':
       case 'avi':
-      case 'mov': return 'Video';
+      case 'mov':
+      case 'mkv':
+      case 'webm': return 'Video';
       case 'doc':
       case 'docx':
       case 'txt': return 'Text';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif': return 'Image';
+      case 'mp3':
+      case 'wav':
+      case 'aac': return 'Audio';
       default: return 'PDF';
     }
   };
 
+  const removeFile = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      files: prev.files.filter((_, i) => i !== index)
+    }));
+  };
+
   const saveMaterial = async () => {
     try {
-      const token = await AsyncStorage.getItem('coordinatorToken');
-      const payload = {
-        ...formData,
-        topic_id: topicId,
-      };
+      // Validation
+      if (!formData.activity_name.trim()) {
+        Alert.alert('Error', 'Activity name is required');
+        return;
+      }
+
+      if (formData.files.length === 0) {
+        Alert.alert('Error', 'Please select at least one file');
+        return;
+      }
+
+      const formDataToSend = new FormData();
+      
+      // Add form fields
+      formDataToSend.append('topicId', topicId);
+      formDataToSend.append('materialType', formData.material_type);
+      formDataToSend.append('activityName', formData.activity_name);
+      formDataToSend.append('estimatedDuration', formData.estimated_duration.toString());
+      formDataToSend.append('difficultyLevel', formData.difficulty_level);
+      formDataToSend.append('instructions', formData.instructions);
+
+      // Add files
+      formData.files.forEach((file, index) => {
+        formDataToSend.append('files', {
+          uri: file.uri,
+          type: file.type === 'PDF' ? 'application/pdf' : 
+                file.type === 'Video' ? 'video/mp4' :
+                file.type === 'Image' ? 'image/jpeg' :
+                file.type === 'Audio' ? 'audio/mpeg' : 'application/octet-stream',
+          name: file.name
+        });
+      });
 
       const url = editingMaterial 
-        ? `${API_URL}/coordinator/hierarchy/materials/${editingMaterial.id}`
-        : `${API_URL}/coordinator/hierarchy/materials`;      const response = await fetch(url, {
+        ? `${API_URL}/api/topics/materials/${editingMaterial.id}`
+        : `${API_URL}/api/topics/materials/upload`;
+
+      console.log('Uploading to URL:', url);
+
+      const response = await fetch(url, {
         method: editingMaterial ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
+        body: formDataToSend,
       });
 
       const result = await response.json();
+      console.log('Upload result:', result);
+
       if (result.success) {
-        Alert.alert('Success', `Material ${editingMaterial ? 'updated' : 'created'} successfully`);
+        Alert.alert('Success', `Material ${editingMaterial ? 'updated' : 'uploaded'} successfully`);
         setModalVisible(false);
         resetForm();
         fetchMaterials();
       } else {
-        Alert.alert('Error', result.message);
+        Alert.alert('Error', result.message || 'Failed to save material');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to save material');
+      console.error('Save material error:', error);
+      Alert.alert('Error', `Failed to save material: ${error.message}`);
     }
   };
 
@@ -137,12 +189,11 @@ const TopicMaterials = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await AsyncStorage.getItem('coordinatorToken');
               const response = await fetch(
-                `${API_URL}/coordinator/hierarchy/materials/${materialId}`,
+                `${API_URL}/api/topics/materials/${materialId}`,
                 {
                   method: 'DELETE',
-                  headers: { Authorization: `Bearer ${token}` },
+                  headers: { 'Content-Type': 'application/json' },
                 }
               );
               const result = await response.json();
@@ -165,8 +216,7 @@ const TopicMaterials = ({ route, navigation }) => {
     setFormData({
       material_type: 'Academic',
       activity_name: '',
-      file_name: '',
-      file_url: '',
+      files: [],
       file_type: 'PDF',
       estimated_duration: 30,
       difficulty_level: 'Medium',
@@ -180,8 +230,7 @@ const TopicMaterials = ({ route, navigation }) => {
     setFormData({
       material_type: material.material_type,
       activity_name: material.activity_name,
-      file_name: material.file_name || '',
-      file_url: material.file_url || '',
+      files: material.files || [], // Handle existing files
       file_type: material.file_type,
       estimated_duration: material.estimated_duration,
       difficulty_level: material.difficulty_level,
@@ -226,7 +275,9 @@ const TopicMaterials = ({ route, navigation }) => {
               <Text style={styles.tagText}>{item.difficulty_level}</Text>
             </View>
             <View style={[styles.tag, { backgroundColor: '#8E8E93' }]}>
-              <Text style={styles.tagText}>{item.file_type}</Text>
+              <Text style={styles.tagText}>
+                {item.files ? `${item.files.length} files` : item.file_type}
+              </Text>
             </View>
           </View>
           <Text style={styles.duration}>Duration: {item.estimated_duration} minutes</Text>
@@ -241,22 +292,41 @@ const TopicMaterials = ({ route, navigation }) => {
             style={styles.actionButton}
             onPress={() => openEditModal(item)}
           >
-            <Icon name="edit" size={20} color="#FF9500" />
+            <Text style={styles.actionButtonText}>✏️</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => deleteMaterial(item.id)}
           >
-            <Icon name="delete" size={20} color="#FF3B30" />
+            <Text style={styles.actionButtonText}>🗑️</Text>
           </TouchableOpacity>
         </View>
       </View>
-      {item.file_name && (
+      {(item.files && item.files.length > 0) || item.file_name ? (
         <View style={styles.fileInfo}>
-          <Icon name="attach-file" size={16} color="#666" />
-          <Text style={styles.fileName}>{item.file_name}</Text>
+          <Text style={styles.fileIcon}>📎</Text>
+          {item.files && item.files.length > 0 ? (
+            <View style={styles.filesList}>
+              {item.files.map((file, index) => (
+                <TouchableOpacity 
+                  key={index} 
+                  style={styles.fileItem}
+                  onPress={() => {
+                    // You can implement file opening/downloading here
+                    Alert.alert('File Info', `${file.name}\nType: ${file.type}\nTap to download`);
+                  }}
+                >
+                  <Text style={styles.fileName}>
+                    {file.name} ({file.type})
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.fileName}>{item.file_name}</Text>
+          )}
         </View>
-      )}
+      ) : null}
     </View>
   );
 
@@ -264,11 +334,11 @@ const TopicMaterials = ({ route, navigation }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="#333" />
+          <Text style={styles.backButton}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Materials - {topicName}</Text>
         <TouchableOpacity style={styles.addButton} onPress={openCreateModal}>
-          <Icon name="add" size={24} color="#fff" />
+          <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
 
@@ -292,7 +362,7 @@ const TopicMaterials = ({ route, navigation }) => {
               {editingMaterial ? 'Edit Material' : 'Add New Material'}
             </Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Icon name="close" size={24} color="#333" />
+              <Text style={styles.closeButton}>✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -371,12 +441,35 @@ const TopicMaterials = ({ route, navigation }) => {
               />
             </View>
 
-            <TouchableOpacity style={styles.fileButton} onPress={selectFile}>
-              <Icon name="attach-file" size={20} color="#007AFF" />
-              <Text style={styles.fileButtonText}>
-                {formData.file_name || 'Select File'}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Files *</Text>
+              <Text style={styles.helpText}>
+                Select multiple files (PDF, Video, Images, etc.) for this learning material
               </Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.fileButton} onPress={selectFile}>
+                <Text style={styles.fileIcon}>📎</Text>
+                <Text style={styles.fileButtonText}>Select Files (PDF, Video, etc.)</Text>
+              </TouchableOpacity>
+              
+              {formData.files.length > 0 && (
+                <View style={styles.selectedFiles}>
+                  {formData.files.map((file, index) => (
+                    <View key={index} style={styles.selectedFile}>
+                      <View style={styles.fileDetails}>
+                        <Text style={styles.selectedFileName}>{file.name}</Text>
+                        <Text style={styles.selectedFileType}>{file.type}</Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.removeFileButton}
+                        onPress={() => removeFile(index)}
+                      >
+                        <Text style={styles.removeFileText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
 
             <TouchableOpacity style={styles.saveButton} onPress={saveMaterial}>
               <Text style={styles.saveButtonText}>
@@ -415,6 +508,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     padding: 8,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  backButton: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
   },
   loader: {
     flex: 1,
@@ -482,6 +587,9 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: 4,
   },
+  actionButtonText: {
+    fontSize: 18,
+  },
   fileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -494,6 +602,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginLeft: 4,
+  },
+  filesList: {
+    flex: 1,
+    marginLeft: 4,
+  },
+  fileItem: {
+    backgroundColor: '#f0f8ff',
+    padding: 6,
+    borderRadius: 4,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  fileIcon: {
+    fontSize: 16,
+    color: '#666',
   },
   modalContainer: {
     flex: 1,
@@ -512,6 +636,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  closeButton: {
+    fontSize: 24,
+    color: '#333',
+    fontWeight: 'bold',
+  },
   form: {
     padding: 16,
   },
@@ -523,6 +652,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+  },
+  helpText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   input: {
     borderWidth: 1,
@@ -554,6 +689,47 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 16,
     color: '#007AFF',
+  },
+  selectedFiles: {
+    marginTop: 12,
+  },
+  selectedFile: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f0f8ff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  fileDetails: {
+    flex: 1,
+  },
+  selectedFileName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  selectedFileType: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  removeFileButton: {
+    padding: 4,
+    backgroundColor: '#ff3b30',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeFileText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   saveButton: {
     backgroundColor: '#007AFF',
