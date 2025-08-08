@@ -1645,9 +1645,12 @@ function formatDuration(duration) {
 async function createAcademicSessionsByDate(date) {
 
   const [schedules] = await db.promise().query(`
-  SELECT * FROM daily_schedule
-  WHERE date >= ? AND date < DATE_ADD(?, INTERVAL 1 DAY) AND mentors_id IS NOT NULL AND activity = 1
-`, [date, date]);
+    SELECT ds.* FROM daily_schedule ds
+    JOIN activity_types at ON ds.activity = at.id
+    WHERE ds.date >= ? AND ds.date < DATE_ADD(?, INTERVAL 1 DAY) 
+    AND ds.mentors_id IS NOT NULL 
+    AND at.activity_type = 'Academics'
+  `, [date, date]);
 
   // console.log('Schedules:', schedules, Array.isArray(schedules), schedules.length);
   let created = 0;

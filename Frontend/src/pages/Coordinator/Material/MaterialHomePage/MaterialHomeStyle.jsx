@@ -131,6 +131,33 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
     },
+    // Enhanced Management Buttons
+    enhancedButtonsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        backgroundColor: '#f8f9fa',
+        marginVertical: 5,
+    },
+    enhancedButton: {
+        backgroundColor: '#2196F3',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        minWidth: 140,
+        alignItems: 'center',
+    },
+    enhancedButtonText: {
+        color: 'white',
+        fontSize: 14,
+        fontWeight: '600',
+    },
 });
 
 export default styles;

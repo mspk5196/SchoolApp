@@ -412,6 +412,25 @@ const styles = StyleSheet.create({
     color: '#666',
   },
 
+  // Enhanced Dashboard Button
+  enhancedDashboardButton: {
+    backgroundColor: '#2196F3',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginVertical: 16,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  enhancedDashboardText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 
 });
 

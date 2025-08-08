@@ -51,6 +51,16 @@ router.get('/student/getFavouriteEvents', studentController.getFavouriteEvents);
 //Dashboard hw
 router.post('/student/getPendingHomework', studentController.getPendingHomework);
 
+// Enhanced Hierarchy System - Student Dashboard Routes
+const studentDashboardController = require('../controllers/student/studentDashboardController');
+
+router.get('/student/dashboard', studentDashboardController.getStudentDashboard);
+router.get('/student/progress/:subjectId', studentDashboardController.getSubjectProgress);
+router.get('/student/schedule/today', studentDashboardController.getTodaySchedule);
+router.post('/student/assessment/request', studentDashboardController.requestAssessment);
+router.post('/student/homework/submit', studentDashboardController.submitHomework);
+router.get('/student/analytics', studentDashboardController.getPerformanceAnalytics);
+
 // Attendance updater
 router.post('/student/attendanceUpdater', attendanceCron.runAttendanceUpdater);
 module.exports = router;

@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const coordinatorController = require('../controllers/coordinator/coordinatorController');
-const infraEnrollment = require('../controllers/coordinator/infrastructreEnrollment')
+const infraEnrollment = require('../controllers/coordinator/infrastructreEnrollment');
+const TopicHierarchyController = require('../controllers/coordinator/topicHierarchyController');
+const BatchManagementController = require('../controllers/coordinator/batchManagementController');
+const ScheduleManagementController = require('../controllers/coordinator/scheduleManagementController');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
@@ -230,5 +233,34 @@ router.post('/coordinator/assignTask', coordinatorController.assignTask);
 router.post('/coordinator/getRequestedAssessments', coordinatorController.getRequestedAssessments);
 router.post('/coordinator/processAssessmentRequest', coordinatorController.processAssessmentRequest);
 
+// Enhanced Topic Hierarchy Routes
+router.get('/topics/hierarchy/:subjectId/:gradeId', TopicHierarchyController.getTopicHierarchy);
+router.post('/topics/create', TopicHierarchyController.createTopic);
+router.get('/topics/:topicId/materials', TopicHierarchyController.getTopicMaterials);
+router.post('/topics/materials/add', TopicHierarchyController.addTopicMaterial);
+router.get('/topics/assessment-eligible/:studentRoll/:subjectId', TopicHierarchyController.getAssessmentEligibleTopics);
+router.get('/students/:studentRoll/progress/:subjectId', TopicHierarchyController.getStudentProgress);
+router.post('/students/progress/update', TopicHierarchyController.updateStudentProgress);
+
+// Enhanced Batch Management Routes
+router.get('/batches/:sectionId/:subjectId', BatchManagementController.getBatches);
+router.post('/batches/configure', BatchManagementController.configureBatches);
+router.get('/batches/:batchId/students', BatchManagementController.getBatchStudents);
+router.post('/batches/move-student', BatchManagementController.moveStudentToBatch);
+router.get('/batches/history/:studentRoll/:subjectId', BatchManagementController.getBatchHistory);
+router.post('/batches/reallocate', BatchManagementController.runBatchReallocation);
+router.get('/batches/analytics/:sectionId/:subjectId', BatchManagementController.getBatchAnalytics);
+router.post('/batches/initialize', BatchManagementController.initializeStudentBatches);
+
+// Enhanced Schedule Management Routes
+router.post('/schedule/create', ScheduleManagementController.createDailySchedule);
+router.get('/schedule/:date/:sectionId', ScheduleManagementController.getDailySchedule);
+router.get('/schedule/weekly/:sectionId/:weekStart', ScheduleManagementController.getWeeklySchedule);
+router.put('/schedule/activity/:activityId', ScheduleManagementController.updateScheduleActivity);
+router.patch('/schedule/activity/:activityId/complete', ScheduleManagementController.markActivityCompleted);
+router.get('/schedule/mentors/available/:date/:startTime/:endTime/:subjectId/:gradeId', ScheduleManagementController.getAvailableMentors);
+router.get('/schedule/venues/available/:date/:startTime/:endTime/:subjectId/:gradeId', ScheduleManagementController.getAvailableVenues);
+router.delete('/schedule/:scheduleId', ScheduleManagementController.deleteSchedule);
+router.post('/schedule/:scheduleId/copy', ScheduleManagementController.copySchedule);
 
 module.exports = router;

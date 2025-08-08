@@ -166,9 +166,9 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       });
 
       const data = await response.json();
+      console.log('Session Details:', data.session);
       if (data.success) {
         setSessionDetails(data.session);
-        console.log('Session Details:', data.session);
 
         if (data.session.status === 'Completed') {
           setSessionStarted(true);

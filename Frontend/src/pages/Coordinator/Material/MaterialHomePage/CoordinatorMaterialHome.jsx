@@ -132,6 +132,22 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         <Text style={styles.HeaderTxt}>Material</Text>
       </View>
 
+      {/* Enhanced Management Buttons */}
+      <View style={styles.enhancedButtonsContainer}>
+        <TouchableOpacity 
+          style={styles.enhancedButton}
+          onPress={() => navigation.navigate('TopicHierarchyManagement')}
+        >
+          <Text style={styles.enhancedButtonText}>📚 Topic Hierarchy</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.enhancedButton}
+          onPress={() => navigation.navigate('BatchManagementHome')}
+        >
+          <Text style={styles.enhancedButtonText}>👥 Batch Management</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

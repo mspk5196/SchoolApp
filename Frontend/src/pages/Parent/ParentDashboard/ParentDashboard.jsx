@@ -213,6 +213,14 @@ const ParentDashboard = () => {
                             </View>
                         </View>
 
+                        {/* Enhanced Dashboard Access */}
+                        <TouchableOpacity 
+                            style={styles.enhancedDashboardButton}
+                            onPress={() => navigation.navigate('EnhancedStudentDashboard')}
+                        >
+                            <Text style={styles.enhancedDashboardText}>🚀 Enhanced Progress Dashboard</Text>
+                        </TouchableOpacity>
+
                         <View style={styles.sectionContainer}>
                             <Text style={styles.sectionTitle}>Survey</Text>
                             {surveysLoading ? <ActivityIndicator /> : surveys.length > 0 ? (

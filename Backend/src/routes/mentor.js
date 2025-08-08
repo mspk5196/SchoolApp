@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const mentorController = require('../controllers/mentor/mentorController');
 const surveyController = require('../controllers/mentor/survey');
+const HomeworkController = require('../controllers/mentor/homeworkController');
+const AssessmentController = require('../controllers/mentor/assessmentController');
+const PenaltyController = require('../controllers/mentor/penaltyController');
 
 router.post('/mentor/getMentorData', mentorController.getMentorData);
 router.get('/mentor/getGrades', mentorController.getGrades);
@@ -120,5 +123,36 @@ router.get('/mentor/getOverdueStudents', mentorController.getOverdueStudents);
 router.get('/mentor/getCoordinatorTasks', mentorController.getCoordinatorTasks);
 router.post('/mentor/accept-task', mentorController.acceptTask);
 router.post('/mentor/checkOverdueLevels', mentorController.checkOverdueLevels);
+
+// Enhanced Homework Management Routes
+router.post('/homework/create', HomeworkController.createHomework);
+router.post('/homework/assign', HomeworkController.assignHomework);
+router.get('/homework/marking/:mentorId', HomeworkController.getHomeworkForMarking);
+router.patch('/homework/mark/:trackingId', HomeworkController.markHomework);
+router.get('/homework/student/:studentRoll', HomeworkController.getStudentHomework);
+router.patch('/homework/submit/:trackingId', HomeworkController.submitHomework);
+router.get('/homework/statistics/:subjectId/:gradeId/:sectionId', HomeworkController.getHomeworkStatistics);
+router.get('/homework/overdue/:mentorId', HomeworkController.getOverdueHomework);
+router.get('/homework/analytics/:gradeId/:subjectId', HomeworkController.getHomeworkAnalytics);
+
+// Enhanced Assessment Management Routes
+router.post('/assessment/schedule', AssessmentController.scheduleAssessment);
+router.patch('/assessment/score/:assessmentId', AssessmentController.recordAssessmentScore);
+router.get('/assessment/scheduled/:mentorId', AssessmentController.getScheduledAssessments);
+router.get('/assessment/history/:studentRoll', AssessmentController.getStudentAssessmentHistory);
+router.get('/assessment/analytics/:subjectId/:gradeId', AssessmentController.getAssessmentAnalytics);
+router.post('/assessment/request', AssessmentController.requestAssessment);
+router.get('/assessment/requests/:gradeId/:subjectId', AssessmentController.getAssessmentRequests);
+router.patch('/assessment/approve/:requestId', AssessmentController.approveAssessmentRequest);
+
+// Enhanced Penalty Management Routes
+router.get('/penalty/status/:mentorId', PenaltyController.getPenaltyStatus);
+router.get('/penalty/remedial/:mentorId', PenaltyController.getRemedialSessions);
+router.patch('/penalty/remedial/:sessionId', PenaltyController.updateRemedialSession);
+router.post('/penalty/assign', PenaltyController.assignPenalty);
+router.patch('/penalty/clear', PenaltyController.clearPenalty);
+router.get('/penalty/statistics/:gradeId/:subjectId', PenaltyController.getPenaltyStatistics);
+router.get('/penalty/trends/:gradeId/:subjectId', PenaltyController.getPenaltyTrends);
+router.get('/penalty/history/:studentRoll', PenaltyController.getStudentPenaltyHistory);
 
 module.exports = router;

@@ -146,6 +146,19 @@ import MentorSubjectActivityPage from '../../pages/Mentor/Materials/SubjectActiv
 import StudentPageMaterialScreen from '../../pages/Parent/MaterialScreen/StudentPageMaterialScreen';
 import StudentSubjectActivityPage from '../../pages/Parent/MaterialScreen/StudentSubjectActivityPage';
 
+// Enhanced Hierarchy System Pages
+import TopicHierarchyManagement from '../../pages/Coordinator/TopicHierarchy/TopicHierarchyManagement';
+import BatchManagementHome from '../../pages/Coordinator/BatchManagement/BatchManagementHome';
+import BatchDetails from '../../pages/Coordinator/BatchManagement/BatchDetails';
+import EnhancedAssessmentManagement from '../../pages/Mentor/AssesmentRequest/EnhancedAssessmentManagement';
+import EnhancedStudentDashboard from '../../pages/Parent/EnhancedDashboard/EnhancedStudentDashboard';
+import SubjectProgress from '../../pages/Parent/EnhancedDashboard/SubjectProgress';
+import HomeworkStatus from '../../pages/Parent/EnhancedDashboard/HomeworkStatus';
+import AssessmentQueue from '../../pages/Parent/EnhancedDashboard/AssessmentQueue';
+import ProgressAnalytics from '../../pages/Parent/EnhancedDashboard/ProgressAnalytics';
+import BatchHistory from '../../pages/Parent/EnhancedDashboard/BatchHistory';
+import WeeklySchedule from '../../pages/Parent/EnhancedDashboard/WeeklySchedule';
+
 const Stack = createStackNavigator();
 
 const Routes = () => {
@@ -227,6 +240,11 @@ const Routes = () => {
                         <Stack.Screen name="StudentEnrollment" component={StudentEnrollment} />
                         <Stack.Screen name="SubjectAllotment" component={SubjectAllotment} />
 
+                        {/* Enhanced Hierarchy System - Coordinator */}
+                        <Stack.Screen name="TopicHierarchyManagement" component={TopicHierarchyManagement} options={{ headerShown: false }} />
+                        <Stack.Screen name="BatchManagementHome" component={BatchManagementHome} options={{ headerShown: false }} />
+                        <Stack.Screen name="BatchDetails" component={BatchDetails} options={{ headerShown: false }} />
+
                         {/* Mentor Pages */}
                         <Stack.Screen name="MentorDashboard" component={MentorDashboard} />
                         <Stack.Screen name="MentorStudentLeaveApproval" component={MentorLeaveApproval} />
@@ -234,6 +252,9 @@ const Routes = () => {
                         <Stack.Screen name="MentorMessages" component={MentorMessage} />
                         <Stack.Screen name="MentorActivity" component={MentorActivity} />
                         <Stack.Screen name="MentorAssesmentRequest" component={MentorAssesmentRequest} />
+                        
+                        {/* Enhanced Assessment Management - Mentor */}
+                        <Stack.Screen name="EnhancedAssessmentManagement" component={EnhancedAssessmentManagement} options={{ headerShown: false }} />
                         <Stack.Screen name="MentorMaterialHome" component={MentorMaterialHome} />
                         <Stack.Screen name="MentorProfileDetails" component={MentorProfileDetails} />
 
@@ -281,6 +302,15 @@ const Routes = () => {
                         {/* Material */}
                         <Stack.Screen name="StudentSubjectActivityPage" component={StudentSubjectActivityPage} />
                         <Stack.Screen name="StudentPageMaterialScreen" component={StudentPageMaterialScreen} />
+
+                        {/* Enhanced Hierarchy System - Student Dashboard */}
+                        <Stack.Screen name="EnhancedStudentDashboard" component={EnhancedStudentDashboard} options={{ headerShown: false }} />
+                        <Stack.Screen name="SubjectProgress" component={SubjectProgress} options={{ headerShown: false }} />
+                        <Stack.Screen name="HomeworkStatus" component={HomeworkStatus} options={{ headerShown: false }} />
+                        <Stack.Screen name="AssessmentQueue" component={AssessmentQueue} options={{ headerShown: false }} />
+                        <Stack.Screen name="ProgressAnalytics" component={ProgressAnalytics} options={{ headerShown: false }} />
+                        <Stack.Screen name="BatchHistory" component={BatchHistory} options={{ headerShown: false }} />
+                        <Stack.Screen name="WeeklySchedule" component={WeeklySchedule} options={{ headerShown: false }} />
                         {/* SideBar Pages */}
                         {/* Profile */}
                         <Stack.Screen name="StudentPageProfile" component={StudentProfile} />
