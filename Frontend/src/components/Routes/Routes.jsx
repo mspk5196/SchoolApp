@@ -162,6 +162,7 @@ import AssessmentQueue from '../../pages/Parent/EnhancedDashboard/AssessmentQueu
 import ProgressAnalytics from '../../pages/Parent/EnhancedDashboard/ProgressAnalytics';
 import BatchHistory from '../../pages/Parent/EnhancedDashboard/BatchHistory';
 import WeeklySchedule from '../../pages/Parent/EnhancedDashboard/WeeklySchedule';
+import TopicMaterials from '../../pages/Coordinator/TopicHierarchy/TopicMaterials';
 
 const Stack = createStackNavigator();
 
@@ -249,6 +250,7 @@ const Routes = () => {
 
                         {/* Enhanced Hierarchy System - Coordinator */}
                         <Stack.Screen name="TopicHierarchyManagement" component={TopicHierarchyManagement} options={{ headerShown: false }} />
+                        <Stack.Screen name="TopicMaterials" component={TopicMaterials} options={{ headerShown: false }} />
                         <Stack.Screen name="BatchManagementHome" component={BatchManagementHome} options={{ headerShown: false }} />
                         <Stack.Screen name="BatchDetails" component={BatchDetails} options={{ headerShown: false }} />
 

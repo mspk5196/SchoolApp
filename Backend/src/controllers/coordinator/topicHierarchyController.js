@@ -78,11 +78,6 @@ exports.createTopic = async (req, res) => {
             hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
         } = req.body;
 
-        // console.log('Creating topic with data:', {
-        //     subjectId, parentId, level, topicName, topicCode, orderSequence,
-        //     hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
-        // });
-
         const sql = `
                 INSERT INTO topic_hierarchy 
                 (subject_id, parent_id, level, topic_name, topic_code, order_sequence,
@@ -96,11 +91,6 @@ exports.createTopic = async (req, res) => {
             hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
         ]);
 
-        // const result = await db.execute(query, [
-        //     subjectId, parentId, level, topicName, topicCode, orderSequence,
-        //     hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
-        // ]);
-
         db.query(sql, [
             subjectId, parentId, level, topicName, topicCode, orderSequence,
             hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
@@ -113,14 +103,14 @@ exports.createTopic = async (req, res) => {
                     error: error.message
                 });
             }
-            if (result.affectedRows === 0) {
+            if (result.length === 0) {
                 return res.status(400).json({
                     success: false,
                     message: 'Failed to create topic',
                     error: 'No rows affected'
                 });
             }
-            // TiDB compatibility: Handle different result formats
+            
             let topicId;
             if (Array.isArray(result) && result[0]) {
                 topicId = result[0].insertId || 'created_successfully';
@@ -135,8 +125,6 @@ exports.createTopic = async (req, res) => {
                 message: 'Topic created successfully',
                 data: { topicId: topicId }
             });
-
-            // console.log('Insert result:', result);
         });
     } catch (error) {
         console.error('Create topic error:', error);
@@ -154,7 +142,7 @@ exports.getTopicMaterials = async (req, res) => {
     try {
         const { topicId } = req.params;
 
-        const query = `
+        const sql = `
                 SELECT tm.*, th.topic_name
                 FROM topic_materials tm
                 JOIN topic_hierarchy th ON tm.topic_id = th.id
@@ -162,11 +150,20 @@ exports.getTopicMaterials = async (req, res) => {
                 ORDER BY tm.material_type, tm.created_at
             `;
 
-        const [materials] = await db.execute(query, [topicId]);
+        db.query(sql, [topicId], (error, materials) => {
+            if (error) {
+                console.error('Get topic materials error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch topic materials',
+                    error: error.message
+                });
+            }
 
-        res.json({
-            success: true,
-            data: materials
+            res.json({
+                success: true,
+                data: materials
+            });
         });
     } catch (error) {
         console.error('Get topic materials error:', error);
@@ -186,22 +183,38 @@ exports.addTopicMaterial = async (req, res) => {
             fileType, estimatedDuration, difficultyLevel, instructions
         } = req.body;
 
-        const query = `
+        const sql = `
                 INSERT INTO topic_materials 
                 (topic_id, material_type, activity_name, file_name, file_url, 
                  file_type, estimated_duration, difficulty_level, instructions)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
-        const [result] = await db.execute(query, [
+        db.query(sql, [
             topicId, materialType, activityName, fileName, fileUrl,
             fileType, estimatedDuration, difficultyLevel, instructions
-        ]);
+        ], (error, result) => {
+            if (error) {
+                console.error('Add topic material error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to add material',
+                    error: error.message
+                });
+            }
 
-        res.json({
-            success: true,
-            message: 'Material added successfully',
-            data: { materialId: result.insertId }
+            let materialId;
+            if (result && result.insertId) {
+                materialId = result.insertId;
+            } else {
+                materialId = 'created_successfully';
+            }
+
+            res.json({
+                success: true,
+                message: 'Material added successfully',
+                data: { materialId: materialId }
+            });
         });
     } catch (error) {
         console.error('Add topic material error:', error);
@@ -218,7 +231,7 @@ exports.getStudentProgress = async (req, res) => {
     try {
         const { studentRoll, subjectId } = req.params;
 
-        const query = `
+        const sql = `
                 SELECT 
                     th.id, th.topic_name, th.topic_code, th.level, th.parent_id,
                     stp.status, stp.completion_percentage, stp.last_assessment_score,
@@ -231,11 +244,20 @@ exports.getStudentProgress = async (req, res) => {
                 ORDER BY th.level, th.order_sequence
             `;
 
-        const [progress] = await db.execute(query, [studentRoll, studentRoll, subjectId]);
+        db.query(sql, [studentRoll, studentRoll, subjectId], (error, progress) => {
+            if (error) {
+                console.error('Get student progress error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch student progress',
+                    error: error.message
+                });
+            }
 
-        res.json({
-            success: true,
-            data: progress
+            res.json({
+                success: true,
+                data: progress
+            });
         });
     } catch (error) {
         console.error('Get student progress error:', error);
@@ -252,7 +274,7 @@ exports.updateStudentProgress = async (req, res) => {
     try {
         const { studentRoll, topicId, status, completionPercentage, assessmentScore } = req.body;
 
-        const query = `
+        const sql = `
                 INSERT INTO student_topic_progress 
                 (student_roll, topic_id, subject_id, status, completion_percentage, last_assessment_score, completed_at)
                 VALUES (?, ?, (SELECT subject_id FROM topic_hierarchy WHERE id = ?), ?, ?, ?, ?)
@@ -266,18 +288,27 @@ exports.updateStudentProgress = async (req, res) => {
 
         const completedAt = status === 'Completed' ? new Date() : null;
 
-        await db.execute(query, [
+        db.query(sql, [
             studentRoll, topicId, topicId, status, completionPercentage, assessmentScore, completedAt
-        ]);
+        ], (error, result) => {
+            if (error) {
+                console.error('Update student progress error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to update progress',
+                    error: error.message
+                });
+            }
 
-        // If completed, record in history
-        if (status === 'Completed') {
-            await this.recordCompletionHistory(studentRoll, topicId);
-        }
+            // If completed, record in history
+            if (status === 'Completed') {
+                exports.recordCompletionHistory(studentRoll, topicId);
+            }
 
-        res.json({
-            success: true,
-            message: 'Student progress updated successfully'
+            res.json({
+                success: true,
+                message: 'Student progress updated successfully'
+            });
         });
     } catch (error) {
         console.error('Update student progress error:', error);
@@ -290,9 +321,8 @@ exports.updateStudentProgress = async (req, res) => {
 }
 
 // Record completion history with timing analysis
-exports.recordCompletionHistory = async (studentRoll, topicId) => {
-    try {
-        const query = `
+exports.recordCompletionHistory = (studentRoll, topicId) => {
+    const sql = `
                 INSERT INTO student_topic_completion_history
                 (student_roll, topic_id, subject_id, level_type, started_date, expected_completion_date,
                  actual_completion_date, days_taken, days_late, completion_status, final_score,
@@ -327,10 +357,11 @@ exports.recordCompletionHistory = async (studentRoll, topicId) => {
                 WHERE th.id = ? AND stp.student_roll = ?
             `;
 
-        await db.execute(query, [studentRoll, studentRoll, studentRoll, topicId, studentRoll]);
-    } catch (error) {
-        console.error('Record completion history error:', error);
-    }
+    db.query(sql, [studentRoll, studentRoll, studentRoll, topicId, studentRoll], (error, result) => {
+        if (error) {
+            console.error('Record completion history error:', error);
+        }
+    });
 }
 
 // Get topics available for assessment
@@ -338,24 +369,31 @@ exports.getAssessmentEligibleTopics = async (req, res) => {
     try {
         const { studentRoll, subjectId } = req.params;
 
-        const query = `
+        const sql = `
                 SELECT th.*, 
-                       can_take_assessment(?, th.id, th.subject_id) as can_assess,
                        stp.status as current_status
                 FROM topic_hierarchy th
                 LEFT JOIN student_topic_progress stp ON th.id = stp.topic_id AND stp.student_roll = ?
                 WHERE th.subject_id = ? 
                 AND th.has_assessment = 1
                 AND (stp.status IN ('In Progress', 'Failed') OR stp.status IS NULL)
-                HAVING can_assess = 1
                 ORDER BY th.level, th.order_sequence
             `;
 
-        const [topics] = await db.execute(query, [studentRoll, studentRoll, subjectId]);
+        db.query(sql, [studentRoll, subjectId], (error, topics) => {
+            if (error) {
+                console.error('Get assessment eligible topics error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch assessment eligible topics',
+                    error: error.message
+                });
+            }
 
-        res.json({
-            success: true,
-            data: topics
+            res.json({
+                success: true,
+                data: topics
+            });
         });
     } catch (error) {
         console.error('Get assessment eligible topics error:', error);
@@ -373,55 +411,61 @@ exports.deleteTopic = async (req, res) => {
         const { topicId } = req.params;
 
         // Check if topic has children
-        const childCheckQuery = `
+        const childCheckSql = `
                 SELECT COUNT(*) as child_count 
                 FROM topic_hierarchy 
                 WHERE parent_id = ?
             `;
 
-        const childResult = await db.execute(childCheckQuery, [topicId]);
+        db.query(childCheckSql, [topicId], (error, childResult) => {
+            if (error) {
+                console.error('Delete topic - child check error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to check child topics',
+                    error: error.message
+                });
+            }
 
-        // TiDB compatibility: Handle different result formats
-        let childCount = 0;
-        if (Array.isArray(childResult) && childResult[0] && childResult[0][0]) {
-            childCount = childResult[0][0].child_count || 0;
-        } else if (Array.isArray(childResult) && childResult[0]) {
-            childCount = childResult[0].child_count || 0;
-        }
+            const childCount = childResult[0]?.child_count || 0;
 
-        if (childCount > 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Cannot delete topic that has sub-topics. Please delete sub-topics first.'
+            if (childCount > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Cannot delete topic that has sub-topics. Please delete sub-topics first.'
+                });
+            }
+
+            // Delete the topic (cascade will handle materials, homework, etc.)
+            const deleteSql = `
+                    DELETE FROM topic_hierarchy 
+                    WHERE id = ?
+                `;
+
+            db.query(deleteSql, [topicId], (deleteError, deleteResult) => {
+                if (deleteError) {
+                    console.error('Delete topic error:', deleteError);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to delete topic',
+                        error: deleteError.message
+                    });
+                }
+
+                const affectedRows = deleteResult.affectedRows || 0;
+
+                if (affectedRows === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Topic not found'
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    message: 'Topic deleted successfully'
+                });
             });
-        }
-
-        // Delete the topic (cascade will handle materials, homework, etc.)
-        const deleteQuery = `
-                DELETE FROM topic_hierarchy 
-                WHERE id = ?
-            `;
-
-        const result = await db.execute(deleteQuery, [topicId]);
-
-        // TiDB compatibility: Handle different result formats
-        let affectedRows = 0;
-        if (Array.isArray(result) && result[0]) {
-            affectedRows = result[0].affectedRows || 0;
-        } else if (result && result.affectedRows) {
-            affectedRows = result.affectedRows;
-        }
-
-        if (affectedRows === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Topic not found'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'Topic deleted successfully'
         });
     } catch (error) {
         console.error('Delete topic error:', error);
@@ -451,11 +495,6 @@ exports.updateTopic = async (req, res) => {
                 WHERE id = ?
             `;
 
-        // const [result] = await db.execute(sql, [
-        //     topicName, topicCode, orderSequence, hasAssessment,
-        //     hasHomework, isBottomLevel, expectedCompletionDays, passPercentage, topicId
-        // ]);
-
         db.query(sql, [
             topicName, topicCode, orderSequence, hasAssessment,
             hasHomework, isBottomLevel, expectedCompletionDays, passPercentage, topicId
@@ -468,7 +507,7 @@ exports.updateTopic = async (req, res) => {
                     error: error.message
                 });
             }
-            if (results.affectedRows === 0) {
+            if (results.length === 0) {
                 return res.status(404).json({
                     success: false,
                     message: 'Topic not found'
