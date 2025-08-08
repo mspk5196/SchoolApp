@@ -89,15 +89,22 @@ class TopicHierarchyController {
                 hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
             ]);
 
-            const [result] = await db.execute(query, [
+            const result = await db.execute(query, [
                 subjectId, parentId, level, topicName, topicCode, orderSequence,
                 hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
             ]);
 
             console.log('Insert result:', result);
 
-            // TiDB compatibility: insertId might not be available
-            const topicId = result.insertId || 'created_successfully';
+            // TiDB compatibility: Handle different result formats
+            let topicId;
+            if (Array.isArray(result) && result[0]) {
+                topicId = result[0].insertId || 'created_successfully';
+            } else if (result && result.insertId) {
+                topicId = result.insertId;
+            } else {
+                topicId = 'created_successfully';
+            }
 
             res.json({
                 success: true,
