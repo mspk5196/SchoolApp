@@ -652,3 +652,139 @@ exports.updateTopic = async (req, res) => {
         });
     }
 }
+
+// Download file function
+exports.downloadFile = async (req, res) => {
+    try {
+        const { filename } = req.params;
+        const path = require('path');
+        const fs = require('fs');
+        
+        // Construct the full file path
+        const filePath = path.join(__dirname, '../../../uploads/materials', filename);
+        
+        // Check if file exists
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({
+                success: false,
+                message: 'File not found'
+            });
+        }
+
+        // Get file stats for size
+        const stats = fs.statSync(filePath);
+        
+        // Set appropriate headers
+        const ext = path.extname(filename).toLowerCase();
+        let contentType = 'application/octet-stream';
+        
+        switch (ext) {
+            case '.pdf':
+                contentType = 'application/pdf';
+                break;
+            case '.mp4':
+                contentType = 'video/mp4';
+                break;
+            case '.jpg':
+            case '.jpeg':
+                contentType = 'image/jpeg';
+                break;
+            case '.png':
+                contentType = 'image/png';
+                break;
+            case '.mp3':
+                contentType = 'audio/mpeg';
+                break;
+            case '.wav':
+                contentType = 'audio/wav';
+                break;
+            case '.doc':
+                contentType = 'application/msword';
+                break;
+            case '.docx':
+                contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                break;
+        }
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Length', stats.size);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+        // Stream the file
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        console.error('Download file error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to download file',
+            error: error.message
+        });
+    }
+}
+
+// View file function (for PDFs, images - inline viewing)
+exports.viewFile = async (req, res) => {
+    try {
+        const { filename } = req.params;
+        const path = require('path');
+        const fs = require('fs');
+        
+        // Construct the full file path
+        const filePath = path.join(__dirname, '../../../uploads/materials', filename);
+        
+        // Check if file exists
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({
+                success: false,
+                message: 'File not found'
+            });
+        }
+
+        // Get file stats for size
+        const stats = fs.statSync(filePath);
+        
+        // Set appropriate headers for viewing (not downloading)
+        const ext = path.extname(filename).toLowerCase();
+        let contentType = 'application/octet-stream';
+        
+        switch (ext) {
+            case '.pdf':
+                contentType = 'application/pdf';
+                break;
+            case '.mp4':
+                contentType = 'video/mp4';
+                break;
+            case '.jpg':
+            case '.jpeg':
+                contentType = 'image/jpeg';
+                break;
+            case '.png':
+                contentType = 'image/png';
+                break;
+            case '.mp3':
+                contentType = 'audio/mpeg';
+                break;
+            case '.wav':
+                contentType = 'audio/wav';
+                break;
+        }
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Length', stats.size);
+        // For viewing, don't set Content-Disposition to attachment
+        
+        // Stream the file
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        console.error('View file error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to view file',
+            error: error.message
+        });
+    }
+}

@@ -10,6 +10,8 @@ import {
   TextInput,
   FlatList,
   ActivityIndicator,
+  Linking,
+  Platform,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DocumentPicker from 'react-native-document-picker';
@@ -113,6 +115,84 @@ const TopicMaterials = ({ route, navigation }) => {
       ...prev,
       files: prev.files.filter((_, i) => i !== index)
     }));
+  };
+
+  const downloadFile = async (file) => {
+    try {
+      // Extract filename from the URL path
+      const urlParts = file.url.split('/');
+      const filename = urlParts[urlParts.length - 1];
+      
+      const downloadUrl = `${API_URL}/api/topics/materials/download/${filename}`;
+      
+      // For web browsers or simulators, open in new tab
+      if (Platform.OS === 'web') {
+        window.open(downloadUrl, '_blank');
+        return;
+      }
+
+      // For mobile devices, try to open with system app
+      const supported = await Linking.canOpenURL(downloadUrl);
+      
+      if (supported) {
+        Alert.alert(
+          'Download File',
+          `Download ${file.name}?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Download', 
+              onPress: async () => {
+                try {
+                  await Linking.openURL(downloadUrl);
+                } catch (error) {
+                  Alert.alert('Error', 'Failed to download file');
+                }
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Cannot open this file type');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      Alert.alert('Error', 'Failed to download file');
+    }
+  };
+
+  const viewFile = async (file) => {
+    try {
+      // Extract filename from the URL path
+      const urlParts = file.url.split('/');
+      const filename = urlParts[urlParts.length - 1];
+      
+      const viewUrl = `${API_URL}/api/topics/materials/view/${filename}`;
+      
+      // For PDFs and images, try to open in browser/viewer
+      if (file.type === 'PDF' || file.type === 'Image') {
+        const supported = await Linking.canOpenURL(viewUrl);
+        if (supported) {
+          await Linking.openURL(viewUrl);
+        } else {
+          Alert.alert('Error', 'Cannot view this file type');
+        }
+      } else if (file.type === 'Video') {
+        // For videos, also try to open directly
+        const supported = await Linking.canOpenURL(viewUrl);
+        if (supported) {
+          await Linking.openURL(viewUrl);
+        } else {
+          downloadFile(file);
+        }
+      } else {
+        // For other file types, download them
+        downloadFile(file);
+      }
+    } catch (error) {
+      console.error('View file error:', error);
+      Alert.alert('Error', 'Failed to view file');
+    }
   };
 
   const saveMaterial = async () => {
@@ -308,22 +388,44 @@ const TopicMaterials = ({ route, navigation }) => {
           {item.files && item.files.length > 0 ? (
             <View style={styles.filesList}>
               {item.files.map((file, index) => (
-                <TouchableOpacity 
-                  key={index} 
-                  style={styles.fileItem}
-                  onPress={() => {
-                    // You can implement file opening/downloading here
-                    Alert.alert('File Info', `${file.name}\nType: ${file.type}\nTap to download`);
-                  }}
-                >
-                  <Text style={styles.fileName}>
-                    {file.name} ({file.type})
-                  </Text>
-                </TouchableOpacity>
+                <View key={index} style={styles.fileItem}>
+                  <TouchableOpacity 
+                    style={styles.fileNameContainer}
+                    onPress={() => viewFile(file)}
+                  >
+                    <Text style={styles.fileName}>
+                      {file.name} ({file.type})
+                    </Text>
+                  </TouchableOpacity>
+                  <View style={styles.fileActions}>
+                    <TouchableOpacity 
+                      style={styles.fileActionButton}
+                      onPress={() => viewFile(file)}
+                    >
+                      <Text style={styles.fileActionText}>👁️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.fileActionButton}
+                      onPress={() => downloadFile(file)}
+                    >
+                      <Text style={styles.fileActionText}>📥</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               ))}
             </View>
           ) : (
-            <Text style={styles.fileName}>{item.file_name}</Text>
+            <TouchableOpacity onPress={() => {
+              // Handle legacy single file format
+              const legacyFile = {
+                name: item.file_name,
+                url: item.file_url,
+                type: item.file_type
+              };
+              viewFile(legacyFile);
+            }}>
+              <Text style={styles.fileName}>{item.file_name}</Text>
+            </TouchableOpacity>
           )}
         </View>
       ) : null}
@@ -614,6 +716,25 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     borderWidth: 1,
     borderColor: '#007AFF',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fileNameContainer: {
+    flex: 1,
+  },
+  fileActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fileActionButton: {
+    padding: 4,
+    marginLeft: 8,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 4,
+  },
+  fileActionText: {
+    fontSize: 14,
   },
   fileIcon: {
     fontSize: 16,

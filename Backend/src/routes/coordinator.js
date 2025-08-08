@@ -246,6 +246,8 @@ router.post(
   TopicHierarchyController.uploadTopicMaterials
 );
 router.delete('/topics/materials/:materialId', TopicHierarchyController.deleteMaterial);
+router.get('/topics/materials/download/:filename', TopicHierarchyController.downloadFile);
+router.get('/topics/materials/view/:filename', TopicHierarchyController.viewFile);
 router.get('/topics/assessment-eligible/:studentRoll/:subjectId', TopicHierarchyController.getAssessmentEligibleTopics);
 router.get('/students/:studentRoll/progress/:subjectId', TopicHierarchyController.getStudentProgress);
 router.post('/students/progress/update', TopicHierarchyController.updateStudentProgress);
