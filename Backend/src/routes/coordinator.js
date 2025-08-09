@@ -172,7 +172,6 @@ router.get('/coordinator/weekly-schedule/getAvailableMentors', coordinatorContro
 router.post('/coordinator/weekly-schedule/subjects', coordinatorController.getAllSubjects);
 router.post('/coordinator/weekly-schedule/sections', coordinatorController.getSectionsByGrade);
 router.get('/coordinator/weekly-schedule/getSectionSubjectActivities', coordinatorController.getSectionSubjectActivities);
-router.get('/getSectionSubjectActivities/:sectionId/:subjectId', coordinatorController.getSectionSubjectActivitiesRecords);
 router.get('/coordinator/weekly-schedule/checkTimeConflict', coordinatorController.checkTimeConflict);
 // router.post('/coordinator/weekly-schedule/generateTemplate', coordinatorController.generateWeeklyTemplate);
 router.get('/coordinator/enrollment/getVenuesByGrade', infraEnrollment.getVenuesByGrade);
@@ -255,6 +254,7 @@ router.get('/coordinator/topics/materials/view/:filename', TopicHierarchyControl
 router.get('/coordinator/topics/assessment-eligible/:studentRoll/:subjectId', TopicHierarchyController.getAssessmentEligibleTopics);
 router.get('/coordinator/students/:studentRoll/progress/:subjectId', TopicHierarchyController.getStudentProgress);
 router.post('/coordinator/students/progress/update', TopicHierarchyController.updateStudentProgress);
+router.get('/coordinator/getSectionSubjectActivities/:sectionId/:subjectId', TopicHierarchyController.getSectionSubjectActivitiesRecords);
 
 // Enhanced Batch Management Routes
 router.get('/coordinator/batches/:sectionId/:subjectId', BatchManagementController.getBatches);

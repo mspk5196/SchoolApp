@@ -118,50 +118,23 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   const fetchActivitiesForSubject = async () => {
     console.log('fetchActivitiesForSubject called with:', { selectedSubject, selectedSection });
     try {
-      const url = `${API_URL}/api/coordinator/weekly-schedule/getSectionSubjectActivities?subjectId=${selectedSubject}&activeSection=${selectedSection}`;
-      console.log('Fetching activities from URL:', url);
       
-      const response = await fetch(url, {
+      const response = await fetch(`${API_URL}/api/coordinator/getSectionSubjectActivities/${selectedSection}/${selectedSubject}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
       
-      console.log('Activities response status:', response.status);
+      // console.log('Activities response status:', response.status);
       const result = await response.json();
       console.log('Activities result:', result);
       
       if (result.success) {
-        // The API returns activity_types but we need section_subject_activities records
-        // Let's fetch the actual section_subject_activities for this section and subject
-        const sectionSubjectActivitiesUrl = `${API_URL}/api/coordinator/getSectionSubjectActivities/${selectedSection}/${selectedSubject}`;
-        console.log('Fetching section subject activities from URL:', sectionSubjectActivitiesUrl);
-        
-        const ssaResponse = await fetch(sectionSubjectActivitiesUrl, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
-        console.log('Section subject activities response status:', ssaResponse.status);
-        const ssaResult = await ssaResponse.json();
-        console.log('Section subject activities result:', ssaResult);
-        
-        if (ssaResult.success && ssaResult.data && ssaResult.data.length > 0) {
-          setActivities(ssaResult.data);
-          console.log('Set section subject activities:', ssaResult.data);
-          if (ssaResult.data.length > 0) {
-            setSelectedActivity(ssaResult.data[0].id);
-            console.log('Auto-selected first section subject activity:', ssaResult.data[0].id);
-          }
+        console.log('Fetched activities:', result.activities);
+        setActivities(result.activities || []);
+        if (result.activities.length > 0) {
+          setSelectedActivity(result.activities[0].id);
         } else {
-          console.log('No section subject activities found, trying to create them...');
-          // If no section subject activities exist, we need to create them first
-          // For now, show a message to the user
-          setActivities([]);
-          Alert.alert(
-            'No Activities Found', 
-            'No activities are set up for this subject and section. Please contact admin to set up activities first.',
-            [{ text: 'OK' }]
-          );
+          setSelectedActivity(null);
         }
       } else {
         console.log('Failed to fetch activities:', result.message);

@@ -1053,3 +1053,33 @@ exports.viewFile = async (req, res) => {
         });
     }
 }
+
+// Get actual section_subject_activities records (not just activity types)
+exports.getSectionSubjectActivitiesRecords = (req, res) => {
+  const { sectionId, subjectId } = req.params;
+
+  console.log('Getting section subject activities for:', { sectionId, subjectId });
+
+  const sql = `
+    SELECT ssa.id, ssa.section_id, ssa.subject_id, ssa.activity_type,
+           at.activity_type as activity_name,
+           s.subject_name,
+           sec.section_name
+    FROM section_subject_activities ssa
+    JOIN activity_types at ON ssa.activity_type = at.id
+    JOIN subjects s ON ssa.subject_id = s.id
+    JOIN sections sec ON ssa.section_id = sec.id
+    WHERE ssa.section_id = ? AND ssa.subject_id = ?
+    ORDER BY at.activity_type
+  `;
+  
+  db.query(sql, [sectionId, subjectId], (err, results) => {
+    if (err) {
+      console.error("Error fetching section subject activities:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+    
+    console.log('Section subject activities results:', results);
+    res.json({ success: true, message: "Section subject activities fetched successfully", data: results });
+  });
+};
