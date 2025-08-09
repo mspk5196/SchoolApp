@@ -205,12 +205,14 @@ exports.uploadTopicMaterials = async (req, res) => {
     try {
         const {
             topicId, materialType, activityName,
-            estimatedDuration, difficultyLevel, instructions
+            estimatedDuration, difficultyLevel, instructions,
+            expectedDate, hasAssessment
         } = req.body;
 
         console.log('Uploading topic materials with data:', {
             topicId, materialType, activityName,
-            estimatedDuration, difficultyLevel, instructions
+            estimatedDuration, difficultyLevel, instructions,
+            expectedDate, hasAssessment
         });
 
         if (!req.files || req.files.length === 0) {
@@ -237,14 +239,15 @@ exports.uploadTopicMaterials = async (req, res) => {
         const sql = `
             INSERT INTO topic_materials 
             (topic_id, material_type, activity_name, file_name, file_url, file_type,
-             estimated_duration, difficulty_level, instructions)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             estimated_duration, difficulty_level, instructions, expected_date, has_assessment)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         db.query(sql, [
             topicId, materialType, activityName, 
             primaryFile.name, allFilesJson, primaryFile.type,
-            estimatedDuration, difficultyLevel, instructions
+            estimatedDuration, difficultyLevel, instructions, 
+            expectedDate || null, hasAssessment === 'true' || hasAssessment === true
         ], (error, result) => {
             if (error) {
                 console.error('Upload topic materials error:', error);
@@ -314,7 +317,9 @@ exports.updateTopicMaterial = async (req, res) => {
             activityName,
             estimatedDuration,
             difficultyLevel,
-            instructions
+            instructions,
+            expectedDate,
+            hasAssessment
         } = req.body;
 
         console.log('Updating material with ID:', materialId);
@@ -344,13 +349,15 @@ exports.updateTopicMaterial = async (req, res) => {
             const updateSql = `
                 UPDATE topic_materials 
                 SET material_type = ?, activity_name = ?, estimated_duration = ?,
-                    difficulty_level = ?, instructions = ?, updated_at = CURRENT_TIMESTAMP
+                    difficulty_level = ?, instructions = ?, expected_date = ?, 
+                    has_assessment = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `;
 
             db.query(updateSql, [
                 materialType, activityName, estimatedDuration,
-                difficultyLevel, instructions, materialId
+                difficultyLevel, instructions, expectedDate || null, 
+                hasAssessment === 'true' || hasAssessment === true, materialId
             ], (updateError, updateResult) => {
                 if (updateError) {
                     console.error('Update material error:', updateError);

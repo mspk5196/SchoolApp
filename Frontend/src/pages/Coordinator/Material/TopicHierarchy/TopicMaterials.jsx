@@ -34,6 +34,8 @@ const TopicMaterials = ({ route, navigation }) => {
     estimated_duration: 30,
     difficulty_level: 'Medium',
     instructions: '',
+    expected_date: '', // New field for expected completion date
+    has_assessment: false, // Track if this material has assessment
   });
 
   useEffect(() => {
@@ -255,6 +257,31 @@ const TopicMaterials = ({ route, navigation }) => {
         return;
       }
 
+      // Validate expected date if assessment is enabled
+      if (formData.has_assessment) {
+        if (!formData.expected_date.trim()) {
+          Alert.alert('Error', 'Expected completion date is required for materials with assessment');
+          return;
+        }
+        
+        // Basic date format validation
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(formData.expected_date)) {
+          Alert.alert('Error', 'Please enter expected date in YYYY-MM-DD format');
+          return;
+        }
+        
+        // Check if the date is in the future
+        const expectedDate = new Date(formData.expected_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (expectedDate < today) {
+          Alert.alert('Error', 'Expected completion date must be today or in the future');
+          return;
+        }
+      }
+
       if (editingMaterial) {
         // For editing, only update the text fields (not files)
         const updateData = {
@@ -263,6 +290,8 @@ const TopicMaterials = ({ route, navigation }) => {
           estimatedDuration: formData.estimated_duration,
           difficultyLevel: formData.difficulty_level,
           instructions: formData.instructions,
+          expectedDate: formData.expected_date,
+          hasAssessment: formData.has_assessment,
         };
 
         const response = await fetch(
@@ -303,6 +332,8 @@ const TopicMaterials = ({ route, navigation }) => {
         formDataToSend.append('estimatedDuration', formData.estimated_duration.toString());
         formDataToSend.append('difficultyLevel', formData.difficulty_level);
         formDataToSend.append('instructions', formData.instructions);
+        formDataToSend.append('expectedDate', formData.expected_date);
+        formDataToSend.append('hasAssessment', formData.has_assessment.toString());
 
         // Add files
         formData.files.forEach((file, index) => {
@@ -381,6 +412,8 @@ const TopicMaterials = ({ route, navigation }) => {
       estimated_duration: 30,
       difficulty_level: 'Medium',
       instructions: '',
+      expected_date: '',
+      has_assessment: false,
     });
     setEditingMaterial(null);
   };
@@ -395,6 +428,8 @@ const TopicMaterials = ({ route, navigation }) => {
       estimated_duration: material.estimated_duration,
       difficulty_level: material.difficulty_level,
       instructions: material.instructions || '',
+      expected_date: material.expected_date || '',
+      has_assessment: material.has_assessment || material.material_type === 'Assessment',
     });
     setModalVisible(true);
   };
@@ -622,6 +657,38 @@ const TopicMaterials = ({ route, navigation }) => {
                 numberOfLines={4}
               />
             </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Has Assessment</Text>
+              <View style={styles.switchContainer}>
+                <Text style={styles.switchLabel}>
+                  {formData.has_assessment ? 'Yes' : 'No'}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.switchButton, formData.has_assessment && styles.switchButtonActive]}
+                  onPress={() => setFormData(prev => ({ ...prev, has_assessment: !prev.has_assessment }))}
+                >
+                  <Text style={[styles.switchButtonText, formData.has_assessment && styles.switchButtonTextActive]}>
+                    {formData.has_assessment ? '✓' : '✗'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {formData.has_assessment && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Expected Completion Date *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.expected_date}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, expected_date: text }))}
+                  placeholder="YYYY-MM-DD (e.g., 2025-08-20)"
+                />
+                <Text style={styles.helpText}>
+                  Students must complete this assessment by this date or they will be moved to a lower batch
+                </Text>
+              </View>
+            )}
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Files *</Text>
@@ -993,6 +1060,42 @@ const styles = StyleSheet.create({
     color: '#856404',
     marginLeft: 8,
     marginBottom: 2,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  switchLabel: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+  },
+  switchButton: {
+    backgroundColor: '#e0e0e0',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  switchButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  switchButtonText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+  },
+  switchButtonTextActive: {
+    color: '#fff',
+  },
+  helpText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });
 
