@@ -18,6 +18,16 @@ import { API_URL } from '../../../../utils/env.js';
 
 const TopicHierarchyManagement = ({ navigation, route }) => {
   const { coordinatorData, coordinatorGrades, activeGrade, selectedSubjectId, selectedSectionId } = route.params || {};
+  
+  // Debug: Log the route params
+  console.log('TopicHierarchyManagement route params:', {
+    coordinatorData,
+    coordinatorGrades,
+    activeGrade,
+    selectedSubjectId,
+    selectedSectionId
+  });
+
   const [topicHierarchy, setTopicHierarchy] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState(selectedSubjectId);
@@ -49,14 +59,20 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   // }, []);
 
   useEffect(() => {
+    console.log('useEffect for activities triggered:', { selectedSubject, selectedSection });
     if (selectedSubject && selectedSection) {
       fetchActivitiesForSubject();
+    } else {
+      console.log('Cannot fetch activities: missing selectedSubject or selectedSection');
     }
   }, [selectedSubject, selectedSection]);
 
   useEffect(() => {
+    console.log('useEffect for hierarchy triggered:', { selectedActivity });
     if (selectedActivity) {
       fetchTopicHierarchy();
+    } else {
+      console.log('Cannot fetch hierarchy: missing selectedActivity');
     }
   }, [selectedActivity]);
 
@@ -100,17 +116,55 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   // };
 
   const fetchActivitiesForSubject = async () => {
+    console.log('fetchActivitiesForSubject called with:', { selectedSubject, selectedSection });
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/getSectionSubjectActivities?subjectId=${selectedSubject}&activeSection=${selectedSection}`, {
+      const url = `${API_URL}/api/coordinator/weekly-schedule/getSectionSubjectActivities?subjectId=${selectedSubject}&activeSection=${selectedSection}`;
+      console.log('Fetching activities from URL:', url);
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
+      
+      console.log('Activities response status:', response.status);
       const result = await response.json();
+      console.log('Activities result:', result);
+      
       if (result.success) {
-        setActivities(result.activity_types);
-        if (result.activity_types.length > 0) {
-          setSelectedActivity(result.activity_types[0].id);
+        // The API returns activity_types but we need section_subject_activities records
+        // Let's fetch the actual section_subject_activities for this section and subject
+        const sectionSubjectActivitiesUrl = `${API_URL}/api/coordinator/getSectionSubjectActivities/${selectedSection}/${selectedSubject}`;
+        console.log('Fetching section subject activities from URL:', sectionSubjectActivitiesUrl);
+        
+        const ssaResponse = await fetch(sectionSubjectActivitiesUrl, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        console.log('Section subject activities response status:', ssaResponse.status);
+        const ssaResult = await ssaResponse.json();
+        console.log('Section subject activities result:', ssaResult);
+        
+        if (ssaResult.success && ssaResult.data && ssaResult.data.length > 0) {
+          setActivities(ssaResult.data);
+          console.log('Set section subject activities:', ssaResult.data);
+          if (ssaResult.data.length > 0) {
+            setSelectedActivity(ssaResult.data[0].id);
+            console.log('Auto-selected first section subject activity:', ssaResult.data[0].id);
+          }
+        } else {
+          console.log('No section subject activities found, trying to create them...');
+          // If no section subject activities exist, we need to create them first
+          // For now, show a message to the user
+          setActivities([]);
+          Alert.alert(
+            'No Activities Found', 
+            'No activities are set up for this subject and section. Please contact admin to set up activities first.',
+            [{ text: 'OK' }]
+          );
         }
+      } else {
+        console.log('Failed to fetch activities:', result.message);
       }
     } catch (error) {
       console.error('Fetch activities error:', error);
@@ -121,17 +175,29 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   const fetchTopicHierarchy = async () => {
     if (!selectedActivity) return;
     setTopicHierarchy([]);
+    console.log('Fetching topic hierarchy for activity:', selectedActivity);
     
     setLoading(true);
     try {
-      const response = await fetch(
-        `${API_URL}/api/topics/hierarchy/activity/${selectedActivity}`,
-        { 
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' } 
-        }
-      );
+      const url = `${API_URL}/api/coordinator/topics/hierarchy/activity/${selectedActivity}`;
+      console.log('Fetching topic hierarchy from URL:', url);
+      
+      const response = await fetch(url, { 
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' } 
+      });
+      
+      console.log('Topic hierarchy response status:', response.status);
+      
+      if (response.status === 404) {
+        console.log('Topic hierarchy not found for activity:', selectedActivity);
+        setTopicHierarchy([]);
+        return;
+      }
+      
       const result = await response.json();
+      console.log('Topic hierarchy result:', result);
+      
       if (result.success) {
         console.log(
           `Fetched topic hierarchy for activity ${selectedActivity}:`,
@@ -139,8 +205,12 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         );
         
         setTopicHierarchy(result.data.hierarchy || []);
+      } else {
+        console.log('Failed to fetch topic hierarchy:', result.message);
+        Alert.alert('Error', result.message || 'Failed to fetch topic hierarchy');
       }
     } catch (error) {
+      console.error('Fetch topic hierarchy error:', error);
       Alert.alert('Error', 'Failed to fetch topic hierarchy');
     } finally {
       setLoading(false);
@@ -180,8 +250,8 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       console.log('Sending payload:', payload);
 
       const url = editingTopic 
-        ? `${API_URL}/api/topics/${editingTopic.id}`
-        : `${API_URL}/api/topics/create`;
+        ? `${API_URL}/api/coordinator/topics/update/${editingTopic.id}`
+        : `${API_URL}/api/coordinator/topics/create`;
 
       console.log('Request URL:', url);
 
@@ -274,7 +344,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       is_bottom_level: Boolean(topic.is_bottom_level),
       expected_completion_days: topic.expected_completion_days,
       pass_percentage: topic.pass_percentage,
-    });
+    }); 
     setModalVisible(true);
   };
 
@@ -327,7 +397,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               onPress={() => openCreateModal(item.id)}
             >
               <Text style={styles.actionButtonText}>+</Text>
-            </TouchableOpacity>
+            </TouchableOpacity>  
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => openEditModal(item)}
@@ -440,40 +510,75 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         </Picker>
       </View> */}
 
-      {/* Activity Selector */}
-      {selectedSubject && selectedSection && (
-        <View style={styles.selectorSection}>
-          <Text style={styles.label}>Select Activity Type:</Text>
-          <Picker
-            selectedValue={selectedActivity}
-            onValueChange={setSelectedActivity}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select an activity..." value="" />
-            {activities.map(activity => (
-              <Picker.Item
-                key={activity.id}
-                label={activity.activity_name}
-                value={activity.id}
-              />
-            ))}
-          </Picker>
-        </View>
-      )}
+      {/* Debug Info */}
+      <View style={styles.debugSection}>
+        <Text style={styles.debugText}>
+          Debug: Subject={selectedSubject}, Section={selectedSection}, Activity={selectedActivity}
+        </Text>
+        <Text style={styles.debugText}>
+          Activities count: {activities.length}, Hierarchy count: {topicHierarchy.length}
+        </Text>
+      </View>
 
-      {selectedActivity && (
-        <View style={styles.addTopicSection}>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => openCreateModal()}
-          >
-            <Text style={styles.addButtonText}>+ Add Root Topic</Text>
-          </TouchableOpacity>
+      {/* Check if we have the required data */}
+      {!selectedSubject || !selectedSection ? (
+        <View style={styles.noDataSection}>
+          <Text style={styles.noDataText}>
+            Missing required data:
+            {!selectedSubject && " Subject"}
+            {!selectedSection && " Section"}
+          </Text>
+          <Text style={styles.noDataSubtext}>
+            Please ensure you navigated here from a subject selection page.
+          </Text>
         </View>
+      ) : (
+        <>
+          {/* Activity Selector */}
+          <View style={styles.selectorSection}>
+            <Text style={styles.label}>Select Activity Type:</Text>
+            <Picker
+              selectedValue={selectedActivity}
+              onValueChange={setSelectedActivity}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select an activity..." value="" />
+              {activities.map(activity => (
+                <Picker.Item
+                  key={activity.id}
+                  label={activity.activity_name}
+                  value={activity.id}
+                />
+              ))}
+            </Picker>
+          </View>
+
+          {selectedActivity && (
+            <View style={styles.addTopicSection}>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => openCreateModal()}
+              >
+                <Text style={styles.addButtonText}>+ Add Root Topic</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {activities.length === 0 && selectedSubject && selectedSection && (
+            <View style={styles.noDataSection}>
+              <Text style={styles.noDataText}>No activities found for this subject</Text>
+            </View>
+          )}
+        </>
       )}
 
       {loading ? (
         <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+      ) : selectedActivity && topicHierarchy.length === 0 ? (
+        <View style={styles.noDataSection}>
+          <Text style={styles.noDataText}>No topics found for this activity</Text>
+          <Text style={styles.noDataSubtext}>Click "Add Root Topic" to create the first topic</Text>
+        </View>
       ) : (
         <FlatList
           data={topicHierarchy}
@@ -770,6 +875,110 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  debugSection: {
+    backgroundColor: '#ffffcc',
+    padding: 10,
+    margin: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#e6e600',
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'monospace',
+  },
+  noDataSection: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  noDataText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  noDataSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
+  hierarchyList: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  loader: {
+    marginTop: 50,
+  },
+  topicItem: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  topicHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  expandButton: {
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  expandIcon: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  topicInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  topicName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  topicCode: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 6,
+  },
+  topicFlags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  flag: {
+    fontSize: 11,
+    color: '#007AFF',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginRight: 6,
+    marginBottom: 2,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+  },
+  actionButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 16,
+    marginLeft: 6,
+  },
+  actionButtonText: {
+    fontSize: 16,
   },
 });
 

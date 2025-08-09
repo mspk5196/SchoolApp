@@ -172,6 +172,7 @@ router.get('/coordinator/weekly-schedule/getAvailableMentors', coordinatorContro
 router.post('/coordinator/weekly-schedule/subjects', coordinatorController.getAllSubjects);
 router.post('/coordinator/weekly-schedule/sections', coordinatorController.getSectionsByGrade);
 router.get('/coordinator/weekly-schedule/getSectionSubjectActivities', coordinatorController.getSectionSubjectActivities);
+router.get('/getSectionSubjectActivities/:sectionId/:subjectId', coordinatorController.getSectionSubjectActivitiesRecords);
 router.get('/coordinator/weekly-schedule/checkTimeConflict', coordinatorController.checkTimeConflict);
 // router.post('/coordinator/weekly-schedule/generateTemplate', coordinatorController.generateWeeklyTemplate);
 router.get('/coordinator/enrollment/getVenuesByGrade', infraEnrollment.getVenuesByGrade);
@@ -235,38 +236,38 @@ router.post('/coordinator/getRequestedAssessments', coordinatorController.getReq
 router.post('/coordinator/processAssessmentRequest', coordinatorController.processAssessmentRequest);
 
 // Enhanced Topic Hierarchy Routes
-router.get('/topics/hierarchy/:subjectId/:gradeId', TopicHierarchyController.getTopicHierarchy);
-router.get('/topics/hierarchy/activity/:activityId', TopicHierarchyController.getTopicHierarchyByActivity);
-router.post('/topics/create', TopicHierarchyController.createTopic);
-router.put('/topics/update/:topicId', TopicHierarchyController.updateTopic);
-router.delete('/topics/delete/:topicId', TopicHierarchyController.deleteTopic);
-router.get('/topics/:topicId/materials', TopicHierarchyController.getTopicMaterials);
+router.get('/coordinator/topics/hierarchy/:subjectId/:gradeId', TopicHierarchyController.getTopicHierarchy);
+router.get('/coordinator/topics/hierarchy/activity/:activityId', TopicHierarchyController.getTopicHierarchyByActivity);
+router.post('/coordinator/topics/create', TopicHierarchyController.createTopic);
+router.put('/coordinator/topics/update/:topicId', TopicHierarchyController.updateTopic);
+router.delete('/coordinator/topics/delete/:topicId', TopicHierarchyController.deleteTopic);
+router.get('/coordinator/topics/:topicId/materials', TopicHierarchyController.getTopicMaterials);
 // router.post('/topics/materials/add', TopicHierarchyController.uploadTopicMaterials);
 router.post(
-  '/topics/materials/upload',
+  '/coordinator/topics/materials/upload',
   uploadMaterials.array('files', 10),  // frontend must use `files` as the field name
   TopicHierarchyController.uploadTopicMaterials
 );
-router.put('/topics/materials/update/:materialId', TopicHierarchyController.updateTopicMaterial);
-router.delete('/topics/materials/delete/:materialId', TopicHierarchyController.deleteMaterial);
-router.get('/topics/materials/download/:filename', TopicHierarchyController.downloadFile);
-router.get('/topics/materials/view/:filename', TopicHierarchyController.viewFile);
-router.get('/topics/assessment-eligible/:studentRoll/:subjectId', TopicHierarchyController.getAssessmentEligibleTopics);
-router.get('/students/:studentRoll/progress/:subjectId', TopicHierarchyController.getStudentProgress);
-router.post('/students/progress/update', TopicHierarchyController.updateStudentProgress);
+router.put('/coordinator/topics/materials/update/:materialId', TopicHierarchyController.updateTopicMaterial);
+router.delete('/coordinator/topics/materials/delete/:materialId', TopicHierarchyController.deleteMaterial);
+router.get('/coordinator/topics/materials/download/:filename', TopicHierarchyController.downloadFile);
+router.get('/coordinator/topics/materials/view/:filename', TopicHierarchyController.viewFile);
+router.get('/coordinator/topics/assessment-eligible/:studentRoll/:subjectId', TopicHierarchyController.getAssessmentEligibleTopics);
+router.get('/coordinator/students/:studentRoll/progress/:subjectId', TopicHierarchyController.getStudentProgress);
+router.post('/coordinator/students/progress/update', TopicHierarchyController.updateStudentProgress);
 
 // Enhanced Batch Management Routes
-router.get('/batches/:sectionId/:subjectId', BatchManagementController.getBatches);
-router.post('/batches/details', BatchManagementController.getBatchDetails);
-router.post('/batches/configure', BatchManagementController.configureBatches);
-router.get('/batches/:batchId/students', BatchManagementController.getBatchStudents);
-router.post('/batches/move-student', BatchManagementController.moveStudentToBatch);
-router.get('/batches/history/:studentRoll/:subjectId', BatchManagementController.getBatchHistory);
-router.post('/batches/reallocate', BatchManagementController.runBatchReallocation);
-router.get('/batches/analytics/:sectionId/:subjectId', BatchManagementController.getBatchAnalytics);
-router.post('/batches/initialize', BatchManagementController.initializeStudentBatches);
-router.post('/batches/update-size', BatchManagementController.updateBatchSize);
-router.post('/batches/getSectionSubjects', BatchManagementController.getSectionSubjects);
+router.get('/coordinator/batches/:sectionId/:subjectId', BatchManagementController.getBatches);
+router.post('/coordinator/batches/details', BatchManagementController.getBatchDetails);
+router.post('/coordinator/batches/configure', BatchManagementController.configureBatches);
+router.get('/coordinator/batches/:batchId/students', BatchManagementController.getBatchStudents);
+router.post('/coordinator/batches/move-student', BatchManagementController.moveStudentToBatch);
+router.get('/coordinator/batches/history/:studentRoll/:subjectId', BatchManagementController.getBatchHistory);
+router.post('/coordinator/batches/reallocate', BatchManagementController.runBatchReallocation);
+router.get('/coordinator/batches/analytics/:sectionId/:subjectId', BatchManagementController.getBatchAnalytics);
+router.post('/coordinator/batches/initialize', BatchManagementController.initializeStudentBatches);
+router.post('/coordinator/batches/update-size', BatchManagementController.updateBatchSize);
+router.post('/coordinator/batches/getSectionSubjects', BatchManagementController.getSectionSubjects);
 
 // Enhanced Schedule Management Routes
 router.post('/schedule/create', ScheduleManagementController.createDailySchedule);
