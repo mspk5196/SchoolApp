@@ -17,10 +17,10 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { API_URL } from '../../../utils/env.js';
 
 const TopicHierarchyManagement = ({ navigation, route }) => {
-  const { coordinatorData, coordinatorGrades, activeGrade } = route.params || {};
+  const { coordinatorData, coordinatorGrades, activeGrade, selectedSubjectId } = route.params || {};
   const [topicHierarchy, setTopicHierarchy] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState(selectedSubjectId);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
@@ -352,7 +352,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         </View>
       </View>
 
-      <View style={styles.subjectSelector}>
+      {/* <View style={styles.subjectSelector}>
         <Text style={styles.label}>Select Subject:</Text>
         <Picker
           selectedValue={selectedSubject}
@@ -368,7 +368,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
             />
           ))}
         </Picker>
-      </View>
+      </View> */}
 
       {selectedSubject && (
         <View style={styles.addTopicSection}>

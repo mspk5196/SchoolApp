@@ -15,6 +15,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  loadingSubtext: {
+    marginTop: 5,
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
   header: {
     backgroundColor: '#2196F3',
     flexDirection: 'row',
@@ -32,6 +38,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
   },
   scrollView: {
     flex: 1,
@@ -69,6 +84,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     marginHorizontal: 16,
     marginBottom: 16,
+    marginTop: 16,
     padding: 16,
     borderRadius: 12,
     elevation: 2,
@@ -76,6 +92,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+  analyticsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  analyticsSubtitle: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  lastUpdateText: {
+    fontSize: 10,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 10,
+    fontStyle: 'italic',
   },
   cardTitle: {
     fontSize: 18,
@@ -99,6 +133,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+    textAlign: 'center',
+  },
+  analyticsSubLabel: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 2,
     textAlign: 'center',
   },
   actionsContainer: {
@@ -164,10 +204,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  batchNameContainer: {
+    flex: 1,
+  },
   batchName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+  },
+  batchLevel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
   studentCount: {
     flexDirection: 'row',
@@ -195,6 +243,31 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
     textAlign: 'center',
+  },
+  statSubLabel: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 1,
+    textAlign: 'center',
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  quickActionButton: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginLeft: 8,
+  },
+  quickActionText: {
+    fontSize: 12,
+    color: '#666',
   },
   emptyState: {
     alignItems: 'center',

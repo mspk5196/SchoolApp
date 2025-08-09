@@ -262,6 +262,7 @@ router.get('/batches/history/:studentRoll/:subjectId', BatchManagementController
 router.post('/batches/reallocate', BatchManagementController.runBatchReallocation);
 router.get('/batches/analytics/:sectionId/:subjectId', BatchManagementController.getBatchAnalytics);
 router.post('/batches/initialize', BatchManagementController.initializeStudentBatches);
+router.post('/batches/update-size', BatchManagementController.updateBatchSize);
 router.post('/batches/getSectionSubjects', BatchManagementController.getSectionSubjects);
 
 // Enhanced Schedule Management Routes

@@ -819,6 +819,129 @@ exports.initializeStudentBatches = async (req, res) => {
     }
 }
 
+// Update batch size
+exports.updateBatchSize = (req, res) => {
+    try {
+        const { batchId, newMaxStudents, coordinatorId } = req.body;
+
+        if (!batchId || !newMaxStudents || !coordinatorId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Batch ID, new max students, and coordinator ID are required'
+            });
+        }
+
+        // Validate the new batch size
+        const maxStudents = parseInt(newMaxStudents);
+        if (isNaN(maxStudents) || maxStudents < 5 || maxStudents > 50) {
+            return res.status(400).json({
+                success: false,
+                message: 'Batch size must be between 5 and 50 students'
+            });
+        }
+
+        // First check if the batch exists and get current student count
+        const checkBatchSql = `
+            SELECT 
+                sb.id,
+                sb.batch_name,
+                sb.max_students as current_max,
+                COUNT(sba.id) as current_students
+            FROM section_batches sb
+            LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id AND sba.is_current = 1
+            WHERE sb.id = ?
+            GROUP BY sb.id, sb.batch_name, sb.max_students
+        `;
+
+        db.query(checkBatchSql, [batchId], (error, batchResults) => {
+            if (error) {
+                console.error('Check batch error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to check batch details',
+                    error: error.message
+                });
+            }
+
+            if (batchResults.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Batch not found'
+                });
+            }
+
+            const batch = batchResults[0];
+
+            // Check if new size is smaller than current students
+            if (maxStudents < batch.current_students) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Cannot set batch size to ${maxStudents}. Current batch has ${batch.current_students} students.`
+                });
+            }
+
+            // Update the batch size
+            const updateSql = `
+                UPDATE section_batches 
+                SET max_students = ?, 
+                    updated_at = NOW(),
+                    updated_by = ?
+                WHERE id = ?
+            `;
+
+            db.query(updateSql, [maxStudents, coordinatorId, batchId], (updateError, updateResult) => {
+                if (updateError) {
+                    console.error('Update batch size error:', updateError);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to update batch size',
+                        error: updateError.message
+                    });
+                }
+
+                if (updateResult.affectedRows === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Batch not found or no changes made'
+                    });
+                }
+
+                // Log the change for audit purposes
+                const logSql = `
+                    INSERT INTO batch_change_log (batch_id, coordinator_id, change_type, old_value, new_value, created_at)
+                    VALUES (?, ?, 'max_students_update', ?, ?, NOW())
+                `;
+
+                db.query(logSql, [batchId, coordinatorId, batch.current_max, maxStudents], (logError) => {
+                    // Don't fail the operation if logging fails, just log the error
+                    if (logError) {
+                        console.error('Audit log error:', logError);
+                    }
+                });
+
+                res.json({
+                    success: true,
+                    message: `Batch size updated successfully from ${batch.current_max} to ${maxStudents} students`,
+                    data: {
+                        batchId: batchId,
+                        batchName: batch.batch_name,
+                        oldMaxStudents: batch.current_max,
+                        newMaxStudents: maxStudents,
+                        currentStudents: batch.current_students
+                    }
+                });
+            });
+        });
+    } catch (error) {
+        console.error('Update batch size error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update batch size',
+            error: error.message
+        });
+    }
+};
+
 exports.getSectionSubjects = (req, res) => {
 
   const { sectionId } = req.body;

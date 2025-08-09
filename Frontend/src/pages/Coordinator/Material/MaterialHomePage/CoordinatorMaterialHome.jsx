@@ -13,6 +13,8 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
   const [activeGrade, setActiveGrade] = useState();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [sections, setSections] = useState([]);
+  const [selectedSection, setSelectedSection] = useState();
 
   useEffect(() => {
     fetchGradeSubjects();
@@ -30,7 +32,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
       } else {
         setLoading(true);
       }
-      
+
       const response = await fetch(`${API_URL}/api/coordinator/getGradeSubject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -64,6 +66,39 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
       setRefreshing(false);
     }
   };
+  const fetchSections = async () => {
+    try {
+
+      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          gradeID: activeGrade,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setSections(result.gradeSections || []);
+        console.log('Fetched Grade Sections:', result.gradeSections);
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSections();
+  }, [activeGrade]);
+   useEffect(() => {
+    if (sections.length > 0) {
+      setSelectedSection(sections[0].id);
+    }
+  }, [sections]);
 
   const onRefresh = () => {
     if (activeGrade) {
@@ -72,20 +107,11 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
   };
 
   const Cards = ({ title, Icon, bgColor, color }) => {
-    const isLevelPromotion = title === 'Level Promotion';
-
+    // Only used for Level Promotion now
     return (
       <View style={[styles.card, { backgroundColor: bgColor }]}>
-        {isLevelPromotion ? (
-          <>
-            {Icon}
-            <Text style={[styles.cardText, { color: color }]}>{title}</Text>
-          </>
-        ) : (
-          <View style={styles.centeredCardContent}>
-            <Text style={[styles.cardText, styles.centeredText, { color: color }]}>{title}</Text>
-          </View>
-        )}
+        {Icon}
+        <Text style={[styles.cardText, { color: color }]}>{title}</Text>
       </View>
     );
   };
@@ -111,8 +137,8 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
   }
 
   return (
-    <ScrollView 
-      flexgrow={1} 
+    <ScrollView
+      flexgrow={1}
       flex={1}
       refreshControl={
         <RefreshControl
@@ -132,29 +158,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         <Text style={styles.HeaderTxt}>Material</Text>
       </View>
 
-      {/* Enhanced Management Buttons */}
-      <View style={styles.enhancedButtonsContainer}>
-        <TouchableOpacity 
-          style={styles.enhancedButton}
-          onPress={() => navigation.navigate('TopicHierarchyManagement', {
-            coordinatorData,
-            coordinatorGrades,
-            activeGrade
-          })}
-        >
-          <Text style={styles.enhancedButtonText}>📚 Topic Hierarchy</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.enhancedButton}
-          onPress={() => navigation.navigate('BatchManagementHome', {
-            coordinatorData,
-            coordinatorGrades,
-            activeGrade
-          })}
-        >
-          <Text style={styles.enhancedButtonText}>👥 Batch Management</Text>
-        </TouchableOpacity>
-      </View>
+
 
       <ScrollView
         horizontal
@@ -173,36 +177,97 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
           </TouchableOpacity>
         ))}
       </ScrollView>
+      {sections.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sectionTabsContainer}
+        >
+          {sections?.map(section => (
+            <TouchableOpacity
+              key={section.id}
+              style={[styles.sectionTab, activeGrade === section.id && styles.activeSectionTab]}
+              onPress={() => setSelectedSection(section.id)}
+            >
+              <Text style={[styles.sectionTabText, activeGrade === section.id && styles.activeSectionTabText]}>
+                Section {section.section_name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       {gradeSubject.length > 0 && gradeSubject[0].data.length > 0 ? (
         <SectionList
           sections={gradeSubject}
           keyExtractor={(item) => item.key} // Use the unique key we created
           renderItem={({ item }) => (
-            <Pressable
-              onPress={() => {
-                navigation.navigate('TopicHierarchySubject', {
-                  grade: `Grade ${activeGrade}`,
-                  gradeID: activeGrade,
-                  subject: item.subject_name,
-                  subjectID: item.subject_id,
-                  coordinatorData,
-                  coordinatorGrades
-                });
-              }}
-            >
-              <Cards
-                title={item.subject_name}
-                bgColor={(item.subject_id % 2) ? '#C9F7F5' : '#65558F12'}
-                color={(item.subject_id % 2) ? '#0FBEB3' : '#65558F'}
-              />
-            </Pressable>
+            <View style={[styles.card, { backgroundColor: (item.subject_id % 2) ? '#C9F7F5' : '#65558F12' }]}>
+              <Pressable
+                style={styles.centeredCardContent}
+              // onPress={() => {
+              //   navigation.navigate('TopicHierarchySubject', {
+              //     grade: `Grade ${activeGrade}`,
+              //     gradeID: activeGrade,
+              //     subject: item.subject_name,
+              //     subjectID: item.subject_id,
+              //     coordinatorData,
+              //     coordinatorGrades
+              //   });
+              // }}
+              >
+                <Text style={[styles.cardText, styles.centeredText, { color: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}>
+                  {item.subject_name}
+                </Text>
+                {/* Management Options */}
+                <View style={styles.cardManagementOptions}>
+                  <TouchableOpacity
+                    style={[styles.managementButton, { borderColor: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}
+                    onPress={() => navigation.navigate('TopicHierarchyManagement', {
+                      coordinatorData,
+                      coordinatorGrades,
+                      activeGrade,
+                      selectedSubjectId: item.subject_id,
+                      selectedSubjectName: item.subject_name
+                    })}
+                  >
+                    <Text style={[styles.managementButtonText, { color: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}>📚 Topics</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.managementButton, { borderColor: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}
+                    onPress={() => {
+                      navigation.navigate('BatchManagementHome', {
+                      coordinatorData,
+                      coordinatorGrades,
+                      activeGrade,
+                      selectedSubjectId: item.subject_id,
+                      selectedSubjectName: item.subject_name,
+                      selectedSectionId: selectedSection
+                    })
+                    console.log('Navigated to BatchManagementHome with:', {
+                      coordinatorData,
+                      coordinatorGrades,
+                      activeGrade,
+                      selectedSubjectId: item.subject_id,
+                      selectedSubjectName: item.subject_name,
+                      selectedSectionId: selectedSection
+                    });
+
+                  }}
+                  >
+                    <Text style={[styles.managementButtonText, { color: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}>👥 Batches</Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+
+            </View>
           )}
           renderSectionHeader={() => null}
         />
       ) : (
         <View style={styles.noDataContainer}>
-          <Nodata 
+          <Nodata
             message="No subjects found for this grade"
             style={styles.noDataContent}
           />

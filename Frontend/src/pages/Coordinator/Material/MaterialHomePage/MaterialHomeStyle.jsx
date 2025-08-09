@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
         padding: 30,
         borderRadius: 10,
         marginVertical: 10,
-        marginHorizontal: 15,
+        marginHorizontal: 10,
         // Default card style for Level Promotion
         flexDirection: "row",
         alignItems: "center",
@@ -73,6 +73,28 @@ const styles = StyleSheet.create({
     centeredText: {
         marginLeft: 0, // Remove left margin when centered
         textAlign: 'center',
+    },
+    cardManagementOptions: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginTop: 15,
+        paddingTop: 15,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.3)',
+        gap:20
+    },
+    managementButton: {
+        borderWidth: 1,
+        borderRadius: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        minWidth: 70,
+        alignItems: 'center',
+    },
+    managementButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     sectionTabsContainer: {
         paddingVertical: 10,
@@ -130,33 +152,6 @@ const styles = StyleSheet.create({
     noDataContent: {
         flex: 1,
         justifyContent: 'center',
-    },
-    // Enhanced Management Buttons
-    enhancedButtonsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingHorizontal: 15,
-        paddingVertical: 10,
-        backgroundColor: '#f8f9fa',
-        marginVertical: 5,
-    },
-    enhancedButton: {
-        backgroundColor: '#2196F3',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        minWidth: 140,
-        alignItems: 'center',
-    },
-    enhancedButtonText: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: '600',
     },
 });
 
