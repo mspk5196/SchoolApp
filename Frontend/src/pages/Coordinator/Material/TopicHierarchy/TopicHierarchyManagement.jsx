@@ -17,14 +17,14 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { API_URL } from '../../../../utils/env.js';
 
 const TopicHierarchyManagement = ({ navigation, route }) => {
-  const { coordinatorData, coordinatorGrades, activeGrade, selectedSubjectId } = route.params || {};
+  const { coordinatorData, coordinatorGrades, activeGrade, selectedSubjectId, selectedSectionId } = route.params || {};
   const [topicHierarchy, setTopicHierarchy] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState(selectedSubjectId);
   const [activities, setActivities] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [sections, setSections] = useState([]);
-  const [selectedSection, setSelectedSection] = useState(null);
+  const [selectedSection, setSelectedSection] = useState(selectedSectionId);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
@@ -43,10 +43,10 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     pass_percentage: 60,
   });
 
-  useEffect(() => {
-    fetchSubjects();
-    fetchSections();
-  }, []);
+  // useEffect(() => {
+  //   fetchSubjects();
+  //   // fetchSections();
+  // }, []);
 
   useEffect(() => {
     if (selectedSubject && selectedSection) {
@@ -60,44 +60,44 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     }
   }, [selectedActivity]);
 
-  const fetchSubjects = async () => {
-    try {
-      console.log('Fetching subjects from:', `${API_URL}/api/coordinator/getSubjects`);
-      const response = await fetch(`${API_URL}/api/coordinator/getSubjects`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      console.log('Subjects response status:', response.status);
-      const result = await response.json();
-      console.log('Subjects result:', result);
-      if (result.success) {
-        setSubjects(result.subjects);
-      }
-    } catch (error) {
-      console.error('Fetch subjects error:', error);
-      Alert.alert('Error', 'Failed to fetch subjects');
-    }
-  };
+  // const fetchSubjects = async () => {
+  //   try {
+  //     console.log('Fetching subjects from:', `${API_URL}/api/coordinator/getSubjects`);
+  //     const response = await fetch(`${API_URL}/api/coordinator/getSubjects`, {
+  //       method: 'GET',
+  //       headers: { 'Content-Type': 'application/json' }
+  //     });
+  //     console.log('Subjects response status:', response.status);
+  //     const result = await response.json();
+  //     console.log('Subjects result:', result);
+  //     if (result.success) {
+  //       setSubjects(result.subjects);
+  //     }
+  //   } catch (error) {
+  //     console.error('Fetch subjects error:', error);
+  //     Alert.alert('Error', 'Failed to fetch subjects');
+  //   }
+  // };
 
-  const fetchSections = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: activeGrade })
-      });
-      const result = await response.json();
-      if (result.success) {
-        setSections(result.gradeSections);
-        if (result.gradeSections.length > 0) {
-          setSelectedSection(result.gradeSections[0].id);
-        }
-      }
-    } catch (error) {
-      console.error('Fetch sections error:', error);
-      Alert.alert('Error', 'Failed to fetch sections');
-    }
-  };
+  // const fetchSections = async () => {
+  //   try {
+  //     const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ gradeID: activeGrade })
+  //     });
+  //     const result = await response.json();
+  //     if (result.success) {
+  //       setSections(result.gradeSections);
+  //       if (result.gradeSections.length > 0) {
+  //         setSelectedSection(result.gradeSections[0].id);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error('Fetch sections error:', error);
+  //     Alert.alert('Error', 'Failed to fetch sections');
+  //   }
+  // };
 
   const fetchActivitiesForSubject = async () => {
     try {
@@ -403,7 +403,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       </View>
 
       {/* Section Selector */}
-      <View style={styles.selectorSection}>
+      {/* <View style={styles.selectorSection}>
         <Text style={styles.label}>Select Section:</Text>
         <Picker
           selectedValue={selectedSection}
@@ -419,10 +419,10 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
             />
           ))}
         </Picker>
-      </View>
+      </View> */}
 
       {/* Subject Selector */}
-      <View style={styles.selectorSection}>
+      {/* <View style={styles.selectorSection}>
         <Text style={styles.label}>Select Subject:</Text>
         <Picker
           selectedValue={selectedSubject}
@@ -438,7 +438,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
             />
           ))}
         </Picker>
-      </View>
+      </View> */}
 
       {/* Activity Selector */}
       {selectedSubject && selectedSection && (

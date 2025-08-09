@@ -177,36 +177,60 @@ exports.createTopic = async (req, res) => {
 
         // Check if we're using the new activity-based approach or the old subject-based approach
         if (sectionSubjectActivityId) {
-            // New activity-based approach
-            const sql = `
-                INSERT INTO topic_hierarchy 
-                (section_subject_activity_id, parent_id, level, topic_name, topic_code, order_sequence,
-                 has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            // New activity-based approach - first get the subject_id from section_subject_activities
+            const getSubjectSql = `
+                SELECT subject_id FROM section_subject_activities WHERE id = ?
             `;
-
-            console.log('Creating topic with activity-based approach. Parameters:', [
-                sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,
-                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
-            ]);
-
-            db.query(sql, [
-                sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,
-                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
-            ], (error, result) => {
-                if (error) {
-                    console.error('Insert topic error (activity-based):', error);
+            
+            db.query(getSubjectSql, [sectionSubjectActivityId], (subjectError, subjectResult) => {
+                if (subjectError) {
+                    console.error('Error getting subject_id:', subjectError);
                     return res.status(500).json({
                         success: false,
-                        message: 'Failed to create topic',
-                        error: error.message
+                        message: 'Failed to get subject information',
+                        error: subjectError.message
                     });
                 }
+                
+                if (subjectResult.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Section subject activity not found'
+                    });
+                }
+                
+                const subjectIdFromActivity = subjectResult[0].subject_id;
+                
+                const sql = `
+                    INSERT INTO topic_hierarchy 
+                    (subject_id, section_subject_activity_id, parent_id, level, topic_name, topic_code, order_sequence,
+                     has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `;
 
-                res.json({
-                    success: true,
-                    message: 'Topic created successfully',
-                    data: { topicId: result.insertId }
+                console.log('Creating topic with activity-based approach. Parameters:', [
+                    subjectIdFromActivity, sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,
+                    hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+                ]);
+
+                db.query(sql, [
+                    subjectIdFromActivity, sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,
+                    hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+                ], (error, result) => {
+                    if (error) {
+                        console.error('Insert topic error (activity-based):', error);
+                        return res.status(500).json({
+                            success: false,
+                            message: 'Failed to create topic',
+                            error: error.message
+                        });
+                    }
+
+                    res.json({
+                        success: true,
+                        message: 'Topic created successfully',
+                        data: { topicId: result.insertId }
+                    });
                 });
             });
         } else if (subjectId) {

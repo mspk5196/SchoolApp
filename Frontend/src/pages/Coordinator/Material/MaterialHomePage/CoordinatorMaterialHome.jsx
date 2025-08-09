@@ -228,7 +228,8 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
                       coordinatorGrades,
                       activeGrade,
                       selectedSubjectId: item.subject_id,
-                      selectedSubjectName: item.subject_name
+                      selectedSubjectName: item.subject_name,
+                      selectedSectionId: selectedSection
                     })}
                   >
                     <Text style={[styles.managementButtonText, { color: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}>📚 Topic Hierarchy</Text>
