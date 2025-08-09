@@ -374,19 +374,144 @@ exports.getBatchHistory = async (req, res) => {
 // Run batch reallocation manually
 exports.runBatchReallocation = async (req, res) => {
     try {
-        db.query('CALL reallocate_student_batches()', [], (error, result) => {
-            if (error) {
-                console.error('Run batch reallocation error:', error);
+        const { sectionId, subjectId } = req.body;
+        
+        // Simple reallocation logic: Move students based on their performance
+        // Get all students with their current performance
+        const getStudentsSQL = `
+            SELECT 
+                sba.student_roll,
+                sba.batch_id as current_batch_id,
+                sb.batch_level as current_level,
+                COALESCE(AVG(stp.last_assessment_score), 0) as avg_score,
+                COUNT(CASE WHEN stp.status = 'Completed' THEN 1 END) as completed_topics
+            FROM student_batch_assignments sba
+            JOIN section_batches sb ON sba.batch_id = sb.id
+            LEFT JOIN student_topic_progress stp ON sba.student_roll = stp.student_roll 
+                AND stp.subject_id = sb.subject_id
+            WHERE sb.section_id = ? AND sb.subject_id = ? AND sba.is_current = 1
+            GROUP BY sba.student_roll, sba.batch_id, sb.batch_level
+        `;
+
+        db.query(getStudentsSQL, [sectionId, subjectId], (error1, students) => {
+            if (error1) {
+                console.error('Error getting students for reallocation:', error1);
                 return res.status(500).json({
                     success: false,
-                    message: 'Failed to run batch reallocation',
-                    error: error.message
+                    message: 'Failed to fetch students for reallocation',
+                    error: error1.message
                 });
             }
 
-            res.json({
-                success: true,
-                message: 'Batch reallocation completed successfully'
+            // Get available batches
+            const getBatchesSQL = `
+                SELECT id, batch_level, batch_name, max_students
+                FROM section_batches 
+                WHERE section_id = ? AND subject_id = ? AND is_active = 1
+                ORDER BY batch_level
+            `;
+
+            db.query(getBatchesSQL, [sectionId, subjectId], (error2, batches) => {
+                if (error2) {
+                    console.error('Error getting batches for reallocation:', error2);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to fetch batches for reallocation',
+                        error: error2.message
+                    });
+                }
+
+                if (batches.length === 0) {
+                    return res.json({
+                        success: true,
+                        message: 'No batches found for reallocation'
+                    });
+                }
+
+                // Simple algorithm: Assign students to batches based on performance
+                // High performers go to higher level batches, low performers to lower level batches
+                students.sort((a, b) => (b.avg_score + b.completed_topics) - (a.avg_score + a.completed_topics));
+                
+                let reallocations = [];
+                const studentsPerBatch = Math.ceil(students.length / batches.length);
+                
+                students.forEach((student, index) => {
+                    const targetBatchIndex = Math.min(Math.floor(index / studentsPerBatch), batches.length - 1);
+                    const targetBatch = batches[targetBatchIndex];
+                    
+                    if (student.current_batch_id !== targetBatch.id) {
+                        reallocations.push({
+                            studentRoll: student.student_roll,
+                            fromBatchId: student.current_batch_id,
+                            toBatchId: targetBatch.id,
+                            reason: 'Performance-based reallocation'
+                        });
+                    }
+                });
+
+                if (reallocations.length === 0) {
+                    return res.json({
+                        success: true,
+                        message: 'No reallocations needed - students are already optimally placed'
+                    });
+                }
+
+                // Process reallocations
+                let processedCount = 0;
+                let hasError = false;
+
+                const processReallocation = (index) => {
+                    if (index >= reallocations.length) {
+                        if (!hasError) {
+                            res.json({
+                                success: true,
+                                message: `Batch reallocation completed successfully. ${processedCount} students moved.`
+                            });
+                        }
+                        return;
+                    }
+
+                    const reallocation = reallocations[index];
+                    
+                    // Update current assignment
+                    const updateCurrentSQL = 'UPDATE student_batch_assignments SET is_current = 0 WHERE student_roll = ? AND batch_id = ? AND is_current = 1';
+                    
+                    db.query(updateCurrentSQL, [reallocation.studentRoll, reallocation.fromBatchId], (error3) => {
+                        if (error3 && !hasError) {
+                            hasError = true;
+                            console.error('Error updating current assignment:', error3);
+                            return res.status(500).json({
+                                success: false,
+                                message: 'Failed to update student assignments',
+                                error: error3.message
+                            });
+                        }
+
+                        if (!hasError) {
+                            // Create new assignment
+                            const insertNewSQL = 'INSERT INTO student_batch_assignments (student_roll, batch_id, assigned_by, is_current) VALUES (?, ?, ?, 1)';
+                            
+                            db.query(insertNewSQL, [reallocation.studentRoll, reallocation.toBatchId, 'system'], (error4) => {
+                                if (error4 && !hasError) {
+                                    hasError = true;
+                                    console.error('Error creating new assignment:', error4);
+                                    return res.status(500).json({
+                                        success: false,
+                                        message: 'Failed to create new assignments',
+                                        error: error4.message
+                                    });
+                                }
+
+                                if (!hasError) {
+                                    processedCount++;
+                                    processReallocation(index + 1);
+                                }
+                            });
+                        }
+                    });
+                };
+
+                processReallocation(0);
             });
         });
     } catch (error) {
