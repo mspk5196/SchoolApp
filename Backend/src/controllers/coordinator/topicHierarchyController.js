@@ -70,65 +70,186 @@ exports.getTopicHierarchy = async (req, res) => {
     }
 }
 
+// Get topic hierarchy by activity (NEW FUNCTION)
+exports.getTopicHierarchyByActivity = async (req, res) => {
+    try {
+        const { activityId } = req.params;
+
+        // Get section_subject_activity details first
+        const activitySql = `
+            SELECT ssa.id, ssa.section_id, ssa.subject_id, ssa.activity_type,
+                   s.subject_name, sec.section_name, at.activity_type as activity_name
+            FROM section_subject_activities ssa
+            JOIN subjects s ON ssa.subject_id = s.id
+            JOIN sections sec ON ssa.section_id = sec.id
+            JOIN activity_types at ON ssa.activity_type = at.id
+            WHERE ssa.id = ?
+        `;
+
+        db.query(activitySql, [activityId], (err, activityResult) => {
+            if (err) {
+                console.error('Get activity details error:', err);
+                return res.status(500).json({ success: false, message: 'Failed to fetch activity details' });
+            }
+
+            if (activityResult.length === 0) {
+                return res.status(404).json({ success: false, message: 'Activity not found' });
+            }
+
+            const activity = activityResult[0];
+
+            // Get topic hierarchy for this activity
+            const sql = `
+                SELECT 
+                    id, subject_id, section_subject_activity_id, parent_id, level, topic_name, topic_code, 
+                    order_sequence, has_assessment, has_homework, is_bottom_level,
+                    expected_completion_days, pass_percentage, created_at, updated_at
+                FROM topic_hierarchy 
+                WHERE section_subject_activity_id = ?
+                ORDER BY level, order_sequence
+            `;
+
+            console.log('Executing hierarchy query for activityId:', activityId);
+
+            db.query(sql, [activityId], (err, result) => {
+                if (err) {
+                    console.error('Get topic hierarchy by activity error:', err);
+                    return res.status(500).json({ success: false, message: 'Database error' });
+                }
+
+                if (result.length === 0) {
+                    return res.json({ 
+                        success: true, 
+                        data: {
+                            activity: activity,
+                            hierarchy: [],
+                            total_topics: 0
+                        }
+                    });
+                }
+
+                console.log('Hierarchy query result:', result);
+
+                // Build nested structure
+                const buildTree = (items, parentId = null) => {
+                    if (!Array.isArray(items)) {
+                        return [];
+                    }
+                    return items
+                        .filter(item => item.parent_id === parentId)
+                        .map(item => ({
+                            ...item,
+                            children: buildTree(items, item.id)
+                        }));
+                };
+
+                const tree = buildTree(result);
+
+                console.log('Built tree structure:', tree);
+                res.json({
+                    success: true, 
+                    data: {
+                        activity: activity,
+                        overallData: result,
+                        hierarchy: tree,
+                        total_topics: result.length
+                    }
+                });
+            });
+        });
+    } catch (error) {
+        console.error('Get topic hierarchy by activity error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch topic hierarchy',
+            error: error.message
+        });
+    }
+}
+
 // Create new topic in hierarchy
 exports.createTopic = async (req, res) => {
     try {
         const {
-            subjectId, parentId, level, topicName, topicCode, orderSequence,
+            subjectId, sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,
             hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
         } = req.body;
 
-        const sql = `
+        // Check if we're using the new activity-based approach or the old subject-based approach
+        if (sectionSubjectActivityId) {
+            // New activity-based approach
+            const sql = `
+                INSERT INTO topic_hierarchy 
+                (section_subject_activity_id, parent_id, level, topic_name, topic_code, order_sequence,
+                 has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            console.log('Creating topic with activity-based approach. Parameters:', [
+                sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,
+                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+            ]);
+
+            db.query(sql, [
+                sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,
+                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+            ], (error, result) => {
+                if (error) {
+                    console.error('Insert topic error (activity-based):', error);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to create topic',
+                        error: error.message
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    message: 'Topic created successfully',
+                    data: { topicId: result.insertId }
+                });
+            });
+        } else if (subjectId) {
+            // Legacy subject-based approach (for backward compatibility)
+            const sql = `
                 INSERT INTO topic_hierarchy 
                 (subject_id, parent_id, level, topic_name, topic_code, order_sequence,
                  has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
-        // console.log('Executing query:', sql);
-        console.log('With parameters:', [
-            subjectId, parentId, level, topicName, topicCode, orderSequence,
-            hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
-        ]);
+            console.log('Creating topic with subject-based approach. Parameters:', [
+                subjectId, parentId, level, topicName, topicCode, orderSequence,
+                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+            ]);
 
-        db.query(sql, [
-            subjectId, parentId, level, topicName, topicCode, orderSequence,
-            hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
-        ], (error, result) => {
-            if (error) {
-                console.error('Insert topic error:', error);
-                return res.status(500).json({
-                    success: false,
-                    message: 'Failed to create topic',
-                    error: error.message
-                });
-            }
-            if (result.length === 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Failed to create topic',
-                    error: 'No rows affected'
-                });
-            }
-            
-            let topicId;
-            if (Array.isArray(result) && result[0]) {
-                topicId = result[0].insertId || 'created_successfully';
-            } else if (result && result.insertId) {
-                topicId = result.insertId;
-            } else {
-                topicId = 'created_successfully';
-            }
+            db.query(sql, [
+                subjectId, parentId, level, topicName, topicCode, orderSequence,
+                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+            ], (error, result) => {
+                if (error) {
+                    console.error('Insert topic error (subject-based):', error);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to create topic',
+                        error: error.message
+                    });
+                }
 
-            res.json({
-                success: true,
-                message: 'Topic created successfully',
-                data: { topicId: topicId }
+                res.json({
+                    success: true,
+                    message: 'Topic created successfully',
+                    data: { topicId: result.insertId }
+                });
             });
-        });
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: 'Either sectionSubjectActivityId or subjectId is required'
+            });
+        }
     } catch (error) {
         console.error('Create topic error:', error);
-        console.error('Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Failed to create topic',

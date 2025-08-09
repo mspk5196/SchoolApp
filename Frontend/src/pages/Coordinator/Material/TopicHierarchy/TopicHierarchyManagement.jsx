@@ -21,6 +21,10 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   const [topicHierarchy, setTopicHierarchy] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState(selectedSubjectId);
+  const [activities, setActivities] = useState([]);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [sections, setSections] = useState([]);
+  const [selectedSection, setSelectedSection] = useState(null);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
@@ -41,13 +45,20 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchSubjects();
+    fetchSections();
   }, []);
 
   useEffect(() => {
-    if (selectedSubject) {
+    if (selectedSubject && selectedSection) {
+      fetchActivitiesForSubject();
+    }
+  }, [selectedSubject, selectedSection]);
+
+  useEffect(() => {
+    if (selectedActivity) {
       fetchTopicHierarchy();
     }
-  }, [selectedSubject]);
+  }, [selectedActivity]);
 
   const fetchSubjects = async () => {
     try {
@@ -68,14 +79,53 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     }
   };
 
+  const fetchSections = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gradeID: activeGrade })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setSections(result.gradeSections);
+        if (result.gradeSections.length > 0) {
+          setSelectedSection(result.gradeSections[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Fetch sections error:', error);
+      Alert.alert('Error', 'Failed to fetch sections');
+    }
+  };
+
+  const fetchActivitiesForSubject = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/getSectionSubjectActivities?subjectId=${selectedSubject}&activeSection=${selectedSection}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setActivities(result.activity_types);
+        if (result.activity_types.length > 0) {
+          setSelectedActivity(result.activity_types[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Fetch activities error:', error);
+      Alert.alert('Error', 'Failed to fetch activities');
+    }
+  };
+
   const fetchTopicHierarchy = async () => {
-    if (!selectedSubject || !activeGrade) return;
+    if (!selectedActivity) return;
     setTopicHierarchy([]);
     
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_URL}/api/topics/hierarchy/${selectedSubject}/${activeGrade}`,
+        `${API_URL}/api/topics/hierarchy/activity/${selectedActivity}`,
         { 
           method: 'GET',
           headers: { 'Content-Type': 'application/json' } 
@@ -84,7 +134,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       const result = await response.json();
       if (result.success) {
         console.log(
-          `Fetched topic hierarchy for subject ${selectedSubject} and grade ${activeGrade}:`,
+          `Fetched topic hierarchy for activity ${selectedActivity}:`,
           result.data
         );
         
@@ -108,13 +158,13 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         Alert.alert('Error', 'Topic code is required');
         return;
       }
-      if (!selectedSubject) {
-        Alert.alert('Error', 'Please select a subject first');
+      if (!selectedActivity) {
+        Alert.alert('Error', 'Please select an activity first');
         return;
       }
 
       const payload = {
-        subjectId: selectedSubject,
+        sectionSubjectActivityId: selectedActivity,
         parentId: formData.parent_id,
         level: formData.parent_id ? 2 : 1, // Calculate level based on parent
         topicName: formData.topic_name,
@@ -352,7 +402,27 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         </View>
       </View>
 
-      {/* <View style={styles.subjectSelector}>
+      {/* Section Selector */}
+      <View style={styles.selectorSection}>
+        <Text style={styles.label}>Select Section:</Text>
+        <Picker
+          selectedValue={selectedSection}
+          onValueChange={setSelectedSection}
+          style={styles.picker}
+        >
+          <Picker.Item label="Select a section..." value="" />
+          {sections.map(section => (
+            <Picker.Item
+              key={section.id}
+              label={`Section ${section.section_name}`}
+              value={section.id}
+            />
+          ))}
+        </Picker>
+      </View>
+
+      {/* Subject Selector */}
+      <View style={styles.selectorSection}>
         <Text style={styles.label}>Select Subject:</Text>
         <Picker
           selectedValue={selectedSubject}
@@ -368,9 +438,30 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
             />
           ))}
         </Picker>
-      </View> */}
+      </View>
 
-      {selectedSubject && (
+      {/* Activity Selector */}
+      {selectedSubject && selectedSection && (
+        <View style={styles.selectorSection}>
+          <Text style={styles.label}>Select Activity Type:</Text>
+          <Picker
+            selectedValue={selectedActivity}
+            onValueChange={setSelectedActivity}
+            style={styles.picker}
+          >
+            <Picker.Item label="Select an activity..." value="" />
+            {activities.map(activity => (
+              <Picker.Item
+                key={activity.id}
+                label={activity.activity_name}
+                value={activity.id}
+              />
+            ))}
+          </Picker>
+        </View>
+      )}
+
+      {selectedActivity && (
         <View style={styles.addTopicSection}>
           <TouchableOpacity
             style={styles.addButton}
@@ -537,6 +628,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   subjectSelector: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  selectorSection: {
     backgroundColor: '#fff',
     padding: 16,
     borderBottomWidth: 1,

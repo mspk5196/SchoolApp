@@ -173,6 +173,7 @@ router.post('/coordinator/weekly-schedule/subjects', coordinatorController.getAl
 router.post('/coordinator/weekly-schedule/sections', coordinatorController.getSectionsByGrade);
 router.get('/coordinator/weekly-schedule/getSectionSubjectActivities', coordinatorController.getSectionSubjectActivities);
 router.get('/coordinator/weekly-schedule/checkTimeConflict', coordinatorController.checkTimeConflict);
+// router.post('/coordinator/weekly-schedule/generateTemplate', coordinatorController.generateWeeklyTemplate);
 router.get('/coordinator/enrollment/getVenuesByGrade', infraEnrollment.getVenuesByGrade);
 // Invigilation duties
 router.get('/coordinator/getExamScheduleWithInvigilators', coordinatorController.getExamScheduleWithInvigilators);
@@ -235,6 +236,7 @@ router.post('/coordinator/processAssessmentRequest', coordinatorController.proce
 
 // Enhanced Topic Hierarchy Routes
 router.get('/topics/hierarchy/:subjectId/:gradeId', TopicHierarchyController.getTopicHierarchy);
+router.get('/topics/hierarchy/activity/:activityId', TopicHierarchyController.getTopicHierarchyByActivity);
 router.post('/topics/create', TopicHierarchyController.createTopic);
 router.put('/topics/update/:topicId', TopicHierarchyController.updateTopic);
 router.delete('/topics/delete/:topicId', TopicHierarchyController.deleteTopic);

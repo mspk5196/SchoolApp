@@ -226,9 +226,9 @@ const Routes = () => {
                         <Stack.Screen name="LevelPromotion" component={LevelPromotion} />
                         {/* <Stack.Screen name="SubjectPage" component={SubjectPage} />
                         <Stack.Screen name="SubjectActivityPage" component={SubjectActivityPage} options={{ headerShown: false }} /> */}
-                        <Stack.Screen name="TopicHierarchySubject" component={TopicHierarchySubject} options={{ headerShown: false }} />
-                        <Stack.Screen name="AddTopicPage" component={AddTopicPage} options={{ headerShown: false }} />
-                        <Stack.Screen name="TopicDetailsPage" component={TopicDetailsPage} options={{ headerShown: false }} />
+                        {/* <Stack.Screen name="TopicHierarchySubject" component={TopicHierarchySubject} options={{ headerShown: false }} /> */}
+                        {/* <Stack.Screen name="AddTopicPage" component={AddTopicPage} options={{ headerShown: false }} /> */}
+                        {/* <Stack.Screen name="TopicDetailsPage" component={TopicDetailsPage} options={{ headerShown: false }} /> */}
                         {/* CoordinatorLogs - Only one page*/}
                         {/* CoordinatorScheduleHome */}
                         <Stack.Screen name="CoordinatorAcademicSchedule" component={CoordinatorAcademicSchedule} />

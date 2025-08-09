@@ -231,7 +231,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
                       selectedSubjectName: item.subject_name
                     })}
                   >
-                    <Text style={[styles.managementButtonText, { color: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}>📚 Topics</Text>
+                    <Text style={[styles.managementButtonText, { color: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}>📚 Topic Hierarchy</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
