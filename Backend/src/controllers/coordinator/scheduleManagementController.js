@@ -1,7 +1,7 @@
 const db = require('../../config/db');
 
 // Create daily schedule with multiple activities
-const createDailySchedule = async (req, res) => {
+exports.createDailySchedule = async (req, res) => {
     try {
         const {
             date, gradeId, sectionId, subjectId, periodNumber,
@@ -68,7 +68,7 @@ const createDailySchedule = async (req, res) => {
 };
 
 // Get daily schedule with activities
-const getDailySchedule = async (req, res) => {
+exports.getDailySchedule = async (req, res) => {
     try {
         const { date, sectionId } = req.params;
 
@@ -154,7 +154,7 @@ const getDailySchedule = async (req, res) => {
 };
 
 // Get weekly schedule template
-const getWeeklySchedule = async (req, res) => {
+exports.getWeeklySchedule = async (req, res) => {
     try {
         const { sectionId, weekStart } = req.params;
 
@@ -196,7 +196,7 @@ const getWeeklySchedule = async (req, res) => {
 };
 
 // Update activity in schedule
-const updateScheduleActivity = async (req, res) => {
+exports.updateScheduleActivity = async (req, res) => {
     try {
         const { activityId } = req.params;
         const {
@@ -234,7 +234,7 @@ const updateScheduleActivity = async (req, res) => {
 };
 
 // Mark activity as completed
-const markActivityCompleted = async (req, res) => {
+exports.markActivityCompleted = async (req, res) => {
     try {
         const { activityId } = req.params;
         const { completionNotes } = req.body;
@@ -262,7 +262,7 @@ const markActivityCompleted = async (req, res) => {
 };
 
 // Get available mentors for time slot
-const getAvailableMentors = async (req, res) => {
+exports.getAvailableMentors = async (req, res) => {
     try {
         const { date, startTime, endTime, subjectId, gradeId } = req.params;
 
@@ -303,7 +303,7 @@ const getAvailableMentors = async (req, res) => {
 };
 
 // Get available venues for time slot
-const getAvailableVenues = async (req, res) => {
+exports.getAvailableVenues = async (req, res) => {
     try {
         const { date, startTime, endTime, subjectId, gradeId } = req.params;
 
@@ -342,7 +342,7 @@ const getAvailableVenues = async (req, res) => {
 };
 
 // Delete schedule
-const deleteSchedule = async (req, res) => {
+exports.deleteSchedule = async (req, res) => {
     try {
         const { scheduleId } = req.params;
 
@@ -377,7 +377,7 @@ const deleteSchedule = async (req, res) => {
 };
 
 // Copy schedule to multiple dates
-const copySchedule = async (req, res) => {
+exports.copySchedule = async (req, res) => {
     try {
         const { scheduleId } = req.params;
         const { targetDates } = req.body;
@@ -461,7 +461,7 @@ const copySchedule = async (req, res) => {
 // Enhanced Academic Schedule Functions
 
 // Get weekly template for grade
-const getWeeklyTemplate = async (req, res) => {
+exports.getWeeklyTemplate = async (req, res) => {
     try {
         const { gradeId } = req.params;
 
@@ -516,7 +516,7 @@ const getWeeklyTemplate = async (req, res) => {
 };
 
 // Get monthly schedule based on weekly template
-const getMonthlySchedule = async (req, res) => {
+exports.getMonthlySchedule = async (req, res) => {
     try {
         const { grade, month, year } = req.query;
 
@@ -590,7 +590,7 @@ const getMonthlySchedule = async (req, res) => {
 }
 
 // Get period activities for a specific period and date
-const getPeriodActivities = async (req, res) => {
+exports.getPeriodActivities = async (req, res) => {
     try {
         const { period_id, date } = req.query;
 
@@ -631,7 +631,7 @@ const getPeriodActivities = async (req, res) => {
 };
 
 // Create new period activity 
-const createPeriodActivity = async (req, res) => {
+exports.createPeriodActivity = async (req, res) => {
     try {
         const {
             period_id,
@@ -725,7 +725,7 @@ const createPeriodActivity = async (req, res) => {
 };
 
 // Get monthly schedule
-const getMonthlyScheduleAlt = async (req, res) => {
+exports.getMonthlyScheduleAlt = async (req, res) => {
     try {
         const { month, year } = req.params;
 
@@ -794,7 +794,7 @@ const getMonthlyScheduleAlt = async (req, res) => {
 };
 
 // Get period activities for a specific date and period (alternative implementation)
-const getPeriodActivitiesAlt = async (req, res) => {
+exports.getPeriodActivitiesAlt = async (req, res) => {
     try {
         const { periodId, date } = req.params;
 
@@ -846,7 +846,7 @@ const getPeriodActivitiesAlt = async (req, res) => {
 };
 
 // Create period activity (split period into activities)
-const createPeriodActivitySplit = async (req, res) => {
+exports.createPeriodActivitySplit = async (req, res) => {
     try {
         const {
             period_id, date, activity_type, duration_minutes, batch_number,
@@ -911,7 +911,7 @@ const createPeriodActivitySplit = async (req, res) => {
 };
 
 // Update period activity
-const updatePeriodActivity = async (req, res) => {
+exports.updatePeriodActivity = async (req, res) => {
     try {
         const { activityId } = req.params;
         const {
@@ -948,7 +948,7 @@ const updatePeriodActivity = async (req, res) => {
 };
 
 // Delete period activity
-const deletePeriodActivity = async (req, res) => {
+exports.deletePeriodActivity = async (req, res) => {
     try {
         const { activityId } = req.params;
 
@@ -970,7 +970,7 @@ const deletePeriodActivity = async (req, res) => {
 };
 
 // Get batch activities for a specific date
-const getBatchActivities = async (req, res) => {
+exports.getBatchActivities = async (req, res) => {
     try {
         const { batchId, date } = req.params;
 
@@ -1007,26 +1007,4 @@ const getBatchActivities = async (req, res) => {
             error: error.message
         });
     }
-};
-
-module.exports = {
-    createDailySchedule,
-    getDailySchedule,
-    getWeeklySchedule,
-    updateScheduleActivity,
-    markActivityCompleted,
-    getAvailableMentors,
-    getAvailableVenues,
-    deleteSchedule,
-    copySchedule,
-    getWeeklyTemplate,
-    getMonthlySchedule,
-    getMonthlyScheduleAlt,
-    getPeriodActivities,
-    getPeriodActivitiesAlt,
-    createPeriodActivity,
-    createPeriodActivitySplit,
-    updatePeriodActivity,
-    deletePeriodActivity,
-    getBatchActivities
 };
