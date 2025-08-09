@@ -18,9 +18,10 @@ import styles from './BatchDetailsStyles';
 import { API_URL } from '../../../utils/env.js';
 
 const BatchDetails = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation(); 
   const route = useRoute();
-  const { batchName, sectionId, subjectId, coordinatorId } = route.params;
+  const { batchName, sectionId, subjectId, coordinatorId, batchId } = route.params;
+  // console.log('Batch Details Params:', { batchName, sectionId, subjectId, coordinatorId, batchId });
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,7 +38,7 @@ const BatchDetails = () => {
   }, []);
 
   const fetchBatchDetails = async () => {
-    console.log('Fetching batch details...', { batchName, sectionId, subjectId });
+    // console.log('Fetching batch details...', { batchName, sectionId, subjectId });
 
     try {
       setLoading(true);
@@ -70,7 +71,7 @@ const BatchDetails = () => {
   };
 
   const fetchAvailableBatches = async () => {
-    console.log('Fetching available batches for section:', sectionId, 'subject:', subjectId);
+    // console.log('Fetching available batches for section:', sectionId, 'subject:', subjectId);
     try {
       const response = await fetch(`${API_URL}/api/batches/${sectionId}/${subjectId}`, {
         method: 'GET',
@@ -81,9 +82,9 @@ const BatchDetails = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Backend response:', result);
+        // console.log('Backend response:', result);
         setAvailableBatches(result.data || result.batches || []);
-        console.log('Available batches set:', result.data || result.batches || []);
+        // console.log('Available batches set:', result.data || result.batches || []);
       }
     } catch (error) { 
       console.error('Error fetching available batches:', error);
@@ -106,6 +107,14 @@ const BatchDetails = () => {
       Alert.alert('Error', 'Please select a target batch');
       return;
     }
+    console.log('Moving student:', {
+      studentRoll: selectedStudent.student_roll,
+      fromBatchId: batchId,
+      toBatchId: targetBatch,
+      subjectId: subjectId,
+      reason: 'Manual_Transfer',
+      coordinatorId: coordinatorId
+    });
 
     try {
       setLoading(true);
@@ -115,10 +124,10 @@ const BatchDetails = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          student_roll: selectedStudent.student_roll,
-          from_batch: batchName,
-          to_batch: targetBatch,
-          subject_id: subjectId,
+          studentRoll: selectedStudent.student_roll,
+          fromBatchId: batchId,
+          toBatchId: targetBatch,
+          subjectId: subjectId,
           reason: 'Manual_Transfer',
           coordinatorId: coordinatorId
         }),
@@ -304,10 +313,10 @@ const BatchDetails = () => {
                         .filter(batch => batch.batch_name !== batchName)
                         .map((batch) => (
                           <Picker.Item
-                            key={batch.batch_name}
+                            key={batch.id}
                             label={batch.batch_name}
-                            value={batch.batch_name}
-                          />
+                            value={batch.id}
+                          /> 
                         ))}
                     </Picker>
                   </View>

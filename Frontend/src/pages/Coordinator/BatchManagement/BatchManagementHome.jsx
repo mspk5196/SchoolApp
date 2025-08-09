@@ -300,6 +300,7 @@ const BatchManagementHome = ({route}) => {
       style={styles.batchCard}
       onPress={() => navigation.navigate('BatchDetails', { 
         batchName: batch.batch_name,
+        batchId: batch.id,
         sectionId: selectedSection,
         subjectId: selectedSubject,
         coordinatorId: coordinatorData.id

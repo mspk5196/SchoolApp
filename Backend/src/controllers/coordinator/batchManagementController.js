@@ -311,7 +311,7 @@ exports.getBatchStudents = async (req, res) => {
 // Move student to different batch manually
 exports.moveStudentToBatch = async (req, res) => {
     try {
-        const { studentRoll, fromBatchId, toBatchId, reason, notes, coordinatorId } = req.body;
+        const { studentRoll, fromBatchId, toBatchId, reason, notes, coordinatorId, subjectId } = req.body;
 
         // Get subject ID
         const batchInfoSql = 'SELECT subject_id FROM section_batches WHERE id = ?';
@@ -333,7 +333,7 @@ exports.moveStudentToBatch = async (req, res) => {
                 });
             }
 
-            const subjectId = batchInfo[0].subject_id;
+            // const subjectId = batchInfo[0].subject_id;
 
             // Start transaction
             db.query('START TRANSACTION', [], (transError) => {
