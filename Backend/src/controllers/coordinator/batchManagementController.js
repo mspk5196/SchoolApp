@@ -601,11 +601,10 @@ exports.getBatchAnalytics = async (req, res) => {
 // Initialize students to first batch (for new subjects)
 exports.initializeStudentBatches = async (req, res) => {
     try {
-        const { sectionId, subjectId, section_id, subject_id } = req.body;
+        const { sectionId, subjectId, section_id, subject_id, coordinatorId } = req.body;
         // Handle both naming conventions
         const finalSectionId = sectionId || section_id;
         const finalSubjectId = subjectId || subject_id;
-        const coordinatorId = req.user?.id || 'system';
 
         // Get first batch ID
         const firstBatchSql = 'SELECT id FROM section_batches WHERE section_id = ? AND subject_id = ? AND batch_level = 1 AND is_active = 1 LIMIT 1';

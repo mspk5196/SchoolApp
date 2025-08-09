@@ -269,6 +269,7 @@ const BatchManagementHome = ({route}) => {
                 body: JSON.stringify({
                   sectionId: selectedSection,
                   subjectId: selectedSubject,
+                  coordinatorId: coordinatorData.id
                 }),
               });
 
@@ -313,7 +314,12 @@ const BatchManagementHome = ({route}) => {
       
       <View style={styles.batchStats}>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{batch.avg_performance?.toFixed(1) || 'N/A'}%</Text>
+          <Text style={styles.statValue}>
+            {batch.avg_performance && typeof batch.avg_performance === 'number' 
+              ? batch.avg_performance.toFixed(1) + '%' 
+              : 'N/A'
+            }
+          </Text>
           <Text style={styles.statLabel}>Avg Performance</Text>
         </View>
         <View style={styles.statItem}>
@@ -416,7 +422,12 @@ const BatchManagementHome = ({route}) => {
                 <Text style={styles.analyticsLabel}>Active Batches</Text>
               </View>
               <View style={styles.analyticsItem}>
-                <Text style={styles.analyticsValue}>{analytics.avg_performance?.toFixed(1)}%</Text>
+                <Text style={styles.analyticsValue}>
+                  {analytics.avg_performance && typeof analytics.avg_performance === 'number' 
+                    ? analytics.avg_performance.toFixed(1) + '%' 
+                    : 'N/A'
+                  }
+                </Text>
                 <Text style={styles.analyticsLabel}>Avg Performance</Text>
               </View>
             </View>
