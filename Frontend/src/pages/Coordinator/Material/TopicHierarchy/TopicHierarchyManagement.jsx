@@ -20,13 +20,13 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   const { coordinatorData, coordinatorGrades, activeGrade, selectedSubjectId, selectedSectionId } = route.params || {};
   
   // Debug: Log the route params
-  console.log('TopicHierarchyManagement route params:', {
-    coordinatorData,
-    coordinatorGrades,
-    activeGrade,
-    selectedSubjectId,
-    selectedSectionId
-  });
+  // console.log('TopicHierarchyManagement route params:', {
+  //   coordinatorData,
+  //   coordinatorGrades,
+  //   activeGrade,
+  //   selectedSubjectId,
+  //   selectedSectionId
+  // });
 
   const [topicHierarchy, setTopicHierarchy] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -126,13 +126,13 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       
       // console.log('Activities response status:', response.status);
       const result = await response.json();
-      console.log('Activities result:', result);
+      // console.log('Activities result:', result);
       
       if (result.success) {
-        console.log('Fetched activities:', result.activities);
-        setActivities(result.activities || []);
-        if (result.activities.length > 0) {
-          setSelectedActivity(result.activities[0].id);
+        // console.log('Fetched activities:', result.sectionSubjectActivity);
+        setActivities(result.sectionSubjectActivity || []);
+        if (result.sectionSubjectActivity.length > 0) {
+          setSelectedActivity(result.sectionSubjectActivity[0].id);
         } else {
           setSelectedActivity(null);
         }
@@ -152,15 +152,13 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     
     setLoading(true);
     try {
-      const url = `${API_URL}/api/coordinator/topics/hierarchy/activity/${selectedActivity}`;
-      console.log('Fetching topic hierarchy from URL:', url);
       
-      const response = await fetch(url, { 
-        method: 'GET',
+      const response = await fetch(`${API_URL}/api/coordinator/topics/hierarchy/activity/${selectedActivity}`, { 
+        method: 'GET', 
         headers: { 'Content-Type': 'application/json' } 
       });
-      
-      console.log('Topic hierarchy response status:', response.status);
+       
+      // console.log('Topic hierarchy response status:', response.status);
       
       if (response.status === 404) {
         console.log('Topic hierarchy not found for activity:', selectedActivity);
