@@ -53,6 +53,8 @@ const TopicMaterials = ({ route, navigation }) => {
       const result = await response.json();
       if (result.success) {
         setMaterials(result.data);
+        console.log('Fetched materials:', result.data);
+        
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch materials');
@@ -117,44 +119,77 @@ const TopicMaterials = ({ route, navigation }) => {
     }));
   };
 
+  const checkFileExists = async (url) => {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
+  };
+
   const downloadFile = async (file) => {
     try {
       // Extract filename from the URL path
       const urlParts = file.url.split('/');
       const filename = urlParts[urlParts.length - 1];
       
+      // Try direct static file serving first (Railway serves static files)
+      const directUrl = `${API_URL}/uploads/materials/${filename}`;
       const downloadUrl = `${API_URL}/api/topics/materials/download/${filename}`;
+      
+      console.log('Downloading file from:', downloadUrl);
+      console.log('Direct URL:', directUrl);
+      console.log('File object:', file);
+      
+      // Check if file exists
+      const directExists = await checkFileExists(directUrl);
+      const downloadExists = await checkFileExists(downloadUrl);
+      
+      console.log('Direct URL exists:', directExists);
+      console.log('Download URL exists:', downloadExists);
+      
+      if (!directExists && !downloadExists) {
+        Alert.alert(
+          'File Not Found', 
+          `The file "${file.name}" was not found on the server. It may need to be re-uploaded.`
+        );
+        return;
+      }
       
       // For web browsers or simulators, open in new tab
       if (Platform.OS === 'web') {
-        window.open(downloadUrl, '_blank');
+        const urlToUse = directExists ? directUrl : downloadUrl;
+        window.open(urlToUse, '_blank');
         return;
       }
 
       // For mobile devices, try to open with system app
-      const supported = await Linking.canOpenURL(downloadUrl);
-      
-      if (supported) {
-        Alert.alert(
-          'Download File',
-          `Download ${file.name}?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Download', 
-              onPress: async () => {
-                try {
+      Alert.alert(
+        'Download File',
+        `Download ${file.name}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Download', 
+            onPress: async () => {
+              try {
+                // First try the download endpoint
+                if (downloadExists) {
                   await Linking.openURL(downloadUrl);
-                } catch (error) {
-                  Alert.alert('Error', 'Failed to download file');
+                } else if (directExists) {
+                  await Linking.openURL(directUrl);
+                } else {
+                  throw new Error('File not found on server');
                 }
+              } catch (error) {
+                console.error('Download failed:', error);
+                Alert.alert('Error', `Failed to download file: ${error.message}`);
               }
             }
-          ]
-        );
-      } else {
-        Alert.alert('Error', 'Cannot open this file type');
-      }
+          }
+        ]
+      );
     } catch (error) {
       console.error('Download error:', error);
       Alert.alert('Error', 'Failed to download file');
@@ -167,23 +202,40 @@ const TopicMaterials = ({ route, navigation }) => {
       const urlParts = file.url.split('/');
       const filename = urlParts[urlParts.length - 1];
       
+      // Try direct static file serving first (Railway serves static files)
+      const directUrl = `${API_URL}/uploads/materials/${filename}`;
       const viewUrl = `${API_URL}/api/topics/materials/view/${filename}`;
+      
+      console.log('Viewing file from:', viewUrl);
+      console.log('Direct URL:', directUrl);
+      console.log('File object:', file);
       
       // For PDFs and images, try to open in browser/viewer
       if (file.type === 'PDF' || file.type === 'Image') {
-        const supported = await Linking.canOpenURL(viewUrl);
-        if (supported) {
-          await Linking.openURL(viewUrl);
-        } else {
-          Alert.alert('Error', 'Cannot view this file type');
+        try {
+          // Try direct static file serving first for better compatibility
+          await Linking.openURL(directUrl);
+        } catch (error) {
+          console.error('Direct URL failed, trying view endpoint:', error);
+          try {
+            await Linking.openURL(viewUrl);
+          } catch (viewError) {
+            console.error('View endpoint also failed:', viewError);
+            Alert.alert('Error', `Cannot view this file: ${viewError.message}`);
+          }
         }
       } else if (file.type === 'Video') {
         // For videos, also try to open directly
-        const supported = await Linking.canOpenURL(viewUrl);
-        if (supported) {
-          await Linking.openURL(viewUrl);
-        } else {
-          downloadFile(file);
+        try {
+          await Linking.openURL(directUrl);
+        } catch (error) {
+          console.error('Direct video URL failed:', error);
+          try {
+            await Linking.openURL(viewUrl);
+          } catch (viewError) {
+            console.error('Video view endpoint failed:', viewError);
+            downloadFile(file);
+          }
         }
       } else {
         // For other file types, download them
@@ -242,7 +294,7 @@ const TopicMaterials = ({ route, navigation }) => {
       });
 
       const result = await response.json();
-      console.log('Upload result:', result);
+      // console.log('Upload result:', result);
 
       if (result.success) {
         Alert.alert('Success', `Material ${editingMaterial ? 'updated' : 'uploaded'} successfully`);

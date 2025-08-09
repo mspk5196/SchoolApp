@@ -660,19 +660,26 @@ exports.downloadFile = async (req, res) => {
         const path = require('path');
         const fs = require('fs');
         
+        console.log('Download request for filename:', filename);
+        
         // Construct the full file path
         const filePath = path.join(__dirname, '../../../uploads/materials', filename);
+        console.log('Looking for file at path:', filePath);
         
         // Check if file exists
         if (!fs.existsSync(filePath)) {
+            console.error('File not found at path:', filePath);
             return res.status(404).json({
                 success: false,
-                message: 'File not found'
+                message: 'File not found',
+                path: filePath,
+                filename: filename
             });
         }
 
         // Get file stats for size
         const stats = fs.statSync(filePath);
+        console.log('File found, size:', stats.size, 'bytes');
         
         // Set appropriate headers
         const ext = path.extname(filename).toLowerCase();
@@ -712,6 +719,15 @@ exports.downloadFile = async (req, res) => {
         
         // Stream the file
         const fileStream = fs.createReadStream(filePath);
+        fileStream.on('error', (err) => {
+            console.error('File stream error:', err);
+            if (!res.headersSent) {
+                res.status(500).json({
+                    success: false,
+                    message: 'Error reading file'
+                });
+            }
+        });
         fileStream.pipe(res);
         
     } catch (error) {
@@ -731,19 +747,26 @@ exports.viewFile = async (req, res) => {
         const path = require('path');
         const fs = require('fs');
         
+        console.log('View request for filename:', filename);
+        
         // Construct the full file path
         const filePath = path.join(__dirname, '../../../uploads/materials', filename);
+        console.log('Looking for file at path:', filePath);
         
         // Check if file exists
         if (!fs.existsSync(filePath)) {
+            console.error('File not found at path:', filePath);
             return res.status(404).json({
                 success: false,
-                message: 'File not found'
+                message: 'File not found',
+                path: filePath,
+                filename: filename
             });
         }
 
         // Get file stats for size
         const stats = fs.statSync(filePath);
+        console.log('File found, size:', stats.size, 'bytes');
         
         // Set appropriate headers for viewing (not downloading)
         const ext = path.extname(filename).toLowerCase();
@@ -777,6 +800,15 @@ exports.viewFile = async (req, res) => {
         
         // Stream the file
         const fileStream = fs.createReadStream(filePath);
+        fileStream.on('error', (err) => {
+            console.error('File stream error:', err);
+            if (!res.headersSent) {
+                res.status(500).json({
+                    success: false,
+                    message: 'Error reading file'
+                });
+            }
+        });
         fileStream.pipe(res);
         
     } catch (error) {
