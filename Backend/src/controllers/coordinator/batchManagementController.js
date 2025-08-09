@@ -47,6 +47,105 @@ exports.getBatches = async (req, res) => {
     }
 }
 
+// Get batch details with students for a specific batch
+exports.getBatchDetails = async (req, res) => {
+    try {
+        const { batch_name, section_id, subject_id } = req.body;
+
+        // First get batch info
+        const batchInfoSql = `
+            SELECT 
+                sb.*,
+                COUNT(sba.id) as total_students,
+                AVG(COALESCE(sap.performance_score, 0)) as avg_performance,
+                COUNT(DISTINCT th.id) as active_topics
+            FROM section_batches sb
+            LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id AND sba.is_current = 1
+            LEFT JOIN student_activity_participation sap ON sba.student_roll = sap.student_roll
+            LEFT JOIN topic_hierarchy th ON th.subject_id = sb.subject_id AND th.is_active = 1
+            WHERE sb.batch_name = ? AND sb.section_id = ? AND sb.subject_id = ?
+            GROUP BY sb.id
+        `;
+
+        db.query(batchInfoSql, [batch_name, section_id, subject_id], (error, batchInfo) => {
+            if (error) {
+                console.error('Get batch info error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch batch info',
+                    error: error.message
+                });
+            }
+
+            if (!batchInfo.length) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Batch not found'
+                });
+            }
+
+            const batchId = batchInfo[0].id;
+
+            // Get students in the batch
+            const studentsSql = `
+                SELECT 
+                    s.roll as student_roll, 
+                    s.name as student_name, 
+                    s.profile_photo,
+                    sba.assigned_at,
+                    COALESCE(stp_summary.completed_topics, 0) as topics_completed,
+                    COALESCE(stp_summary.total_topics, 0) as total_topics,
+                    COALESCE(stp_summary.avg_score, 0) as current_performance,
+                    COALESCE(spt.homework_miss_count, 0) as pending_homework,
+                    COALESCE(spt.failed_assessment_count, 0) as penalty_count,
+                    spt.is_on_penalty,
+                    sba.updated_at as last_activity
+                FROM student_batch_assignments sba
+                JOIN students s ON sba.student_roll = s.roll
+                LEFT JOIN (
+                    SELECT 
+                        student_roll, 
+                        COUNT(*) as total_topics,
+                        SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_topics,
+                        AVG(last_assessment_score) as avg_score
+                    FROM student_topic_progress stp
+                    JOIN topic_hierarchy th ON stp.topic_id = th.id
+                    WHERE th.subject_id = ?
+                    GROUP BY student_roll
+                ) stp_summary ON s.roll = stp_summary.student_roll
+                LEFT JOIN student_penalty_tracking spt ON s.roll = spt.student_roll 
+                    AND spt.subject_id = ?
+                WHERE sba.batch_id = ? AND sba.is_current = 1
+                ORDER BY s.name
+            `;
+
+            db.query(studentsSql, [subject_id, subject_id, batchId], (error2, students) => {
+                if (error2) {
+                    console.error('Get batch students error:', error2);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to fetch batch students',
+                        error: error2.message
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    batch_info: batchInfo[0],
+                    students: students
+                });
+            });
+        });
+    } catch (error) {
+        console.error('Get batch details error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch batch details',
+            error: error.message
+        });
+    }
+}
+
 // Configure batch settings for a subject
 exports.configureBatches = async (req, res) => {
     try {

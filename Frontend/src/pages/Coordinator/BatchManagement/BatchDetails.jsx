@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Picker } from '@react-native-picker/picker';
 import styles from './BatchDetailsStyles';
 import { API_URL } from '../../../utils/env.js';
@@ -40,7 +39,7 @@ const BatchDetails = () => {
   const fetchBatchDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/coordinator/batches/details`, {
+      const response = await fetch(`${API_URL}/api/batches/details`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,7 +69,7 @@ const BatchDetails = () => {
 
   const fetchAvailableBatches = async () => {
     try {
-      const response = await fetch(`${API_URL}/coordinator/batches/${sectionId}/${subjectId}`, {
+      const response = await fetch(`${API_URL}/api/batches/${sectionId}/${subjectId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +104,7 @@ const BatchDetails = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/coordinator/batches/move-student`, {
+      const response = await fetch(`${API_URL}/api/batches/move-student`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,14 +152,14 @@ const BatchDetails = () => {
           style={styles.moveButton}
           onPress={() => handleMoveStudent(student)}
         >
-          <Icon name="swap-horiz" size={20} color="#2196F3" />
+          <Text style={{ color: "#2196F3", fontSize: 18 }}>⇄</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.studentStats}>
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: getPerformanceColor(student.current_performance) }]}>
-            {student.current_performance?.toFixed(1) || 'N/A'}%
+            {student.current_performance && typeof student.current_performance === 'number' ? student.current_performance.toFixed(1) + '%' : 'N/A'}
           </Text>
           <Text style={styles.statLabel}>Performance</Text>
         </View>
@@ -180,7 +179,7 @@ const BatchDetails = () => {
 
       {student.last_activity && (
         <View style={styles.lastActivity}>
-          <Icon name="access-time" size={14} color="#666" />
+          <Text style={{ color: "#666", fontSize: 12, marginRight: 4 }}>🕐</Text>
           <Text style={styles.activityText}>
             Last activity: {new Date(student.last_activity).toLocaleDateString()}
           </Text>
@@ -205,14 +204,14 @@ const BatchDetails = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="white" />
+          <Text style={{ color: "white", fontSize: 20 }}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>{batchName}</Text>
           <Text style={styles.headerSubtitle}>Batch Details</Text>
         </View>
         <TouchableOpacity onPress={handleRefresh}>
-          <Icon name="refresh" size={24} color="white" />
+          <Text style={{ color: "white", fontSize: 20 }}>↻</Text>
         </TouchableOpacity>
       </View>
 
@@ -233,7 +232,7 @@ const BatchDetails = () => {
               </View>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryValue}>
-                  {batchInfo.avg_performance?.toFixed(1) || 'N/A'}%
+                  {batchInfo.avg_performance && typeof batchInfo.avg_performance === 'number' ? batchInfo.avg_performance.toFixed(1) + '%' : 'N/A'}
                 </Text>
                 <Text style={styles.summaryLabel}>Avg Performance</Text>
               </View>
@@ -254,7 +253,7 @@ const BatchDetails = () => {
         {/* Empty State */}
         {students.length === 0 && (
           <View style={styles.emptyState}>
-            <Icon name="group" size={64} color="#ccc" />
+            <Text style={{ fontSize: 48, color: "#ccc" }}>👥</Text>
             <Text style={styles.emptyText}>No students in this batch</Text>
           </View>
         )}
@@ -275,7 +274,7 @@ const BatchDetails = () => {
                 onPress={() => setMoveModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Icon name="close" size={24} color="#666" />
+                <Text style={{ color: "#666", fontSize: 20 }}>✕</Text>
               </TouchableOpacity>
             </View>
 

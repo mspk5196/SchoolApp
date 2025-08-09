@@ -254,6 +254,7 @@ router.post('/students/progress/update', TopicHierarchyController.updateStudentP
 
 // Enhanced Batch Management Routes
 router.get('/batches/:sectionId/:subjectId', BatchManagementController.getBatches);
+router.post('/batches/details', BatchManagementController.getBatchDetails);
 router.post('/batches/configure', BatchManagementController.configureBatches);
 router.get('/batches/:batchId/students', BatchManagementController.getBatchStudents);
 router.post('/batches/move-student', BatchManagementController.moveStudentToBatch);

@@ -119,9 +119,18 @@ const styles = StyleSheet.create({
   },
   reallocateButton: {
     backgroundColor: '#FF9800',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  configureButton: {
+    backgroundColor: '#2a62ffff',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   initializeButton: {
     backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 26,
   },
   actionButtonText: {
     color: 'white',
