@@ -1,12 +1,12 @@
 const db = require('../../config/db');
 
-class BatchManagementController {
-    // Get all batches for a subject in a section
-    static async getBatches(req, res) {
-        try {
-            const { sectionId, subjectId } = req.params;
-            
-            const query = `
+// class BatchManagementController {
+// Get all batches for a subject in a section
+exports.getBatches = async (req, res) => {
+    try {
+        const { sectionId, subjectId } = req.params;
+
+        const sql = `
                 SELECT 
                     sb.*,
                     sbc.max_batches,
@@ -25,31 +25,40 @@ class BatchManagementController {
                 GROUP BY sb.id, sb.batch_name, sb.batch_level, sb.max_students, sbc.max_batches
                 ORDER BY sb.batch_level
             `;
-            
-            const [batches] = await db.execute(query, [sectionId, subjectId]);
-            
+
+        db.query(sql, [sectionId, subjectId], (error, batches) => {
+            if (error) {
+                console.error('Get batches error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch batches',
+                    error: error.message
+                });
+            }
+
             res.json({
                 success: true,
                 data: batches
             });
-        } catch (error) {
-            console.error('Get batches error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to fetch batches',
-                error: error.message
-            });
-        }
+        });
+    } catch (error) {
+        console.error('Get batches error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch batches',
+            error: error.message
+        });
     }
+}
 
-    // Configure batch settings for a subject
-    static async configureBatches(req, res) {
-        try {
-            const { subjectId, gradeId, sectionId, maxBatches, batchSizeLimit, autoAllocation } = req.body;
-            const coordinatorId = req.user.id;
-            
-            // Insert or update batch configuration
-            const configQuery = `
+// Configure batch settings for a subject
+exports.configureBatches = async (req, res) => {
+    try {
+        const { subjectId, gradeId, sectionId, maxBatches, batchSizeLimit, autoAllocation } = req.body;
+        const coordinatorId = req.user.id;
+
+        // Insert or update batch configuration
+        const configSql = `
                 INSERT INTO subject_batch_config 
                 (subject_id, grade_id, section_id, max_batches, batch_size_limit, auto_allocation, created_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -59,65 +68,98 @@ class BatchManagementController {
                 auto_allocation = VALUES(auto_allocation),
                 updated_at = CURRENT_TIMESTAMP
             `;
-            
-            await db.execute(configQuery, [
-                subjectId, gradeId, sectionId, maxBatches, batchSizeLimit, autoAllocation, coordinatorId
-            ]);
 
-            // Create batches if they don't exist
-            await this.createBatchesIfNeeded(sectionId, subjectId, maxBatches);
+        db.query(configSql, [
+            subjectId, gradeId, sectionId, maxBatches, batchSizeLimit, autoAllocation, coordinatorId
+        ], (error, result) => {
+            if (error) {
+                console.error('Configure batches error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to configure batches',
+                    error: error.message
+                });
+            }
 
-            res.json({
-                success: true,
-                message: 'Batch configuration updated successfully'
+            // Create batches if needed
+            createBatchesIfNeeded(sectionId, subjectId, maxBatches, (createError) => {
+                if (createError) {
+                    console.error('Create batches error:', createError);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to create batches',
+                        error: createError.message
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    message: 'Batch configuration updated successfully'
+                });
             });
-        } catch (error) {
-            console.error('Configure batches error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to configure batches',
-                error: error.message
-            });
-        }
+        });
+    } catch (error) {
+        console.error('Configure batches error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to configure batches',
+            error: error.message
+        });
     }
+}
 
-    // Create batches automatically
-    static async createBatchesIfNeeded(sectionId, subjectId, maxBatches) {
-        try {
-            // Check existing batches
-            const [existing] = await db.execute(
-                'SELECT COUNT(*) as count FROM section_batches WHERE section_id = ? AND subject_id = ? AND is_active = 1',
-                [sectionId, subjectId]
-            );
+// Create batches automatically
+const createBatchesIfNeeded = (sectionId, subjectId, maxBatches, callback) => {
+    try {
+        // Check existing batches
+        const checkSql = 'SELECT COUNT(*) as count FROM section_batches WHERE section_id = ? AND subject_id = ? AND is_active = 1';
+        
+        db.query(checkSql, [sectionId, subjectId], (error, result) => {
+            if (error) {
+                return callback(error);
+            }
 
-            const existingCount = existing[0].count;
-            
+            const existingCount = result[0].count;
+
             if (existingCount < maxBatches) {
                 const batchNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-                
-                for (let i = existingCount; i < maxBatches; i++) {
-                    const insertQuery = `
-                        INSERT INTO section_batches 
-                        (section_id, subject_id, batch_name, batch_level, auto_created)
-                        VALUES (?, ?, ?, ?, 1)
-                    `;
-                    
-                    await db.execute(insertQuery, [
-                        sectionId, subjectId, `Batch ${batchNames[i]}`, i + 1
-                    ]);
-                }
-            }
-        } catch (error) {
-            console.error('Create batches error:', error);
-        }
-    }
+                let batchesCreated = 0;
 
-    // Get students in a specific batch
-    static async getBatchStudents(req, res) {
-        try {
-            const { batchId } = req.params;
-            
-            const query = `
+                for (let i = existingCount; i < maxBatches; i++) {
+                    const insertSql = `
+                            INSERT INTO section_batches 
+                            (section_id, subject_id, batch_name, batch_level, auto_created)
+                            VALUES (?, ?, ?, ?, 1)
+                        `;
+
+                    db.query(insertSql, [
+                        sectionId, subjectId, `Batch ${batchNames[i]}`, i + 1
+                    ], (insertError, insertResult) => {
+                        if (insertError) {
+                            return callback(insertError);
+                        }
+
+                        batchesCreated++;
+                        if (batchesCreated === maxBatches - existingCount) {
+                            callback(null);
+                        }
+                    });
+                }
+            } else {
+                callback(null);
+            }
+        });
+    } catch (error) {
+        callback(error);
+    }
+}
+
+// Get students in a specific batch
+exports.getBatchStudents = async (req, res) => {
+    try {
+        const { batchId } = req.params;
+
+        const sql = `
                 SELECT 
                     s.roll, s.name, s.profile_photo,
                     sba.assigned_at,
@@ -146,94 +188,156 @@ class BatchManagementController {
                 WHERE sba.batch_id = ? AND sba.is_current = 1
                 ORDER BY s.name
             `;
-            
-            const [students] = await db.execute(query, [batchId, batchId]);
-            
+
+        db.query(sql, [batchId, batchId], (error, students) => {
+            if (error) {
+                console.error('Get batch students error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch batch students',
+                    error: error.message
+                });
+            }
+
             res.json({
                 success: true,
                 data: students
             });
-        } catch (error) {
-            console.error('Get batch students error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to fetch batch students',
-                error: error.message
-            });
-        }
+        });
+    } catch (error) {
+        console.error('Get batch students error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch batch students',
+            error: error.message
+        });
     }
+}
 
-    // Move student to different batch manually
-    static async moveStudentToBatch(req, res) {
-        try {
-            const { studentRoll, fromBatchId, toBatchId, reason, notes } = req.body;
-            const coordinatorId = req.user.id;
-            
-            // Get subject ID
-            const [batchInfo] = await db.execute(
-                'SELECT subject_id FROM section_batches WHERE id = ?',
-                [toBatchId]
-            );
-            
+// Move student to different batch manually
+exports.moveStudentToBatch = async (req, res) => {
+    try {
+        const { studentRoll, fromBatchId, toBatchId, reason, notes } = req.body;
+        const coordinatorId = req.user.id;
+
+        // Get subject ID
+        const batchInfoSql = 'SELECT subject_id FROM section_batches WHERE id = ?';
+        
+        db.query(batchInfoSql, [toBatchId], (error1, batchInfo) => {
+            if (error1) {
+                console.error('Error getting batch info:', error1);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch batch info',
+                    error: error1.message
+                });
+            }
+
             if (!batchInfo.length) {
                 return res.status(404).json({
                     success: false,
                     message: 'Target batch not found'
                 });
             }
-            
-            const subjectId = batchInfo[0].subject_id;
-            
-            // Start transaction
-            await db.execute('START TRANSACTION');
-            
-            try {
-                // Update current assignment
-                await db.execute(
-                    'UPDATE student_batch_assignments SET is_current = 0 WHERE student_roll = ? AND batch_id = ? AND is_current = 1',
-                    [studentRoll, fromBatchId]
-                );
-                
-                // Create new assignment
-                await db.execute(
-                    'INSERT INTO student_batch_assignments (student_roll, batch_id, assigned_by, is_current) VALUES (?, ?, ?, 1)',
-                    [studentRoll, toBatchId, coordinatorId]
-                );
-                
-                // Record in history
-                await db.execute(`
-                    INSERT INTO student_batch_history 
-                    (student_roll, subject_id, from_batch_id, to_batch_id, allocation_reason, 
-                     allocation_date, allocated_by, notes, effective_from)
-                    VALUES (?, ?, ?, ?, 'Manual', CURDATE(), 'Coordinator', ?, CURDATE())
-                `, [studentRoll, subjectId, fromBatchId, toBatchId, notes]);
-                
-                await db.execute('COMMIT');
-                
-                res.json({
-                    success: true,
-                    message: 'Student moved to new batch successfully'
-                });
-            } catch (error) {
-                await db.execute('ROLLBACK');
-                throw error;
-            }
-        } catch (error) {
-            console.error('Move student to batch error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to move student',
-                error: error.message
-            });
-        }
-    }
 
-    // Get batch allocation history
-    static async getBatchHistory(req, res) {
-        try {
-            const { studentRoll, subjectId } = req.params;
-            
-            const query = `
+            const subjectId = batchInfo[0].subject_id;
+
+            // Start transaction
+            db.query('START TRANSACTION', [], (transError) => {
+                if (transError) {
+                    console.error('Transaction start error:', transError);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to start transaction',
+                        error: transError.message
+                    });
+                }
+
+                // Update current assignment
+                const updateSql = 'UPDATE student_batch_assignments SET is_current = 0 WHERE student_roll = ? AND batch_id = ? AND is_current = 1';
+                
+                db.query(updateSql, [studentRoll, fromBatchId], (error2) => {
+                    if (error2) {
+                        console.error('Error updating current assignment:', error2);
+                        db.query('ROLLBACK', [], () => {});
+                        return res.status(500).json({
+                            success: false,
+                            message: 'Failed to update current assignment',
+                            error: error2.message
+                        });
+                    }
+
+                    // Create new assignment
+                    const insertSql = 'INSERT INTO student_batch_assignments (student_roll, batch_id, assigned_by, is_current) VALUES (?, ?, ?, 1)';
+                    
+                    db.query(insertSql, [studentRoll, toBatchId, coordinatorId], (error3) => {
+                        if (error3) {
+                            console.error('Error creating new assignment:', error3);
+                            db.query('ROLLBACK', [], () => {});
+                            return res.status(500).json({
+                                success: false,
+                                message: 'Failed to create new assignment',
+                                error: error3.message
+                            });
+                        }
+
+                        // Record in history
+                        const historySql = `
+                            INSERT INTO student_batch_history 
+                            (student_roll, subject_id, from_batch_id, to_batch_id, allocation_reason, 
+                             allocation_date, allocated_by, notes, effective_from)
+                            VALUES (?, ?, ?, ?, 'Manual', CURDATE(), 'Coordinator', ?, CURDATE())
+                        `;
+                        
+                        db.query(historySql, [studentRoll, subjectId, fromBatchId, toBatchId, notes], (error4) => {
+                            if (error4) {
+                                console.error('Error recording in history:', error4);
+                                db.query('ROLLBACK', [], () => {});
+                                return res.status(500).json({
+                                    success: false,
+                                    message: 'Failed to record in history',
+                                    error: error4.message
+                                });
+                            }
+
+                            // Commit transaction
+                            db.query('COMMIT', [], (commitError) => {
+                                if (commitError) {
+                                    console.error('Transaction commit error:', commitError);
+                                    db.query('ROLLBACK', [], () => {});
+                                    return res.status(500).json({
+                                        success: false,
+                                        message: 'Failed to commit transaction',
+                                        error: commitError.message
+                                    });
+                                }
+
+                                res.json({
+                                    success: true,
+                                    message: 'Student moved to new batch successfully'
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    } catch (error) {
+        console.error('Move student to batch error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to move student',
+            error: error.message
+        });
+    }
+}
+
+// Get batch allocation history
+exports.getBatchHistory = async (req, res) => {
+    try {
+        const { studentRoll, subjectId } = req.params;
+
+        const sql = `
                 SELECT 
                     sbh.*,
                     sb_from.batch_name as from_batch_name,
@@ -245,48 +349,66 @@ class BatchManagementController {
                 WHERE sbh.student_roll = ? AND sbh.subject_id = ?
                 ORDER BY sbh.allocation_date DESC, sbh.id DESC
             `;
-            
-            const [history] = await db.execute(query, [studentRoll, subjectId]);
-            
+
+        db.query(sql, [studentRoll, subjectId], (error, history) => {
+            if (error) {
+                console.error('Get batch history error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch batch history',
+                    error: error.message
+                });
+            }
+
             res.json({
                 success: true,
                 data: history
             });
-        } catch (error) {
-            console.error('Get batch history error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to fetch batch history',
-                error: error.message
-            });
-        }
+        });
+    } catch (error) {
+        console.error('Get batch history error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch batch history',
+            error: error.message
+        });
     }
+}
 
-    // Run batch reallocation manually
-    static async runBatchReallocation(req, res) {
-        try {
-            await db.execute('CALL reallocate_student_batches()');
-            
+// Run batch reallocation manually
+exports.runBatchReallocation = async (req, res) => {
+    try {
+        db.query('CALL reallocate_student_batches()', [], (error, result) => {
+            if (error) {
+                console.error('Run batch reallocation error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to run batch reallocation',
+                    error: error.message
+                });
+            }
+
             res.json({
                 success: true,
                 message: 'Batch reallocation completed successfully'
             });
-        } catch (error) {
-            console.error('Run batch reallocation error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to run batch reallocation',
-                error: error.message
-            });
-        }
+        });
+    } catch (error) {
+        console.error('Run batch reallocation error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to run batch reallocation',
+            error: error.message
+        });
     }
+}
 
-    // Get batch performance analytics
-    static async getBatchAnalytics(req, res) {
-        try {
-            const { sectionId, subjectId } = req.params;
-            
-            const query = `
+// Get batch performance analytics
+exports.getBatchAnalytics = async (req, res) => {
+    try {
+        const { sectionId, subjectId } = req.params;
+
+        const sql = `
                 SELECT 
                     sb.id, sb.batch_name, sb.batch_level,
                     COUNT(sba.student_roll) as student_count,
@@ -304,46 +426,62 @@ class BatchManagementController {
                 GROUP BY sb.id, sb.batch_name, sb.batch_level
                 ORDER BY sb.batch_level
             `;
-            
-            const [analytics] = await db.execute(query, [sectionId, subjectId]);
-            
+
+        db.query(sql, [sectionId, subjectId], (error, analytics) => {
+            if (error) {
+                console.error('Get batch analytics error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch batch analytics',
+                    error: error.message
+                });
+            }
+
             res.json({
                 success: true,
                 data: analytics
             });
-        } catch (error) {
-            console.error('Get batch analytics error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to fetch batch analytics',
-                error: error.message
-            });
-        }
+        });
+    } catch (error) {
+        console.error('Get batch analytics error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch batch analytics',
+            error: error.message
+        });
     }
+}
 
-    // Initialize students to first batch (for new subjects)
-    static async initializeStudentBatches(req, res) {
-        try {
-            const { sectionId, subjectId } = req.body;
-            const coordinatorId = req.user.id;
-            
-            // Get first batch ID
-            const [firstBatch] = await db.execute(
-                'SELECT id FROM section_batches WHERE section_id = ? AND subject_id = ? AND batch_level = 1 AND is_active = 1 LIMIT 1',
-                [sectionId, subjectId]
-            );
-            
+// Initialize students to first batch (for new subjects)
+exports.initializeStudentBatches = async (req, res) => {
+    try {
+        const { sectionId, subjectId } = req.body;
+        const coordinatorId = req.user.id;
+
+        // Get first batch ID
+        const firstBatchSql = 'SELECT id FROM section_batches WHERE section_id = ? AND subject_id = ? AND batch_level = 1 AND is_active = 1 LIMIT 1';
+        
+        db.query(firstBatchSql, [sectionId, subjectId], (error1, firstBatch) => {
+            if (error1) {
+                console.error('Error getting first batch:', error1);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch first batch',
+                    error: error1.message
+                });
+            }
+
             if (!firstBatch.length) {
                 return res.status(404).json({
                     success: false,
                     message: 'First batch not found. Please configure batches first.'
                 });
             }
-            
+
             const firstBatchId = firstBatch[0].id;
-            
+
             // Get all students in section who are not yet assigned to any batch for this subject
-            const [unassignedStudents] = await db.execute(`
+            const unassignedSql = `
                 SELECT s.roll 
                 FROM students s 
                 WHERE s.section_id = ?
@@ -353,36 +491,107 @@ class BatchManagementController {
                     JOIN section_batches sb ON sba.batch_id = sb.id 
                     WHERE sb.subject_id = ? AND sba.is_current = 1
                 )
-            `, [sectionId, subjectId]);
-            
-            // Assign all unassigned students to first batch
-            for (const student of unassignedStudents) {
-                await db.execute(
-                    'INSERT INTO student_batch_assignments (student_roll, batch_id, assigned_by, is_current) VALUES (?, ?, ?, 1)',
-                    [student.roll, firstBatchId, coordinatorId]
-                );
-                
-                // Record in history
-                await db.execute(`
-                    INSERT INTO student_batch_history 
-                    (student_roll, subject_id, to_batch_id, allocation_reason, allocation_date, allocated_by, effective_from)
-                    VALUES (?, ?, ?, 'Initial', CURDATE(), 'Coordinator', CURDATE())
-                `, [student.roll, subjectId, firstBatchId]);
-            }
-            
-            res.json({
-                success: true,
-                message: `${unassignedStudents.length} students assigned to first batch successfully`
+            `;
+
+            db.query(unassignedSql, [sectionId, subjectId], (error2, unassignedStudents) => {
+                if (error2) {
+                    console.error('Error getting unassigned students:', error2);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to fetch unassigned students',
+                        error: error2.message
+                    });
+                }
+
+                if (unassignedStudents.length === 0) {
+                    return res.json({
+                        success: true,
+                        message: 'No unassigned students found'
+                    });
+                }
+
+                // Process each student assignment
+                let processedCount = 0;
+                let hasError = false;
+
+                const processStudent = (index) => {
+                    if (index >= unassignedStudents.length) {
+                        if (!hasError) {
+                            res.json({
+                                success: true,
+                                message: `${processedCount} students assigned to first batch successfully`
+                            });
+                        }
+                        return;
+                    }
+
+                    const student = unassignedStudents[index];
+                    const assignSql = 'INSERT INTO student_batch_assignments (student_roll, batch_id, assigned_by, is_current) VALUES (?, ?, ?, 1)';
+                    
+                    db.query(assignSql, [student.roll, firstBatchId, coordinatorId], (error3) => {
+                        if (error3 && !hasError) {
+                            hasError = true;
+                            console.error('Error assigning student to batch:', error3);
+                            return res.status(500).json({
+                                success: false,
+                                message: 'Failed to assign student to batch',
+                                error: error3.message
+                            });
+                        }
+
+                        if (!hasError) {
+                            // Record in history
+                            const historySql = `
+                                INSERT INTO student_batch_history 
+                                (student_roll, subject_id, to_batch_id, allocation_reason, allocation_date, allocated_by, effective_from)
+                                VALUES (?, ?, ?, 'Initial', CURDATE(), 'Coordinator', CURDATE())
+                            `;
+                            
+                            db.query(historySql, [student.roll, subjectId, firstBatchId], (error4) => {
+                                if (error4) {
+                                    console.error('Error recording history:', error4);
+                                    // Continue even if history fails
+                                }
+                                
+                                processedCount++;
+                                processStudent(index + 1);
+                            });
+                        }
+                    });
+                };
+
+                processStudent(0);
             });
-        } catch (error) {
-            console.error('Initialize student batches error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to initialize student batches',
-                error: error.message
-            });
-        }
+        });
+    } catch (error) {
+        console.error('Initialize student batches error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to initialize student batches',
+            error: error.message
+        });
     }
 }
 
-module.exports = BatchManagementController;
+exports.getSectionSubjects = (req, res) => {
+
+  const { sectionId } = req.body;
+
+  const sql = `
+    SELECT DISTINCT ssa.subject_id as id, sub.subject_name
+    FROM section_subject_activities ssa
+    JOIN Subjects sub ON ssa.subject_id = sub.id
+    WHERE section_id = ?;
+  `;
+  db.query(sql, [sectionId], (err, results) => {
+    if (err) {
+      console.error("Error fetching subjects data:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ success: true, message: "Subjects data fetched successfully", sectionSubjects: results });
+  });
+};
+//}
+
+// module.exports = BatchManagementController;

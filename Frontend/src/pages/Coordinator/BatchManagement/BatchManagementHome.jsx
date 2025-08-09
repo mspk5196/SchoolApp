@@ -16,9 +16,9 @@ import { Picker } from '@react-native-picker/picker';
 import styles from './BatchManagementStyles';
 import { API_URL } from '../../../utils/env.js';
 
-const BatchManagementHome = () => {
+const BatchManagementHome = ({route}) => {
   const navigation = useNavigation();
-  
+  const {activeGrade} = route.params;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sections, setSections] = useState([]);
@@ -50,20 +50,22 @@ const BatchManagementHome = () => {
       const storedData = await AsyncStorage.getItem('coordinatorData');
       if (storedData) {
         const coordinatorData = JSON.parse(storedData);
-        
-        const response = await fetch(`${API_URL}/coordinator/getSections`, {
+        // console.log('Coordinator Data:', coordinatorData);
+
+        const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            coordinator_id: coordinatorData.coordinator_id,
+            gradeID: activeGrade,
           }),
         });
 
         if (response.ok) {
           const result = await response.json();
-          setSections(result.sections || []);
+          setSections(result.gradeSections || []);
+          // console.log('Fetched Grade Sections:', result.gradeSections);
         }
       }
     } catch (error) {
@@ -76,20 +78,21 @@ const BatchManagementHome = () => {
   const fetchSubjects = async () => {
     try {
       if (!selectedSection) return;
+      console.log('Selected Section:', selectedSection);
 
-      const response = await fetch(`${API_URL}/coordinator/getSubjects`, {
+      const response = await fetch(`${API_URL}/api/batches/getSectionSubjects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          section_id: selectedSection,
+          sectionId: selectedSection,
         }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        setSubjects(result.subjects || []);
+        setSubjects(result.sectionSubjects || []);
       }
     } catch (error) {
       console.error('Error fetching subjects:', error);
@@ -98,7 +101,7 @@ const BatchManagementHome = () => {
 
   const fetchBatchData = async () => {
     try {
-      const response = await fetch(`${API_URL}/coordinator/batches/${selectedSection}/${selectedSubject}`, {
+      const response = await fetch(`${API_URL}/api/coordinator/batches/${selectedSection}/${selectedSubject}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -307,9 +310,9 @@ const BatchManagementHome = () => {
                 <Picker.Item label="Select Section" value="" />
                 {sections.map((section) => (
                   <Picker.Item
-                    key={section.section_id}
+                    key={section.id}
                     label={section.section_name}
-                    value={section.section_id}
+                    value={section.id}
                   />
                 ))}
               </Picker>

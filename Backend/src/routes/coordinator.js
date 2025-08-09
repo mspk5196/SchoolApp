@@ -245,7 +245,6 @@ router.post(
   uploadMaterials.array('files', 10),  // frontend must use `files` as the field name
   TopicHierarchyController.uploadTopicMaterials
 );
-router.put('/topics/materials/:materialId', TopicHierarchyController.updateTopicMaterial);
 router.delete('/topics/materials/:materialId', TopicHierarchyController.deleteMaterial);
 router.get('/topics/materials/download/:filename', TopicHierarchyController.downloadFile);
 router.get('/topics/materials/view/:filename', TopicHierarchyController.viewFile);
@@ -262,6 +261,7 @@ router.get('/batches/history/:studentRoll/:subjectId', BatchManagementController
 router.post('/batches/reallocate', BatchManagementController.runBatchReallocation);
 router.get('/batches/analytics/:sectionId/:subjectId', BatchManagementController.getBatchAnalytics);
 router.post('/batches/initialize', BatchManagementController.initializeStudentBatches);
+router.post('/batches/getSectionSubjects', BatchManagementController.getSectionSubjects);
 
 // Enhanced Schedule Management Routes
 router.post('/schedule/create', ScheduleManagementController.createDailySchedule);
