@@ -236,8 +236,8 @@ router.post('/coordinator/processAssessmentRequest', coordinatorController.proce
 // Enhanced Topic Hierarchy Routes
 router.get('/topics/hierarchy/:subjectId/:gradeId', TopicHierarchyController.getTopicHierarchy);
 router.post('/topics/create', TopicHierarchyController.createTopic);
-router.put('/topics/:topicId', TopicHierarchyController.updateTopic);
-router.delete('/topics/:topicId', TopicHierarchyController.deleteTopic);
+router.put('/topics/update/:topicId', TopicHierarchyController.updateTopic);
+router.delete('/topics/delete/:topicId', TopicHierarchyController.deleteTopic);
 router.get('/topics/:topicId/materials', TopicHierarchyController.getTopicMaterials);
 // router.post('/topics/materials/add', TopicHierarchyController.uploadTopicMaterials);
 router.post(
@@ -245,7 +245,8 @@ router.post(
   uploadMaterials.array('files', 10),  // frontend must use `files` as the field name
   TopicHierarchyController.uploadTopicMaterials
 );
-router.delete('/topics/materials/:materialId', TopicHierarchyController.deleteMaterial);
+router.put('/topics/materials/update/:materialId', TopicHierarchyController.updateTopicMaterial);
+router.delete('/topics/materials/delete/:materialId', TopicHierarchyController.deleteMaterial);
 router.get('/topics/materials/download/:filename', TopicHierarchyController.downloadFile);
 router.get('/topics/materials/view/:filename', TopicHierarchyController.viewFile);
 router.get('/topics/assessment-eligible/:studentRoll/:subjectId', TopicHierarchyController.getAssessmentEligibleTopics);

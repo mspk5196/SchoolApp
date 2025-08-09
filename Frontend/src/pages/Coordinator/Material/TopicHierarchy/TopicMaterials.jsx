@@ -16,6 +16,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import DocumentPicker from 'react-native-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { API_URL } from '../../../../utils/env.js';
 
 const TopicMaterials = ({ route, navigation }) => {
@@ -24,6 +25,8 @@ const TopicMaterials = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   // Form state
   const [formData, setFormData] = useState({
@@ -137,7 +140,7 @@ const TopicMaterials = ({ route, navigation }) => {
       const filename = urlParts[urlParts.length - 1];
       
       // Try direct static file serving first (Railway serves static files)
-      const directUrl = `${API_URL}/uploads/materials/${filename}`;
+      const directUrl = `${API_URL}/api/uploads/materials/${filename}`;
       const downloadUrl = `${API_URL}/api/topics/materials/download/${filename}`;
       
       console.log('Downloading file from:', downloadUrl);
@@ -205,7 +208,7 @@ const TopicMaterials = ({ route, navigation }) => {
       const filename = urlParts[urlParts.length - 1];
       
       // Try direct static file serving first (Railway serves static files)
-      const directUrl = `${API_URL}/uploads/materials/${filename}`;
+      const directUrl = `${API_URL}/api/uploads/materials/${filename}`;
       const viewUrl = `${API_URL}/api/topics/materials/view/${filename}`;
       
       console.log('Viewing file from:', viewUrl);
@@ -247,6 +250,36 @@ const TopicMaterials = ({ route, navigation }) => {
       console.error('View file error:', error);
       Alert.alert('Error', 'Failed to view file');
     }
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    const currentDate = selectedDate || new Date();
+    setShowDatePicker(Platform.OS === 'ios'); // Keep open on iOS, close on Android
+    setSelectedDate(currentDate);
+    
+    // Format date as YYYY-MM-DD
+    const formattedDate = currentDate.toISOString().split('T')[0];
+    setFormData(prev => ({ ...prev, expected_date: formattedDate }));
+  };
+
+  const showDatePickerModal = () => {
+    // Set initial date from formData or default to tomorrow
+    const initialDate = formData.expected_date 
+      ? new Date(formData.expected_date) 
+      : new Date(Date.now() + 24 * 60 * 60 * 1000); // Tomorrow
+    
+    setSelectedDate(initialDate);
+    setShowDatePicker(true);
+  };
+
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
   const saveMaterial = async () => {
@@ -295,7 +328,7 @@ const TopicMaterials = ({ route, navigation }) => {
         };
 
         const response = await fetch(
-          `${API_URL}/api/topics/materials/${editingMaterial.id}`,
+          `${API_URL}/api/topics/materials/update/${editingMaterial.id}`,
           {
             method: 'PUT',
             headers: {
@@ -381,7 +414,7 @@ const TopicMaterials = ({ route, navigation }) => {
           onPress: async () => {
             try {
               const response = await fetch(
-                `${API_URL}/api/topics/materials/${materialId}`,
+                `${API_URL}/api/topics/materials/delete/${materialId}`,
                 {
                   method: 'DELETE',
                   headers: { 'Content-Type': 'application/json' },
@@ -416,6 +449,8 @@ const TopicMaterials = ({ route, navigation }) => {
       has_assessment: false,
     });
     setEditingMaterial(null);
+    setShowDatePicker(false);
+    setSelectedDate(new Date(Date.now() + 24 * 60 * 60 * 1000)); // Tomorrow
   };
 
   const openEditModal = (material) => {
@@ -431,6 +466,14 @@ const TopicMaterials = ({ route, navigation }) => {
       expected_date: material.expected_date || '',
       has_assessment: material.has_assessment || material.material_type === 'Assessment',
     });
+    
+    // Set the date picker's initial date if we have an expected date
+    if (material.expected_date) {
+      setSelectedDate(new Date(material.expected_date));
+    } else {
+      setSelectedDate(new Date(Date.now() + 24 * 60 * 60 * 1000)); // Tomorrow
+    }
+    
     setModalVisible(true);
   };
 
@@ -551,7 +594,7 @@ const TopicMaterials = ({ route, navigation }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
+          <Text style={styles.backButton}>🔙</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Materials - {topicName}</Text>
         <TouchableOpacity style={styles.addButton} onPress={openCreateModal}>
@@ -678,12 +721,29 @@ const TopicMaterials = ({ route, navigation }) => {
             {formData.has_assessment && (
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Expected Completion Date *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.expected_date}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, expected_date: text }))}
-                  placeholder="YYYY-MM-DD (e.g., 2025-08-20)"
-                />
+                <TouchableOpacity 
+                  style={styles.datePickerButton}
+                  onPress={showDatePickerModal}
+                >
+                  <Text style={styles.datePickerButtonText}>
+                    {formData.expected_date 
+                      ? formatDateForDisplay(formData.expected_date)
+                      : 'Select Expected Date'
+                    }
+                  </Text>
+                  <Text style={styles.datePickerIcon}>📅</Text>
+                </TouchableOpacity>
+                
+                {Platform.OS === 'android' && (
+                  <TextInput
+                    style={[styles.input, styles.dateInput]}
+                    value={formData.expected_date}
+                    onChangeText={(text) => setFormData(prev => ({ ...prev, expected_date: text }))}
+                    placeholder="YYYY-MM-DD (or use date picker above)"
+                    keyboardType="numeric"
+                  />
+                )}
+                
                 <Text style={styles.helpText}>
                   Students must complete this assessment by this date or they will be moved to a lower batch
                 </Text>
@@ -747,6 +807,18 @@ const TopicMaterials = ({ route, navigation }) => {
             </TouchableOpacity>
           </View>
         </ScrollView>
+        
+        {/* Native Date Picker */}
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            minimumDate={new Date()} // Prevent selecting past dates
+            style={styles.datePicker}
+          />
+        )}
       </Modal>
     </View>
   );
@@ -775,7 +847,8 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: '#007AFF',
-    padding: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -786,9 +859,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   backButton: {
-    fontSize: 16,
+    fontSize: 20,
     color: '#007AFF',
     fontWeight: '600',
+    // borderWidth:1
   },
   loader: {
     flex: 1,
@@ -1096,6 +1170,34 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    marginBottom: 8,
+  },
+  datePickerButtonText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+  },
+  datePickerIcon: {
+    fontSize: 18,
+    color: '#007AFF',
+  },
+  dateInput: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  datePicker: {
+    backgroundColor: '#fff',
   },
 });
 

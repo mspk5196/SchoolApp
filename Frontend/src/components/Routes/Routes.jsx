@@ -36,7 +36,7 @@ import CoordinatorAddConceptGraph from '../../pages/Coordinator/Student/ConceptG
 import CoordinatorStudentDisciplineLog from '../../pages/Coordinator/Student/IssueLogs/CoordinatorStudentDisciplineLog';
 import CoordinatorStudentProfile from '../../pages/Coordinator/Student/StudentProfile/CoordinatorStudentProfile';
 import LevelPromotion from '../../pages/Coordinator/Material/LevelPromotion/LevelPromotion';
-import SubjectPage from '../../pages/Coordinator/Material/Subject/SubjectPage';
+// import SubjectPage from '../../pages/Coordinator/Material/Subject/SubjectPage';
 import CoordinatorAcademicSchedule from '../../pages/Coordinator/Schedule/AcademicSchedule/CoordinatorAcademicSchedule';
 import CoordinatorExamSchedule from '../../pages/Coordinator/Schedule/ExamSchedule/CoordinatorExamSchedule';
 import CoordinatorInvigilationDuties from '../../pages/Coordinator/Schedule/InvigilationDuties/CoordinatorInvigilationDuties';
@@ -141,7 +141,7 @@ import CoordinatorMessageBox from '../../pages/Coordinator/Messages/MessageBox/C
 import AdminMessageBox from '../../pages/Admin/Messages/MessageBox/AdminMessageBox';
 import AdminMessageHome from '../../pages/Admin/Messages/MessageHome/AdminMessageHome';
 import CoordinatorMessageHome from '../../pages/Coordinator/Messages/MessageHome/CoordinatorMessageHome';
-import SubjectActivityPage from '../../pages/Coordinator/Material/SubjectActivity/SubjectActivityPage';
+// import SubjectActivityPage from '../../pages/Coordinator/Material/SubjectActivity/SubjectActivityPage';
 import MentorSubjectActivityPage from '../../pages/Mentor/Materials/SubjectActivity/MentorSubjectActivityPage';
 import StudentPageMaterialScreen from '../../pages/Parent/MaterialScreen/StudentPageMaterialScreen';
 import StudentSubjectActivityPage from '../../pages/Parent/MaterialScreen/StudentSubjectActivityPage';
@@ -149,9 +149,9 @@ import StudentSubjectActivityPage from '../../pages/Parent/MaterialScreen/Studen
 // Enhanced Hierarchy System Pages
 import TopicHierarchyManagement from '../../pages/Coordinator/Material/TopicHierarchy/TopicHierarchyManagement';
 // import BatchManagementHome from '../../pages/Coordinator/BatchManagement/BatchManagementHome';
-import TopicHierarchySubject from '../../pages/Coordinator/Material/TopicHierarchy/TopicHierarchySubject';
-import AddTopicPage from '../../pages/Coordinator/Material/TopicHierarchy/AddTopicPage';
-import TopicDetailsPage from '../../pages/Coordinator/Material/TopicHierarchy/TopicDetailsPage';
+// import TopicHierarchySubject from '../../pages/Coordinator/Material/TopicHierarchy/TopicHierarchySubject';
+// import AddTopicPage from '../../pages/Coordinator/Material/TopicHierarchy/AddTopicPage';
+// import TopicDetailsPage from '../../pages/Coordinator/Material/TopicHierarchy/TopicDetailsPage';
 import BatchManagementHome from '../../pages/Coordinator/Material/BatchManagement/BatchManagementHome';
 import BatchDetails from '../../pages/Coordinator/Material/BatchManagement/BatchDetails';
 import EnhancedAssessmentManagement from '../../pages/Mentor/AssesmentRequest/EnhancedAssessmentManagement';
@@ -224,8 +224,8 @@ const Routes = () => {
                         <Stack.Screen name="CoordinatorStudentProfileDetails" component={CoordinatorStudentProfileDetails} />
                         {/* CoordinatorMaterialHome */}
                         <Stack.Screen name="LevelPromotion" component={LevelPromotion} />
-                        <Stack.Screen name="SubjectPage" component={SubjectPage} />
-                        <Stack.Screen name="SubjectActivityPage" component={SubjectActivityPage} options={{ headerShown: false }} />
+                        {/* <Stack.Screen name="SubjectPage" component={SubjectPage} />
+                        <Stack.Screen name="SubjectActivityPage" component={SubjectActivityPage} options={{ headerShown: false }} /> */}
                         <Stack.Screen name="TopicHierarchySubject" component={TopicHierarchySubject} options={{ headerShown: false }} />
                         <Stack.Screen name="AddTopicPage" component={AddTopicPage} options={{ headerShown: false }} />
                         <Stack.Screen name="TopicDetailsPage" component={TopicDetailsPage} options={{ headerShown: false }} />
