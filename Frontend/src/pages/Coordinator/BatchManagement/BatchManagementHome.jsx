@@ -7,6 +7,8 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -17,7 +19,7 @@ import { API_URL } from '../../../utils/env.js';
 
 const BatchManagementHome = ({route}) => {
   const navigation = useNavigation();
-  const {activeGrade} = route.params;
+  const {activeGrade, coordinatorData} = route.params;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sections, setSections] = useState([]);
@@ -26,6 +28,8 @@ const BatchManagementHome = ({route}) => {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [batchData, setBatchData] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchInput, setBatchInput] = useState('3');
 
   useEffect(() => {
     fetchSections();
@@ -48,8 +52,6 @@ const BatchManagementHome = ({route}) => {
     try {
       const storedData = await AsyncStorage.getItem('coordinatorData');
       if (storedData) {
-        const coordinatorData = JSON.parse(storedData);
-        // console.log('Coordinator Data:', coordinatorData);
 
         const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
           method: 'POST',
@@ -187,6 +189,65 @@ const BatchManagementHome = ({route}) => {
         },
       ]
     );
+  };
+
+  const handleConfigureBatches = async () => {
+    // Show custom modal for input
+    setShowBatchModal(true);
+  };
+
+  const createBatches = async (numberOfBatches) => {
+    try {
+      // Validate input
+      const numBatches = parseInt(numberOfBatches);
+      if (isNaN(numBatches) || numBatches < 1 || numBatches > 10) {
+        Alert.alert('Error', 'Please enter a valid number between 1 and 10');
+        return;
+      }
+
+      setLoading(true);
+      setShowBatchModal(false); // Close modal
+      
+      console.log('Creating batches:', {
+        subjectId: selectedSubject,
+        gradeId: activeGrade,
+        sectionId: selectedSection,
+        maxBatches: numBatches,
+        coordinatorData: coordinatorData.id
+      });
+
+      const response = await fetch(`${API_URL}/api/batches/configure`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subjectId: selectedSubject,
+          gradeId: activeGrade,
+          sectionId: selectedSection,
+          maxBatches: numBatches,
+          batchSizeLimit: 30, 
+          autoAllocation: true,
+          coordinatorId: coordinatorData.id
+        }),
+      });
+
+      const result = await response.json();
+      console.log('Configure batches response:', result);
+      
+      if (response.ok) {
+        Alert.alert('Success', `${numBatches} batches configured successfully! You can now initialize students.`);
+        fetchBatchData();
+        fetchAnalytics();
+      } else {
+        Alert.alert('Error', result.message || 'Failed to configure batches');
+      }
+    } catch (error) {
+      console.error('Error configuring batches:', error);
+      Alert.alert('Error', 'Failed to configure batches');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInitializeBatches = async () => {
@@ -366,6 +427,14 @@ const BatchManagementHome = ({route}) => {
         {selectedSection && selectedSubject && (
           <View style={styles.actionsContainer}>
             <TouchableOpacity
+              style={[styles.actionButton, styles.configureButton]}
+              onPress={handleConfigureBatches}
+            >
+              <Text style={{ fontSize: 20, color: 'white' }}>⚙️</Text>
+              <Text style={styles.actionButtonText}>Configure Batches</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.actionButton, styles.reallocateButton]}
               onPress={handleRunReallocation}
             >
@@ -396,10 +465,106 @@ const BatchManagementHome = ({route}) => {
           <View style={styles.emptyState}>
             <Text style={{ fontSize: 64, color: '#ccc' }}>👥</Text>
             <Text style={styles.emptyText}>No batches found</Text>
-            <Text style={styles.emptySubtext}>Initialize batches to get started</Text>
+            <Text style={styles.emptySubtext}>First configure batches, then initialize students</Text>
           </View>
         )}
       </ScrollView>
+
+      {/* Configure Batches Modal */}
+      <Modal
+        visible={showBatchModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowBatchModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            padding: 20,
+            borderRadius: 10,
+            width: '80%',
+            maxWidth: 300
+          }}>
+            <Text style={{
+              fontSize: 18,
+              fontWeight: 'bold',
+              marginBottom: 10,
+              textAlign: 'center'
+            }}>Configure Batches</Text>
+            
+            <Text style={{
+              fontSize: 14,
+              marginBottom: 15,
+              textAlign: 'center',
+              color: '#666'
+            }}>Enter the number of batches to create (1-10):</Text>
+            
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#ddd',
+                borderRadius: 5,
+                padding: 10,
+                fontSize: 16,
+                textAlign: 'center',
+                marginBottom: 20
+              }}
+              value={batchInput}
+              onChangeText={setBatchInput}
+              keyboardType="numeric"
+              placeholder="Enter number (1-10)"
+              maxLength={2}
+              autoFocus={true}
+            />
+            
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between'
+            }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#ccc',
+                  padding: 10,
+                  borderRadius: 5,
+                  flex: 0.45
+                }}
+                onPress={() => {
+                  setShowBatchModal(false);
+                  setBatchInput('3'); // Reset to default
+                }}
+              >
+                <Text style={{
+                  textAlign: 'center',
+                  fontSize: 16,
+                  color: '#666'
+                }}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#2196F3',
+                  padding: 10,
+                  borderRadius: 5,
+                  flex: 0.45
+                }}
+                onPress={() => createBatches(batchInput)}
+              >
+                <Text style={{
+                  textAlign: 'center',
+                  fontSize: 16,
+                  color: 'white',
+                  fontWeight: 'bold'
+                }}>Create</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

@@ -50,8 +50,7 @@ exports.getBatches = async (req, res) => {
 // Configure batch settings for a subject
 exports.configureBatches = async (req, res) => {
     try {
-        const { subjectId, gradeId, sectionId, maxBatches, batchSizeLimit, autoAllocation } = req.body;
-        const coordinatorId = req.user.id;
+        const { subjectId, gradeId, sectionId, maxBatches, batchSizeLimit, autoAllocation, coordinatorId } = req.body;
 
         // Insert or update batch configuration
         const configSql = `
