@@ -274,7 +274,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         </View>
       )}
 
-      {activeGrade && (
+      {/* {activeGrade && (
         <Pressable
           onPress={() => {
             navigation.navigate('LevelPromotion', {
@@ -291,7 +291,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
             color='#3557FF'
           />
         </Pressable>
-      )}
+      )} */}
     </ScrollView>
   );
 }

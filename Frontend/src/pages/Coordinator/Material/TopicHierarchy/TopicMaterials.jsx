@@ -16,7 +16,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import DocumentPicker from 'react-native-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../../../utils/env.js';
+import { API_URL } from '../../../../utils/env.js';
 
 const TopicMaterials = ({ route, navigation }) => {
   const { topicId, topicName } = route.params;

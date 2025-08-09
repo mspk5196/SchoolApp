@@ -147,13 +147,13 @@ import StudentPageMaterialScreen from '../../pages/Parent/MaterialScreen/Student
 import StudentSubjectActivityPage from '../../pages/Parent/MaterialScreen/StudentSubjectActivityPage';
 
 // Enhanced Hierarchy System Pages
-import TopicHierarchyManagement from '../../pages/Coordinator/TopicHierarchy/TopicHierarchyManagement';
+import TopicHierarchyManagement from '../../pages/Coordinator/Material/TopicHierarchy/TopicHierarchyManagement';
 // import BatchManagementHome from '../../pages/Coordinator/BatchManagement/BatchManagementHome';
 import TopicHierarchySubject from '../../pages/Coordinator/Material/TopicHierarchy/TopicHierarchySubject';
 import AddTopicPage from '../../pages/Coordinator/Material/TopicHierarchy/AddTopicPage';
 import TopicDetailsPage from '../../pages/Coordinator/Material/TopicHierarchy/TopicDetailsPage';
-import BatchManagementHome from '../../pages/Coordinator/BatchManagement/BatchManagementHome';
-import BatchDetails from '../../pages/Coordinator/BatchManagement/BatchDetails';
+import BatchManagementHome from '../../pages/Coordinator/Material/BatchManagement/BatchManagementHome';
+import BatchDetails from '../../pages/Coordinator/Material/BatchManagement/BatchDetails';
 import EnhancedAssessmentManagement from '../../pages/Mentor/AssesmentRequest/EnhancedAssessmentManagement';
 import EnhancedStudentDashboard from '../../pages/Parent/EnhancedDashboard/EnhancedStudentDashboard';
 import SubjectProgress from '../../pages/Parent/EnhancedDashboard/SubjectProgress';
@@ -162,7 +162,7 @@ import AssessmentQueue from '../../pages/Parent/EnhancedDashboard/AssessmentQueu
 import ProgressAnalytics from '../../pages/Parent/EnhancedDashboard/ProgressAnalytics';
 import BatchHistory from '../../pages/Parent/EnhancedDashboard/BatchHistory';
 import WeeklySchedule from '../../pages/Parent/EnhancedDashboard/WeeklySchedule';
-import TopicMaterials from '../../pages/Coordinator/TopicHierarchy/TopicMaterials';
+import TopicMaterials from '../../pages/Coordinator/Material/TopicHierarchy/TopicMaterials';
 
 const Stack = createStackNavigator();
 

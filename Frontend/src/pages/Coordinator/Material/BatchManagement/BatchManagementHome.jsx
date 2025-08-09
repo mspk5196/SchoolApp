@@ -14,8 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
-import styles from './BatchManagementStyles';
-import { API_URL } from '../../../utils/env.js';
+import styles from './BatchManagementStyles.jsx';
+import { API_URL } from '../../../../utils/env.js';
 
 const BatchManagementHome = ({route}) => {
   const navigation = useNavigation();
