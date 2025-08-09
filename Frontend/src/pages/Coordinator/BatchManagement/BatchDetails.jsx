@@ -37,6 +37,8 @@ const BatchDetails = () => {
   }, []);
 
   const fetchBatchDetails = async () => {
+    console.log('Fetching batch details...', { batchName, sectionId, subjectId });
+
     try {
       setLoading(true);
       const response = await fetch(`${API_URL}/api/batches/details`, {

@@ -62,7 +62,7 @@ exports.getBatchDetails = async (req, res) => {
             FROM section_batches sb
             LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id AND sba.is_current = 1
             LEFT JOIN student_activity_participation sap ON sba.student_roll = sap.student_roll
-            LEFT JOIN topic_hierarchy th ON th.subject_id = sb.subject_id AND th.is_active = 1
+            LEFT JOIN topic_hierarchy th ON th.subject_id = sb.subject_id
             WHERE sb.batch_name = ? AND sb.section_id = ? AND sb.subject_id = ?
             GROUP BY sb.id
         `;
