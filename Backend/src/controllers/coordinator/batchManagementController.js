@@ -99,7 +99,7 @@ exports.getBatchDetails = async (req, res) => {
                     COALESCE(spt.homework_miss_count, 0) as pending_homework,
                     COALESCE(spt.failed_assessment_count, 0) as penalty_count,
                     spt.is_on_penalty,
-                    sba.updated_at as last_activity
+                    -- sba.updated_at as last_activity
                 FROM student_batch_assignments sba
                 JOIN students s ON sba.student_roll = s.roll
                 LEFT JOIN (
