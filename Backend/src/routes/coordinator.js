@@ -245,6 +245,7 @@ router.post(
   uploadMaterials.array('files', 10),  // frontend must use `files` as the field name
   TopicHierarchyController.uploadTopicMaterials
 );
+router.put('/topics/materials/:materialId', TopicHierarchyController.updateTopicMaterial);
 router.delete('/topics/materials/:materialId', TopicHierarchyController.deleteMaterial);
 router.get('/topics/materials/download/:filename', TopicHierarchyController.downloadFile);
 router.get('/topics/materials/view/:filename', TopicHierarchyController.viewFile);

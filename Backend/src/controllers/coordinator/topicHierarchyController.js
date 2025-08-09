@@ -305,6 +305,87 @@ function getFileTypeFromExtension(fileName) {
     }
 }
 
+// Update existing topic material
+exports.updateTopicMaterial = async (req, res) => {
+    try {
+        const { materialId } = req.params;
+        const {
+            materialType,
+            activityName,
+            estimatedDuration,
+            difficultyLevel,
+            instructions
+        } = req.body;
+
+        console.log('Updating material with ID:', materialId);
+        console.log('Update data:', req.body);
+
+        // First check if the material exists
+        const checkSql = 'SELECT * FROM topic_materials WHERE id = ?';
+        
+        db.query(checkSql, [materialId], (checkError, checkResult) => {
+            if (checkError) {
+                console.error('Check material error:', checkError);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to check material existence',
+                    error: checkError.message
+                });
+            }
+
+            if (checkResult.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Material not found'
+                });
+            }
+
+            // Update the material (without changing files for now)
+            const updateSql = `
+                UPDATE topic_materials 
+                SET material_type = ?, activity_name = ?, estimated_duration = ?,
+                    difficulty_level = ?, instructions = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `;
+
+            db.query(updateSql, [
+                materialType, activityName, estimatedDuration,
+                difficultyLevel, instructions, materialId
+            ], (updateError, updateResult) => {
+                if (updateError) {
+                    console.error('Update material error:', updateError);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to update material',
+                        error: updateError.message
+                    });
+                }
+
+                console.log('Material updated successfully');
+                res.json({
+                    success: true,
+                    message: 'Material updated successfully',
+                    data: {
+                        id: materialId,
+                        material_type: materialType,
+                        activity_name: activityName,
+                        estimated_duration: estimatedDuration,
+                        difficulty_level: difficultyLevel,
+                        instructions: instructions
+                    }
+                });
+            });
+        });
+    } catch (error) {
+        console.error('Update material error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update material',
+            error: error.message
+        });
+    }
+}
+
 // Delete material
 exports.deleteMaterial = async (req, res) => {
     try {

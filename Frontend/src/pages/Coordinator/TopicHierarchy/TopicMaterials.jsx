@@ -255,54 +255,82 @@ const TopicMaterials = ({ route, navigation }) => {
         return;
       }
 
-      if (formData.files.length === 0) {
-        Alert.alert('Error', 'Please select at least one file');
-        return;
-      }
+      if (editingMaterial) {
+        // For editing, only update the text fields (not files)
+        const updateData = {
+          materialType: formData.material_type,
+          activityName: formData.activity_name,
+          estimatedDuration: formData.estimated_duration,
+          difficultyLevel: formData.difficulty_level,
+          instructions: formData.instructions,
+        };
 
-      const formDataToSend = new FormData();
-      
-      // Add form fields
-      formDataToSend.append('topicId', topicId);
-      formDataToSend.append('materialType', formData.material_type);
-      formDataToSend.append('activityName', formData.activity_name);
-      formDataToSend.append('estimatedDuration', formData.estimated_duration.toString());
-      formDataToSend.append('difficultyLevel', formData.difficulty_level);
-      formDataToSend.append('instructions', formData.instructions);
+        const response = await fetch(
+          `${API_URL}/api/topics/materials/${editingMaterial.id}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updateData),
+          }
+        );
 
-      // Add files
-      formData.files.forEach((file, index) => {
-        formDataToSend.append('files', {
-          uri: file.uri,
-          type: file.type === 'PDF' ? 'application/pdf' : 
-                file.type === 'Video' ? 'video/mp4' :
-                file.type === 'Image' ? 'image/jpeg' :
-                file.type === 'Audio' ? 'audio/mpeg' : 'application/octet-stream',
-          name: file.name
-        });
-      });
+        const result = await response.json();
+        console.log('Update result:', result);
 
-      const url = editingMaterial 
-        ? `${API_URL}/api/topics/materials/${editingMaterial.id}`
-        : `${API_URL}/api/topics/materials/upload`;
-
-      console.log('Uploading to URL:', url);
-
-      const response = await fetch(url, {
-        method: editingMaterial ? 'PUT' : 'POST',
-        body: formDataToSend,
-      });
-
-      const result = await response.json();
-      // console.log('Upload result:', result);
-
-      if (result.success) {
-        Alert.alert('Success', `Material ${editingMaterial ? 'updated' : 'uploaded'} successfully`);
-        setModalVisible(false);
-        resetForm();
-        fetchMaterials();
+        if (result.success) {
+          Alert.alert('Success', 'Material updated successfully');
+          setModalVisible(false);
+          resetForm();
+          fetchMaterials();
+        } else {
+          Alert.alert('Error', result.message || 'Failed to update material');
+        }
       } else {
-        Alert.alert('Error', result.message || 'Failed to save material');
+        // For new materials, require files
+        if (formData.files.length === 0) {
+          Alert.alert('Error', 'Please select at least one file');
+          return;
+        }
+
+        const formDataToSend = new FormData();
+        
+        // Add form fields
+        formDataToSend.append('topicId', topicId);
+        formDataToSend.append('materialType', formData.material_type);
+        formDataToSend.append('activityName', formData.activity_name);
+        formDataToSend.append('estimatedDuration', formData.estimated_duration.toString());
+        formDataToSend.append('difficultyLevel', formData.difficulty_level);
+        formDataToSend.append('instructions', formData.instructions);
+
+        // Add files
+        formData.files.forEach((file, index) => {
+          formDataToSend.append('files', {
+            uri: file.uri,
+            type: file.type === 'PDF' ? 'application/pdf' : 
+                  file.type === 'Video' ? 'video/mp4' :
+                  file.type === 'Image' ? 'image/jpeg' :
+                  file.type === 'Audio' ? 'audio/mpeg' : 'application/octet-stream',
+            name: file.name
+          });
+        });
+
+        const response = await fetch(`${API_URL}/api/topics/materials/upload`, {
+          method: 'POST',
+          body: formDataToSend,
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          Alert.alert('Success', 'Material uploaded successfully');
+          setModalVisible(false);
+          resetForm();
+          fetchMaterials();
+        } else {
+          Alert.alert('Error', result.message || 'Failed to save material');
+        }
       }
     } catch (error) {
       console.error('Save material error:', error);
@@ -597,31 +625,51 @@ const TopicMaterials = ({ route, navigation }) => {
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Files *</Text>
-              <Text style={styles.helpText}>
-                Select multiple files (PDF, Video, Images, etc.) for this learning material
-              </Text>
-              <TouchableOpacity style={styles.fileButton} onPress={selectFile}>
-                <Text style={styles.fileIcon}>📎</Text>
-                <Text style={styles.fileButtonText}>Select Files (PDF, Video, etc.)</Text>
-              </TouchableOpacity>
-              
-              {formData.files.length > 0 && (
-                <View style={styles.selectedFiles}>
-                  {formData.files.map((file, index) => (
-                    <View key={index} style={styles.selectedFile}>
-                      <View style={styles.fileDetails}>
-                        <Text style={styles.selectedFileName}>{file.name}</Text>
-                        <Text style={styles.selectedFileType}>{file.type}</Text>
-                      </View>
-                      <TouchableOpacity 
-                        style={styles.removeFileButton}
-                        onPress={() => removeFile(index)}
-                      >
-                        <Text style={styles.removeFileText}>✕</Text>
-                      </TouchableOpacity>
+              {editingMaterial ? (
+                <View style={styles.editFileMessage}>
+                  <Text style={styles.editFileText}>
+                    📝 Note: File editing is not supported. To change files, please create a new material and delete this one.
+                  </Text>
+                  {editingMaterial.files && editingMaterial.files.length > 0 && (
+                    <View style={styles.currentFiles}>
+                      <Text style={styles.currentFilesLabel}>Current Files:</Text>
+                      {editingMaterial.files.map((file, index) => (
+                        <Text key={index} style={styles.currentFileName}>
+                          • {file.name} ({file.type})
+                        </Text>
+                      ))}
                     </View>
-                  ))}
+                  )}
                 </View>
+              ) : (
+                <>
+                  <Text style={styles.helpText}>
+                    Select multiple files (PDF, Video, Images, etc.) for this learning material
+                  </Text>
+                  <TouchableOpacity style={styles.fileButton} onPress={selectFile}>
+                    <Text style={styles.fileIcon}>📎</Text>
+                    <Text style={styles.fileButtonText}>Select Files (PDF, Video, etc.)</Text>
+                  </TouchableOpacity>
+                  
+                  {formData.files.length > 0 && (
+                    <View style={styles.selectedFiles}>
+                      {formData.files.map((file, index) => (
+                        <View key={index} style={styles.selectedFile}>
+                          <View style={styles.fileDetails}>
+                            <Text style={styles.selectedFileName}>{file.name}</Text>
+                            <Text style={styles.selectedFileType}>{file.type}</Text>
+                          </View>
+                          <TouchableOpacity 
+                            style={styles.removeFileButton}
+                            onPress={() => removeFile(index)}
+                          >
+                            <Text style={styles.removeFileText}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </>
               )}
             </View>
 
@@ -915,6 +963,36 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  editFileMessage: {
+    backgroundColor: '#fff3cd',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ffeaa7',
+  },
+  editFileText: {
+    fontSize: 14,
+    color: '#856404',
+    fontStyle: 'italic',
+  },
+  currentFiles: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#ffeaa7',
+  },
+  currentFilesLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#856404',
+    marginBottom: 4,
+  },
+  currentFileName: {
+    fontSize: 13,
+    color: '#856404',
+    marginLeft: 8,
+    marginBottom: 2,
   },
 });
 
