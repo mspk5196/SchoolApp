@@ -11,11 +11,7 @@ exports.getBatches = async (req, res) => {
                     sb.*,
                     sbc.max_batches,
                     COUNT(sba.id) as current_students,
-                    AVG(
-                        (COALESCE(sap.performance_score, 0) * 0.4) +
-                        (COALESCE(homework_completion_rate(sba.student_roll, sb.subject_id), 0) * 0.3) +
-                        (COALESCE(assessment_average(sba.student_roll, sb.subject_id), 0) * 0.3)
-                    ) as avg_performance
+                    AVG(COALESCE(sap.performance_score, 0)) as avg_performance
                 FROM section_batches sb
                 LEFT JOIN subject_batch_config sbc ON sb.subject_id = sbc.subject_id 
                     AND sbc.section_id = sb.section_id
@@ -167,7 +163,7 @@ exports.getBatchStudents = async (req, res) => {
                     COALESCE(stp_summary.completed_topics, 0) as completed_topics,
                     COALESCE(stp_summary.total_topics, 0) as total_topics,
                     COALESCE(stp_summary.avg_score, 0) as avg_assessment_score,
-                    COALESCE(homework_completion_rate(s.roll, sb.subject_id), 0) as homework_completion_rate,
+                    0 as homework_completion_rate,
                     spt.is_on_penalty, spt.homework_miss_count, spt.failed_assessment_count
                 FROM student_batch_assignments sba
                 JOIN students s ON sba.student_roll = s.roll
@@ -218,7 +214,7 @@ exports.getBatchStudents = async (req, res) => {
 exports.moveStudentToBatch = async (req, res) => {
     try {
         const { studentRoll, fromBatchId, toBatchId, reason, notes } = req.body;
-        const coordinatorId = req.user.id;
+        const coordinatorId = req.user?.id || 'system';
 
         // Get subject ID
         const batchInfoSql = 'SELECT subject_id FROM section_batches WHERE id = ?';
@@ -415,7 +411,7 @@ exports.getBatchAnalytics = async (req, res) => {
                     AVG(COALESCE(stp.completion_percentage, 0)) as avg_completion,
                     AVG(COALESCE(stp.last_assessment_score, 0)) as avg_assessment_score,
                     SUM(CASE WHEN spt.is_on_penalty = 1 THEN 1 ELSE 0 END) as students_on_penalty,
-                    AVG(COALESCE(homework_completion_rate(sba.student_roll, sb.subject_id), 0)) as avg_homework_rate
+                    0 as avg_homework_rate
                 FROM section_batches sb
                 LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id AND sba.is_current = 1
                 LEFT JOIN student_topic_progress stp ON sba.student_roll = stp.student_roll 
@@ -437,9 +433,35 @@ exports.getBatchAnalytics = async (req, res) => {
                 });
             }
 
+            // Calculate summary statistics
+            const summary = analytics.reduce((acc, batch) => {
+                acc.total_students += batch.student_count || 0;
+                acc.total_batches += 1;
+                acc.total_completion += batch.avg_completion || 0;
+                acc.total_assessment += batch.avg_assessment_score || 0;
+                return acc;
+            }, { 
+                total_students: 0, 
+                total_batches: 0, 
+                total_completion: 0, 
+                total_assessment: 0 
+            });
+
+            // Calculate averages
+            const avgPerformance = analytics.length > 0 
+                ? (summary.total_completion + summary.total_assessment) / (2 * analytics.length)
+                : 0;
+
+            const analyticsData = {
+                total_students: summary.total_students,
+                total_batches: summary.total_batches,
+                avg_performance: avgPerformance,
+                batches: analytics
+            };
+
             res.json({
                 success: true,
-                data: analytics
+                data: analyticsData
             });
         });
     } catch (error) {
@@ -455,13 +477,16 @@ exports.getBatchAnalytics = async (req, res) => {
 // Initialize students to first batch (for new subjects)
 exports.initializeStudentBatches = async (req, res) => {
     try {
-        const { sectionId, subjectId } = req.body;
-        const coordinatorId = req.user.id;
+        const { sectionId, subjectId, section_id, subject_id } = req.body;
+        // Handle both naming conventions
+        const finalSectionId = sectionId || section_id;
+        const finalSubjectId = subjectId || subject_id;
+        const coordinatorId = req.user?.id || 'system';
 
         // Get first batch ID
         const firstBatchSql = 'SELECT id FROM section_batches WHERE section_id = ? AND subject_id = ? AND batch_level = 1 AND is_active = 1 LIMIT 1';
         
-        db.query(firstBatchSql, [sectionId, subjectId], (error1, firstBatch) => {
+        db.query(firstBatchSql, [finalSectionId, finalSubjectId], (error1, firstBatch) => {
             if (error1) {
                 console.error('Error getting first batch:', error1);
                 return res.status(500).json({
@@ -493,7 +518,7 @@ exports.initializeStudentBatches = async (req, res) => {
                 )
             `;
 
-            db.query(unassignedSql, [sectionId, subjectId], (error2, unassignedStudents) => {
+            db.query(unassignedSql, [finalSectionId, finalSubjectId], (error2, unassignedStudents) => {
                 if (error2) {
                     console.error('Error getting unassigned students:', error2);
                     return res.status(500).json({
@@ -547,7 +572,7 @@ exports.initializeStudentBatches = async (req, res) => {
                                 VALUES (?, ?, ?, 'Initial', CURDATE(), 'Coordinator', CURDATE())
                             `;
                             
-                            db.query(historySql, [student.roll, subjectId, firstBatchId], (error4) => {
+                            db.query(historySql, [student.roll, finalSubjectId, firstBatchId], (error4) => {
                                 if (error4) {
                                     console.error('Error recording history:', error4);
                                     // Continue even if history fails

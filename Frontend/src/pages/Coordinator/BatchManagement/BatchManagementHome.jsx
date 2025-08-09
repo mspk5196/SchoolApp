@@ -11,7 +11,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Picker } from '@react-native-picker/picker';
 import styles from './BatchManagementStyles';
 import { API_URL } from '../../../utils/env.js';
@@ -93,6 +92,7 @@ const BatchManagementHome = ({route}) => {
       if (response.ok) {
         const result = await response.json();
         setSubjects(result.sectionSubjects || []);
+        console.log('Fetched Section Subjects:', result.sectionSubjects);
       }
     } catch (error) {
       console.error('Error fetching subjects:', error);
@@ -101,7 +101,7 @@ const BatchManagementHome = ({route}) => {
 
   const fetchBatchData = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/batches/${selectedSection}/${selectedSubject}`, {
+      const response = await fetch(`${API_URL}/api/batches/${selectedSection}/${selectedSubject}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +110,7 @@ const BatchManagementHome = ({route}) => {
 
       if (response.ok) {
         const result = await response.json();
-        setBatchData(result.batches || []);
+        setBatchData(result.data || []);
       }
     } catch (error) {
       console.error('Error fetching batch data:', error);
@@ -119,7 +119,7 @@ const BatchManagementHome = ({route}) => {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch(`${API_URL}/coordinator/batches/analytics/${selectedSection}/${selectedSubject}`, {
+      const response = await fetch(`${API_URL}/api/batches/analytics/${selectedSection}/${selectedSubject}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ const BatchManagementHome = ({route}) => {
 
       if (response.ok) {
         const result = await response.json();
-        setAnalytics(result.analytics);
+        setAnalytics(result.data);
       }
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -157,14 +157,14 @@ const BatchManagementHome = ({route}) => {
           onPress: async () => {
             try {
               setLoading(true);
-              const response = await fetch(`${API_URL}/coordinator/batches/reallocate`, {
+              const response = await fetch(`${API_URL}/api/batches/reallocate`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  section_id: selectedSection,
-                  subject_id: selectedSubject,
+                  sectionId: selectedSection,
+                  subjectId: selectedSubject,
                 }),
               });
 
@@ -200,14 +200,14 @@ const BatchManagementHome = ({route}) => {
           onPress: async () => {
             try {
               setLoading(true);
-              const response = await fetch(`${API_URL}/coordinator/batches/initialize`, {
+              const response = await fetch(`${API_URL}/api/batches/initialize`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  section_id: selectedSection,
-                  subject_id: selectedSubject,
+                  sectionId: selectedSection,
+                  subjectId: selectedSubject,
                 }),
               });
 
@@ -245,7 +245,7 @@ const BatchManagementHome = ({route}) => {
       <View style={styles.batchHeader}>
         <Text style={styles.batchName}>{batch.batch_name}</Text>
         <View style={styles.studentCount}>
-          <Icon name="group" size={16} color="#666" />
+          <Text style={{ fontSize: 16, color: '#666' }}>👥</Text>
           <Text style={styles.countText}>{batch.student_count}</Text>
         </View>
       </View>
@@ -283,11 +283,11 @@ const BatchManagementHome = ({route}) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="white" />
+          <Text style={{ fontSize: 24, color: 'white' }}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Batch Management</Text>
         <TouchableOpacity onPress={handleRefresh}>
-          <Icon name="refresh" size={24} color="white" />
+          <Text style={{ fontSize: 24, color: 'white' }}>🔄</Text>
         </TouchableOpacity>
       </View>
 
@@ -331,9 +331,9 @@ const BatchManagementHome = ({route}) => {
                 <Picker.Item label="Select Subject" value="" />
                 {subjects.map((subject) => (
                   <Picker.Item
-                    key={subject.subject_id}
+                    key={subject.id}
                     label={subject.subject_name}
-                    value={subject.subject_id}
+                    value={subject.id}
                   />
                 ))}
               </Picker>
@@ -369,7 +369,7 @@ const BatchManagementHome = ({route}) => {
               style={[styles.actionButton, styles.reallocateButton]}
               onPress={handleRunReallocation}
             >
-              <Icon name="shuffle" size={20} color="white" />
+              <Text style={{ fontSize: 20, color: 'white' }}>🔀</Text>
               <Text style={styles.actionButtonText}>Run Reallocation</Text>
             </TouchableOpacity>
 
@@ -377,7 +377,7 @@ const BatchManagementHome = ({route}) => {
               style={[styles.actionButton, styles.initializeButton]}
               onPress={handleInitializeBatches}
             >
-              <Icon name="group-add" size={20} color="white" />
+              <Text style={{ fontSize: 20, color: 'white' }}>👥➕</Text>
               <Text style={styles.actionButtonText}>Initialize Batches</Text>
             </TouchableOpacity>
           </View>
@@ -394,7 +394,7 @@ const BatchManagementHome = ({route}) => {
         {/* Empty State */}
         {selectedSection && selectedSubject && batchData.length === 0 && (
           <View style={styles.emptyState}>
-            <Icon name="group" size={64} color="#ccc" />
+            <Text style={{ fontSize: 64, color: '#ccc' }}>👥</Text>
             <Text style={styles.emptyText}>No batches found</Text>
             <Text style={styles.emptySubtext}>Initialize batches to get started</Text>
           </View>
