@@ -1080,6 +1080,6 @@ exports.getSectionSubjectActivitiesRecords = (req, res) => {
     }
     
     console.log('Section subject activities results:', results);
-    res.json({ success: true, message: "Section subject activities fetched successfully", data: results });
+    res.json({ success: true, message: "Section subject activities fetched successfully", sectionSubjectActivity: results });
   });
 };
