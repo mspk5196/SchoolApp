@@ -311,8 +311,7 @@ exports.getBatchStudents = async (req, res) => {
 // Move student to different batch manually
 exports.moveStudentToBatch = async (req, res) => {
     try {
-        const { studentRoll, fromBatchId, toBatchId, reason, notes } = req.body;
-        const coordinatorId = req.user?.id || 'system';
+        const { studentRoll, fromBatchId, toBatchId, reason, notes, coordinatorId } = req.body;
 
         // Get subject ID
         const batchInfoSql = 'SELECT subject_id FROM section_batches WHERE id = ?';

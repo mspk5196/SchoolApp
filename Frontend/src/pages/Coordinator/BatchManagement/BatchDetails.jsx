@@ -20,7 +20,7 @@ import { API_URL } from '../../../utils/env.js';
 const BatchDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { batchName, sectionId, subjectId } = route.params;
+  const { batchName, sectionId, subjectId, coordinatorId } = route.params;
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,6 +70,7 @@ const BatchDetails = () => {
   };
 
   const fetchAvailableBatches = async () => {
+    console.log('Fetching available batches for section:', sectionId, 'subject:', subjectId);
     try {
       const response = await fetch(`${API_URL}/api/batches/${sectionId}/${subjectId}`, {
         method: 'GET',
@@ -80,9 +81,11 @@ const BatchDetails = () => {
 
       if (response.ok) {
         const result = await response.json();
-        setAvailableBatches(result.batches || []);
+        console.log('Backend response:', result);
+        setAvailableBatches(result.data || result.batches || []);
+        console.log('Available batches set:', result.data || result.batches || []);
       }
-    } catch (error) {
+    } catch (error) { 
       console.error('Error fetching available batches:', error);
     }
   };
@@ -117,6 +120,7 @@ const BatchDetails = () => {
           to_batch: targetBatch,
           subject_id: subjectId,
           reason: 'Manual_Transfer',
+          coordinatorId: coordinatorId
         }),
       });
 

@@ -301,7 +301,8 @@ const BatchManagementHome = ({route}) => {
       onPress={() => navigation.navigate('BatchDetails', { 
         batchName: batch.batch_name,
         sectionId: selectedSection,
-        subjectId: selectedSubject
+        subjectId: selectedSubject,
+        coordinatorId: coordinatorData.id
       })}
     >
       <View style={styles.batchHeader}>
