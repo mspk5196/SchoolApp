@@ -278,6 +278,16 @@ router.patch('/schedule/activity/:activityId/complete', ScheduleManagementContro
 router.get('/schedule/mentors/available/:date/:startTime/:endTime/:subjectId/:gradeId', ScheduleManagementController.getAvailableMentors);
 router.get('/schedule/venues/available/:date/:startTime/:endTime/:subjectId/:gradeId', ScheduleManagementController.getAvailableVenues);
 router.delete('/schedule/:scheduleId', ScheduleManagementController.deleteSchedule);
+
+// Enhanced Academic Schedule Routes (Date-wise from Weekly Template)
+router.get('/academic-schedule/weekly-template/:gradeId', ScheduleManagementController.getWeeklyTemplate);
+router.get('/academic-schedule/monthly/:gradeId/:month/:year', ScheduleManagementController.getMonthlySchedule);
+router.get('/academic-schedule/daily/:date/:sectionId', ScheduleManagementController.getDailyAcademicSchedule);
+router.get('/academic-schedule/period-activities/:periodId/:date', ScheduleManagementController.getPeriodActivities);
+router.post('/academic-schedule/create-activity', ScheduleManagementController.createPeriodActivity);
+router.put('/academic-schedule/activity/:activityId', ScheduleManagementController.updatePeriodActivity);
+router.delete('/academic-schedule/activity/:activityId', ScheduleManagementController.deletePeriodActivity);
+router.get('/academic-schedule/batch-activities/:batchId/:date', ScheduleManagementController.getBatchActivities);
 router.post('/schedule/:scheduleId/copy', ScheduleManagementController.copySchedule);
 
 module.exports = router;

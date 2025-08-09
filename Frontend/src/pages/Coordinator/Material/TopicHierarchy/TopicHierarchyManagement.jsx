@@ -148,7 +148,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   const fetchTopicHierarchy = async () => {
     if (!selectedActivity) return;
     setTopicHierarchy([]);
-    console.log('Fetching topic hierarchy for activity:', selectedActivity);
+    // console.log('Fetching topic hierarchy for activity:', selectedActivity);
     
     setLoading(true);
     try {
@@ -167,13 +167,13 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       }
       
       const result = await response.json();
-      console.log('Topic hierarchy result:', result);
+      // console.log('Topic hierarchy result:', result);
       
       if (result.success) {
-        console.log(
-          `Fetched topic hierarchy for activity ${selectedActivity}:`,
-          result.data
-        );
+        // console.log(
+        //   `Fetched topic hierarchy for activity ${selectedActivity}:`,
+        //   result.data
+        // );
         
         setTopicHierarchy(result.data.hierarchy || []);
       } else {
@@ -481,16 +481,6 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         </Picker>
       </View> */}
 
-      {/* Debug Info */}
-      <View style={styles.debugSection}>
-        <Text style={styles.debugText}>
-          Debug: Subject={selectedSubject}, Section={selectedSection}, Activity={selectedActivity}
-        </Text>
-        <Text style={styles.debugText}>
-          Activities count: {activities.length}, Hierarchy count: {topicHierarchy.length}
-        </Text>
-      </View>
-
       {/* Check if we have the required data */}
       {!selectedSubject || !selectedSection ? (
         <View style={styles.noDataSection}>
@@ -506,7 +496,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       ) : (
         <>
           {/* Activity Selector */}
-          <View style={styles.selectorSection}>
+          <View style={styles.subjectSelector}>
             <Text style={styles.label}>Select Activity Type:</Text>
             <Picker
               selectedValue={selectedActivity}
@@ -709,12 +699,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  selectorSection: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
   addTopicSection: {
     backgroundColor: '#fff',
     padding: 16,
@@ -846,110 +830,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  debugSection: {
-    backgroundColor: '#ffffcc',
-    padding: 10,
-    margin: 10,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#e6e600',
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#666',
-    fontFamily: 'monospace',
-  },
-  noDataSection: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  noDataText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  noDataSubtext: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-  },
-  hierarchyList: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  loader: {
-    marginTop: 50,
-  },
-  topicItem: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  topicHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  expandButton: {
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  expandIcon: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  topicInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  topicName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  topicCode: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 6,
-  },
-  topicFlags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  flag: {
-    fontSize: 11,
-    color: '#007AFF',
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginRight: 6,
-    marginBottom: 2,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-  },
-  actionButton: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 16,
-    marginLeft: 6,
-  },
-  actionButtonText: {
-    fontSize: 16,
   },
 });
 

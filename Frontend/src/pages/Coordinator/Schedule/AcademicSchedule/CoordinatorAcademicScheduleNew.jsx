@@ -15,8 +15,8 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// import styles from './CoordinatorAcademicScheduleStyles';
-import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
+import styles from './CoordinatorAcademicScheduleStyles';
+import BackIcon from '../../../../assets/svg/BackIcon';
 
 const API_URL = 'http://192.168.0.103:8080';
 

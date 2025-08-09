@@ -42,7 +42,7 @@ const BatchDetails = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/batches/details`, {
+      const response = await fetch(`${API_URL}/api/coordinator/batches/details`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ const BatchDetails = () => {
   const fetchAvailableBatches = async () => {
     // console.log('Fetching available batches for section:', sectionId, 'subject:', subjectId);
     try {
-      const response = await fetch(`${API_URL}/api/batches/${sectionId}/${subjectId}`, {
+      const response = await fetch(`${API_URL}/api/coordinator/batches/${sectionId}/${subjectId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +118,7 @@ const BatchDetails = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/batches/move-student`, {
+      const response = await fetch(`${API_URL}/api/coordinator/batches/move-student`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

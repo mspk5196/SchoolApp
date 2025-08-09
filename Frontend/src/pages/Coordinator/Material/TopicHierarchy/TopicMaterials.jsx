@@ -49,7 +49,7 @@ const TopicMaterials = ({ route, navigation }) => {
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_URL}/api/topics/${topicId}/materials`,
+        `${API_URL}/api/coordinator/topics/${topicId}/materials`,
         { 
           method: 'GET',
           headers: { 'Content-Type': 'application/json' } 
@@ -140,8 +140,8 @@ const TopicMaterials = ({ route, navigation }) => {
       const filename = urlParts[urlParts.length - 1];
       
       // Try direct static file serving first (Railway serves static files)
-      const directUrl = `${API_URL}/api/uploads/materials/${filename}`;
-      const downloadUrl = `${API_URL}/api/topics/materials/download/${filename}`;
+      const directUrl = `${API_URL}/api/coordinator/uploads/materials/${filename}`;
+      const downloadUrl = `${API_URL}/api/coordinator/topics/materials/download/${filename}`;
       
       console.log('Downloading file from:', downloadUrl);
       console.log('Direct URL:', directUrl);
@@ -208,8 +208,8 @@ const TopicMaterials = ({ route, navigation }) => {
       const filename = urlParts[urlParts.length - 1];
       
       // Try direct static file serving first (Railway serves static files)
-      const directUrl = `${API_URL}/api/uploads/materials/${filename}`;
-      const viewUrl = `${API_URL}/api/topics/materials/view/${filename}`;
+      const directUrl = `${API_URL}/api/coordinator/uploads/materials/${filename}`;
+      const viewUrl = `${API_URL}/api/coordinator/topics/materials/view/${filename}`;
       
       console.log('Viewing file from:', viewUrl);
       console.log('Direct URL:', directUrl);
@@ -328,7 +328,7 @@ const TopicMaterials = ({ route, navigation }) => {
         };
 
         const response = await fetch(
-          `${API_URL}/api/topics/materials/update/${editingMaterial.id}`,
+          `${API_URL}/api/coordinator/topics/materials/update/${editingMaterial.id}`,
           {
             method: 'PUT',
             headers: {
@@ -380,7 +380,7 @@ const TopicMaterials = ({ route, navigation }) => {
           });
         });
 
-        const response = await fetch(`${API_URL}/api/topics/materials/upload`, {
+        const response = await fetch(`${API_URL}/api/coordinator/topics/materials/upload`, {
           method: 'POST',
           body: formDataToSend,
         });
@@ -414,7 +414,7 @@ const TopicMaterials = ({ route, navigation }) => {
           onPress: async () => {
             try {
               const response = await fetch(
-                `${API_URL}/api/topics/materials/delete/${materialId}`,
+                `${API_URL}/api/coordinator/topics/materials/delete/${materialId}`,
                 {
                   method: 'DELETE',
                   headers: { 'Content-Type': 'application/json' },
