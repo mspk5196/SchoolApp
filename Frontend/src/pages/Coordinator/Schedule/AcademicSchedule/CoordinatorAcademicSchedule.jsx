@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // import styles from './CoordinatorAcademicScheduleStyles';
 import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
 import { API_URL } from '../../../../utils/env';
+import TimeBasedActivityCreator from '../../../../components/TimeBasedActivityCreator';
 
 const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   const { activeGrade } = route.params;
@@ -25,6 +26,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   const [monthlySchedule, setMonthlySchedule] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [showTimeBasedModal, setShowTimeBasedModal] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [periodActivities, setPeriodActivities] = useState([]);
   const [mentors, setMentors] = useState([]);
@@ -405,8 +407,23 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
               </View>
               
               <View style={styles.periodActions}>
-                <Icon name="edit" size={20} color="#007AFF" />
-                <Text style={styles.splitText}>Split into Activities</Text>
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={() => {
+                    setSelectedPeriod({...item, ...daySchedule});
+                    setShowTimeBasedModal(true);
+                  }}
+                >
+                  <Icon name="clock" size={16} color="#4CAF50" />
+                  <Text style={styles.actionText}>Time-Based</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={() => openPeriodActivities(item, daySchedule)}
+                >
+                  <Icon name="edit" size={16} color="#007AFF" />
+                  <Text style={styles.actionText}>Quick Split</Text>
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           )}
@@ -442,7 +459,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                     <View style={styles.activityItem}>
                       <View style={styles.activityHeader}>
                         <Text style={styles.activityType}>{item.activity_type}</Text>
-                        <Text style={styles.activityDuration}>{item.duration_minutes} min</Text>
+                        <Text style={styles.activityDuration}>{item.duration} min</Text>
                       </View>
                       <Text style={styles.activityBatch}>Batch {item.batch_number}</Text>
                       <Text style={styles.activityMentor}>{item.mentor_name}</Text>
@@ -631,6 +648,18 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       )}
 
       {renderActivityModal()}
+      
+      <TimeBasedActivityCreator
+        visible={showTimeBasedModal}
+        onClose={() => setShowTimeBasedModal(false)}
+        selectedPeriod={selectedPeriod}
+        selectedDate={selectedDate}
+        onActivityCreated={() => {
+          setShowTimeBasedModal(false);
+          fetchPeriodActivities(selectedPeriod?.id);
+          fetchMonthlySchedule();
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -848,7 +877,20 @@ const styles = {
     color: '#999',
   },
   periodActions: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  actionButton: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  actionText: {
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
   },
   splitText: {
     fontSize: 12,

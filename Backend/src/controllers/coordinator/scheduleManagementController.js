@@ -130,20 +130,7 @@ exports.getDailySchedule = (req, res) => {
                 pa.start_time as activity_start_time, pa.duration, pa.max_participants,
                 pa.activity_instructions, pa.is_assessment, pa.assessment_weightage,
                 pa.is_completed, pa.completion_notes,
-                th.topic_name,
-                CASE 
-                    WHEN th.parent_id IS NOT NULL THEN
-                        (SELECT GROUP_CONCAT(
-                            ancestor.topic_name 
-                            ORDER BY ancestor.level ASC 
-                            SEPARATOR ' > '
-                        )
-                        FROM topic_hierarchy ancestor 
-                        WHERE ancestor.level < th.level 
-                        AND th.topic_code LIKE CONCAT(ancestor.topic_code, '%')
-                        AND ancestor.subject_id = th.subject_id)
-                    ELSE NULL 
-                END as topic_hierarchy_path,
+                th.topic_name, th.parent_id, th.subject_id as th_subject_id,
                 tm.activity_name as material_name,
                 m.roll as mentor_roll, m.phone as mentor_phone
             FROM daily_schedule_new ds
@@ -169,52 +156,143 @@ exports.getDailySchedule = (req, res) => {
             });
         }
 
-        // Group activities by schedule
-        const groupedSchedule = {};
-        schedule.forEach(row => {
-            const scheduleKey = row.id;
-            if (!groupedSchedule[scheduleKey]) {
-                groupedSchedule[scheduleKey] = {
-                    id: row.id,
-                    date: row.date,
-                    period_number: row.period_number,
-                    start_time: row.start_time,
-                    end_time: row.end_time,
-                    subject_name: row.subject_name,
-                    venue_name: row.venue_name,
-                    grade_name: row.grade_name,
-                    section_name: row.section_name,
-                    is_eca: row.is_eca,
-                    activities: []
-                };
-            }
+        // Get all topics for hierarchy path building
+        const subjectIds = [...new Set(schedule.map(row => row.th_subject_id).filter(id => id))];
 
-            if (row.activity_id) {
-                groupedSchedule[scheduleKey].activities.push({
-                    id: row.activity_id,
-                    activity_name: row.activity_name,
-                    activity_type: row.activity_type,
-                    batch_ids: JSON.parse(row.batch_ids || '[]'),
-                    topic_name: row.topic_name,
-                    topic_hierarchy_path: row.topic_hierarchy_path,
-                    material_name: row.material_name,
-                    activity_start_time: row.activity_start_time,
-                    duration: row.duration,
-                    max_participants: row.max_participants,
-                    activity_instructions: row.activity_instructions,
-                    is_assessment: row.is_assessment,
-                    assessment_weightage: row.assessment_weightage,
-                    is_completed: row.is_completed,
-                    completion_notes: row.completion_notes,
-                    mentor_roll: row.mentor_roll,
-                    mentor_phone: row.mentor_phone
+        if (subjectIds.length === 0) {
+            // Group activities by schedule without hierarchy
+            const groupedSchedule = {};
+            schedule.forEach(row => {
+                const scheduleKey = row.id;
+                if (!groupedSchedule[scheduleKey]) {
+                    groupedSchedule[scheduleKey] = {
+                        id: row.id,
+                        date: row.date,
+                        period_number: row.period_number,
+                        start_time: row.start_time,
+                        end_time: row.end_time,
+                        subject_name: row.subject_name,
+                        venue_name: row.venue_name,
+                        grade_name: row.grade_name,
+                        section_name: row.section_name,
+                        is_eca: row.is_eca,
+                        activities: []
+                    };
+                }
+
+                if (row.activity_id) {
+                    groupedSchedule[scheduleKey].activities.push({
+                        id: row.activity_id,
+                        activity_name: row.activity_name,
+                        activity_type: row.activity_type,
+                        batch_ids: JSON.parse(row.batch_ids || '[]'),
+                        topic_name: row.topic_name,
+                        topic_hierarchy_path: null,
+                        material_name: row.material_name,
+                        activity_start_time: row.activity_start_time,
+                        duration: row.duration,
+                        max_participants: row.max_participants,
+                        activity_instructions: row.activity_instructions,
+                        is_assessment: row.is_assessment,
+                        assessment_weightage: row.assessment_weightage,
+                        is_completed: row.is_completed,
+                        completion_notes: row.completion_notes,
+                        mentor_roll: row.mentor_roll,
+                        mentor_phone: row.mentor_phone
+                    });
+                }
+            });
+
+            return res.json({
+                success: true,
+                data: Object.values(groupedSchedule)
+            });
+        }
+
+        // Get all topics for the subjects involved
+        const topicsQuery = `
+            SELECT id, parent_id, topic_name, subject_id
+            FROM topic_hierarchy 
+            WHERE subject_id IN (${subjectIds.map(() => '?').join(',')})
+        `;
+
+        db.query(topicsQuery, subjectIds, (err, allTopics) => {
+            if (err) {
+                console.error('Get topics for hierarchy error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch topic hierarchy',
+                    error: err.message
                 });
             }
-        });
 
-        res.json({
-            success: true,
-            data: Object.values(groupedSchedule)
+            // Build hierarchy path function
+            const buildHierarchyPath = (topicId, topics, path = []) => {
+                const topic = topics.find(t => t.id === topicId);
+                if (!topic) return path;
+                
+                path.unshift(topic.topic_name);
+                
+                if (topic.parent_id) {
+                    return buildHierarchyPath(topic.parent_id, topics, path);
+                }
+                
+                return path;
+            };
+
+            // Group activities by schedule with hierarchy
+            const groupedSchedule = {};
+            schedule.forEach(row => {
+                const scheduleKey = row.id;
+                if (!groupedSchedule[scheduleKey]) {
+                    groupedSchedule[scheduleKey] = {
+                        id: row.id,
+                        date: row.date,
+                        period_number: row.period_number,
+                        start_time: row.start_time,
+                        end_time: row.end_time,
+                        subject_name: row.subject_name,
+                        venue_name: row.venue_name,
+                        grade_name: row.grade_name,
+                        section_name: row.section_name,
+                        is_eca: row.is_eca,
+                        activities: []
+                    };
+                }
+
+                if (row.activity_id) {
+                    let hierarchyPath = null;
+                    if (row.topic_name && row.parent_id) {
+                        const fullPath = buildHierarchyPath(row.parent_id, allTopics);
+                        hierarchyPath = fullPath.length > 0 ? fullPath.join(' > ') : null;
+                    }
+
+                    groupedSchedule[scheduleKey].activities.push({
+                        id: row.activity_id,
+                        activity_name: row.activity_name,
+                        activity_type: row.activity_type,
+                        batch_ids: JSON.parse(row.batch_ids || '[]'),
+                        topic_name: row.topic_name,
+                        topic_hierarchy_path: hierarchyPath,
+                        material_name: row.material_name,
+                        activity_start_time: row.activity_start_time,
+                        duration: row.duration,
+                        max_participants: row.max_participants,
+                        activity_instructions: row.activity_instructions,
+                        is_assessment: row.is_assessment,
+                        assessment_weightage: row.assessment_weightage,
+                        is_completed: row.is_completed,
+                        completion_notes: row.completion_notes,
+                        mentor_roll: row.mentor_roll,
+                        mentor_phone: row.mentor_phone
+                    });
+                }
+            });
+
+            res.json({
+                success: true,
+                data: Object.values(groupedSchedule)
+            });
         });
     });
 };
@@ -722,19 +800,8 @@ exports.getPeriodActivities = (req, res) => {
                 SELECT 
                     pa.*,
                     th.topic_name,
-                    CASE 
-                        WHEN th.parent_id IS NOT NULL THEN
-                            (SELECT GROUP_CONCAT(
-                                ancestor.topic_name 
-                                ORDER BY ancestor.level ASC 
-                                SEPARATOR ' > '
-                            )
-                            FROM topic_hierarchy ancestor 
-                            WHERE ancestor.level < th.level 
-                            AND th.topic_code LIKE CONCAT(ancestor.topic_code, '%')
-                            AND ancestor.subject_id = th.subject_id)
-                        ELSE NULL 
-                    END as topic_hierarchy_path,
+                    th.parent_id,
+                    th.subject_id,
                     tm.activity_name as material_name,
                     m.roll as mentor_roll,
                     u.name as mentor_name
@@ -747,7 +814,7 @@ exports.getPeriodActivities = (req, res) => {
                 ORDER BY pa.start_time
             `;
 
-        db.query(query, [periodId], (err, result) => {
+        db.query(query, [periodId], (err, activities) => {
             if (err) {
                 console.error('Get period activities error:', err);
                 return res.status(500).json({
@@ -757,9 +824,66 @@ exports.getPeriodActivities = (req, res) => {
                 });
             }
 
-            res.json({
-                success: true,
-                data: result
+            // Get all topics for hierarchy path building
+            const topicIds = activities.map(activity => activity.topic_id).filter(id => id);
+            const subjectIds = [...new Set(activities.map(activity => activity.subject_id).filter(id => id))];
+
+            if (topicIds.length === 0) {
+                return res.json({
+                    success: true,
+                    data: activities
+                });
+            }
+
+            // Get all topics for the subjects involved
+            const topicsQuery = `
+                SELECT id, parent_id, topic_name, subject_id
+                FROM topic_hierarchy 
+                WHERE subject_id IN (${subjectIds.map(() => '?').join(',')})
+            `;
+
+            db.query(topicsQuery, subjectIds, (err, allTopics) => {
+                if (err) {
+                    console.error('Get topics for hierarchy error:', err);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to fetch topic hierarchy',
+                        error: err.message
+                    });
+                }
+
+                // Build hierarchy path function
+                const buildHierarchyPath = (topicId, topics, path = []) => {
+                    const topic = topics.find(t => t.id === topicId);
+                    if (!topic) return path;
+                    
+                    path.unshift(topic.topic_name);
+                    
+                    if (topic.parent_id) {
+                        return buildHierarchyPath(topic.parent_id, topics, path);
+                    }
+                    
+                    return path;
+                };
+
+                // Add hierarchy path to activities
+                const activitiesWithHierarchy = activities.map(activity => {
+                    if (activity.topic_id) {
+                        const hierarchyPath = buildHierarchyPath(activity.topic_id, allTopics);
+                        const parentPath = hierarchyPath.slice(0, -1); // Remove the current topic name
+                        
+                        return {
+                            ...activity,
+                            topic_hierarchy_path: parentPath.length > 0 ? parentPath.join(' > ') : null
+                        };
+                    }
+                    return activity;
+                });
+
+                res.json({
+                    success: true,
+                    data: activitiesWithHierarchy
+                });
             });
         });
     } catch (error) {
@@ -779,7 +903,8 @@ exports.createPeriodActivity = (req, res) => {
             period_id,
             date,
             activity_type,
-            duration_minutes,
+            start_time,
+            end_time,
             batch_number,
             mentor_id,
             topic_id,
@@ -790,7 +915,7 @@ exports.createPeriodActivity = (req, res) => {
 
         // Get the daily schedule info first
         db.query(
-            'SELECT start_time, subject_id FROM daily_schedule_new WHERE id = ?',
+            'SELECT start_time as period_start, end_time as period_end, subject_id FROM daily_schedule_new WHERE id = ?',
             [period_id],
             (err, scheduleInfo) => {
                 if (err) {
@@ -809,19 +934,24 @@ exports.createPeriodActivity = (req, res) => {
                     });
                 }
 
-                const { start_time, subject_id } = scheduleInfo[0];
+                const { period_start, period_end, subject_id } = scheduleInfo[0];
+
+                // Calculate duration in minutes
+                const startDateTime = new Date(`1970-01-01T${start_time}:00`);
+                const endDateTime = new Date(`1970-01-01T${end_time}:00`);
+                const duration = Math.round((endDateTime - startDateTime) / (1000 * 60));
 
                 // Create the period activity
                 const insertQuery = `
                     INSERT INTO period_activities (
                         daily_schedule_id, activity_date, activity_name, activity_type, 
-                        batch_number, topic_id, start_time, duration, assigned_mentor_id,
+                        batch_number, topic_id, start_time, end_time, duration, assigned_mentor_id,
                         is_assessment, assessment_type, total_marks, activity_instructions
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
 
                 const activityName = `${activity_type} - Batch ${batch_number}`;
-                const activityInstructions = `Activity for batch ${batch_number}`;
+                const activityInstructions = `${activity_type} activity for batch ${batch_number} from ${start_time} to ${end_time}`;
 
                 db.query(insertQuery, [
                     period_id,
@@ -831,7 +961,8 @@ exports.createPeriodActivity = (req, res) => {
                     batch_number,
                     topic_id,
                     start_time,
-                    duration_minutes,
+                    end_time,
+                    duration,
                     mentor_id,
                     has_assessment ? 1 : 0,
                     assessment_type,
@@ -850,7 +981,13 @@ exports.createPeriodActivity = (req, res) => {
                     res.json({
                         success: true,
                         message: 'Activity created successfully',
-                        data: { activityId: activityResult.insertId }
+                        data: { 
+                            activityId: activityResult.insertId,
+                            activityName,
+                            start_time,
+                            end_time,
+                            duration
+                        }
                     });
                 });
             }
@@ -1112,6 +1249,128 @@ exports.createPeriodActivitySplit = (req, res) => {
     }
 };
 
+// Create multiple time-based period activities
+exports.createTimeBasedActivitiesBatch = (req, res) => {
+    try {
+        const { period_id, date, activities } = req.body;
+        
+        // activities array should contain:
+        // [{ batch_number, activity_type, start_time, end_time, topic_id, mentor_id, has_assessment, assessment_type, total_marks }]
+
+        if (!activities || !Array.isArray(activities) || activities.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Activities array is required'
+            });
+        }
+
+        // Validate time overlaps within the same batch
+        const batchActivities = {};
+        for (const activity of activities) {
+            const { batch_number, start_time, end_time } = activity;
+            if (!batchActivities[batch_number]) {
+                batchActivities[batch_number] = [];
+            }
+            
+            // Check for overlaps within the same batch
+            for (const existing of batchActivities[batch_number]) {
+                if ((start_time < existing.end_time && end_time > existing.start_time)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Time overlap detected for batch ${batch_number}: ${start_time}-${end_time} overlaps with ${existing.start_time}-${existing.end_time}`
+                    });
+                }
+            }
+            
+            batchActivities[batch_number].push({ start_time, end_time });
+        }
+
+        // Start transaction
+        db.query('START TRANSACTION', (err) => {
+            if (err) {
+                console.error('Transaction start error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to start transaction',
+                    error: err.message
+                });
+            }
+
+            let completed = 0;
+            const insertedActivities = [];
+
+            activities.forEach((activity, index) => {
+                const {
+                    batch_number, activity_type, start_time, end_time, topic_id,
+                    mentor_id, has_assessment, assessment_type, total_marks, activity_instructions
+                } = activity;
+
+                // Calculate duration in minutes
+                const startDate = new Date(`1970-01-01 ${start_time}`);
+                const endDate = new Date(`1970-01-01 ${end_time}`);
+                const duration_minutes = (endDate - startDate) / (1000 * 60);
+
+                const insertQuery = `
+                    INSERT INTO period_activities 
+                    (daily_schedule_id, activity_date, activity_name, activity_type, duration, 
+                     batch_number, assigned_mentor_id, topic_id, is_assessment, assessment_type, 
+                     total_marks, start_time, end_time, activity_instructions, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                `;
+
+                db.query(insertQuery, [
+                    period_id, date, activity_type || 'Academic Activity', activity_type, 
+                    duration_minutes, batch_number, mentor_id, topic_id, has_assessment, 
+                    assessment_type, total_marks, start_time, end_time, activity_instructions
+                ], (err, result) => {
+                    if (err) {
+                        console.error('Insert activity error:', err);
+                        return db.query('ROLLBACK', () => {
+                            res.status(500).json({
+                                success: false,
+                                message: 'Failed to create activity',
+                                error: err.message
+                            });
+                        });
+                    }
+
+                    insertedActivities.push({
+                        id: result.insertId,
+                        ...activity
+                    });
+
+                    completed++;
+                    if (completed === activities.length) {
+                        db.query('COMMIT', (err) => {
+                            if (err) {
+                                console.error('Commit error:', err);
+                                return res.status(500).json({
+                                    success: false,
+                                    message: 'Failed to commit transaction',
+                                    error: err.message
+                                });
+                            }
+
+                            res.json({
+                                success: true,
+                                message: `${activities.length} activities created successfully`,
+                                data: { activities: insertedActivities }
+                            });
+                        });
+                    }
+                });
+            });
+        });
+    } catch (error) {
+        console.error('Create time-based activities error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create activities',
+            error: error.message
+        });
+    }
+};
+
 // Update period activity
 exports.updatePeriodActivity = (req, res) => {
     try {
@@ -1240,4 +1499,48 @@ exports.getBatchActivities = (req, res) => {
             data: results
         });
     });
+};
+
+// Get section batches for schedule management
+exports.getSectionBatches = (req, res) => {
+    try {
+        const { sectionId, subjectId } = req.params;
+
+        const query = `
+            SELECT 
+                sb.id,
+                sb.batch_name,
+                sb.batch_level,
+                sb.max_students,
+                COUNT(sba.id) as current_students
+            FROM section_batches sb
+            LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id AND sba.is_current = 1
+            WHERE sb.section_id = ? AND sb.subject_id = ? AND sb.is_active = 1
+            GROUP BY sb.id, sb.batch_name, sb.batch_level, sb.max_students
+            ORDER BY sb.batch_level
+        `;
+
+        db.query(query, [sectionId, subjectId], (error, results) => {
+            if (error) {
+                console.error('Get section batches error:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch section batches',
+                    error: error.message
+                });
+            }
+
+            res.json({
+                success: true,
+                data: results
+            });
+        });
+    } catch (error) {
+        console.error('Get section batches error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch section batches',
+            error: error.message
+        });
+    }
 };

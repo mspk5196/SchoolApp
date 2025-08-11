@@ -289,9 +289,11 @@ router.get('/coordinator/academic-schedule/period-activities/:periodId/:date', S
 router.get('/coordinator/academic-schedule/period-activities-alt/:periodId/:date', ScheduleManagementController.getPeriodActivitiesAlt);
 router.post('/coordinator/academic-schedule/create-activity', ScheduleManagementController.createPeriodActivity);
 router.post('/coordinator/academic-schedule/create-activity-split', ScheduleManagementController.createPeriodActivitySplit);
+router.post('/coordinator/academic-schedule/create-time-based-activities', ScheduleManagementController.createTimeBasedActivitiesBatch);
 router.put('/coordinator/academic-schedule/activity/:activityId', ScheduleManagementController.updatePeriodActivity);
 router.delete('/coordinator/academic-schedule/activity/:activityId', ScheduleManagementController.deletePeriodActivity);
 router.get('/coordinator/academic-schedule/batch-activities/:batchId/:date', ScheduleManagementController.getBatchActivities);
+router.get('/coordinator/academic-schedule/batches/:sectionId/:subjectId', ScheduleManagementController.getSectionBatches);
 
 // Manual schedule generation endpoints for testing
 router.post('/coordinator/generate-daily-schedules-manual', coordinatorController.generateDailySchedulesManual);
