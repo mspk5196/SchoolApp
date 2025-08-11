@@ -1,34 +1,53 @@
 const db = require('../../config/db');
 
 // Create daily schedule with multiple activities
-exports.createDailySchedule = async (req, res) => {
-    try {
-        const {
-            date, gradeId, sectionId, subjectId, periodNumber,
-            startTime, endTime, venueId, isEca, activities
-        } = req.body;
-        const coordinatorId = req.user.id;
+exports.createDailySchedule = (req, res) => {
+    const {
+        date, gradeId, sectionId, subjectId, periodNumber,
+        startTime, endTime, venueId, isEca, activities
+    } = req.body;
+    const coordinatorId = req.user.id;
 
-        // Start transaction
-        await db.query('START TRANSACTION');
+    // Start transaction
+    db.query('START TRANSACTION', (err) => {
+        if (err) {
+            console.error('Transaction start error:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to create daily schedule',
+                error: err.message
+            });
+        }
 
-        try {
-            // Create main schedule entry
-            const scheduleQuery = `
-                    INSERT INTO daily_schedule_new 
-                    (date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id, is_eca)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `;
+        // Create main schedule entry
+        const scheduleQuery = `
+                INSERT INTO daily_schedule_new 
+                (date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id, is_eca)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
 
-            const [scheduleResult] = await db.query(scheduleQuery, [
-                date, gradeId, sectionId, subjectId, periodNumber, startTime, endTime, venueId, coordinatorId, isEca
-            ]);
+        db.query(scheduleQuery, [
+            date, gradeId, sectionId, subjectId, periodNumber, startTime, endTime, venueId, coordinatorId, isEca
+        ], (scheduleError, scheduleResult) => {
+            if (scheduleError) {
+                return db.query('ROLLBACK', () => {
+                    console.error('Create daily schedule error:', scheduleError);
+                    res.status(500).json({
+                        success: false,
+                        message: 'Failed to create daily schedule',
+                        error: scheduleError.message
+                    });
+                });
+            }
 
             const scheduleId = scheduleResult.insertId;
 
             // Add activities to the period
             if (activities && activities.length > 0) {
-                for (const activity of activities) {
+                let completedActivities = 0;
+                const totalActivities = activities.length;
+
+                activities.forEach((activity, index) => {
                     const activityQuery = `
                             INSERT INTO period_activities 
                             (daily_schedule_id, activity_name, activity_type, batch_ids, topic_id, material_id,
@@ -36,66 +55,105 @@ exports.createDailySchedule = async (req, res) => {
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         `;
 
-                    await db.query(activityQuery, [
+                    db.query(activityQuery, [
                         scheduleId, activity.activityName, activity.activityType,
                         JSON.stringify(activity.batchIds), activity.topicId, activity.materialId,
                         activity.startTime, activity.duration, activity.maxParticipants,
                         activity.assignedMentorId, activity.activityInstructions,
                         activity.isAssessment, activity.assessmentWeightage
-                    ]);
-                }
+                    ], (activityError) => {
+                        if (activityError) {
+                            return db.query('ROLLBACK', () => {
+                                console.error('Create activity error:', activityError);
+                                res.status(500).json({
+                                    success: false,
+                                    message: 'Failed to create daily schedule',
+                                    error: activityError.message
+                                });
+                            });
+                        }
+
+                        completedActivities++;
+                        if (completedActivities === totalActivities) {
+                            // All activities created successfully
+                            db.query('COMMIT', (commitError) => {
+                                if (commitError) {
+                                    console.error('Commit error:', commitError);
+                                    return res.status(500).json({
+                                        success: false,
+                                        message: 'Failed to create daily schedule',
+                                        error: commitError.message
+                                    });
+                                }
+
+                                res.json({
+                                    success: true,
+                                    message: 'Daily schedule created successfully',
+                                    data: { scheduleId }
+                                });
+                            });
+                        }
+                    });
+                });
+            } else {
+                // No activities to add, commit the transaction
+                db.query('COMMIT', (commitError) => {
+                    if (commitError) {
+                        console.error('Commit error:', commitError);
+                        return res.status(500).json({
+                            success: false,
+                            message: 'Failed to create daily schedule',
+                            error: commitError.message
+                        });
+                    }
+
+                    res.json({
+                        success: true,
+                        message: 'Daily schedule created successfully',
+                        data: { scheduleId }
+                    });
+                });
             }
-
-            await db.query('COMMIT');
-
-            res.json({
-                success: true,
-                message: 'Daily schedule created successfully',
-                data: { scheduleId }
-            });
-        } catch (error) {
-            await db.query('ROLLBACK');
-            throw error;
-        }
-    } catch (error) {
-        console.error('Create daily schedule error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to create daily schedule',
-            error: error.message
         });
-    }
+    });
 };
 
 // Get daily schedule with activities
-exports.getDailySchedule = async (req, res) => {
-    try {
-        const { date, sectionId } = req.params;
+exports.getDailySchedule = (req, res) => {
+    const { date, sectionId } = req.params;
 
-        const query = `
-                SELECT 
-                    ds.*, 
-                    g.grade_name, sec.section_name, sub.subject_name, v.name as venue_name,
-                    pa.id as activity_id, pa.activity_name, pa.activity_type, pa.batch_ids,
-                    pa.start_time as activity_start_time, pa.duration, pa.max_participants,
-                    pa.activity_instructions, pa.is_assessment, pa.assessment_weightage,
-                    pa.is_completed, pa.completion_notes,
-                    th.topic_name, tm.activity_name as material_name,
-                    m.roll as mentor_roll, m.phone as mentor_phone
-                FROM daily_schedule_new ds
-                JOIN grades g ON ds.grade_id = g.id
-                JOIN sections sec ON ds.section_id = sec.id
-                JOIN subjects sub ON ds.subject_id = sub.id
-                JOIN venues v ON ds.venue_id = v.id
-                LEFT JOIN period_activities pa ON ds.id = pa.daily_schedule_id
-                LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
-                LEFT JOIN topic_materials tm ON pa.material_id = tm.id
-                LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
-                WHERE ds.date = ? AND ds.section_id = ?
-                ORDER BY ds.period_number, pa.start_time
-            `;
+    const query = `
+            SELECT 
+                ds.*, 
+                g.grade_name, sec.section_name, sub.subject_name, v.name as venue_name,
+                pa.id as activity_id, pa.activity_name, pa.activity_type, pa.batch_ids,
+                pa.start_time as activity_start_time, pa.duration, pa.max_participants,
+                pa.activity_instructions, pa.is_assessment, pa.assessment_weightage,
+                pa.is_completed, pa.completion_notes,
+                th.topic_name, tm.activity_name as material_name,
+                m.roll as mentor_roll, m.phone as mentor_phone
+            FROM daily_schedule_new ds
+            JOIN grades g ON ds.grade_id = g.id
+            JOIN sections sec ON ds.section_id = sec.id
+            JOIN subjects sub ON ds.subject_id = sub.id
+            JOIN venues v ON ds.venue_id = v.id
+            LEFT JOIN period_activities pa ON ds.id = pa.daily_schedule_id
+            LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
+            LEFT JOIN topic_materials tm ON pa.material_id = tm.id
+            LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
+            WHERE ds.date = ? AND ds.section_id = ?
+            ORDER BY ds.period_number, pa.start_time
+        `;
 
-        const [schedule] = await db.query(query, [date, sectionId]);
+    db.query(query, [date, sectionId], (error, schedule) => {
+        if (error) {
+            console.error('Get daily schedule error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to fetch daily schedule',
+                error: error.message
+            });
+        }
 
         // Group activities by schedule
         const groupedSchedule = {};
@@ -143,56 +201,49 @@ exports.getDailySchedule = async (req, res) => {
             success: true,
             data: Object.values(groupedSchedule)
         });
-    } catch (error) {
-        console.error('Get daily schedule error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch daily schedule',
-            error: error.message
-        });
-    }
+    });
 };
 
 // Get weekly schedule template
-exports.getWeeklySchedule = async (req, res) => {
-    try {
-        const { sectionId, weekStart } = req.params;
+exports.getWeeklySchedule = (req, res) => {
+    const { sectionId, weekStart } = req.params;
 
-        const query = `
-                SELECT 
-                    ds.date, 
-                    DAYNAME(ds.date) as day_name,
-                    ds.period_number,
-                    ds.start_time,
-                    ds.end_time,
-                    sub.subject_name,
-                    v.name as venue_name,
-                    COUNT(pa.id) as activity_count,
-                    ds.is_eca
-                FROM daily_schedule_new ds
-                JOIN subjects sub ON ds.subject_id = sub.id
-                JOIN venues v ON ds.venue_id = v.id
-                LEFT JOIN period_activities pa ON ds.id = pa.daily_schedule_id
-                WHERE ds.section_id = ? 
-                AND ds.date BETWEEN ? AND DATE_ADD(?, INTERVAL 6 DAY)
-                GROUP BY ds.id, ds.date, ds.period_number, ds.start_time, ds.end_time, sub.subject_name, v.name, ds.is_eca
-                ORDER BY ds.date, ds.period_number
-            `;
+    const query = `
+            SELECT 
+                ds.date, 
+                DAYNAME(ds.date) as day_name,
+                ds.period_number,
+                ds.start_time,
+                ds.end_time,
+                sub.subject_name,
+                v.name as venue_name,
+                COUNT(pa.id) as activity_count,
+                ds.is_eca
+            FROM daily_schedule_new ds
+            JOIN subjects sub ON ds.subject_id = sub.id
+            JOIN venues v ON ds.venue_id = v.id
+            LEFT JOIN period_activities pa ON ds.id = pa.daily_schedule_id
+            WHERE ds.section_id = ? 
+            AND ds.date BETWEEN ? AND DATE_ADD(?, INTERVAL 6 DAY)
+            GROUP BY ds.id, ds.date, ds.period_number, ds.start_time, ds.end_time, sub.subject_name, v.name, ds.is_eca
+            ORDER BY ds.date, ds.period_number
+        `;
 
-        const [schedule] = await db.query(query, [sectionId, weekStart, weekStart]);
+    db.query(query, [sectionId, weekStart, weekStart], (error, schedule) => {
+        if (error) {
+            console.error('Get weekly schedule error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to fetch weekly schedule',
+                error: error.message
+            });
+        }
 
         res.json({
             success: true,
             data: schedule
         });
-    } catch (error) {
-        console.error('Get weekly schedule error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch weekly schedule',
-            error: error.message
-        });
-    }
+    });
 };
 
 // Update activity in schedule
@@ -516,13 +567,14 @@ exports.getWeeklyTemplate = async (req, res) => {
 };
 
 // Get monthly schedule based on weekly template
-exports.getMonthlySchedule = async (req, res) => {
+exports.getMonthlySchedule = (req, res) => {
     try {
         const { gradeId, month, year } = req.params;
 
         // Generate dates for the month and get daily schedules
         const monthlySchedule = [];
         const daysInMonth = new Date(year, month, 0).getDate();
+        let processedDays = 0;
 
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(year, month - 1, day);
@@ -553,31 +605,63 @@ exports.getMonthlySchedule = async (req, res) => {
                         ORDER BY dsn.period_number
                     `;
 
-                const [daySchedule] = await db.query(dailyQuery, [dateString, gradeId]);
+                db.query(dailyQuery, [dateString, gradeId], (err, daySchedule) => {
+                    if (err) {
+                        console.error('Daily schedule query error:', err);
+                        return res.status(500).json({
+                            success: false,
+                            message: 'Failed to fetch daily schedule',
+                            error: err.message
+                        });
+                    }
 
-                if (daySchedule.length > 0) {
-                    monthlySchedule.push({
-                        date: dateString,
-                        day_name: dayName,
-                        periods: daySchedule.map(period => ({
-                            id: period.id,
-                            period_number: period.period_number,
-                            timeStart: period.start_time,
-                            timeEnd: period.end_time,
-                            subject_name: period.subject_name,
-                            venue_name: period.venue_name,
-                            section_name: period.section_name,
-                            activity_count: period.activity_count
-                        }))
+                    if (daySchedule.length > 0) {
+                        monthlySchedule.push({
+                            date: dateString,
+                            day_name: dayName,
+                            periods: daySchedule.map(period => ({
+                                id: period.id,
+                                period_number: period.period_number,
+                                timeStart: period.start_time,
+                                timeEnd: period.end_time,
+                                subject_name: period.subject_name,
+                                venue_name: period.venue_name,
+                                section_name: period.section_name,
+                                activity_count: period.activity_count
+                            }))
+                        });
+                    }
+
+                    processedDays++;
+                    if (processedDays === daysInMonth - getSundayCount(year, month)) {
+                        res.json({
+                            success: true,
+                            data: monthlySchedule.sort((a, b) => new Date(a.date) - new Date(b.date))
+                        });
+                    }
+                });
+            } else {
+                processedDays++;
+                if (processedDays === daysInMonth - getSundayCount(year, month)) {
+                    res.json({
+                        success: true,
+                        data: monthlySchedule.sort((a, b) => new Date(a.date) - new Date(b.date))
                     });
                 }
             }
         }
 
-        res.json({
-            success: true,
-            data: monthlySchedule
-        });
+        // Helper function to count Sundays in a month
+        function getSundayCount(year, month) {
+            let sundays = 0;
+            const daysInMonth = new Date(year, month, 0).getDate();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month - 1, day);
+                if (date.getDay() === 0) sundays++;
+            }
+            return sundays;
+        }
+
     } catch (error) {
         console.error('Get monthly schedule error:', error);
         res.status(500).json({
@@ -586,10 +670,10 @@ exports.getMonthlySchedule = async (req, res) => {
             error: error.message
         });
     }
-}
+};
 
 // Get period activities for a specific period and date
-exports.getPeriodActivities = async (req, res) => {
+exports.getPeriodActivities = (req, res) => {
     try {
         const { period_id, date } = req.query;
 
@@ -599,25 +683,30 @@ exports.getPeriodActivities = async (req, res) => {
                     th.topic_name,
                     tm.activity_name as material_name,
                     m.roll as mentor_roll,
-                    u.name as mentor_name,
-                    aba.batch_number,
-                    aba.activity_status as batch_status,
-                    aba.max_students
+                    u.name as mentor_name
                 FROM period_activities pa
                 LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
                 LEFT JOIN topic_materials tm ON pa.material_id = tm.id
                 LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
                 LEFT JOIN users u ON m.phone = u.phone
-                LEFT JOIN activity_batch_assignments aba ON pa.id = aba.period_activity_id
                 WHERE pa.daily_schedule_id = ?
-                ORDER BY pa.start_time, aba.batch_number
+                ORDER BY pa.start_time
             `;
 
-        const [activities] = await db.query(query, [period_id]);
+        db.query(query, [period_id], (err, activities) => {
+            if (err) {
+                console.error('Get period activities error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch period activities',
+                    error: err.message
+                });
+            }
 
-        res.json({
-            success: true,
-            data: activities
+            res.json({
+                success: true,
+                data: activities || []
+            });
         });
     } catch (error) {
         console.error('Get period activities error:', error);
@@ -630,7 +719,7 @@ exports.getPeriodActivities = async (req, res) => {
 };
 
 // Create new period activity 
-exports.createPeriodActivity = async (req, res) => {
+exports.createPeriodActivity = (req, res) => {
     try {
         const {
             period_id,
@@ -645,74 +734,73 @@ exports.createPeriodActivity = async (req, res) => {
             total_marks
         } = req.body;
 
-        // Start transaction
-        await db.query('START TRANSACTION');
+        // Get the daily schedule info first
+        db.query(
+            'SELECT start_time, subject_id FROM daily_schedule_new WHERE id = ?',
+            [period_id],
+            (err, scheduleInfo) => {
+                if (err) {
+                    console.error('Schedule info query error:', err);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to fetch schedule info',
+                        error: err.message
+                    });
+                }
 
-        try {
-            // Get the daily schedule info
-            const [scheduleInfo] = await db.query(
-                'SELECT start_time, subject_id FROM daily_schedule WHERE id = ?',
-                [period_id]
-            );
+                if (!scheduleInfo.length) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Period not found'
+                    });
+                }
 
-            if (!scheduleInfo.length) {
-                throw new Error('Period not found');
-            }
+                const { start_time, subject_id } = scheduleInfo[0];
 
-            const { start_time, subject_id } = scheduleInfo[0];
-
-            // Calculate activity start time (you can modify this logic)
-            const activityStartTime = start_time; // or calculate based on existing activities
-
-            // Create the period activity using your existing table structure
-            const [activityResult] = await db.query(`
+                // Create the period activity
+                const insertQuery = `
                     INSERT INTO period_activities (
-                        daily_schedule_id, activity_name, activity_type, batch_ids,
-                        topic_id, material_id, start_time, duration, assigned_mentor_id,
-                        is_assessment, assessment_weightage, activity_instructions
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `, [
-                period_id,
-                `${activity_type} - Batch ${batch_number}`,
-                activity_type,
-                JSON.stringify([batch_number]),
-                topic_id,
-                null, // material_id 
-                activityStartTime,
-                duration_minutes,
-                mentor_id,
-                has_assessment,
-                total_marks,
-                `Activity for batch ${batch_number}`
-            ]);
+                        daily_schedule_id, activity_date, activity_name, activity_type, 
+                        batch_number, topic_id, start_time, duration, assigned_mentor_id,
+                        is_assessment, assessment_type, total_marks, activity_instructions
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `;
 
-            const activityId = activityResult.insertId;
+                const activityName = `${activity_type} - Batch ${batch_number}`;
+                const activityInstructions = `Activity for batch ${batch_number}`;
 
-            // Create batch assignment record if using enhanced tables
-            if (has_assessment) {
-                // Create assessment tracking record
-                await db.query(`
-                        INSERT INTO period_assessment_tracking (
-                            period_activity_id, assessment_date, subject_id, topic_id,
-                            assessment_type, total_marks, batch_numbers, assigned_mentor_id
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    `, [
-                    activityId, date, subject_id, topic_id,
-                    assessment_type, total_marks, JSON.stringify([batch_number]), mentor_id
-                ]);
+                db.query(insertQuery, [
+                    period_id,
+                    date,
+                    activityName,
+                    activity_type,
+                    batch_number,
+                    topic_id,
+                    start_time,
+                    duration_minutes,
+                    mentor_id,
+                    has_assessment ? 1 : 0,
+                    assessment_type,
+                    total_marks,
+                    activityInstructions
+                ], (err, activityResult) => {
+                    if (err) {
+                        console.error('Create activity error:', err);
+                        return res.status(500).json({
+                            success: false,
+                            message: 'Failed to create activity',
+                            error: err.message
+                        });
+                    }
+
+                    res.json({
+                        success: true,
+                        message: 'Activity created successfully',
+                        data: { activityId: activityResult.insertId }
+                    });
+                });
             }
-
-            await db.query('COMMIT');
-
-            res.json({
-                success: true,
-                message: 'Activity created successfully',
-                data: { activityId }
-            });
-        } catch (error) {
-            await db.query('ROLLBACK');
-            throw error;
-        }
+        );
     } catch (error) {
         console.error('Create period activity error:', error);
         res.status(500).json({
@@ -724,7 +812,7 @@ exports.createPeriodActivity = async (req, res) => {
 };
 
 // Get monthly schedule alternative
-exports.getMonthlyScheduleAlt = async (req, res) => {
+exports.getMonthlyScheduleAlt = (req, res) => {
     try {
         const { gradeId, month, year } = req.params;
 
@@ -738,49 +826,58 @@ exports.getMonthlyScheduleAlt = async (req, res) => {
                 ORDER BY dsn.date, dsn.period_number
             `;
 
-        const [results] = await db.query(query, [month, year, gradeId]);
-
-        const monthlySchedule = [];
-        for (const row of results) {
-            const date = new Date(row.date);
-            const dayName = date.toLocaleString('default', { weekday: 'long' });
-            const daySchedule = monthlySchedule.find(item => item.date === date.toISOString().split('T')[0]);
-            if (daySchedule) {
-                daySchedule.periods.push({
-                    id: row.id,
-                    period_number: row.period_number,
-                    subject_id: row.subject_id,
-                    subject_name: row.subject_name,
-                    section_id: row.section_id,
-                    section_name: row.section_name,
-                    venue_id: row.venue_id,
-                    venue_name: row.venue_name,
-                    timeStart: row.start_time,
-                    timeEnd: row.end_time
-                });
-            } else {
-                monthlySchedule.push({
-                    date: date.toISOString().split('T')[0],
-                    dayName: dayName,
-                    periods: daySchedule.map(period => ({
-                        id: period.id,
-                        period_number: period.period_number,
-                        subject_id: period.subject_id,
-                        subject_name: period.subject_name,
-                        section_id: period.section_id,
-                        section_name: period.section_name,
-                        venue_id: period.venue_id,
-                        venue_name: period.venue_name,
-                        timeStart: period.start_time,
-                        timeEnd: period.end_time
-                    }))
+        db.query(query, [month, year, gradeId], (err, results) => {
+            if (err) {
+                console.error('Get monthly schedule error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch monthly schedule',
+                    error: err.message
                 });
             }
-        }
 
-        res.json({
-            success: true,
-            data: monthlySchedule
+            const monthlySchedule = [];
+            for (const row of results) {
+                const date = new Date(row.date);
+                const dayName = date.toLocaleString('default', { weekday: 'long' });
+                const daySchedule = monthlySchedule.find(item => item.date === date.toISOString().split('T')[0]);
+                if (daySchedule) {
+                    daySchedule.periods.push({
+                        id: row.id,
+                        period_number: row.period_number,
+                        subject_id: row.subject_id,
+                        subject_name: row.subject_name,
+                        section_id: row.section_id,
+                        section_name: row.section_name,
+                        venue_id: row.venue_id,
+                        venue_name: row.venue_name,
+                        timeStart: row.start_time,
+                        timeEnd: row.end_time
+                    });
+                } else {
+                    monthlySchedule.push({
+                        date: date.toISOString().split('T')[0],
+                        dayName: dayName,
+                        periods: [{
+                            id: row.id,
+                            period_number: row.period_number,
+                            subject_id: row.subject_id,
+                            subject_name: row.subject_name,
+                            section_id: row.section_id,
+                            section_name: row.section_name,
+                            venue_id: row.venue_id,
+                            venue_name: row.venue_name,
+                            timeStart: row.start_time,
+                            timeEnd: row.end_time
+                        }]
+                    });
+                }
+            }
+
+            res.json({
+                success: true,
+                data: monthlySchedule
+            });
         });
     } catch (error) {
         console.error('Get monthly schedule error:', error);
@@ -793,7 +890,7 @@ exports.getMonthlyScheduleAlt = async (req, res) => {
 };
 
 // Get period activities for a specific date and period (alternative implementation)
-exports.getPeriodActivitiesAlt = async (req, res) => {
+exports.getPeriodActivitiesAlt = (req, res) => {
     try {
         const { periodId, date } = req.params;
 
@@ -812,28 +909,37 @@ exports.getPeriodActivitiesAlt = async (req, res) => {
                 ORDER BY pa.start_time
             `;
 
-        const [results] = await db.query(query, [periodId, date]);
+        db.query(query, [periodId, date], (err, results) => {
+            if (err) {
+                console.error('Get period activities error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch period activities',
+                    error: err.message
+                });
+            }
 
-        res.json({
-            success: true,
-            data: results.map(row => ({
-                id: row.id,
-                activity_type: row.activity_type,
-                duration_minutes: row.duration,
-                batch_number: row.batch_number,
-                mentor_id: row.assigned_mentor_id,
-                mentor_name: row.mentor_name,
-                mentor_roll: row.mentor_roll,
-                topic_id: row.topic_id,
-                topic_name: row.topic_name,
-                material_id: row.material_id,
-                material_title: row.material_title,
-                has_assessment: row.is_assessment,
-                assessment_type: row.assessment_type,
-                total_marks: row.total_marks,
-                start_time: row.start_time,
-                activity_instructions: row.activity_instructions
-            }))
+            res.json({
+                success: true,
+                data: (results || []).map(row => ({
+                    id: row.id,
+                    activity_type: row.activity_type,
+                    duration_minutes: row.duration,
+                    batch_number: row.batch_number,
+                    mentor_id: row.assigned_mentor_id,
+                    mentor_name: row.mentor_name,
+                    mentor_roll: row.mentor_roll,
+                    topic_id: row.topic_id,
+                    topic_name: row.topic_name,
+                    material_id: row.material_id,
+                    material_title: row.material_title,
+                    has_assessment: row.is_assessment,
+                    assessment_type: row.assessment_type,
+                    total_marks: row.total_marks,
+                    start_time: row.start_time,
+                    activity_instructions: row.activity_instructions
+                }))
+            });
         });
     } catch (error) {
         console.error('Get period activities error:', error);
@@ -846,7 +952,7 @@ exports.getPeriodActivitiesAlt = async (req, res) => {
 };
 
 // Create period activity (split period into activities)
-exports.createPeriodActivitySplit = async (req, res) => {
+exports.createPeriodActivitySplit = (req, res) => {
     try {
         const {
             period_id, date, activity_type, duration_minutes, batch_number,
@@ -860,45 +966,74 @@ exports.createPeriodActivitySplit = async (req, res) => {
                 WHERE daily_schedule_id = ? AND activity_date = ?
             `;
 
-        const [existing] = await db.query(existingQuery, [period_id, date]);
-        const startOffset = existing[0]?.total_duration || 0;
+        db.query(existingQuery, [period_id, date], (err, existing) => {
+            if (err) {
+                console.error('Existing activities query error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to check existing activities',
+                    error: err.message
+                });
+            }
 
-        // Get the period's start time from daily_schedule_new
-        const periodQuery = `
-                SELECT start_time FROM daily_schedule_new WHERE id = ?
-            `;
-        const [periodResult] = await db.query(periodQuery, [period_id]);
+            const startOffset = existing[0]?.total_duration || 0;
 
-        if (periodResult.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Period not found'
+            // Get the period's start time from daily_schedule_new
+            const periodQuery = `
+                    SELECT start_time FROM daily_schedule_new WHERE id = ?
+                `;
+            
+            db.query(periodQuery, [period_id], (err, periodResult) => {
+                if (err) {
+                    console.error('Period query error:', err);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to fetch period info',
+                        error: err.message
+                    });
+                }
+
+                if (periodResult.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Period not found'
+                    });
+                }
+
+                // Calculate activity start time
+                const periodStartTime = periodResult[0].start_time;
+                const activityStartTime = new Date(`1970-01-01 ${periodStartTime}`);
+                activityStartTime.setMinutes(activityStartTime.getMinutes() + startOffset);
+
+                const insertQuery = `
+                        INSERT INTO period_activities 
+                        (daily_schedule_id, activity_date, activity_name, activity_type, duration, batch_number,
+                         assigned_mentor_id, topic_id, is_assessment, assessment_type, total_marks,
+                         start_time, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    `;
+
+                db.query(insertQuery, [
+                    period_id, date, activity_type || 'Academic Activity', activity_type, duration_minutes, batch_number,
+                    mentor_id, topic_id, has_assessment, assessment_type, total_marks,
+                    activityStartTime.toTimeString().slice(0, 8)
+                ], (err, result) => {
+                    if (err) {
+                        console.error('Insert activity error:', err);
+                        return res.status(500).json({
+                            success: false,
+                            message: 'Failed to create activity',
+                            error: err.message
+                        });
+                    }
+
+                    res.json({
+                        success: true,
+                        message: 'Activity created successfully',
+                        data: { activityId: result.insertId }
+                    });
+                });
             });
-        }
-
-        // Calculate activity start time
-        const periodStartTime = periodResult[0].start_time;
-        const activityStartTime = new Date(`1970-01-01 ${periodStartTime}`);
-        activityStartTime.setMinutes(activityStartTime.getMinutes() + startOffset);
-
-        const insertQuery = `
-                INSERT INTO period_activities 
-                (daily_schedule_id, activity_date, activity_name, activity_type, duration, batch_number,
-                 assigned_mentor_id, topic_id, is_assessment, assessment_type, total_marks,
-                 start_time, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            `;
-
-        const [result] = await db.query(insertQuery, [
-            period_id, date, activity_type || 'Academic Activity', activity_type, duration_minutes, batch_number,
-            mentor_id, topic_id, has_assessment, assessment_type, total_marks,
-            activityStartTime.toTimeString().slice(0, 8)
-        ]);
-
-        res.json({
-            success: true,
-            message: 'Activity created successfully',
-            data: { activityId: result.insertId }
         });
     } catch (error) {
         console.error('Create period activity error:', error);
@@ -911,7 +1046,7 @@ exports.createPeriodActivitySplit = async (req, res) => {
 };
 
 // Update period activity
-exports.updatePeriodActivity = async (req, res) => {
+exports.updatePeriodActivity = (req, res) => {
     try {
         const { activityId } = req.params;
         const {
@@ -927,15 +1062,24 @@ exports.updatePeriodActivity = async (req, res) => {
                 WHERE id = ?
             `;
 
-        await db.query(updateQuery, [
+        db.query(updateQuery, [
             activity_type, duration_minutes, batch_number,
             mentor_id, topic_id, has_assessment, assessment_type, total_marks,
             activityId
-        ]);
+        ], (err, result) => {
+            if (err) {
+                console.error('Update period activity error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to update activity',
+                    error: err.message
+                });
+            }
 
-        res.json({
-            success: true,
-            message: 'Activity updated successfully'
+            res.json({
+                success: true,
+                message: 'Activity updated successfully'
+            });
         });
     } catch (error) {
         console.error('Update period activity error:', error);
@@ -948,16 +1092,25 @@ exports.updatePeriodActivity = async (req, res) => {
 };
 
 // Delete period activity
-exports.deletePeriodActivity = async (req, res) => {
+exports.deletePeriodActivity = (req, res) => {
     try {
         const { activityId } = req.params;
 
         const deleteQuery = `DELETE FROM period_activities WHERE id = ?`;
-        await db.query(deleteQuery, [activityId]);
+        db.query(deleteQuery, [activityId], (err, result) => {
+            if (err) {
+                console.error('Delete period activity error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to delete activity',
+                    error: err.message
+                });
+            }
 
-        res.json({
-            success: true,
-            message: 'Activity deleted successfully'
+            res.json({
+                success: true,
+                message: 'Activity deleted successfully'
+            });
         });
     } catch (error) {
         console.error('Delete period activity error:', error);
@@ -970,41 +1123,41 @@ exports.deletePeriodActivity = async (req, res) => {
 };
 
 // Get batch activities for a specific date
-exports.getBatchActivities = async (req, res) => {
-    try {
-        const { batchId, date } = req.params;
+exports.getBatchActivities = (req, res) => {
+    const { batchId, date } = req.params;
 
-        const query = `
-                SELECT pa.*, 
-                       ws.subject_id,
-                       s.subject_name,
-                       ws.time_start,
-                       ws.time_end,
-                       v.venue_name,
-                       m.name as mentor_name,
-                       th.topic_name
-                FROM period_activities pa
-                JOIN weekly_schedule ws ON pa.weekly_schedule_id = ws.id
-                LEFT JOIN subjects s ON ws.subject_id = s.id
-                LEFT JOIN venues v ON ws.venue_id = v.id
-                LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
-                LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
-                WHERE pa.batch_number = ? AND pa.activity_date = ?
-                ORDER BY pa.start_time
-            `;
+    const query = `
+            SELECT pa.*, 
+                   ws.subject_id,
+                   s.subject_name,
+                   ws.time_start,
+                   ws.time_end,
+                   v.venue_name,
+                   m.name as mentor_name,
+                   th.topic_name
+            FROM period_activities pa
+            JOIN weekly_schedule ws ON pa.weekly_schedule_id = ws.id
+            LEFT JOIN subjects s ON ws.subject_id = s.id
+            LEFT JOIN venues v ON ws.venue_id = v.id
+            LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
+            LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
+            WHERE pa.batch_number = ? AND pa.activity_date = ?
+            ORDER BY pa.start_time
+        `;
 
-        const [results] = await db.query(query, [batchId, date]);
+    db.query(query, [batchId, date], (error, results) => {
+        if (error) {
+            console.error('Get batch activities error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to fetch batch activities',
+                error: error.message
+            });
+        }
 
         res.json({
             success: true,
             data: results
         });
-    } catch (error) {
-        console.error('Get batch activities error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch batch activities',
-            error: error.message
-        });
-    }
+    });
 };

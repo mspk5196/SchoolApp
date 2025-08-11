@@ -77,7 +77,7 @@ exports.getTopicsByGrade = async (req, res) => {
 
         const sql = `
             SELECT DISTINCT th.id, th.subject_id, th.topic_name, th.topic_code, 
-                   th.level, th.is_bottom_level, s.subject_name
+                   th.level, th.is_bottom_level, th.order_sequence, s.subject_name
             FROM topic_hierarchy th
             JOIN subjects s ON th.subject_id = s.id
             JOIN grade_subject gs ON s.id = gs.subject_id
