@@ -19,8 +19,6 @@ exports.getTopicHierarchy = (req, res) => {
 
         console.log('Executing hierarchy query for subjectId:', subjectId, 'gradeId:', gradeId);
 
-        // const result = await db.query(query, [subjectId]);
-
         db.query(sql, [subjectId], (err, result) => {
             if (err) return res.status(500).json({ success: false });
             if (result.length === 0) return res.status(404).json({ success: false });
@@ -36,6 +34,33 @@ exports.getTopicHierarchy = (req, res) => {
 
             console.log('Processed hierarchy data:', hierarchy);
 
+            // Build hierarchy path for each topic
+            const buildHierarchyPath = (topicId, topics, path = []) => {
+                const topic = topics.find(t => t.id === topicId);
+                if (!topic) return path;
+                
+                path.unshift(topic.topic_name);
+                
+                if (topic.parent_id) {
+                    return buildHierarchyPath(topic.parent_id, topics, path);
+                }
+                
+                return path;
+            };
+
+            // Add full hierarchy path to each topic
+            const hierarchyWithPaths = hierarchy.map(topic => {
+                const hierarchyPath = buildHierarchyPath(topic.id, hierarchy);
+                const fullTopicName = hierarchyPath.join(' > ');
+                
+                return {
+                    ...topic,
+                    full_topic_name: fullTopicName,
+                    hierarchy_path: hierarchyPath,
+                    topic_depth: hierarchyPath.length
+                };
+            });
+
             // Build nested structure
             const buildTree = (items, parentId = null) => {
                 if (!Array.isArray(items)) {
@@ -49,12 +74,12 @@ exports.getTopicHierarchy = (req, res) => {
                     }));
             };
 
-            const tree = buildTree(hierarchy);
+            const tree = buildTree(hierarchyWithPaths);
 
             console.log('Built tree structure:', tree);
             res.json({
                 success: true, data: {
-                    overallData: result,
+                    overallData: hierarchyWithPaths,
                     hierarchy: tree,
                     total_topics: hierarchy.length
                 }
@@ -77,7 +102,7 @@ exports.getTopicsByGrade = (req, res) => {
 
         const sql = `
             SELECT DISTINCT th.id, th.subject_id, th.topic_name, th.topic_code, 
-                   th.level, th.is_bottom_level, th.order_sequence, s.subject_name
+                   th.level, th.is_bottom_level, th.order_sequence, th.parent_id, s.subject_name
             FROM topic_hierarchy th
             JOIN subjects s ON th.subject_id = s.id
             JOIN section_subject_activities ssa ON s.id = ssa.subject_id
@@ -95,9 +120,36 @@ exports.getTopicsByGrade = (req, res) => {
                 });
             }
 
+            // Build hierarchy path for each topic
+            const buildHierarchyPath = (topicId, topics, path = []) => {
+                const topic = topics.find(t => t.id === topicId);
+                if (!topic) return path;
+                
+                path.unshift(topic.topic_name);
+                
+                if (topic.parent_id) {
+                    return buildHierarchyPath(topic.parent_id, topics, path);
+                }
+                
+                return path;
+            };
+
+            // Add full hierarchy path to each topic
+            const topicsWithPaths = result.map(topic => {
+                const hierarchyPath = buildHierarchyPath(topic.id, result);
+                const fullTopicName = hierarchyPath.join(' > ');
+                
+                return {
+                    ...topic,
+                    full_topic_name: fullTopicName,
+                    hierarchy_path: hierarchyPath,
+                    topic_depth: hierarchyPath.length
+                };
+            });
+
             res.json({
                 success: true,
-                data: result || []
+                data: topicsWithPaths || []
             });
         });
     } catch (error) {
@@ -170,6 +222,33 @@ exports.getTopicHierarchyByActivity = (req, res) => {
 
                 console.log('Hierarchy query result:', result);
 
+                // Build hierarchy path for each topic
+                const buildHierarchyPath = (topicId, topics, path = []) => {
+                    const topic = topics.find(t => t.id === topicId);
+                    if (!topic) return path;
+                    
+                    path.unshift(topic.topic_name);
+                    
+                    if (topic.parent_id) {
+                        return buildHierarchyPath(topic.parent_id, topics, path);
+                    }
+                    
+                    return path;
+                };
+
+                // Add full hierarchy path to each topic
+                const hierarchyWithPaths = result.map(topic => {
+                    const hierarchyPath = buildHierarchyPath(topic.id, result);
+                    const fullTopicName = hierarchyPath.join(' > ');
+                    
+                    return {
+                        ...topic,
+                        full_topic_name: fullTopicName,
+                        hierarchy_path: hierarchyPath,
+                        topic_depth: hierarchyPath.length
+                    };
+                });
+
                 // Build nested structure
                 const buildTree = (items, parentId = null) => {
                     if (!Array.isArray(items)) {
@@ -183,14 +262,14 @@ exports.getTopicHierarchyByActivity = (req, res) => {
                         }));
                 };
 
-                const tree = buildTree(result);
+                const tree = buildTree(hierarchyWithPaths);
 
                 console.log('Built tree structure:', tree);
                 res.json({
                     success: true, 
                     data: {
                         activity: activity,
-                        overallData: result,
+                        overallData: hierarchyWithPaths,
                         hierarchy: tree,
                         total_topics: result.length
                     }
@@ -323,67 +402,33 @@ exports.createTopic = (req, res) => {
 }
 
 // Get topic materials
-exports.getTopicMaterials = async (req, res) => {
-    try {
-        const { topicId } = req.params;
+exports.getTopicMaterials = (req, res) => {
+    const { topicId } = req.params;
 
-        const sql = `
-                SELECT tm.*, th.topic_name
-                FROM topic_materials tm
-                JOIN topic_hierarchy th ON tm.topic_id = th.id
-                WHERE tm.topic_id = ? AND tm.is_active = 1
-                ORDER BY tm.material_type, tm.created_at
-            `;
+    const sql = `
+            SELECT tm.*, th.topic_name
+            FROM topic_materials tm
+            JOIN topic_hierarchy th ON tm.topic_id = th.id
+            WHERE tm.topic_id = ? AND tm.is_active = 1
+            ORDER BY tm.material_type, tm.created_at
+        `;
 
-        db.query(sql, [topicId], (error, materials) => {
-            if (error) {
-                console.error('Get topic materials error:', error);
-                return res.status(500).json({
-                    success: false,
-                    message: 'Failed to fetch topic materials',
-                    error: error.message
-                });
-            }
-
-            // Parse file data for each material
-            const processedMaterials = materials.map(material => {
-                try {
-                    // Try to parse file_url as JSON (for multiple files)
-                    if (material.file_url && material.file_url.startsWith('[')) {
-                        material.files = JSON.parse(material.file_url);
-                    } else {
-                        // Single file format - convert to array
-                        material.files = material.file_name ? [{
-                            name: material.file_name,
-                            url: material.file_url,
-                            type: material.file_type
-                        }] : [];
-                    }
-                } catch (e) {
-                    // Fallback for single file
-                    material.files = material.file_name ? [{
-                        name: material.file_name,
-                        url: material.file_url,
-                        type: material.file_type
-                    }] : [];
-                }
-                return material;
+    db.query(sql, [topicId], (error, materials) => {
+        if (error) {
+            console.error('Get topic materials error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to fetch topic materials',
+                error: error.message
             });
+        }
 
-            res.json({
-                success: true,
-                data: processedMaterials
-            });
+        res.json({
+            success: true,
+            data: materials
         });
-    } catch (error) {
-        console.error('Get topic materials error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch topic materials',
-            error: error.message
-        });
-    }
-}
+    });
+};
 
 // Add material to topic with file upload
 exports.uploadTopicMaterials = async (req, res) => {
