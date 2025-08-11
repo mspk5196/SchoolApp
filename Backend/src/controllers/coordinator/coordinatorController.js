@@ -4059,11 +4059,12 @@ exports.processAssessmentRequest = async (req, res) => {
 // Manual endpoint to generate daily schedules from weekly templates
 exports.generateDailySchedulesManual = async (req, res) => {
   try {
-    const { gradeId, days = 7 } = req.body;
+    const { gradeId, days = 7, includeToday = true } = req.body;
     
     console.log('🔄 Manually generating daily schedules...');
     console.log('Grade ID:', gradeId);
     console.log('Days to generate:', days);
+    console.log('Include today:', includeToday);
 
     // Get all weekly schedules for the grade
     const [weeklySchedules] = await db.promise().query(`
@@ -4076,21 +4077,63 @@ exports.generateDailySchedulesManual = async (req, res) => {
     console.log('Found weekly schedules:', weeklySchedules.length);
 
     let totalCreated = 0;
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const todayDayIndex = today.getDay();
+    
+    console.log(`Today is: ${todayStr} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][todayDayIndex]})`);
 
     // Generate daily schedules for each weekly template
     for (const weekly of weeklySchedules) {
       const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
         .indexOf(weekly.day?.charAt(0).toUpperCase() + weekly.day?.slice(1).toLowerCase());
 
-      console.log(`Processing weekly schedule: ${weekly.day} for section ${weekly.section_id}`);
+      console.log(`Processing weekly schedule: ${weekly.day} (day index: ${dayIndex}) for section ${weekly.section_id}`);
 
-      // Generate for the specified number of days
-      for (let i = 0; i < days; i++) {
+      // If includeToday is true and today matches the weekly schedule day, create it first
+      if (includeToday && todayDayIndex === dayIndex) {
+        console.log(`Today matches ${weekly.day}, creating schedule for today`);
+        
+        // Check if daily schedule already exists for today
+        const [existing] = await db.promise().query(`
+          SELECT id FROM daily_schedule_new 
+          WHERE date = ? AND section_id = ? AND start_time = ? AND end_time = ?
+        `, [todayStr, weekly.section_id, weekly.start_time, weekly.end_time]);
+
+        if (existing.length === 0) {
+          // Create daily schedule for today
+          await db.promise().query(`
+            INSERT INTO daily_schedule_new 
+            (date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            todayStr, 
+            gradeId,
+            weekly.section_id,
+            weekly.subject_id,
+            weekly.session_no || 1,
+            weekly.start_time,
+            weekly.end_time,
+            weekly.venue,
+            1 // Default coordinator ID
+          ]);
+          
+          totalCreated++;
+          console.log(`✅ Created daily schedule for TODAY ${todayStr} - ${weekly.day}`);
+        } else {
+          console.log(`⚠️ Daily schedule already exists for TODAY ${todayStr} - ${weekly.day}`);
+        }
+      }
+
+      // Generate for future days (starting from tomorrow)
+      for (let i = 1; i < days; i++) {
         const date = new Date();
         date.setDate(date.getDate() + i);
         
         if (date.getDay() === dayIndex) {
           const dateStr = date.toISOString().split('T')[0];
+          
+          console.log(`Checking future date: ${dateStr} (${weekly.day})`);
           
           // Check if daily schedule already exists
           const [existing] = await db.promise().query(`
@@ -4117,9 +4160,9 @@ exports.generateDailySchedulesManual = async (req, res) => {
             ]);
             
             totalCreated++;
-            console.log(`Created daily schedule for ${dateStr} - ${weekly.day}`);
+            console.log(`✅ Created daily schedule for ${dateStr} - ${weekly.day}`);
           } else {
-            console.log(`Daily schedule already exists for ${dateStr} - ${weekly.day}`);
+            console.log(`⚠️ Daily schedule already exists for ${dateStr} - ${weekly.day}`);
           }
         }
       }
@@ -4129,7 +4172,9 @@ exports.generateDailySchedulesManual = async (req, res) => {
       success: true,
       message: `Successfully generated ${totalCreated} daily schedules`,
       totalCreated,
-      weeklySchedulesFound: weeklySchedules.length
+      weeklySchedulesFound: weeklySchedules.length,
+      todayIncluded: includeToday,
+      todayDate: todayStr
     });
 
   } catch (error) {
