@@ -682,7 +682,8 @@ exports.getMonthlySchedule = (req, res) => {
                         subject_name: period.subject_name,
                         venue_name: period.venue_name,
                         section_name: period.section_name,
-                        activity_count: period.activity_count
+                        activity_count: period.activity_count,
+                        subject_id: period.subject_id
                     });
                 }
             });

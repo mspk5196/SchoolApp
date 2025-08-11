@@ -96,11 +96,12 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const result = await response.json();
       if (result.success) {
         setTopics(result.data);
+        console.log('Fetched topics:', result.data);
       }
     } catch (error) {
       console.error('Error fetching topics:', error);
     }
-  };
+  }; 
 
   const fetchMonthlySchedule = async () => {
     try {
