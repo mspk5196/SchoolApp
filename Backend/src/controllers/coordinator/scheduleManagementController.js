@@ -747,7 +747,7 @@ exports.getPeriodActivities = (req, res) => {
                 ORDER BY pa.start_time
             `;
 
-        db.query(query, [periodId], (err, activities) => {
+        db.query(query, [periodId], (err, result) => {
             if (err) {
                 console.error('Get period activities error:', err);
                 return res.status(500).json({
@@ -759,7 +759,7 @@ exports.getPeriodActivities = (req, res) => {
 
             res.json({
                 success: true,
-                data: activities || []
+                data: result
             });
         });
     } catch (error) {
