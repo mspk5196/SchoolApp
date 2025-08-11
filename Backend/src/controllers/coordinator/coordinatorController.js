@@ -4056,5 +4056,114 @@ exports.processAssessmentRequest = async (req, res) => {
   }
 };
 
+// Manual endpoint to generate daily schedules from weekly templates
+exports.generateDailySchedulesManual = async (req, res) => {
+  try {
+    const { gradeId, days = 7 } = req.body;
+    
+    console.log('🔄 Manually generating daily schedules...');
+    console.log('Grade ID:', gradeId);
+    console.log('Days to generate:', days);
+
+    // Get all weekly schedules for the grade
+    const [weeklySchedules] = await db.promise().query(`
+      SELECT ws.*, s.section_name 
+      FROM weekly_schedule ws
+      JOIN sections s ON ws.section_id = s.id
+      WHERE s.grade_id = ?
+    `, [gradeId]);
+
+    console.log('Found weekly schedules:', weeklySchedules.length);
+
+    let totalCreated = 0;
+
+    // Generate daily schedules for each weekly template
+    for (const weekly of weeklySchedules) {
+      const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        .indexOf(weekly.day?.charAt(0).toUpperCase() + weekly.day?.slice(1).toLowerCase());
+
+      console.log(`Processing weekly schedule: ${weekly.day} for section ${weekly.section_id}`);
+
+      // Generate for the specified number of days
+      for (let i = 0; i < days; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        
+        if (date.getDay() === dayIndex) {
+          const dateStr = date.toISOString().split('T')[0];
+          
+          // Check if daily schedule already exists
+          const [existing] = await db.promise().query(`
+            SELECT id FROM daily_schedule_new 
+            WHERE date = ? AND section_id = ? AND start_time = ? AND end_time = ?
+          `, [dateStr, weekly.section_id, weekly.start_time, weekly.end_time]);
+
+          if (existing.length === 0) {
+            // Create daily schedule
+            await db.promise().query(`
+              INSERT INTO daily_schedule_new 
+              (date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+              dateStr, 
+              gradeId,
+              weekly.section_id,
+              weekly.subject_id,
+              weekly.session_no || 1,
+              weekly.start_time,
+              weekly.end_time,
+              weekly.venue,
+              1 // Default coordinator ID
+            ]);
+            
+            totalCreated++;
+            console.log(`Created daily schedule for ${dateStr} - ${weekly.day}`);
+          } else {
+            console.log(`Daily schedule already exists for ${dateStr} - ${weekly.day}`);
+          }
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully generated ${totalCreated} daily schedules`,
+      totalCreated,
+      weeklySchedulesFound: weeklySchedules.length
+    });
+
+  } catch (error) {
+    console.error('Error generating daily schedules:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to generate daily schedules',
+      error: error.message 
+    });
+  }
+};
+
+// Manual endpoint to run the daily schedule update (same as cron job)
+exports.runDailyScheduleUpdateManual = async (req, res) => {
+  try {
+    console.log('🔄 Running manual daily schedule update...');
+    
+    const { runDailyScheduleUpdate } = require('../mentor/dailyScheduleUpdate');
+    const result = await runDailyScheduleUpdate();
+    
+    res.json({
+      success: true,
+      message: 'Daily schedule update completed successfully',
+      result
+    });
+  } catch (error) {
+    console.error('Error running daily schedule update:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to run daily schedule update',
+      error: error.message
+    });
+  }
+};
+
 
 

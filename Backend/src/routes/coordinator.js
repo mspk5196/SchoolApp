@@ -293,4 +293,8 @@ router.put('/coordinator/academic-schedule/activity/:activityId', ScheduleManage
 router.delete('/coordinator/academic-schedule/activity/:activityId', ScheduleManagementController.deletePeriodActivity);
 router.get('/coordinator/academic-schedule/batch-activities/:batchId/:date', ScheduleManagementController.getBatchActivities);
 
+// Manual schedule generation endpoints for testing
+router.post('/coordinator/generate-daily-schedules-manual', coordinatorController.generateDailySchedulesManual);
+router.post('/coordinator/run-daily-schedule-update-manual', coordinatorController.runDailyScheduleUpdateManual);
+
 module.exports = router;

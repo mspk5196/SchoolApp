@@ -112,6 +112,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const result = await response.json();
       if (result.success) {
         setMonthlySchedule(result.data);
+        console.log('Monthly schedule data:', result.data);
       } else {
         console.log('Monthly schedule response:', result);
         setMonthlySchedule([]);
@@ -198,6 +199,50 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       assessment_type: 'Quiz',
       total_marks: 100,
     });
+  };
+
+  const generateDailySchedulesManually = async () => {
+    try {
+      setLoading(true);
+      Alert.alert(
+        'Generate Schedules',
+        'This will create daily schedules from weekly templates for the next 7 days. Continue?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Generate', 
+            onPress: async () => {
+              try {
+                const response = await fetch(`${API_URL}/api/coordinator/generate-daily-schedules-manual`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ 
+                    gradeId: activeGrade,
+                    days: 7
+                  })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                  Alert.alert('Success', `Generated ${result.totalCreated} daily schedules from ${result.weeklySchedulesFound} weekly templates`);
+                  fetchMonthlySchedule(); // Refresh the calendar
+                } else {
+                  Alert.alert('Error', result.message || 'Failed to generate schedules');
+                }
+              } catch (error) {
+                console.error('Error generating schedules:', error);
+                Alert.alert('Error', 'Failed to generate schedules');
+              } finally {
+                setLoading(false);
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      setLoading(false);
+      console.error('Error:', error);
+    }
   };
 
   const changeMonth = (direction) => {
@@ -535,6 +580,13 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
           <Text style={styles.title}>Academic Schedule</Text>
           <Text style={styles.subtitle}>Grade {activeGrade}</Text>
         </View>
+        <TouchableOpacity 
+          style={styles.generateButton} 
+          onPress={generateDailySchedulesManually}
+          disabled={loading}
+        >
+          <Text style={styles.generateButtonText}>Generate</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -571,6 +623,19 @@ const styles = {
   },
   headerTextContainer: {
     marginLeft: 16,
+    flex: 1,
+  },
+  generateButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  generateButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   title: {
     fontSize: 22,
