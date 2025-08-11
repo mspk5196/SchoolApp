@@ -236,7 +236,7 @@ router.post('/coordinator/processAssessmentRequest', coordinatorController.proce
 
 // Enhanced Topic Hierarchy Routes
 router.get('/coordinator/topics/hierarchy/:subjectId/:gradeId', TopicHierarchyController.getTopicHierarchy);
-router.get('/coordinator/topics/grade/:gradeId', TopicHierarchyController.getTopicsByGrade);
+router.get('/coordinator/topics/grade/:gradeId/:subjectId', TopicHierarchyController.getTopicsByGrade);
 router.get('/coordinator/topics/hierarchy/activity/:activityId', TopicHierarchyController.getTopicHierarchyByActivity);
 router.post('/coordinator/topics/create', TopicHierarchyController.createTopic);
 router.put('/coordinator/topics/update/:topicId', TopicHierarchyController.updateTopic);

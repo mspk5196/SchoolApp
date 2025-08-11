@@ -92,7 +92,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     console.log('selected',selectedPeriod);
     
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}/${subjectID}`);
+      const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}/${selectedPeriod?.subject_id}`);
       const result = await response.json();
       if (result.success) {
         setTopics(result.data);

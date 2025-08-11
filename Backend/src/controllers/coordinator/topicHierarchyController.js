@@ -98,20 +98,20 @@ exports.getTopicHierarchy = (req, res) => {
 // Get all topics for a specific grade
 exports.getTopicsByGrade = (req, res) => {
     try {
-        const { gradeId } = req.params;
+        const { gradeId, subjectId } = req.params;
 
         const sql = `
             SELECT DISTINCT th.id, th.subject_id, th.topic_name, th.topic_code, 
                    th.level, th.is_bottom_level, th.order_sequence, th.parent_id, s.subject_name
             FROM topic_hierarchy th
             JOIN subjects s ON th.subject_id = s.id
-            JOIN section_subject_activities ssa ON s.id = ssa.subject_id
+            -- JOIN section_subject_activities ssa ON s.id = ssa.subject_id
             JOIN sections sec ON ssa.section_id = sec.id
-            WHERE sec.grade_id = ?
+            WHERE sec.grade_id = ? AND th.subject_id = ?
             ORDER BY s.subject_name, th.level, th.order_sequence
         `;
 
-        db.query(sql, [gradeId], (err, result) => {
+        db.query(sql, [gradeId, subjectId], (err, result) => {
             if (err) {
                 console.error('Error fetching topics by grade:', err);
                 return res.status(500).json({ 
