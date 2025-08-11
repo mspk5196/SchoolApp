@@ -716,7 +716,7 @@ exports.getMonthlySchedule = (req, res) => {
 // Get period activities for a specific period and date
 exports.getPeriodActivities = (req, res) => {
     try {
-        const { period_id, date } = req.query;
+        const { periodId, date } = req.query;
 
         const query = `
                 SELECT 
@@ -747,7 +747,7 @@ exports.getPeriodActivities = (req, res) => {
                 ORDER BY pa.start_time
             `;
 
-        db.query(query, [period_id], (err, activities) => {
+        db.query(query, [periodId], (err, activities) => {
             if (err) {
                 console.error('Get period activities error:', err);
                 return res.status(500).json({

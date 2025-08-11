@@ -43,14 +43,14 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   });
 
   const activityTypes = [
-    'Academic', 'Quiz', 'Test', 'Project Discussion', 
+    'Academic', 'Quiz', 'Assessment', 'Project Discussion', 
     'Practical', 'Assignment Review', 'Doubt Clearing', 
     'Presentation', 'Group Discussion'
   ];
 
   useEffect(() => {
     loadInitialData();
-  }, [activeGrade]);
+  }, [activeGrade, selectedPeriod]);
 
   useEffect(() => {
     if (activeGrade) {
@@ -60,7 +60,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
 
   const loadInitialData = async () => {
     try {
-      if (activeGrade) {
+      if (activeGrade && selectedPeriod) {
         await fetchMentors();
         await fetchTopics();
       }
@@ -89,14 +89,14 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   };
 
   const fetchTopics = async () => {
-    console.log('selected',selectedPeriod);
+    // console.log('selected',selectedPeriod.subject_id);
     
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}/${selectedPeriod?.subject_id}`);
+      const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}/${selectedPeriod.subject_id}`);
       const result = await response.json();
       if (result.success) {
         setTopics(result.data);
-        console.log('Fetched topics:', result.data);
+        // console.log('Fetched topics:', result.data);
       }
     } catch (error) {
       console.error('Error fetching topics:', error);
@@ -115,7 +115,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const result = await response.json();
       if (result.success) {
         setMonthlySchedule(result.data);
-        console.log('Monthly schedule data:', result.data[0]);
+        // console.log('Monthly schedule data:', result.data[0]);
       } else {
         console.log('Monthly schedule response:', result);
         setMonthlySchedule([]);
@@ -144,11 +144,12 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const result = await response.json();
       if (result.success) {
         setPeriodActivities(result.data);
+        console.log('Fetched period activities:', result);
       }
-    } catch (error) {
+    } catch (error) { 
       console.error('Error fetching period activities:', error);
       setPeriodActivities([]);
-    }
+    } 
   };
 
   const createActivity = async () => {
@@ -353,15 +354,15 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
 
   const renderDaySchedule = () => {
     const selectedDateString = formatDateToString(selectedDate);
-    console.log('Selected date string (formatted):', selectedDateString);
-    console.log('Available schedule dates:', monthlySchedule.map(s => s.date));
+    // console.log('Selected date string (formatted):', selectedDateString);
+    // console.log('Available schedule dates:', monthlySchedule.map(s => s.date));
     
     const daySchedule = monthlySchedule.find(
       schedule => schedule.date === selectedDateString
     );
 
-    console.log('Found day schedule:', daySchedule ? 'Yes' : 'No');
-    console.log('Selected date object:', selectedDate);
+    // console.log('Found day schedule:', daySchedule ? 'Yes' : 'No');
+    // console.log('Selected date object:', selectedDate);
 
     if (!daySchedule || daySchedule.periods.length === 0) {
       return (
