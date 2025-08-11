@@ -831,9 +831,41 @@ exports.getPeriodActivities = (req, res) => {
             const subjectIds = [...new Set(activities.map(activity => activity.subject_id).filter(id => id))];
 
             if (topicIds.length === 0) {
+                // Ensure uniqueness and proper formatting even without topics
+                const seenIds = new Set();
+                const formattedActivities = activities
+                    .filter(activity => {
+                        if (seenIds.has(activity.id)) {
+                            return false; // Skip duplicate
+                        }
+                        seenIds.add(activity.id);
+                        return true;
+                    })
+                    .map(activity => ({
+                        id: activity.id,
+                        activity_type: activity.activity_type,
+                        activity_name: activity.activity_name,
+                        duration: activity.duration,
+                        batch_number: activity.batch_number,
+                        mentor_id: activity.assigned_mentor_id,
+                        mentor_name: activity.mentor_name,
+                        mentor_roll: activity.mentor_roll,
+                        topic_id: activity.topic_id,
+                        topic_name: activity.topic_name,
+                        topic_hierarchy_path: null,
+                        material_id: activity.material_id,
+                        material_name: activity.material_name,
+                        has_assessment: activity.is_assessment,
+                        assessment_type: activity.assessment_type,
+                        total_marks: activity.total_marks,
+                        start_time: activity.start_time,
+                        end_time: activity.end_time,
+                        activity_instructions: activity.activity_instructions
+                    }));
+
                 return res.json({
                     success: true,
-                    data: activities
+                    data: formattedActivities
                 });
             }
 
@@ -868,19 +900,47 @@ exports.getPeriodActivities = (req, res) => {
                     return path;
                 };
 
-                // Add hierarchy path to activities
-                const activitiesWithHierarchy = activities.map(activity => {
-                    if (activity.topic_id) {
-                        const hierarchyPath = buildHierarchyPath(activity.topic_id, allTopics);
-                        const parentPath = hierarchyPath.slice(0, -1); // Remove the current topic name
+                // Add hierarchy path to activities and ensure uniqueness
+                const seenIds = new Set();
+                const activitiesWithHierarchy = activities
+                    .filter(activity => {
+                        if (seenIds.has(activity.id)) {
+                            return false; // Skip duplicate
+                        }
+                        seenIds.add(activity.id);
+                        return true;
+                    })
+                    .map(activity => {
+                        let hierarchyPath = null;
+                        
+                        if (activity.topic_id) {
+                            const fullPath = buildHierarchyPath(activity.topic_id, allTopics);
+                            const parentPath = fullPath.slice(0, -1); // Remove the current topic name
+                            hierarchyPath = parentPath.length > 0 ? parentPath.join(' > ') : null;
+                        }
                         
                         return {
-                            ...activity,
-                            topic_hierarchy_path: parentPath.length > 0 ? parentPath.join(' > ') : null
+                            id: activity.id,
+                            activity_type: activity.activity_type,
+                            activity_name: activity.activity_name,
+                            duration: activity.duration,
+                            batch_number: activity.batch_number,
+                            mentor_id: activity.assigned_mentor_id,
+                            mentor_name: activity.mentor_name,
+                            mentor_roll: activity.mentor_roll,
+                            topic_id: activity.topic_id,
+                            topic_name: activity.topic_name,
+                            topic_hierarchy_path: hierarchyPath,
+                            material_id: activity.material_id,
+                            material_name: activity.material_name,
+                            has_assessment: activity.is_assessment,
+                            assessment_type: activity.assessment_type,
+                            total_marks: activity.total_marks,
+                            start_time: activity.start_time,
+                            end_time: activity.end_time,
+                            activity_instructions: activity.activity_instructions
                         };
-                    }
-                    return activity;
-                });
+                    });
 
                 res.json({
                     success: true,
