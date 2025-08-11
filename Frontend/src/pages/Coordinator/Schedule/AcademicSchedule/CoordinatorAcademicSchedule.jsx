@@ -45,8 +45,8 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   });
 
   const activityTypes = [
-    'Academic', 'Quiz', 'Assessment', 'Project Discussion', 
-    'Practical', 'Assignment Review', 'Doubt Clearing', 
+    'Academic', 'Quiz', 'Assessment', 'Project Discussion',
+    'Practical', 'Assignment Review', 'Doubt Clearing',
     'Presentation', 'Group Discussion'
   ];
 
@@ -75,7 +75,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
 
   const fetchMentors = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeMentors`,{
+      const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeMentors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeID: activeGrade })
@@ -84,7 +84,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       if (result.success) {
         // console.log(result.gradeMentors);
         setMentors(result.gradeMentors);
-      } 
+      }
     } catch (error) {
       console.error('Error fetching mentors:', error);
     }
@@ -92,7 +92,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
 
   const fetchTopics = async () => {
     // console.log('selected',selectedPeriod.subject_id);
-    
+
     try {
       const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}/${selectedPeriod.subject_id}`);
       const result = await response.json();
@@ -103,17 +103,17 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     } catch (error) {
       console.error('Error fetching topics:', error);
     }
-  }; 
+  };
 
   const fetchMonthlySchedule = async () => {
     try {
       const month = selectedDate.getMonth() + 1;
       const year = selectedDate.getFullYear();
-      
+
       const response = await fetch(
         `${API_URL}/api/coordinator/academic-schedule/monthly/${activeGrade}/${month}/${year}`
       );
-      
+
       const result = await response.json();
       if (result.success) {
         setMonthlySchedule(result.data);
@@ -142,16 +142,16 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
           headers: { 'Content-Type': 'application/json' }
         }
       );
-      
+
       const result = await response.json();
       if (result.success) {
         setPeriodActivities(result.data);
         console.log('Fetched period activities:', result);
       }
-    } catch (error) { 
+    } catch (error) {
       console.error('Error fetching period activities:', error);
       setPeriodActivities([]);
-    } 
+    }
   };
 
   const createActivity = async () => {
@@ -223,20 +223,20 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         'This will create daily schedules from weekly templates for the next 7 days. Continue?',
         [
           { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Generate', 
+          {
+            text: 'Generate',
             onPress: async () => {
               try {
                 const response = await fetch(`${API_URL}/api/coordinator/generate-daily-schedules-manual`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ 
+                  body: JSON.stringify({
                     gradeId: activeGrade,
                     days: 7,
                     includeToday: true
                   })
                 });
-                
+
                 const result = await response.json();
                 if (result.success) {
                   Alert.alert('Success', `Generated ${result.totalCreated} daily schedules from ${result.weeklySchedulesFound} weekly templates`);
@@ -271,21 +271,21 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
     const startDay = startOfMonth.getDay(); // 0 = Sunday
-    
+
     // Create array of all calendar cells (empty + dates)
     const calendarDays = [];
-    
+
     // Add empty cells for days before month starts
     for (let i = 0; i < startDay; i++) {
       calendarDays.push({ empty: true, key: `empty-${i}` });
     }
-    
+
     // Add actual dates
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day);
       const dateString = formatDateToString(date);
       const daySchedule = monthlySchedule.find(schedule => schedule.date === dateString);
-      
+
       calendarDays.push({
         date,
         day,
@@ -294,7 +294,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         key: `date-${day}`
       });
     }
-    
+
     return (
       <View style={styles.calendarContainer}>
         <View style={styles.calendarHeader}>
@@ -308,7 +308,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
             <Icon name="chevron-right" size={24} color="#007AFF" />
           </TouchableOpacity>
         </View>
-        
+
         {/* Week day headers */}
         <View style={styles.weekDaysHeader}>
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
@@ -317,7 +317,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
             </View>
           ))}
         </View>
-        
+
         <FlatList
           data={calendarDays}
           keyExtractor={(item) => item.key}
@@ -326,7 +326,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
             if (item.empty) {
               return <View style={styles.dateCell} />;
             }
-            
+
             return (
               <TouchableOpacity
                 style={[
@@ -358,7 +358,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     const selectedDateString = formatDateToString(selectedDate);
     // console.log('Selected date string (formatted):', selectedDateString);
     // console.log('Available schedule dates:', monthlySchedule.map(s => s.date));
-    
+
     const daySchedule = monthlySchedule.find(
       schedule => schedule.date === selectedDateString
     );
@@ -379,13 +379,13 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     return (
       <View style={styles.dayScheduleContainer}>
         <Text style={styles.dayScheduleTitle}>
-          Schedule for {selectedDate.toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            month: 'long', 
-            day: 'numeric' 
+          Schedule for {selectedDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric'
           })}
         </Text>
-        
+
         <FlatList
           data={daySchedule.periods}
           keyExtractor={(item) => item.id.toString()}
@@ -394,30 +394,32 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
               style={styles.periodCard}
               onPress={() => openPeriodActivities(item, daySchedule)}
             >
-              <View style={styles.periodTime}>
-                <Text style={styles.timeText}>{item.timeStart}</Text>
-                <Text style={styles.timeSeparator}>-</Text>
-                <Text style={styles.timeText}>{item.timeEnd}</Text>
+              <View style={{flexDirection:'column'}}>
+                <View style={styles.periodTime}>
+                  <Text style={styles.timeText}>{item.timeStart}</Text>
+                  <Text style={styles.timeSeparator}>-</Text>
+                  <Text style={styles.timeText}>{item.timeEnd}</Text>
+                </View>
+
+                <View style={styles.periodInfo}>
+                  <Text style={styles.subjectName}>{item.subject_name}</Text>
+                  <Text style={styles.venueText}>{item.venue_name}</Text>
+                  <Text style={styles.sectionText}>Section {item.section_name}</Text>
+                </View>
               </View>
-              
-              <View style={styles.periodInfo}>
-                <Text style={styles.subjectName}>{item.subject_name}</Text>
-                <Text style={styles.venueText}>{item.venue_name}</Text>
-                <Text style={styles.sectionText}>Section {item.section_name}</Text>
-              </View>
-              
+
               <View style={styles.periodActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => {
-                    setSelectedPeriod({...item, ...daySchedule});
+                    setSelectedPeriod({ ...item, ...daySchedule });
                     setShowTimeBasedModal(true);
                   }}
                 >
                   <Icon name="clock" size={16} color="#4CAF50" />
                   <Text style={styles.actionText}>Time-Based</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => openPeriodActivities(item, daySchedule)}
                 >
@@ -438,7 +440,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
-              Split Period: {selectedPeriod?.subject_name} 
+              Split Period: {selectedPeriod?.subject_name}
             </Text>
             <TouchableOpacity onPress={() => setShowActivityModal(false)}>
               <Icon name="x" size={24} color="#666" />
@@ -465,7 +467,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                       <Text style={styles.activityMentor}>{item.mentor_name}</Text>
                       {item.topic_name && (
                         <Text style={styles.activityTopic}>
-                          Topic: {item.topic_hierarchy_path 
+                          Topic: {item.topic_hierarchy_path
                             ? `${item.topic_name} (${item.topic_hierarchy_path})`
                             : item.topic_name}
                         </Text>
@@ -482,7 +484,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
             {/* Create New Activity Form */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Create New Activity</Text>
-              
+
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Activity Type</Text>
                 <Picker
@@ -502,9 +504,9 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   <TextInput
                     style={styles.input}
                     value={activityForm.duration_minutes.toString()}
-                    onChangeText={(text) => setActivityForm(prev => ({ 
-                      ...prev, 
-                      duration_minutes: parseInt(text) || 30 
+                    onChangeText={(text) => setActivityForm(prev => ({
+                      ...prev,
+                      duration_minutes: parseInt(text) || 30
                     }))}
                     keyboardType="numeric"
                     placeholder="30"
@@ -516,9 +518,9 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   <TextInput
                     style={styles.input}
                     value={activityForm.batch_number.toString()}
-                    onChangeText={(text) => setActivityForm(prev => ({ 
-                      ...prev, 
-                      batch_number: parseInt(text) || 1 
+                    onChangeText={(text) => setActivityForm(prev => ({
+                      ...prev,
+                      batch_number: parseInt(text) || 1
                     }))}
                     keyboardType="numeric"
                     placeholder="1"
@@ -535,10 +537,10 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                 >
                   <Picker.Item label="Select Mentor" value={null} />
                   {mentors.map(mentor => (
-                    <Picker.Item 
-                      key={mentor.id} 
-                      label={mentor.name} 
-                      value={mentor.id} 
+                    <Picker.Item
+                      key={mentor.id}
+                      label={mentor.name}
+                      value={mentor.id}
                     />
                   ))}
                 </Picker>
@@ -554,15 +556,15 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   <Picker.Item label="Select Topic" value={null} />
                   {topics.map(topic => {
                     // Build the hierarchy path display
-                    const displayName = topic.hierarchy_path 
+                    const displayName = topic.hierarchy_path
                       ? `${topic.topic_name} (${topic.hierarchy_path})`
                       : topic.topic_name;
-                    
+
                     return (
-                      <Picker.Item 
-                        key={topic.id} 
-                        label={displayName} 
-                        value={topic.id} 
+                      <Picker.Item
+                        key={topic.id}
+                        label={displayName}
+                        value={topic.id}
                       />
                     );
                   })}
@@ -598,9 +600,9 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                     <TextInput
                       style={styles.input}
                       value={activityForm.total_marks.toString()}
-                      onChangeText={(text) => setActivityForm(prev => ({ 
-                        ...prev, 
-                        total_marks: parseInt(text) || 100 
+                      onChangeText={(text) => setActivityForm(prev => ({
+                        ...prev,
+                        total_marks: parseInt(text) || 100
                       }))}
                       keyboardType="numeric"
                       placeholder="100"
@@ -629,8 +631,8 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
           <Text style={styles.title}>Academic Schedule</Text>
           <Text style={styles.subtitle}>Grade {activeGrade}</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.generateButton} 
+        <TouchableOpacity
+          style={styles.generateButton}
           onPress={generateDailySchedulesManually}
           disabled={loading}
         >
@@ -648,12 +650,14 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       )}
 
       {renderActivityModal()}
-      
+
       <TimeBasedActivityCreator
         visible={showTimeBasedModal}
         onClose={() => setShowTimeBasedModal(false)}
         selectedPeriod={selectedPeriod}
         selectedDate={selectedDate}
+        activeGrade={activeGrade}
+        sectionID={selectedPeriod?.section_id}
         onActivityCreated={() => {
           setShowTimeBasedModal(false);
           fetchPeriodActivities(selectedPeriod?.id);
@@ -715,7 +719,7 @@ const styles = {
     flex: 1,
     justifyContent: 'center',
   },
-  
+
   // Calendar Styles
   calendarContainer: {
     backgroundColor: '#fff',
@@ -789,7 +793,7 @@ const styles = {
     borderRadius: 2,
     marginTop: 2,
   },
-  
+
   // Day Schedule Styles
   dayScheduleContainer: {
     backgroundColor: '#fff',
@@ -830,13 +834,13 @@ const styles = {
     fontSize: 14,
     color: '#999',
   },
-  
+
   // Period Card Styles
   periodCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
-    padding: 16,
+    paddingVertical: 16,
     borderRadius: 8,
     marginBottom: 12,
     borderLeftWidth: 4,
@@ -860,6 +864,7 @@ const styles = {
   periodInfo: {
     flex: 1,
     marginLeft: 16,
+    flexDirection: 'column',
   },
   subjectName: {
     fontSize: 16,
@@ -897,7 +902,7 @@ const styles = {
     color: '#007AFF',
     marginTop: 4,
   },
-  
+
   // Modal Styles
   modalContainer: {
     flex: 1,
@@ -944,7 +949,7 @@ const styles = {
     textAlign: 'center',
     padding: 20,
   },
-  
+
   // Activity Item Styles
   activityItem: {
     padding: 12,
@@ -998,7 +1003,7 @@ const styles = {
     borderRadius: 4,
     alignSelf: 'flex-start',
   },
-  
+
   // Form Styles
   formGroup: {
     marginBottom: 16,

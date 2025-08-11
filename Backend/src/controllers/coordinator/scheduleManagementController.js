@@ -712,6 +712,7 @@ exports.getMonthlySchedule = (req, res) => {
                 s.id as subject_id,
                 v.name as venue_name,
                 sec.section_name,
+                sec.id as section_id,
                 COUNT(pa.id) as activity_count
             FROM daily_schedule_new dsn
             LEFT JOIN subjects s ON dsn.subject_id = s.id
@@ -720,7 +721,7 @@ exports.getMonthlySchedule = (req, res) => {
             LEFT JOIN period_activities pa ON dsn.id = pa.daily_schedule_id
             WHERE MONTH(dsn.date) = ? AND YEAR(dsn.date) = ? AND dsn.grade_id = ?
             GROUP BY dsn.id, dsn.date, dsn.period_number, dsn.start_time, dsn.end_time, 
-                     s.subject_name, v.name, sec.section_name, s.id
+                     s.subject_name, v.name, sec.section_name, s.id, sec.id
             ORDER BY dsn.date, dsn.period_number
         `;
 
@@ -761,7 +762,8 @@ exports.getMonthlySchedule = (req, res) => {
                         venue_name: period.venue_name,
                         section_name: period.section_name,
                         activity_count: period.activity_count,
-                        subject_id: period.subject_id
+                        subject_id: period.subject_id,
+                        section_id: period.section_id
                     });
                 }
             });
