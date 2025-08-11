@@ -89,8 +89,10 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   };
 
   const fetchTopics = async () => {
+    console.log('selected',selectedPeriod);
+    
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}`);
+      const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}/${subjectID}`);
       const result = await response.json();
       if (result.success) {
         setTopics(result.data);
@@ -112,7 +114,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const result = await response.json();
       if (result.success) {
         setMonthlySchedule(result.data);
-        console.log('Monthly schedule data:', result.data);
+        console.log('Monthly schedule data:', result.data[0]);
       } else {
         console.log('Monthly schedule response:', result);
         setMonthlySchedule([]);
@@ -443,7 +445,11 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                       <Text style={styles.activityBatch}>Batch {item.batch_number}</Text>
                       <Text style={styles.activityMentor}>{item.mentor_name}</Text>
                       {item.topic_name && (
-                        <Text style={styles.activityTopic}>Topic: {item.topic_name}</Text>
+                        <Text style={styles.activityTopic}>
+                          Topic: {item.topic_hierarchy_path 
+                            ? `${item.topic_name} (${item.topic_hierarchy_path})`
+                            : item.topic_name}
+                        </Text>
                       )}
                       {item.has_assessment && (
                         <Text style={styles.assessmentBadge}>Assessment ({item.total_marks} marks)</Text>
@@ -527,13 +533,20 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   style={styles.picker}
                 >
                   <Picker.Item label="Select Topic" value={null} />
-                  {topics.map(topic => (
-                    <Picker.Item 
-                      key={topic.id} 
-                      label={topic.topic_name} 
-                      value={topic.id} 
-                    />
-                  ))}
+                  {topics.map(topic => {
+                    // Build the hierarchy path display
+                    const displayName = topic.hierarchy_path 
+                      ? `${topic.topic_name} (${topic.hierarchy_path})`
+                      : topic.topic_name;
+                    
+                    return (
+                      <Picker.Item 
+                        key={topic.id} 
+                        label={displayName} 
+                        value={topic.id} 
+                      />
+                    );
+                  })}
                 </Picker>
               </View>
 

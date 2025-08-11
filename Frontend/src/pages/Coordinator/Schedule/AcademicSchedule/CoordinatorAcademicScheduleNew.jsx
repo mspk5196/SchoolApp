@@ -376,7 +376,9 @@ const CoordinatorAcademicSchedule = ({ navigation }) => {
                       <Text style={styles.activityBatch}>Batch {item.batch_number}</Text>
                       <Text style={styles.activityMentor}>{item.mentor_name}</Text>
                       {item.topic_name && (
-                        <Text style={styles.activityTopic}>Topic: {item.topic_name}</Text>
+                        <Text style={styles.activityTopic}>
+                          Topic: {item.topic_hierarchy_path ? `${item.topic_hierarchy_path} > ${item.topic_name}` : item.topic_name}
+                        </Text>
                       )}
                       {item.has_assessment && (
                         <Text style={styles.assessmentBadge}>Assessment ({item.total_marks} marks)</Text>

@@ -130,7 +130,21 @@ exports.getDailySchedule = (req, res) => {
                 pa.start_time as activity_start_time, pa.duration, pa.max_participants,
                 pa.activity_instructions, pa.is_assessment, pa.assessment_weightage,
                 pa.is_completed, pa.completion_notes,
-                th.topic_name, tm.activity_name as material_name,
+                th.topic_name,
+                CASE 
+                    WHEN th.parent_id IS NOT NULL THEN
+                        (SELECT GROUP_CONCAT(
+                            ancestor.topic_name 
+                            ORDER BY ancestor.level ASC 
+                            SEPARATOR ' > '
+                        )
+                        FROM topic_hierarchy ancestor 
+                        WHERE ancestor.level < th.level 
+                        AND th.topic_code LIKE CONCAT(ancestor.topic_code, '%')
+                        AND ancestor.subject_id = th.subject_id)
+                    ELSE NULL 
+                END as topic_hierarchy_path,
+                tm.activity_name as material_name,
                 m.roll as mentor_roll, m.phone as mentor_phone
             FROM daily_schedule_new ds
             JOIN grades g ON ds.grade_id = g.id
@@ -182,6 +196,7 @@ exports.getDailySchedule = (req, res) => {
                     activity_type: row.activity_type,
                     batch_ids: JSON.parse(row.batch_ids || '[]'),
                     topic_name: row.topic_name,
+                    topic_hierarchy_path: row.topic_hierarchy_path,
                     material_name: row.material_name,
                     activity_start_time: row.activity_start_time,
                     duration: row.duration,
@@ -616,6 +631,7 @@ exports.getMonthlySchedule = (req, res) => {
                 dsn.start_time,
                 dsn.end_time,
                 s.subject_name,
+                s.id as subject_id,
                 v.name as venue_name,
                 sec.section_name,
                 COUNT(pa.id) as activity_count
@@ -705,6 +721,19 @@ exports.getPeriodActivities = (req, res) => {
                 SELECT 
                     pa.*,
                     th.topic_name,
+                    CASE 
+                        WHEN th.parent_id IS NOT NULL THEN
+                            (SELECT GROUP_CONCAT(
+                                ancestor.topic_name 
+                                ORDER BY ancestor.level ASC 
+                                SEPARATOR ' > '
+                            )
+                            FROM topic_hierarchy ancestor 
+                            WHERE ancestor.level < th.level 
+                            AND th.topic_code LIKE CONCAT(ancestor.topic_code, '%')
+                            AND ancestor.subject_id = th.subject_id)
+                        ELSE NULL 
+                    END as topic_hierarchy_path,
                     tm.activity_name as material_name,
                     m.roll as mentor_roll,
                     u.name as mentor_name
@@ -923,6 +952,19 @@ exports.getPeriodActivitiesAlt = (req, res) => {
                        u.name as mentor_name,
                        m.roll as mentor_roll,
                        th.topic_name,
+                       CASE 
+                           WHEN th.parent_id IS NOT NULL THEN
+                               (SELECT GROUP_CONCAT(
+                                   ancestor.topic_name 
+                                   ORDER BY ancestor.level ASC 
+                                   SEPARATOR ' > '
+                               )
+                               FROM topic_hierarchy ancestor 
+                               WHERE ancestor.level < th.level 
+                               AND th.topic_code LIKE CONCAT(ancestor.topic_code, '%')
+                               AND ancestor.subject_id = th.subject_id)
+                           ELSE NULL 
+                       END as topic_hierarchy_path,
                        tm.activity_name as material_title
                 FROM period_activities pa
                 LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
@@ -1158,7 +1200,20 @@ exports.getBatchActivities = (req, res) => {
                    ws.time_end,
                    v.venue_name,
                    m.name as mentor_name,
-                   th.topic_name
+                   th.topic_name,
+                   CASE 
+                       WHEN th.parent_id IS NOT NULL THEN
+                           (SELECT GROUP_CONCAT(
+                               ancestor.topic_name 
+                               ORDER BY ancestor.level ASC 
+                               SEPARATOR ' > '
+                           )
+                           FROM topic_hierarchy ancestor 
+                           WHERE ancestor.level < th.level 
+                           AND th.topic_code LIKE CONCAT(ancestor.topic_code, '%')
+                           AND ancestor.subject_id = th.subject_id)
+                       ELSE NULL 
+                   END as topic_hierarchy_path
             FROM period_activities pa
             JOIN weekly_schedule ws ON pa.weekly_schedule_id = ws.id
             LEFT JOIN subjects s ON ws.subject_id = s.id
