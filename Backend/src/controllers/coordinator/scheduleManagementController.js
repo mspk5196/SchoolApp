@@ -642,7 +642,7 @@ exports.getMonthlySchedule = (req, res) => {
             LEFT JOIN period_activities pa ON dsn.id = pa.daily_schedule_id
             WHERE MONTH(dsn.date) = ? AND YEAR(dsn.date) = ? AND dsn.grade_id = ?
             GROUP BY dsn.id, dsn.date, dsn.period_number, dsn.start_time, dsn.end_time, 
-                     s.subject_name, v.name, sec.section_name
+                     s.subject_name, v.name, sec.section_name, s.id
             ORDER BY dsn.date, dsn.period_number
         `;
 
