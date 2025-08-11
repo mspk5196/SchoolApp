@@ -73,11 +73,16 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
 
   const fetchMentors = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentors`);
+      const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeMentors`,{
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gradeID: activeGrade })
+      });
       const result = await response.json();
       if (result.success) {
-        setMentors(result.data);
-      }
+        // console.log(result.gradeMentors);
+        setMentors(result.gradeMentors);
+      } 
     } catch (error) {
       console.error('Error fetching mentors:', error);
     }
@@ -85,7 +90,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
 
   const fetchTopics = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/topics?grade=${activeGrade}`);
+      const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}`);
       const result = await response.json();
       if (result.success) {
         setTopics(result.data);
@@ -101,7 +106,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const year = selectedDate.getFullYear();
       
       const response = await fetch(
-        `${API_URL}/api/coordinator/academic-schedule/monthly?grade=${activeGrade}&month=${month}&year=${year}`
+        `${API_URL}/api/coordinator/academic-schedule/monthly/${activeGrade}/${month}/${year}`
       );
       
       const result = await response.json();
@@ -123,7 +128,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   const fetchPeriodActivities = async (periodId, date) => {
     try {
       const response = await fetch(
-        `${API_URL}/api/coordinator/academic-schedule/period-activities?period_id=${periodId}&date=${date}`,
+        `${API_URL}/api/coordinator/academic-schedule/period-activities/${periodId}/${date}`,
         {
           headers: { 'Content-Type': 'application/json' }
         }

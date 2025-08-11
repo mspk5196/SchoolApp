@@ -68,7 +68,46 @@ exports.getTopicHierarchy = async (req, res) => {
             error: error.message
         });
     }
-}
+};
+
+// Get all topics for a specific grade
+exports.getTopicsByGrade = async (req, res) => {
+    try {
+        const { gradeId } = req.params;
+
+        const sql = `
+            SELECT DISTINCT th.id, th.subject_id, th.topic_name, th.topic_code, 
+                   th.level, th.is_bottom_level, s.subject_name
+            FROM topic_hierarchy th
+            JOIN subjects s ON th.subject_id = s.id
+            JOIN grade_subjects gs ON s.id = gs.subject_id
+            WHERE gs.grade_id = ?
+            ORDER BY s.subject_name, th.level, th.order_sequence
+        `;
+
+        db.query(sql, [gradeId], (err, result) => {
+            if (err) {
+                console.error('Error fetching topics by grade:', err);
+                return res.status(500).json({ 
+                    success: false, 
+                    message: 'Failed to fetch topics' 
+                });
+            }
+
+            res.json({
+                success: true,
+                data: result || []
+            });
+        });
+    } catch (error) {
+        console.error('Get topics by grade error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch topics',
+            error: error.message
+        });
+    }
+};
 
 // Get topic hierarchy by activity (NEW FUNCTION)
 exports.getTopicHierarchyByActivity = async (req, res) => {
