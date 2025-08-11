@@ -460,20 +460,20 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   renderItem={({ item }) => (
                     <View style={styles.activityItem}>
                       <View style={styles.activityHeader}>
-                        <Text style={styles.activityType}>{item.activity_type}</Text>
-                        <Text style={styles.activityDuration}>{item.duration} min</Text>
+                        <Text style={styles.activityType}>{item.activity_type || 'Unknown'}</Text>
+                        <Text style={styles.activityDuration}>{item.duration || 0} min</Text>
                       </View>
-                      <Text style={styles.activityBatch}>Batch {item.batch_number}</Text>
-                      <Text style={styles.activityMentor}>{item.mentor_name}</Text>
+                      <Text style={styles.activityBatch}>Batch {item.batch_number || 1}</Text>
+                      <Text style={styles.activityMentor}>{item.mentor_name || 'No mentor assigned'}</Text>
                       {item.topic_name && (
                         <Text style={styles.activityTopic}>
-                          Topic: {item.topic_hierarchy_path
+                          Topic: {item.topic_hierarchy_path && item.topic_hierarchy_path !== null
                             ? `${item.topic_name} (${item.topic_hierarchy_path})`
                             : item.topic_name}
                         </Text>
                       )}
                       {item.has_assessment && (
-                        <Text style={styles.assessmentBadge}>Assessment ({item.total_marks} marks)</Text>
+                        <Text style={styles.assessmentBadge}>Assessment ({item.total_marks || 0} marks)</Text>
                       )}
                     </View>
                   )}
