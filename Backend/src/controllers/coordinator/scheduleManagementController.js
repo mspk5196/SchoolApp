@@ -247,7 +247,7 @@ exports.getWeeklySchedule = (req, res) => {
 };
 
 // Update activity in schedule
-exports.updateScheduleActivity = async (req, res) => {
+exports.updateScheduleActivity = (req, res) => {
     try {
         const { activityId } = req.params;
         const {
@@ -264,15 +264,24 @@ exports.updateScheduleActivity = async (req, res) => {
                 WHERE id = ?
             `;
 
-        await db.query(query, [
+        db.query(query, [
             activityName, activityType, JSON.stringify(batchIds), topicId, materialId,
             startTime, duration, maxParticipants, assignedMentorId,
             activityInstructions, isAssessment, assessmentWeightage, activityId
-        ]);
+        ], (err, result) => {
+            if (err) {
+                console.error('Update schedule activity error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to update activity',
+                    error: err.message
+                });
+            }
 
-        res.json({
-            success: true,
-            message: 'Activity updated successfully'
+            res.json({
+                success: true,
+                message: 'Activity updated successfully'
+            });
         });
     } catch (error) {
         console.error('Update schedule activity error:', error);
@@ -285,7 +294,7 @@ exports.updateScheduleActivity = async (req, res) => {
 };
 
 // Mark activity as completed
-exports.markActivityCompleted = async (req, res) => {
+exports.markActivityCompleted = (req, res) => {
     try {
         const { activityId } = req.params;
         const { completionNotes } = req.body;
@@ -296,11 +305,20 @@ exports.markActivityCompleted = async (req, res) => {
                 WHERE id = ?
             `;
 
-        await db.query(query, [completionNotes, activityId]);
+        db.query(query, [completionNotes, activityId], (err, result) => {
+            if (err) {
+                console.error('Mark activity completed error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to mark activity as completed',
+                    error: err.message
+                });
+            }
 
-        res.json({
-            success: true,
-            message: 'Activity marked as completed'
+            res.json({
+                success: true,
+                message: 'Activity marked as completed'
+            });
         });
     } catch (error) {
         console.error('Mark activity completed error:', error);
@@ -313,7 +331,7 @@ exports.markActivityCompleted = async (req, res) => {
 };
 
 // Get available mentors for time slot
-exports.getAvailableMentors = async (req, res) => {
+exports.getAvailableMentors = (req, res) => {
     try {
         const { date, startTime, endTime, subjectId, gradeId } = req.params;
 
@@ -337,11 +355,20 @@ exports.getAvailableMentors = async (req, res) => {
                 ORDER BY mgsa.is_primary DESC, u.name
             `;
 
-        const [mentors] = await db.query(query, [gradeId, subjectId, date, endTime, startTime]);
+        db.query(query, [gradeId, subjectId, date, endTime, startTime], (err, mentors) => {
+            if (err) {
+                console.error('Get available mentors error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch available mentors',
+                    error: err.message
+                });
+            }
 
-        res.json({
-            success: true,
-            data: mentors
+            res.json({
+                success: true,
+                data: mentors
+            });
         });
     } catch (error) {
         console.error('Get available mentors error:', error);
@@ -354,7 +381,7 @@ exports.getAvailableMentors = async (req, res) => {
 };
 
 // Get available venues for time slot
-exports.getAvailableVenues = async (req, res) => {
+exports.getAvailableVenues = (req, res) => {
     try {
         const { date, startTime, endTime, subjectId, gradeId } = req.params;
 
@@ -376,11 +403,20 @@ exports.getAvailableVenues = async (req, res) => {
                 ORDER BY v.capacity DESC, v.name
             `;
 
-        const [venues] = await db.query(query, [subjectId, gradeId, date, endTime, startTime]);
+        db.query(query, [subjectId, gradeId, date, endTime, startTime], (err, venues) => {
+            if (err) {
+                console.error('Get available venues error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch available venues',
+                    error: err.message
+                });
+            }
 
-        res.json({
-            success: true,
-            data: venues
+            res.json({
+                success: true,
+                data: venues
+            });
         });
     } catch (error) {
         console.error('Get available venues error:', error);
@@ -571,96 +607,84 @@ exports.getMonthlySchedule = (req, res) => {
     try {
         const { gradeId, month, year } = req.params;
 
-        // Generate dates for the month and get daily schedules
-        const monthlySchedule = [];
-        const daysInMonth = new Date(year, month, 0).getDate();
-        let processedDays = 0;
+        // Get all daily schedules for the month at once
+        const query = `
+            SELECT 
+                dsn.id,
+                dsn.date,
+                dsn.period_number,
+                dsn.start_time,
+                dsn.end_time,
+                s.subject_name,
+                v.name as venue_name,
+                sec.section_name,
+                COUNT(pa.id) as activity_count
+            FROM daily_schedule_new dsn
+            LEFT JOIN subjects s ON dsn.subject_id = s.id
+            LEFT JOIN venues v ON dsn.venue_id = v.id  
+            LEFT JOIN sections sec ON dsn.section_id = sec.id
+            LEFT JOIN period_activities pa ON dsn.id = pa.daily_schedule_id
+            WHERE MONTH(dsn.date) = ? AND YEAR(dsn.date) = ? AND dsn.grade_id = ?
+            GROUP BY dsn.id, dsn.date, dsn.period_number, dsn.start_time, dsn.end_time, 
+                     s.subject_name, v.name, sec.section_name
+            ORDER BY dsn.date, dsn.period_number
+        `;
 
-        for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, month - 1, day);
-            const dateString = date.toISOString().split('T')[0];
-            const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-
-            // Skip Sundays or add weekend handling
-            if (dayName !== 'Sunday') {
-                // Get daily schedule for this date - using the correct table structure
-                const dailyQuery = `
-                        SELECT 
-                            dsn.id,
-                            dsn.date,
-                            dsn.period_number,
-                            dsn.start_time,
-                            dsn.end_time,
-                            s.subject_name,
-                            v.name as venue_name,
-                            sec.section_name,
-                            COUNT(pa.id) as activity_count
-                        FROM daily_schedule_new dsn
-                        LEFT JOIN subjects s ON dsn.subject_id = s.id
-                        LEFT JOIN venues v ON dsn.venue_id = v.id  
-                        LEFT JOIN sections sec ON dsn.section_id = sec.id
-                        LEFT JOIN period_activities pa ON dsn.id = pa.daily_schedule_id
-                        WHERE dsn.date = ? AND dsn.grade_id = ?
-                        GROUP BY dsn.id
-                        ORDER BY dsn.period_number
-                    `;
-
-                db.query(dailyQuery, [dateString, gradeId], (err, daySchedule) => {
-                    if (err) {
-                        console.error('Daily schedule query error:', err);
-                        return res.status(500).json({
-                            success: false,
-                            message: 'Failed to fetch daily schedule',
-                            error: err.message
-                        });
-                    }
-
-                    if (daySchedule.length > 0) {
-                        monthlySchedule.push({
-                            date: dateString,
-                            day_name: dayName,
-                            periods: daySchedule.map(period => ({
-                                id: period.id,
-                                period_number: period.period_number,
-                                timeStart: period.start_time,
-                                timeEnd: period.end_time,
-                                subject_name: period.subject_name,
-                                venue_name: period.venue_name,
-                                section_name: period.section_name,
-                                activity_count: period.activity_count
-                            }))
-                        });
-                    }
-
-                    processedDays++;
-                    if (processedDays === daysInMonth - getSundayCount(year, month)) {
-                        res.json({
-                            success: true,
-                            data: monthlySchedule.sort((a, b) => new Date(a.date) - new Date(b.date))
-                        });
-                    }
+        db.query(query, [month, year, gradeId], (err, scheduleData) => {
+            if (err) {
+                console.error('Monthly schedule query error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch monthly schedule',
+                    error: err.message
                 });
-            } else {
-                processedDays++;
-                if (processedDays === daysInMonth - getSundayCount(year, month)) {
-                    res.json({
-                        success: true,
-                        data: monthlySchedule.sort((a, b) => new Date(a.date) - new Date(b.date))
+            }
+
+            // Group the results by date
+            const monthlySchedule = [];
+            const groupedByDate = {};
+
+            scheduleData.forEach(period => {
+                const date = period.date.toISOString().split('T')[0];
+                const dayName = new Date(period.date).toLocaleDateString('en-US', { weekday: 'long' });
+                
+                if (!groupedByDate[date]) {
+                    groupedByDate[date] = {
+                        date: date,
+                        day_name: dayName,
+                        periods: []
+                    };
+                }
+
+                // Skip Sundays
+                if (dayName !== 'Sunday') {
+                    groupedByDate[date].periods.push({
+                        id: period.id,
+                        period_number: period.period_number,
+                        timeStart: period.start_time,
+                        timeEnd: period.end_time,
+                        subject_name: period.subject_name,
+                        venue_name: period.venue_name,
+                        section_name: period.section_name,
+                        activity_count: period.activity_count
                     });
                 }
-            }
-        }
+            });
 
-        // Helper function to count Sundays in a month
-        function getSundayCount(year, month) {
-            let sundays = 0;
-            const daysInMonth = new Date(year, month, 0).getDate();
-            for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(year, month - 1, day);
-                if (date.getDay() === 0) sundays++;
-            }
-            return sundays;
-        }
+            // Convert to array and sort by date
+            Object.values(groupedByDate).forEach(daySchedule => {
+                if (daySchedule.periods.length > 0) {
+                    monthlySchedule.push(daySchedule);
+                }
+            });
+
+            monthlySchedule.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            res.json({
+                success: true,
+                data: monthlySchedule
+            });
+        });
 
     } catch (error) {
         console.error('Get monthly schedule error:', error);
