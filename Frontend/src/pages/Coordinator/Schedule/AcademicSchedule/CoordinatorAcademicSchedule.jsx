@@ -17,11 +17,10 @@ import Icon from 'react-native-vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // import styles from './CoordinatorAcademicScheduleStyles';
 import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
+import { API_URL } from '../../../../utils/env';
 
-const API_URL = 'http://192.168.0.103:8080';
-
-const CoordinatorAcademicSchedule = ({ navigation }) => {
-  const [activeGrade, setActiveGrade] = useState(null);
+const CoordinatorAcademicSchedule = ({ navigation, route }) => {
+  const { activeGrade } = route.params;
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [monthlySchedule, setMonthlySchedule] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +50,7 @@ const CoordinatorAcademicSchedule = ({ navigation }) => {
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [activeGrade]);
 
   useEffect(() => {
     if (activeGrade) {
@@ -61,12 +60,10 @@ const CoordinatorAcademicSchedule = ({ navigation }) => {
 
   const loadInitialData = async () => {
     try {
-      const gradeData = await AsyncStorage.getItem('activeGrade');
-      if (gradeData) {
-        setActiveGrade(gradeData);
+      if (activeGrade) {
+        await fetchMentors();
+        await fetchTopics();
       }
-      await fetchMentors();
-      await fetchTopics();
     } catch (error) {
       console.error('Error loading initial data:', error);
     } finally {

@@ -270,26 +270,26 @@ router.post('/coordinator/batches/update-size', BatchManagementController.update
 router.post('/coordinator/batches/getSectionSubjects', BatchManagementController.getSectionSubjects);
 
 // Enhanced Schedule Management Routes
-router.post('/schedule/create', ScheduleManagementController.createDailySchedule);
-router.get('/schedule/:date/:sectionId', ScheduleManagementController.getDailySchedule);
-router.get('/schedule/weekly/:sectionId/:weekStart', ScheduleManagementController.getWeeklySchedule);
-router.put('/schedule/activity/:activityId', ScheduleManagementController.updateScheduleActivity);
-router.patch('/schedule/activity/:activityId/complete', ScheduleManagementController.markActivityCompleted);
-router.get('/schedule/mentors/available/:date/:startTime/:endTime/:subjectId/:gradeId', ScheduleManagementController.getAvailableMentors);
-router.get('/schedule/venues/available/:date/:startTime/:endTime/:subjectId/:gradeId', ScheduleManagementController.getAvailableVenues);
-router.delete('/schedule/:scheduleId', ScheduleManagementController.deleteSchedule);
-router.post('/schedule/:scheduleId/copy', ScheduleManagementController.copySchedule);
+router.post('/coordinator/schedule/create', ScheduleManagementController.createDailySchedule);
+router.get('/coordinator/schedule/:date/:sectionId', ScheduleManagementController.getDailySchedule);
+router.get('/coordinator/schedule/weekly/:sectionId/:weekStart', ScheduleManagementController.getWeeklySchedule);
+router.put('/coordinator/schedule/activity/:activityId', ScheduleManagementController.updateScheduleActivity);
+router.patch('/coordinator/schedule/activity/:activityId/complete', ScheduleManagementController.markActivityCompleted);
+router.get('/coordinator/schedule/mentors/available/:date/:startTime/:endTime/:subjectId/:gradeId', ScheduleManagementController.getAvailableMentors);
+router.get('/coordinator/schedule/venues/available/:date/:startTime/:endTime/:subjectId/:gradeId', ScheduleManagementController.getAvailableVenues);
+router.delete('/coordinator/schedule/:scheduleId', ScheduleManagementController.deleteSchedule);
+router.post('/coordinator/schedule/:scheduleId/copy', ScheduleManagementController.copySchedule);
 
 // Enhanced Academic Schedule Routes (Date-wise from Weekly Template)
-router.get('/academic-schedule/weekly-template/:gradeId', ScheduleManagementController.getWeeklyTemplate);
-router.get('/academic-schedule/monthly/:gradeId/:month/:year', ScheduleManagementController.getMonthlySchedule);
-router.get('/academic-schedule/monthly-alt/:gradeId/:month/:year', ScheduleManagementController.getMonthlyScheduleAlt);
-router.get('/academic-schedule/period-activities/:periodId/:date', ScheduleManagementController.getPeriodActivities);
-router.get('/academic-schedule/period-activities-alt/:periodId/:date', ScheduleManagementController.getPeriodActivitiesAlt);
-router.post('/academic-schedule/create-activity', ScheduleManagementController.createPeriodActivity);
-router.post('/academic-schedule/create-activity-split', ScheduleManagementController.createPeriodActivitySplit);
-router.put('/academic-schedule/activity/:activityId', ScheduleManagementController.updatePeriodActivity);
-router.delete('/academic-schedule/activity/:activityId', ScheduleManagementController.deletePeriodActivity);
-router.get('/academic-schedule/batch-activities/:batchId/:date', ScheduleManagementController.getBatchActivities);
+router.get('/coordinator/academic-schedule/weekly-template/:gradeId', ScheduleManagementController.getWeeklyTemplate);
+router.get('/coordinator/academic-schedule/monthly/:gradeId/:month/:year', ScheduleManagementController.getMonthlySchedule);
+router.get('/coordinator/academic-schedule/monthly-alt/:gradeId/:month/:year', ScheduleManagementController.getMonthlyScheduleAlt);
+router.get('/coordinator/academic-schedule/period-activities/:periodId/:date', ScheduleManagementController.getPeriodActivities);
+router.get('/coordinator/academic-schedule/period-activities-alt/:periodId/:date', ScheduleManagementController.getPeriodActivitiesAlt);
+router.post('/coordinator/academic-schedule/create-activity', ScheduleManagementController.createPeriodActivity);
+router.post('/coordinator/academic-schedule/create-activity-split', ScheduleManagementController.createPeriodActivitySplit);
+router.put('/coordinator/academic-schedule/activity/:activityId', ScheduleManagementController.updatePeriodActivity);
+router.delete('/coordinator/academic-schedule/activity/:activityId', ScheduleManagementController.deletePeriodActivity);
+router.get('/coordinator/academic-schedule/batch-activities/:batchId/:date', ScheduleManagementController.getBatchActivities);
 
 module.exports = router;
