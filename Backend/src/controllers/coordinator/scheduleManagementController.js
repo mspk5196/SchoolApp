@@ -1265,7 +1265,6 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
                 message: 'Activities array is required'
             });
         }
-
         // Validate time overlaps within the same batch
         const batchActivities = {};
         for (const activity of activities) {
@@ -1287,69 +1286,36 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
             batchActivities[batch_number].push({ start_time, end_time });
         }
 
-        // Start transaction
-        db.query('START TRANSACTION', (err) => {
-            if (err) {
-                console.error('Transaction start error:', err);
-                return res.status(500).json({
-                    success: false,
-                    message: 'Failed to start transaction',
-                    error: err.message
-                });
+        // Start transaction with lock timeout handling
+        db.query('SET SESSION innodb_lock_wait_timeout = 30', (lockErr) => {
+            if (lockErr) {
+                console.error('Set lock timeout error:', lockErr);
             }
 
-            let completed = 0;
-            const insertedActivities = [];
-
-            activities.forEach((activity, index) => {
-                const {
-                    batch_number, activity_type, start_time, end_time, topic_id,
-                    mentor_id, has_assessment, assessment_type, total_marks, activity_instructions
-                } = activity;
-
-                // Calculate duration in minutes
-                const startDate = new Date(`1970-01-01 ${start_time}`);
-                const endDate = new Date(`1970-01-01 ${end_time}`);
-                const duration_minutes = (endDate - startDate) / (1000 * 60);
-
-                const insertQuery = `
-                    INSERT INTO period_activities 
-                    (daily_schedule_id, activity_date, activity_name, activity_type, duration, 
-                     batch_number, assigned_mentor_id, topic_id, is_assessment, assessment_type, 
-                     total_marks, start_time, end_time, activity_instructions, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                `;
-
-                db.query(insertQuery, [
-                    period_id, date, activity_type || 'Academic Activity', activity_type, 
-                    duration_minutes, batch_number, mentor_id, topic_id, has_assessment, 
-                    assessment_type, total_marks, start_time, end_time, activity_instructions
-                ], (err, result) => {
-                    if (err) {
-                        console.error('Insert activity error:', err);
-                        return db.query('ROLLBACK', () => {
-                            res.status(500).json({
-                                success: false,
-                                message: 'Failed to create activity',
-                                error: err.message
-                            });
-                        });
-                    }
-
-                    insertedActivities.push({
-                        id: result.insertId,
-                        ...activity
+            db.query('START TRANSACTION', (err) => {
+                if (err) {
+                    console.error('Transaction start error:', err);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to start transaction',
+                        error: err.message
                     });
+                }
 
-                    completed++;
-                    if (completed === activities.length) {
-                        db.query('COMMIT', (err) => {
-                            if (err) {
-                                console.error('Commit error:', err);
+                // Process activities sequentially to avoid lock conflicts
+                let currentIndex = 0;
+                const insertedActivities = [];
+
+                const processNextActivity = () => {
+                    if (currentIndex >= activities.length) {
+                        // All activities processed, commit transaction
+                        db.query('COMMIT', (commitErr) => {
+                            if (commitErr) {
+                                console.error('Commit error:', commitErr);
                                 return res.status(500).json({
                                     success: false,
                                     message: 'Failed to commit transaction',
-                                    error: err.message
+                                    error: commitErr.message
                                 });
                             }
 
@@ -1359,8 +1325,63 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
                                 data: { activities: insertedActivities }
                             });
                         });
+                        return;
                     }
-                });
+
+                    const activity = activities[currentIndex];
+                    const {
+                        batch_number, activity_type, start_time, end_time, topic_id,
+                        mentor_id, has_assessment, assessment_type, total_marks, activity_instructions
+                    } = activity;
+
+                    // Calculate duration in minutes
+                    const startDate = new Date(`1970-01-01 ${start_time}`);
+                    const endDate = new Date(`1970-01-01 ${end_time}`);
+                    const duration_minutes = Math.round((endDate - startDate) / (1000 * 60));
+
+                    const insertQuery = `
+                        INSERT INTO period_activities 
+                        (daily_schedule_id, activity_date, activity_name, activity_type, duration, 
+                         batch_number, assigned_mentor_id, topic_id, is_assessment, assessment_type, 
+                         total_marks, start_time, end_time, activity_instructions, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    `;
+
+                    const activityName = `${activity_type} - Batch ${batch_number}`;
+
+                    db.query(insertQuery, [
+                        period_id, date, activityName, activity_type, 
+                        duration_minutes, batch_number, mentor_id, topic_id, 
+                        has_assessment ? 1 : 0, assessment_type, total_marks, 
+                        start_time, end_time, activity_instructions || ''
+                    ], (insertErr, result) => {
+                        if (insertErr) {
+                            console.error('Insert activity error:', insertErr);
+                            return db.query('ROLLBACK', () => {
+                                res.status(500).json({
+                                    success: false,
+                                    message: 'Failed to create activity',
+                                    error: insertErr.message,
+                                    details: `Error on activity ${currentIndex + 1}: ${insertErr.sqlMessage || insertErr.message}`
+                                });
+                            });
+                        }
+
+                        insertedActivities.push({
+                            id: result.insertId,
+                            ...activity,
+                            activity_name: activityName,
+                            duration_minutes
+                        });
+
+                        currentIndex++;
+                        // Process next activity
+                        setImmediate(processNextActivity);
+                    });
+                };
+
+                // Start processing activities
+                processNextActivity();
             });
         });
     } catch (error) {

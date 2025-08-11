@@ -45,6 +45,8 @@ const TimeBasedActivityCreator = ({
 
     const fetchInitialData = async () => {
         setLoading(true);
+        // console.log(selectedPeriod);
+        
         try {
             await Promise.all([
                 fetchBatches(),
@@ -70,7 +72,7 @@ const TimeBasedActivityCreator = ({
                 // Initialize batch activities for each batch
                 const initialBatchActivities = {};
                 result.data.forEach(batch => {
-                    initialBatchActivities[batch.batch_number] = [];
+                    initialBatchActivities[batch.batch_level] = [];
                 });
                 setBatchActivities(initialBatchActivities);
                 console.log('Initialized batch activities:', result);
@@ -112,10 +114,10 @@ const TimeBasedActivityCreator = ({
         }
     };
 
-    const addActivityToBatch = (batchNumber) => {
+    const addActivityToBatch = (batchLevel) => {
         const newActivity = {
             id: Date.now(), // Temporary ID
-            batch_number: batchNumber,
+            batch_number: batchLevel,
             activity_type: 'Academic',
             start_time: selectedPeriod.start_time,
             end_time: selectedPeriod.end_time,
@@ -129,29 +131,29 @@ const TimeBasedActivityCreator = ({
 
         setBatchActivities(prev => ({
             ...prev,
-            [batchNumber]: [...prev[batchNumber], newActivity]
+            [batchLevel]: [...prev[batchLevel], newActivity]
         }));
     };
 
-    const updateActivity = (batchNumber, activityId, field, value) => {
+    const updateActivity = (batchLevel, activityId, field, value) => {
         setBatchActivities(prev => ({
             ...prev,
-            [batchNumber]: prev[batchNumber].map(activity =>
+            [batchLevel]: prev[batchLevel].map(activity =>
                 activity.id === activityId ? { ...activity, [field]: value } : activity
             )
         }));
     };
 
-    const removeActivity = (batchNumber, activityId) => {
+    const removeActivity = (batchLevel, activityId) => {
         setBatchActivities(prev => ({
             ...prev,
-            [batchNumber]: prev[batchNumber].filter(activity => activity.id !== activityId)
+            [batchLevel]: prev[batchLevel].filter(activity => activity.id !== activityId)
         }));
     };
 
     const validateTimeOverlaps = () => {
-        for (const batchNumber in batchActivities) {
-            const activities = batchActivities[batchNumber];
+        for (const batchLevel in batchActivities) {
+            const activities = batchActivities[batchLevel];
             for (let i = 0; i < activities.length; i++) {
                 for (let j = i + 1; j < activities.length; j++) {
                     const activity1 = activities[i];
@@ -159,7 +161,7 @@ const TimeBasedActivityCreator = ({
 
                     if (activity1.start_time < activity2.end_time &&
                         activity1.end_time > activity2.start_time) {
-                        return `Time overlap detected in Batch ${batchNumber}`;
+                        return `Time overlap detected in Batch ${batchLevel}`;
                     }
                 }
             }
@@ -171,15 +173,15 @@ const TimeBasedActivityCreator = ({
         try {
             // Validate required fields
             const allActivities = [];
-            for (const batchNumber in batchActivities) {
-                for (const activity of batchActivities[batchNumber]) {
+            for (const batchLevel in batchActivities) {
+                for (const activity of batchActivities[batchLevel]) {
                     if (!activity.mentor_id || !activity.topic_id) {
-                        Alert.alert('Error', `Please fill all required fields for Batch ${batchNumber}`);
+                        Alert.alert('Error', `Please fill all required fields for Batch ${batchLevel}`);
                         return;
                     }
                     allActivities.push({
                         ...activity,
-                        batch_number: parseInt(batchNumber)
+                        batch_number: parseInt(batchLevel)
                     });
                 }
             }
@@ -262,17 +264,17 @@ const TimeBasedActivityCreator = ({
                         {selectedPeriod?.subject_name} - Period {selectedPeriod?.period_number}
                     </Text>
                     <Text style={styles.timeText}>
-                        {formatTime(selectedPeriod?.start_time)} - {formatTime(selectedPeriod?.end_time)}
+                        {formatTime(selectedPeriod?.timeStart)} - {formatTime(selectedPeriod?.timeEnd)}
                     </Text>
                 </View>
 
                 <ScrollView style={styles.content}>
                     {batches.map(batch => (
-                        <View key={batch.batch_number} style={styles.batchSection}>
+                        <View key={batch.batch_level} style={styles.batchSection}>
                             <View style={styles.batchHeader}>
-                                <Text style={styles.batchTitle}>Batch {batch.batch_number}</Text>
+                                <Text style={styles.batchTitle}>Batch {batch.batch_level}({batch.batch_name})</Text>
                                 <TouchableOpacity
-                                    onPress={() => addActivityToBatch(batch.batch_number)}
+                                    onPress={() => {addActivityToBatch(batch.batch_level)}}
                                     style={styles.addButton}
                                 >
                                     <Icon name="plus" size={16} color="#fff" />
@@ -280,12 +282,13 @@ const TimeBasedActivityCreator = ({
                                 </TouchableOpacity>
                             </View>
 
-                            {batchActivities[batch.batch_number]?.map(activity => (
+                            {batchActivities[batch.batch_level]?.map(activity => (
                                 <View key={activity.id} style={styles.activityForm}>
+                                    {/* {console.log(activity)} */}
                                     <View style={styles.activityHeader}>
-                                        <Text style={styles.activityTitle}>Activity {activity.id}</Text>
+                                        <Text style={styles.activityTitle}>Activity {activity.batch_number}</Text>
                                         <TouchableOpacity
-                                            onPress={() => removeActivity(batch.batch_number, activity.id)}
+                                            onPress={() => removeActivity(batch.batch_level, activity.id)}
                                             style={styles.removeButton}
                                         >
                                             <Icon name="trash-2" size={16} color="#ff4444" />
@@ -298,7 +301,7 @@ const TimeBasedActivityCreator = ({
                                         <View style={styles.pickerContainer}>
                                             <Picker
                                                 selectedValue={activity.activity_type}
-                                                onValueChange={(value) => updateActivity(batch.batch_number, activity.id, 'activity_type', value)}
+                                                onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'activity_type', value)}
                                                 style={styles.picker}
                                             >
                                                 {activityTypes.map(type => (
@@ -315,7 +318,7 @@ const TimeBasedActivityCreator = ({
                                             <TextInput
                                                 style={styles.timeInput}
                                                 value={activity.start_time}
-                                                onChangeText={(value) => updateActivity(batch.batch_number, activity.id, 'start_time', value)}
+                                                onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'start_time', value)}
                                                 placeholder="HH:MM"
                                             />
                                         </View>
@@ -324,7 +327,7 @@ const TimeBasedActivityCreator = ({
                                             <TextInput
                                                 style={styles.timeInput}
                                                 value={activity.end_time}
-                                                onChangeText={(value) => updateActivity(batch.batch_number, activity.id, 'end_time', value)}
+                                                onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'end_time', value)}
                                                 placeholder="HH:MM"
                                             />
                                         </View>
@@ -336,7 +339,7 @@ const TimeBasedActivityCreator = ({
                                         <View style={styles.pickerContainer}>
                                             <Picker
                                                 selectedValue={activity.topic_id}
-                                                onValueChange={(value) => updateActivity(batch.batch_number, activity.id, 'topic_id', value)}
+                                                onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'topic_id', value)}
                                                 style={styles.picker}
                                             >
                                                 <Picker.Item label="Select Topic" value={null} />
@@ -357,7 +360,7 @@ const TimeBasedActivityCreator = ({
                                         <View style={styles.pickerContainer}>
                                             <Picker
                                                 selectedValue={activity.mentor_id}
-                                                onValueChange={(value) => updateActivity(batch.batch_number, activity.id, 'mentor_id', value)}
+                                                onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'mentor_id', value)}
                                                 style={styles.picker}
                                             >
                                                 <Picker.Item label="Select Mentor" value={null} />
@@ -377,7 +380,7 @@ const TimeBasedActivityCreator = ({
                                         <Text style={styles.label}>Has Assessment</Text>
                                         <Switch
                                             value={activity.has_assessment}
-                                            onValueChange={(value) => updateActivity(batch.batch_number, activity.id, 'has_assessment', value)}
+                                            onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'has_assessment', value)}
                                         />
                                     </View>
 
@@ -388,7 +391,7 @@ const TimeBasedActivityCreator = ({
                                                 <View style={styles.pickerContainer}>
                                                     <Picker
                                                         selectedValue={activity.assessment_type}
-                                                        onValueChange={(value) => updateActivity(batch.batch_number, activity.id, 'assessment_type', value)}
+                                                        onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'assessment_type', value)}
                                                         style={styles.picker}
                                                     >
                                                         {assessmentTypes.map(type => (
@@ -403,7 +406,7 @@ const TimeBasedActivityCreator = ({
                                                 <TextInput
                                                     style={styles.input}
                                                     value={activity.total_marks?.toString()}
-                                                    onChangeText={(value) => updateActivity(batch.batch_number, activity.id, 'total_marks', parseInt(value) || 100)}
+                                                    onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'total_marks', parseInt(value) || 100)}
                                                     keyboardType="numeric"
                                                     placeholder="100"
                                                 />
@@ -417,7 +420,7 @@ const TimeBasedActivityCreator = ({
                                         <TextInput
                                             style={styles.textArea}
                                             value={activity.activity_instructions}
-                                            onChangeText={(value) => updateActivity(batch.batch_number, activity.id, 'activity_instructions', value)}
+                                            onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'activity_instructions', value)}
                                             placeholder="Enter activity instructions..."
                                             multiline
                                             numberOfLines={3}
