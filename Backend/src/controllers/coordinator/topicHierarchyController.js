@@ -2,7 +2,7 @@ const db = require('../../config/db');
 
 // class TopicHierarchyController {
 // Get complete topic hierarchy for a subject
-exports.getTopicHierarchy = async (req, res) => {
+exports.getTopicHierarchy = (req, res) => {
     try {
         const { subjectId, gradeId } = req.params;
 
@@ -71,7 +71,7 @@ exports.getTopicHierarchy = async (req, res) => {
 };
 
 // Get all topics for a specific grade
-exports.getTopicsByGrade = async (req, res) => {
+exports.getTopicsByGrade = (req, res) => {
     try {
         const { gradeId } = req.params;
 
@@ -80,8 +80,9 @@ exports.getTopicsByGrade = async (req, res) => {
                    th.level, th.is_bottom_level, th.order_sequence, s.subject_name
             FROM topic_hierarchy th
             JOIN subjects s ON th.subject_id = s.id
-            JOIN grade_subject gs ON s.id = gs.subject_id
-            WHERE gs.grade_id = ?
+            JOIN section_subject_activities ssa ON s.id = ssa.subject_id
+            JOIN sections sec ON ssa.section_id = sec.id
+            WHERE sec.grade_id = ?
             ORDER BY s.subject_name, th.level, th.order_sequence
         `;
 
@@ -110,7 +111,7 @@ exports.getTopicsByGrade = async (req, res) => {
 };
 
 // Get topic hierarchy by activity (NEW FUNCTION)
-exports.getTopicHierarchyByActivity = async (req, res) => {
+exports.getTopicHierarchyByActivity = (req, res) => {
     try {
         const { activityId } = req.params;
 
@@ -207,7 +208,7 @@ exports.getTopicHierarchyByActivity = async (req, res) => {
 }
 
 // Create new topic in hierarchy
-exports.createTopic = async (req, res) => {
+exports.createTopic = (req, res) => {
     try {
         const {
             subjectId, sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,

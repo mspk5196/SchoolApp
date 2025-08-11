@@ -201,6 +201,14 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     });
   };
 
+  // Helper function to format date without timezone issues
+  const formatDateToString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const generateDailySchedulesManually = async () => {
     try {
       setLoading(true);
@@ -269,7 +277,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     // Add actual dates
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day);
-      const dateString = date.toISOString().split('T')[0];
+      const dateString = formatDateToString(date);
       const daySchedule = monthlySchedule.find(schedule => schedule.date === dateString);
       
       calendarDays.push({
@@ -341,15 +349,23 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   };
 
   const renderDaySchedule = () => {
+    const selectedDateString = formatDateToString(selectedDate);
+    console.log('Selected date string (formatted):', selectedDateString);
+    console.log('Available schedule dates:', monthlySchedule.map(s => s.date));
+    
     const daySchedule = monthlySchedule.find(
-      schedule => schedule.date === selectedDate.toISOString().split('T')[0]
+      schedule => schedule.date === selectedDateString
     );
+
+    console.log('Found day schedule:', daySchedule ? 'Yes' : 'No');
+    console.log('Selected date object:', selectedDate);
 
     if (!daySchedule || daySchedule.periods.length === 0) {
       return (
         <View style={styles.noScheduleContainer}>
           <Text style={styles.noScheduleText}>No schedule available for this date</Text>
-          <Text style={styles.noScheduleSubtext}>Create a weekly schedule first</Text>
+          <Text style={styles.noScheduleSubtext}>Selected: {selectedDateString}</Text>
+          <Text style={styles.noScheduleSubtext}>Available: {monthlySchedule.map(s => s.date).join(', ')}</Text>
         </View>
       );
     }
