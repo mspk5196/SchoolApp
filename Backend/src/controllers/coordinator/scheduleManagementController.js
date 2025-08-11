@@ -716,7 +716,7 @@ exports.getMonthlySchedule = (req, res) => {
 // Get period activities for a specific period and date
 exports.getPeriodActivities = (req, res) => {
     try {
-        const { periodId, date } = req.query;
+        const { periodId, date } = req.params;
 
         const query = `
                 SELECT 
