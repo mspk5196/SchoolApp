@@ -112,6 +112,9 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const result = await response.json();
       if (result.success) {
         setMonthlySchedule(result.data);
+      } else {
+        console.log('Monthly schedule response:', result);
+        setMonthlySchedule([]);
       }
     } catch (error) {
       console.error('Error fetching monthly schedule:', error);

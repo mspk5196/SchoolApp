@@ -518,7 +518,7 @@ exports.getWeeklyTemplate = async (req, res) => {
 // Get monthly schedule based on weekly template
 exports.getMonthlySchedule = async (req, res) => {
     try {
-        const { grade, month, year } = req.query;
+        const { gradeId, month, year } = req.params;
 
         // Generate dates for the month and get daily schedules
         const monthlySchedule = [];
@@ -531,30 +531,29 @@ exports.getMonthlySchedule = async (req, res) => {
 
             // Skip Sundays or add weekend handling
             if (dayName !== 'Sunday') {
-                // Get daily schedule for this date - using your existing daily_schedule table
+                // Get daily schedule for this date - using the correct table structure
                 const dailyQuery = `
                         SELECT 
-                            ds.id,
-                            ds.date,
-                            ds.period_number,
-                            ds.start_time,
-                            ds.end_time,
+                            dsn.id,
+                            dsn.date,
+                            dsn.period_number,
+                            dsn.start_time,
+                            dsn.end_time,
                             s.subject_name,
                             v.name as venue_name,
                             sec.section_name,
                             COUNT(pa.id) as activity_count
-                        FROM daily_schedule ds
-                        LEFT JOIN subjects s ON ds.subject_id = s.id
-                        LEFT JOIN venues v ON ds.venue_id = v.id  
-                        LEFT JOIN sections sec ON ds.section_id = sec.id
-                        LEFT JOIN period_activities pa ON ds.id = pa.daily_schedule_id
-                        LEFT JOIN grades g ON ds.grade_id = g.id
-                        WHERE ds.date = ? AND g.grade_name = ?
-                        GROUP BY ds.id
-                        ORDER BY ds.period_number
+                        FROM daily_schedule_new dsn
+                        LEFT JOIN subjects s ON dsn.subject_id = s.id
+                        LEFT JOIN venues v ON dsn.venue_id = v.id  
+                        LEFT JOIN sections sec ON dsn.section_id = sec.id
+                        LEFT JOIN period_activities pa ON dsn.id = pa.daily_schedule_id
+                        WHERE dsn.date = ? AND dsn.grade_id = ?
+                        GROUP BY dsn.id
+                        ORDER BY dsn.period_number
                     `;
 
-                const [daySchedule] = await db.query(dailyQuery, [dateString, grade]);
+                const [daySchedule] = await db.query(dailyQuery, [dateString, gradeId]);
 
                 if (daySchedule.length > 0) {
                     monthlySchedule.push({
@@ -724,22 +723,22 @@ exports.createPeriodActivity = async (req, res) => {
     }
 };
 
-// Get monthly schedule
+// Get monthly schedule alternative
 exports.getMonthlyScheduleAlt = async (req, res) => {
     try {
-        const { month, year } = req.params;
+        const { gradeId, month, year } = req.params;
 
         const query = `
-                SELECT ds.*, sec.name as section_name, sub.name as subject_name, ven.name as venue_name
-                FROM daily_schedule ds
-                LEFT JOIN sections sec ON ds.section_id = sec.id
-                LEFT JOIN subjects sub ON ds.subject_id = sub.id
-                LEFT JOIN venues ven ON ds.venue_id = ven.id
-                WHERE MONTH(ds.date) = ? AND YEAR(ds.date) = ?
-                ORDER BY ds.date, ds.period_number
+                SELECT dsn.*, sec.section_name, sub.subject_name, ven.name as venue_name
+                FROM daily_schedule_new dsn
+                LEFT JOIN sections sec ON dsn.section_id = sec.id
+                LEFT JOIN subjects sub ON dsn.subject_id = sub.id
+                LEFT JOIN venues ven ON dsn.venue_id = ven.id
+                WHERE MONTH(dsn.date) = ? AND YEAR(dsn.date) = ? AND dsn.grade_id = ?
+                ORDER BY dsn.date, dsn.period_number
             `;
 
-        const [results] = await db.query(query, [month, year]);
+        const [results] = await db.query(query, [month, year, gradeId]);
 
         const monthlySchedule = [];
         for (const row of results) {
@@ -756,8 +755,8 @@ exports.getMonthlyScheduleAlt = async (req, res) => {
                     section_name: row.section_name,
                     venue_id: row.venue_id,
                     venue_name: row.venue_name,
-                    timeStart: row.time_start,
-                    timeEnd: row.time_end
+                    timeStart: row.start_time,
+                    timeEnd: row.end_time
                 });
             } else {
                 monthlySchedule.push({
@@ -772,8 +771,8 @@ exports.getMonthlyScheduleAlt = async (req, res) => {
                         section_name: period.section_name,
                         venue_id: period.venue_id,
                         venue_name: period.venue_name,
-                        timeStart: period.time_start,
-                        timeEnd: period.time_end
+                        timeStart: period.start_time,
+                        timeEnd: period.end_time
                     }))
                 });
             }
@@ -800,15 +799,16 @@ exports.getPeriodActivitiesAlt = async (req, res) => {
 
         const query = `
                 SELECT pa.*, 
-                       m.name as mentor_name,
+                       u.name as mentor_name,
                        m.roll as mentor_roll,
                        th.topic_name,
-                       mat.title as material_title
+                       tm.activity_name as material_title
                 FROM period_activities pa
                 LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
+                LEFT JOIN users u ON m.phone = u.phone
                 LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
-                LEFT JOIN materials mat ON pa.material_id = mat.id
-                WHERE pa.weekly_schedule_id = ? AND pa.activity_date = ?
+                LEFT JOIN topic_materials tm ON pa.material_id = tm.id
+                WHERE pa.daily_schedule_id = ? AND pa.activity_date = ?
                 ORDER BY pa.start_time
             `;
 
@@ -857,15 +857,15 @@ exports.createPeriodActivitySplit = async (req, res) => {
         const existingQuery = `
                 SELECT SUM(duration) as total_duration 
                 FROM period_activities 
-                WHERE weekly_schedule_id = ? AND activity_date = ?
+                WHERE daily_schedule_id = ? AND activity_date = ?
             `;
 
         const [existing] = await db.query(existingQuery, [period_id, date]);
         const startOffset = existing[0]?.total_duration || 0;
 
-        // Get the period's start time
+        // Get the period's start time from daily_schedule_new
         const periodQuery = `
-                SELECT time_start FROM weekly_schedule WHERE id = ?
+                SELECT start_time FROM daily_schedule_new WHERE id = ?
             `;
         const [periodResult] = await db.query(periodQuery, [period_id]);
 
@@ -877,20 +877,20 @@ exports.createPeriodActivitySplit = async (req, res) => {
         }
 
         // Calculate activity start time
-        const periodStartTime = periodResult[0].time_start;
+        const periodStartTime = periodResult[0].start_time;
         const activityStartTime = new Date(`1970-01-01 ${periodStartTime}`);
         activityStartTime.setMinutes(activityStartTime.getMinutes() + startOffset);
 
         const insertQuery = `
                 INSERT INTO period_activities 
-                (weekly_schedule_id, activity_date, activity_type, duration, batch_number,
+                (daily_schedule_id, activity_date, activity_name, activity_type, duration, batch_number,
                  assigned_mentor_id, topic_id, is_assessment, assessment_type, total_marks,
                  start_time, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             `;
 
         const [result] = await db.query(insertQuery, [
-            period_id, date, activity_type, duration_minutes, batch_number,
+            period_id, date, activity_type || 'Academic Activity', activity_type, duration_minutes, batch_number,
             mentor_id, topic_id, has_assessment, assessment_type, total_marks,
             activityStartTime.toTimeString().slice(0, 8)
         ]);

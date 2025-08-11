@@ -80,7 +80,7 @@ exports.getTopicsByGrade = async (req, res) => {
                    th.level, th.is_bottom_level, s.subject_name
             FROM topic_hierarchy th
             JOIN subjects s ON th.subject_id = s.id
-            JOIN grade_subjects gs ON s.id = gs.subject_id
+            JOIN grade_subject gs ON s.id = gs.subject_id
             WHERE gs.grade_id = ?
             ORDER BY s.subject_name, th.level, th.order_sequence
         `;
