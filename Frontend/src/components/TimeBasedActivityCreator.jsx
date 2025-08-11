@@ -255,7 +255,7 @@ const TimeBasedActivityCreator = ({
                 <View style={styles.header}>
                     <Text style={styles.title}>Create Time-Based Activities</Text>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Icon name="x" size={24} color="#333" />
+                        <Text style={styles.closeIcon}>✕</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -277,7 +277,7 @@ const TimeBasedActivityCreator = ({
                                     onPress={() => {addActivityToBatch(batch.batch_level)}}
                                     style={styles.addButton}
                                 >
-                                    <Icon name="plus" size={16} color="#fff" />
+                                    <Text style={styles.addIcon}>+</Text>
                                     <Text style={styles.addButtonText}>Add Activity</Text>
                                 </TouchableOpacity>
                             </View>
@@ -291,7 +291,7 @@ const TimeBasedActivityCreator = ({
                                             onPress={() => removeActivity(batch.batch_level, activity.id)}
                                             style={styles.removeButton}
                                         >
-                                            <Icon name="trash-2" size={16} color="#ff4444" />
+                                            <Text style={styles.removeIcon}>🗑️</Text>
                                         </TouchableOpacity>
                                     </View>
 
@@ -475,6 +475,11 @@ const styles = {
     closeButton: {
         padding: 5,
     },
+    closeIcon: {
+        fontSize: 24,
+        color: '#333',
+        fontWeight: 'bold',
+    },
     periodInfo: {
         padding: 15,
         backgroundColor: '#fff',
@@ -525,6 +530,11 @@ const styles = {
         fontSize: 12,
         marginLeft: 4,
     },
+    addIcon: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
     activityForm: {
         backgroundColor: '#f9f9f9',
         borderRadius: 8,
@@ -546,6 +556,9 @@ const styles = {
     },
     removeButton: {
         padding: 5,
+    },
+    removeIcon: {
+        fontSize: 16,
     },
     formGroup: {
         marginBottom: 15,

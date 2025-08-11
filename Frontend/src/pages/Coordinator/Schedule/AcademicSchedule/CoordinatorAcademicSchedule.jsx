@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   FlatList,
   TextInput,
   Switch,
+  RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Feather';
@@ -18,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // import styles from './CoordinatorAcademicScheduleStyles';
 import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
 import { API_URL } from '../../../../utils/env';
+import styles from './AcademicScheduleSty'
 import TimeBasedActivityCreator from '../../../../components/TimeBasedActivityCreator';
 
 const CoordinatorAcademicSchedule = ({ navigation, route }) => {
@@ -25,12 +28,14 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [monthlySchedule, setMonthlySchedule] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showTimeBasedModal, setShowTimeBasedModal] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [periodActivities, setPeriodActivities] = useState([]);
   const [mentors, setMentors] = useState([]);
   const [topics, setTopics] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Activity form state
   const [activityForm, setActivityForm] = useState({
@@ -217,12 +222,16 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
 
   const generateDailySchedulesManually = async () => {
     try {
-      setLoading(true);
+      setIsGenerating(true);
       Alert.alert(
         'Generate Schedules',
         'This will create daily schedules from weekly templates for the next 7 days. Continue?',
         [
-          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Cancel', 
+            style: 'cancel',
+            onPress: () => setIsGenerating(false)
+          },
           {
             text: 'Generate',
             onPress: async () => {
@@ -248,17 +257,29 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                 console.error('Error generating schedules:', error);
                 Alert.alert('Error', 'Failed to generate schedules');
               } finally {
-                setLoading(false);
+                setIsGenerating(false);
               }
             }
           }
         ]
       );
     } catch (error) {
-      setLoading(false);
+      setIsGenerating(false);
       console.error('Error:', error);
     }
   };
+
+  // Pull to refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchMonthlySchedule();
+    } catch (error) {
+      console.error('Error refreshing:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [selectedDate, activeGrade]);
 
   const changeMonth = (direction) => {
     const newDate = new Date(selectedDate);
@@ -299,13 +320,13 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       <View style={styles.calendarContainer}>
         <View style={styles.calendarHeader}>
           <TouchableOpacity onPress={() => changeMonth(-1)}>
-            <Icon name="chevron-left" size={24} color="#007AFF" />
+            <Text style={styles.chevronIcon}>‹</Text>
           </TouchableOpacity>
           <Text style={styles.monthYear}>
             {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </Text>
           <TouchableOpacity onPress={() => changeMonth(1)}>
-            <Icon name="chevron-right" size={24} color="#007AFF" />
+            <Text style={styles.chevronIcon}>›</Text>
           </TouchableOpacity>
         </View>
 
@@ -392,10 +413,10 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.periodCard}
-              onPress={() => openPeriodActivities(item, daySchedule)}
+              // onPress={() => openPeriodActivities(item, daySchedule)}
             >
               <View style={{flexDirection:'column'}}>
-                <View style={styles.periodTime}>
+                <View style={styles.periodTime && {alignItems: 'center', flexDirection: 'row'}}>
                   <Text style={styles.timeText}>{item.timeStart}</Text>
                   <Text style={styles.timeSeparator}>-</Text>
                   <Text style={styles.timeText}>{item.timeEnd}</Text>
@@ -416,14 +437,14 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                     setShowTimeBasedModal(true);
                   }}
                 >
-                  <Icon name="clock" size={16} color="#4CAF50" />
+                  <Text style={styles.actionIcon}>🕐</Text>
                   <Text style={styles.actionText}>Time-Based</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => openPeriodActivities(item, daySchedule)}
                 >
-                  <Icon name="edit" size={16} color="#007AFF" />
+                  <Text style={styles.actionIcon}>✂️</Text>
                   <Text style={styles.actionText}>Quick Split</Text>
                 </TouchableOpacity>
               </View>
@@ -443,7 +464,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
               Split Period: {selectedPeriod?.subject_name}
             </Text>
             <TouchableOpacity onPress={() => setShowActivityModal(false)}>
-              <Icon name="x" size={24} color="#666" />
+              <Text style={styles.closeIcon}>✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -625,25 +646,42 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <BackIcon width={30} height={30} />
+          <BackIcon width={20} height={20} />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
           <Text style={styles.title}>Academic Schedule</Text>
           <Text style={styles.subtitle}>Grade {activeGrade}</Text>
         </View>
         <TouchableOpacity
-          style={styles.generateButton}
+          style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
           onPress={generateDailySchedulesManually}
-          disabled={loading}
+          disabled={loading || isGenerating}
         >
-          <Text style={styles.generateButtonText}>Generate</Text>
+          {isGenerating ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.generateButtonText}>Generate</Text>
+          )}
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading schedule...</Text>
+        </View>
       ) : (
-        <ScrollView style={styles.content}>
+        <ScrollView 
+          style={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#007AFF']}
+              tintColor="#007AFF"
+            />
+          }
+        >
           {renderCalendar()}
           {renderDaySchedule()}
         </ScrollView>
@@ -668,394 +706,5 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   );
 };
 
-const styles = {
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  headerTextContainer: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  generateButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginLeft: 8,
-  },
-  generateButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 2,
-  },
-  content: {
-    flex: 1,
-  },
-  loader: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-
-  // Calendar Styles
-  calendarContainer: {
-    backgroundColor: '#fff',
-    margin: 16,
-    borderRadius: 12,
-    padding: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  monthYear: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  weekDaysHeader: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  weekDayCell: {
-    flex: 1,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  weekDayText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-  },
-  dateCell: {
-    flex: 1,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    margin: 1,
-    borderRadius: 8,
-  },
-  todayCell: {
-    backgroundColor: '#007AFF',
-  },
-  selectedDateCell: {
-    backgroundColor: '#E3F2FD',
-    borderWidth: 2,
-    borderColor: '#007AFF',
-  },
-  dateText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  todayText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  selectedDateText: {
-    color: '#007AFF',
-    fontWeight: 'bold',
-  },
-  periodIndicator: {
-    width: 4,
-    height: 4,
-    backgroundColor: '#007AFF',
-    borderRadius: 2,
-    marginTop: 2,
-  },
-
-  // Day Schedule Styles
-  dayScheduleContainer: {
-    backgroundColor: '#fff',
-    margin: 16,
-    borderRadius: 12,
-    padding: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  dayScheduleTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 16,
-  },
-  noScheduleContainer: {
-    backgroundColor: '#fff',
-    margin: 16,
-    borderRadius: 12,
-    padding: 40,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  noScheduleText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 8,
-  },
-  noScheduleSubtext: {
-    fontSize: 14,
-    color: '#999',
-  },
-
-  // Period Card Styles
-  periodCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    paddingVertical: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
-  },
-  periodTime: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  timeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  timeSeparator: {
-    fontSize: 14,
-    color: '#666',
-    marginHorizontal: 4,
-  },
-  periodInfo: {
-    flex: 1,
-    marginLeft: 16,
-    flexDirection: 'column',
-  },
-  subjectName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  venueText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 2,
-  },
-  sectionText: {
-    fontSize: 12,
-    color: '#999',
-  },
-  periodActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  actionButton: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  actionText: {
-    fontSize: 10,
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  splitText: {
-    fontSize: 12,
-    color: '#007AFF',
-    marginTop: 4,
-  },
-
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 16,
-  },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  noActivitiesText: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    padding: 20,
-  },
-
-  // Activity Item Styles
-  activityItem: {
-    padding: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    marginBottom: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#007AFF',
-  },
-  activityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  activityType: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  activityDuration: {
-    fontSize: 12,
-    color: '#666',
-    backgroundColor: '#e9ecef',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  activityBatch: {
-    fontSize: 12,
-    color: '#007AFF',
-    marginBottom: 2,
-  },
-  activityMentor: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  activityTopic: {
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
-    marginBottom: 2,
-  },
-  assessmentBadge: {
-    fontSize: 11,
-    color: '#d73527',
-    backgroundColor: '#f8d7da',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-  },
-
-  // Form Styles
-  formGroup: {
-    marginBottom: 16,
-  },
-  formRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  formGroupHalf: {
-    flex: 0.48,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-  },
-  picker: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  switchGroup: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-  },
-  createButton: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-};
 
 export default CoordinatorAcademicSchedule;
