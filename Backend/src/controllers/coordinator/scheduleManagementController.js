@@ -230,13 +230,13 @@ exports.getDailySchedule = (req, res) => {
             const buildHierarchyPath = (topicId, topics, path = []) => {
                 const topic = topics.find(t => t.id === topicId);
                 if (!topic) return path;
-                
+
                 path.unshift(topic.topic_name);
-                
+
                 if (topic.parent_id) {
                     return buildHierarchyPath(topic.parent_id, topics, path);
                 }
-                
+
                 return path;
             };
 
@@ -742,7 +742,7 @@ exports.getMonthlySchedule = (req, res) => {
             scheduleData.forEach(period => {
                 const date = period.date.toISOString().split('T')[0];
                 const dayName = new Date(period.date).toLocaleDateString('en-US', { weekday: 'long' });
-                
+
                 if (!groupedByDate[date]) {
                     groupedByDate[date] = {
                         date: date,
@@ -890,13 +890,13 @@ exports.getPeriodActivities = (req, res) => {
                 const buildHierarchyPath = (topicId, topics, path = []) => {
                     const topic = topics.find(t => t.id === topicId);
                     if (!topic) return path;
-                    
+
                     path.unshift(topic.topic_name);
-                    
+
                     if (topic.parent_id) {
                         return buildHierarchyPath(topic.parent_id, topics, path);
                     }
-                    
+
                     return path;
                 };
 
@@ -912,13 +912,13 @@ exports.getPeriodActivities = (req, res) => {
                     })
                     .map(activity => {
                         let hierarchyPath = null;
-                        
+
                         if (activity.topic_id) {
                             const fullPath = buildHierarchyPath(activity.topic_id, allTopics);
                             const parentPath = fullPath.slice(0, -1); // Remove the current topic name
                             hierarchyPath = parentPath.length > 0 ? parentPath.join(' > ') : null;
                         }
-                        
+
                         return {
                             id: activity.id,
                             activity_type: activity.activity_type || '',
@@ -957,6 +957,70 @@ exports.getPeriodActivities = (req, res) => {
         });
     }
 };
+
+// exports.deletePeriodActivity = (req, res) => {
+//     try {
+//         const { periodActivityId } = req.body;
+
+//         const sql = `DELETE FROM period_activities where id = ?`
+
+//         db.query(sql, [periodActivityId], (err, result) => {
+//             if (err) {
+//                 console.error('Delete activity error:', err);
+//                 return res.status(500).json({
+//                     success: false,
+//                     message: 'Failed to delete activity',
+//                     error: err.message
+//                 });
+//             }
+
+//             res.json({
+//                 success: true,
+//                 message: 'Activity deleted successfully'
+//             });
+//         })
+//     }
+//     catch (error) {
+//         console.error('Delete period activity error:', error);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Failed to delete activity',
+//             error: error.message
+//         });
+//     }
+// }
+
+exports.editPeriodActivity = (req, res) => {
+    try {
+        const { periodActivityId } = req.body;
+
+        const sql = `UPDATE period_activities SET ? WHERE id = ?`
+
+        db.query(sql, [periodActivityId], (err, result) => {
+            if (err) {
+                console.error('Edit activity error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to edit activity',
+                    error: err.message
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'Activity edited successfully'
+            });
+        })
+    }
+    catch (error) {
+        console.error('Edit period activity error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to edit activity',
+            error: error.message
+        });
+    }
+}
 
 // Create new period activity 
 exports.createPeriodActivity = (req, res) => {
@@ -1043,7 +1107,7 @@ exports.createPeriodActivity = (req, res) => {
                     res.json({
                         success: true,
                         message: 'Activity created successfully',
-                        data: { 
+                        data: {
                             activityId: activityResult.insertId,
                             activityName,
                             start_time,
@@ -1248,7 +1312,7 @@ exports.createPeriodActivitySplit = (req, res) => {
             const periodQuery = `
                     SELECT start_time FROM daily_schedule_new WHERE id = ?
                 `;
-            
+
             db.query(periodQuery, [period_id], (err, periodResult) => {
                 if (err) {
                     console.error('Period query error:', err);
@@ -1315,7 +1379,7 @@ exports.createPeriodActivitySplit = (req, res) => {
 exports.createTimeBasedActivitiesBatch = (req, res) => {
     try {
         const { period_id, date, activities } = req.body;
-        
+
         // activities array should contain:
         // [{ batch_number, activity_type, start_time, end_time, topic_id, mentor_id, has_assessment, assessment_type, total_marks }]
 
@@ -1332,7 +1396,7 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
             if (!batchActivities[batch_number]) {
                 batchActivities[batch_number] = [];
             }
-            
+
             // Check for overlaps within the same batch
             for (const existing of batchActivities[batch_number]) {
                 if ((start_time < existing.end_time && end_time > existing.start_time)) {
@@ -1342,7 +1406,7 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
                     });
                 }
             }
-            
+
             batchActivities[batch_number].push({ start_time, end_time });
         }
 
@@ -1410,9 +1474,9 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
                     const activityName = `${activity_type} - Batch ${batch_number}`;
 
                     db.query(insertQuery, [
-                        period_id, date, activityName, activity_type, 
-                        duration_minutes, batch_number, mentor_id, topic_id, 
-                        has_assessment ? 1 : 0, assessment_type, total_marks, 
+                        period_id, date, activityName, activity_type,
+                        duration_minutes, batch_number, mentor_id, topic_id,
+                        has_assessment ? 1 : 0, assessment_type, total_marks,
                         start_time, end_time, activity_instructions || ''
                     ], (insertErr, result) => {
                         if (insertErr) {

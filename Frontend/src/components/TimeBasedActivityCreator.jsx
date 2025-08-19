@@ -29,6 +29,8 @@ const TimeBasedActivityCreator = ({
     const [topics, setTopics] = useState([]);
     const [loading, setLoading] = useState(false);
     const [batchActivities, setBatchActivities] = useState({});
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [activityToEdit, setActivityToEdit] = useState(null);
 
     const activityTypes = [
         'Academic', 'Assessment', 'Quiz', 'Project Discussion',
@@ -46,8 +48,7 @@ const TimeBasedActivityCreator = ({
 
     const fetchInitialData = async () => {
         setLoading(true);
-        // console.log(selectedPeriod);
-        
+        console.log('Fetching initial data...', periodActivities);
         try {
             await Promise.all([
                 fetchBatches(),
@@ -92,7 +93,6 @@ const TimeBasedActivityCreator = ({
             });
             const result = await response.json();
             if (result.success) {
-                // console.log(result.gradeMentors);
                 setMentors(result.gradeMentors);
             }
         } catch (error) {
@@ -101,14 +101,11 @@ const TimeBasedActivityCreator = ({
     };
 
     const fetchTopics = async () => {
-        // console.log('selected',selectedPeriod.subject_id);
-
         try {
             const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}/${selectedPeriod.subject_id}`);
             const result = await response.json();
             if (result.success) {
                 setTopics(result.data);
-                // console.log('Fetched topics:', result.data);
             }
         } catch (error) {
             console.error('Error fetching topics:', error);
@@ -155,6 +152,9 @@ const TimeBasedActivityCreator = ({
     const validateTimeOverlaps = () => {
         for (const batchLevel in batchActivities) {
             const activities = batchActivities[batchLevel];
+            const existingActivities = getExistingActivitiesForBatch(batchLevel);
+
+            // Check overlaps within new activities
             for (let i = 0; i < activities.length; i++) {
                 for (let j = i + 1; j < activities.length; j++) {
                     const activity1 = activities[i];
@@ -162,7 +162,17 @@ const TimeBasedActivityCreator = ({
 
                     if (activity1.start_time < activity2.end_time &&
                         activity1.end_time > activity2.start_time) {
-                        return `Time overlap detected in Batch ${batchLevel}`;
+                        return `Time overlap detected in new activities for Batch ${batchLevel}`;
+                    }
+                }
+            }
+
+            // Check overlaps between new and existing activities
+            for (const newActivity of activities) {
+                for (const existingActivity of existingActivities) {
+                    if (newActivity.start_time < existingActivity.end_time &&
+                        newActivity.end_time > existingActivity.start_time) {
+                        return `New activity overlaps with existing activity in Batch ${batchLevel}`;
                     }
                 }
             }
@@ -200,7 +210,7 @@ const TimeBasedActivityCreator = ({
             }
 
             setLoading(true);
-            const token = await AsyncStorage.getItem('userToken');
+            // const token = await AsyncStorage.getItem('userToken');
 
             const response = await fetch(
                 `${API_URL}/api/coordinator/academic-schedule/create-time-based-activities`,
@@ -208,7 +218,6 @@ const TimeBasedActivityCreator = ({
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         period_id: selectedPeriod.id,
@@ -239,6 +248,285 @@ const TimeBasedActivityCreator = ({
         return timeString ? timeString.slice(0, 5) : '';
     };
 
+    const getExistingActivitiesForBatch = (batchLevel) => {
+        if (!periodActivities || !periodActivities) return [];
+        return periodActivities.filter(activity =>
+            activity.batch_number === parseInt(batchLevel)
+        );
+    };
+
+    const renderExistingActivity = (activity) => (
+        <View key={`existing-${activity.id}`} style={styles.existingActivity}>
+            <View style={styles.existingActivityHeader}>
+                <Text style={styles.existingActivityTitle}>
+                    {activity.activity_type} {activity.has_assessment ? '(Assessment)' : ''}
+                </Text>
+                <View style={{flexDirection:'row', gap:12, marginRight:8}}>
+                    <TouchableOpacity onPress={() => handleEditActivity(activity)}>
+                        <Text style={styles.existingActivityEdit}>✏️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteActivity(activity.id)}>
+                        <Text style={styles.existingActivityDelete}>🗑️</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.existingActivityBadge}>
+                    <Text style={styles.existingActivityBadgeText}>Existing</Text>
+                </View>
+            </View>
+
+            <View style={styles.existingActivityDetails}>
+                <Text style={styles.existingActivityDetail}>
+                    ⏰ {formatTime(activity.start_time)} - {formatTime(activity.end_time)}
+                </Text>
+                <Text style={styles.existingActivityDetail}>
+                    📚 {activity.topic_hierarchy_path ? `${activity.topic_hierarchy_path} > ` : ''}{activity.topic_name}
+                </Text>
+                <Text style={styles.existingActivityDetail}>
+                    👨‍🏫 {activity.mentor_name} ({activity.mentor_roll})
+                </Text>
+                {activity.has_assessment && (
+                    <Text style={styles.existingActivityDetail}>
+                        📝 {activity.assessment_type} - {activity.total_marks} marks
+                    </Text>
+                )}
+                {activity.activity_instructions && activity.activity_instructions !== 'Nil' && (
+                    <Text style={styles.existingActivityDetail}>
+                        📋 {activity.activity_instructions}
+                    </Text>
+                )}
+            </View>
+        </View>
+    );
+
+    // Edit activity handler
+    const handleEditActivity = (activity) => {
+        setActivityToEdit(activity);
+        setEditModalVisible(true);
+    };
+
+    // Delete activity handler
+    const handleDeleteActivity = async (activityId) => {
+        Alert.alert(
+            'Delete Activity',
+            'Are you sure you want to delete this activity?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            const response = await fetch(
+                                `${API_URL}/api/coordinator/academic-schedule/activity/${activityId}`,
+                                {
+                                    method: 'DELETE',
+                                    headers: { 'Content-Type': 'application/json' }
+                                }
+                            );
+                            const result = await response.json();
+                            if (result.success) {
+                                Alert.alert('Success', 'Activity deleted successfully');
+                                if (onActivityCreated) onActivityCreated();
+                            } else {
+                                Alert.alert('Error', result.message || 'Failed to delete activity');
+                            }
+                        } catch (error) {
+                            console.error('Error deleting activity:', error);
+                            Alert.alert('Error', 'Failed to delete activity');
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    // Save edited activity
+    const handleSaveEditActivity = async () => {
+        if (!activityToEdit) return;
+        try {
+            setLoading(true);
+            const response = await fetch(
+                `${API_URL}/api/coordinator/academic-schedule/edit-period-activity/${activityToEdit.id}`,
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' }
+                }
+            );
+            const result = await response.json();
+            if (result.success) {
+                Alert.alert('Success', 'Activity updated successfully');
+                setEditModalVisible(false);
+                setActivityToEdit(null);
+                if (onActivityCreated) onActivityCreated();
+            } else {
+                Alert.alert('Error', result.message || 'Failed to update activity');
+            }
+        } catch (error) {
+            console.error('Error updating activity:', error);
+            Alert.alert('Error', 'Failed to update activity');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Edit modal UI
+    const renderEditModal = () => (
+        <Modal visible={editModalVisible} animationType="slide">
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <Text style={styles.title}>Edit Activity</Text>
+                    <TouchableOpacity onPress={() => { setEditModalVisible(false); setActivityToEdit(null); }} style={styles.closeButton}>
+                        <Text style={styles.closeIcon}>✕</Text>
+                    </TouchableOpacity>
+                </View>
+                {activityToEdit && (
+                    <ScrollView style={styles.content}>
+                        {/* Activity Type */}
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Activity Type</Text>
+                            <View style={styles.pickerContainer}>
+                                <Picker
+                                    selectedValue={activityToEdit.activity_type}
+                                    onValueChange={(value) => setActivityToEdit(prev => ({ ...prev, activity_type: value }))}
+                                    style={styles.picker}
+                                >
+                                    {activityTypes.map(type => (
+                                        <Picker.Item key={type} label={type} value={type} />
+                                    ))}
+                                </Picker>
+                            </View>
+                        </View>
+
+                        {/* Start Time */}
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Start Time</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={activityToEdit.start_time}
+                                onChangeText={(value) => setActivityToEdit(prev => ({ ...prev, start_time: value }))}
+                                placeholder="HH:MM"
+                            />
+                        </View>
+
+                        {/* End Time */}
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>End Time</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={activityToEdit.end_time}
+                                onChangeText={(value) => setActivityToEdit(prev => ({ ...prev, end_time: value }))}
+                                placeholder="HH:MM"
+                            />
+                        </View>
+
+                        {/* Topic */}
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Topic</Text>
+                            <View style={styles.pickerContainer}>
+                                <Picker
+                                    selectedValue={activityToEdit.topic_id}
+                                    onValueChange={(value) => setActivityToEdit(prev => ({ ...prev, topic_id: value }))}
+                                    style={styles.picker}
+                                >
+                                    <Picker.Item label="Select Topic" value={null} />
+                                    {topics.map(topic => (
+                                        <Picker.Item
+                                            key={topic.id}
+                                            label={topic.hierarchy_path ? `${topic.hierarchy_path} > ${topic.topic_name}` : topic.topic_name}
+                                            value={topic.id}
+                                        />
+                                    ))}
+                                </Picker>
+                            </View>
+                        </View>
+
+                        {/* Mentor */}
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Mentor</Text>
+                            <View style={styles.pickerContainer}>
+                                <Picker
+                                    selectedValue={activityToEdit.mentor_id}
+                                    onValueChange={(value) => setActivityToEdit(prev => ({ ...prev, mentor_id: value }))}
+                                    style={styles.picker}
+                                >
+                                    <Picker.Item label="Select Mentor" value={null} />
+                                    {mentors.map(mentor => (
+                                        <Picker.Item
+                                            key={mentor.id}
+                                            label={`${mentor.name} (${mentor.roll})`}
+                                            value={mentor.id}
+                                        />
+                                    ))}
+                                </Picker>
+                            </View>
+                        </View>
+
+                        {/* Assessment Toggle */}
+                        <View style={styles.switchRow}>
+                            <Text style={styles.label}>Has Assessment</Text>
+                            <Switch
+                                value={activityToEdit.has_assessment}
+                                onValueChange={(value) => setActivityToEdit(prev => ({ ...prev, has_assessment: value }))}
+                            />
+                        </View>
+
+                        {activityToEdit.has_assessment && (
+                            <>
+                                <View style={styles.formGroup}>
+                                    <Text style={styles.label}>Assessment Type</Text>
+                                    <View style={styles.pickerContainer}>
+                                        <Picker
+                                            selectedValue={activityToEdit.assessment_type}
+                                            onValueChange={(value) => setActivityToEdit(prev => ({ ...prev, assessment_type: value }))}
+                                            style={styles.picker}
+                                        >
+                                            {assessmentTypes.map(type => (
+                                                <Picker.Item key={type} label={type} value={type} />
+                                            ))}
+                                        </Picker>
+                                    </View>
+                                </View>
+
+                                <View style={styles.formGroup}>
+                                    <Text style={styles.label}>Total Marks</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={activityToEdit.total_marks?.toString()}
+                                        onChangeText={(value) => setActivityToEdit(prev => ({ ...prev, total_marks: parseInt(value) || 100 }))}
+                                        keyboardType="numeric"
+                                        placeholder="100"
+                                    />
+                                </View>
+                            </>
+                        )}
+
+                        {/* Instructions */}
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Instructions</Text>
+                            <TextInput
+                                style={styles.textArea}
+                                value={activityToEdit.activity_instructions}
+                                onChangeText={(value) => setActivityToEdit(prev => ({ ...prev, activity_instructions: value }))}
+                                placeholder="Enter activity instructions..."
+                                multiline
+                                numberOfLines={3}
+                            />
+                        </View>
+
+                        <View style={styles.footer}>
+                            <TouchableOpacity onPress={handleSaveEditActivity} style={styles.createButton}>
+                                <Text style={styles.createButtonText}>Save Changes</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                )}
+            </View>
+        </Modal>
+    );
+
     if (loading) {
         return (
             <Modal visible={visible} animationType="slide">
@@ -251,195 +539,218 @@ const TimeBasedActivityCreator = ({
     }
 
     return (
-        <Modal visible={visible} animationType="slide">
-            <View style={styles.container}>
-                <View style={styles.header}>
-                    <Text style={styles.title}>Create Time-Based Activities</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Text style={styles.closeIcon}>✕</Text>
-                    </TouchableOpacity>
-                </View>
+        <>
+            <Modal visible={visible} animationType="slide">
+                <View style={styles.container}>
+                    <View style={styles.header}>
+                        <Text style={styles.title}>Create Time-Based Activities</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <Text style={styles.closeIcon}>✕</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                <View style={styles.periodInfo}>
-                    <Text style={styles.periodText}>
-                        {selectedPeriod?.subject_name} - Period {selectedPeriod?.period_number}
-                    </Text>
-                    <Text style={styles.timeText}>
-                        {formatTime(selectedPeriod?.timeStart)} - {formatTime(selectedPeriod?.timeEnd)}
-                    </Text>
-                </View>
+                    <View style={styles.periodInfo}>
+                        <Text style={styles.periodText}>
+                            {selectedPeriod?.subject_name} - Period {selectedPeriod?.period_number}
+                        </Text>
+                        <Text style={styles.timeText}>
+                            {formatTime(selectedPeriod?.timeStart)} - {formatTime(selectedPeriod?.timeEnd)}
+                        </Text>
+                    </View>
 
-                <ScrollView style={styles.content}>
-                    {batches.map(batch => (
-                        <View key={batch.batch_level} style={styles.batchSection}>
-                            <View style={styles.batchHeader}>
-                                <Text style={styles.batchTitle}>Batch {batch.batch_level}({batch.batch_name})</Text>
-                                <TouchableOpacity
-                                    onPress={() => {addActivityToBatch(batch.batch_level)}}
-                                    style={styles.addButton}
-                                >
-                                    <Text style={styles.addIcon}>+</Text>
-                                    <Text style={styles.addButtonText}>Add Activity</Text>
-                                </TouchableOpacity>
-                            </View>
+                    <ScrollView style={styles.content}>
+                        {batches.map(batch => {
+                            const existingActivities = getExistingActivitiesForBatch(batch.batch_level);
 
-                            {batchActivities[batch.batch_level]?.map(activity => (
-                                <View key={activity.id} style={styles.activityForm}>
-                                    {/* {console.log(activity)} */}
-                                    <View style={styles.activityHeader}>
-                                        <Text style={styles.activityTitle}>Activity {activity.batch_number}</Text>
+                            return (
+                                <View key={batch.batch_level} style={styles.batchSection}>
+                                    <View style={styles.batchHeader}>
+                                        <Text style={styles.batchTitle}>
+                                            Batch {batch.batch_level} ({batch.batch_name})
+                                            {existingActivities.length > 0 && (
+                                                <Text style={styles.activityCount}> • {existingActivities.length} existing</Text>
+                                            )}
+                                        </Text>
                                         <TouchableOpacity
-                                            onPress={() => removeActivity(batch.batch_level, activity.id)}
-                                            style={styles.removeButton}
+                                            onPress={() => addActivityToBatch(batch.batch_level)}
+                                            style={styles.addButton}
                                         >
-                                            <Text style={styles.removeIcon}>🗑️</Text>
+                                            <Text style={styles.addIcon}>+</Text>
+                                            <Text style={styles.addButtonText}>Add Activity</Text>
                                         </TouchableOpacity>
                                     </View>
 
-                                    {/* Activity Type */}
-                                    <View style={styles.formGroup}>
-                                        <Text style={styles.label}>Activity Type</Text>
-                                        <View style={styles.pickerContainer}>
-                                            <Picker
-                                                selectedValue={activity.activity_type}
-                                                onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'activity_type', value)}
-                                                style={styles.picker}
-                                            >
-                                                {activityTypes.map(type => (
-                                                    <Picker.Item key={type} label={type} value={type} />
-                                                ))}
-                                            </Picker>
+                                    {/* Existing Activities */}
+                                    {existingActivities.length > 0 && (
+                                        <View style={styles.existingActivitiesSection}>
+                                            <Text style={styles.existingActivitiesHeader}>Existing Activities:</Text>
+                                            {existingActivities
+                                                .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                                                .map(activity => renderExistingActivity(activity))
+                                            }
                                         </View>
-                                    </View>
+                                    )}
 
-                                    {/* Time Range */}
-                                    <View style={styles.timeRow}>
-                                        <View style={styles.timeGroup}>
-                                            <Text style={styles.label}>Start Time</Text>
-                                            <TextInput
-                                                style={styles.timeInput}
-                                                value={activity.start_time}
-                                                onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'start_time', value)}
-                                                placeholder="HH:MM"
-                                            />
-                                        </View>
-                                        <View style={styles.timeGroup}>
-                                            <Text style={styles.label}>End Time</Text>
-                                            <TextInput
-                                                style={styles.timeInput}
-                                                value={activity.end_time}
-                                                onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'end_time', value)}
-                                                placeholder="HH:MM"
-                                            />
-                                        </View>
-                                    </View>
+                                    {/* New Activities */}
+                                    {batchActivities[batch.batch_level]?.map(activity => (
+                                        <View key={activity.id} style={styles.activityForm}>
+                                            <View style={styles.activityHeader}>
+                                                <Text style={styles.activityTitle}>New Activity</Text>
+                                                <TouchableOpacity
+                                                    onPress={() => removeActivity(batch.batch_level, activity.id)}
+                                                    style={styles.removeButton}
+                                                >
+                                                    <Text style={styles.removeIcon}>🗑️</Text>
+                                                </TouchableOpacity>
+                                            </View>
 
-                                    {/* Topic */}
-                                    <View style={styles.formGroup}>
-                                        <Text style={styles.label}>Topic *</Text>
-                                        <View style={styles.pickerContainer}>
-                                            <Picker
-                                                selectedValue={activity.topic_id}
-                                                onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'topic_id', value)}
-                                                style={styles.picker}
-                                            >
-                                                <Picker.Item label="Select Topic" value={null} />
-                                                {topics.map(topic => (
-                                                    <Picker.Item
-                                                        key={topic.id}
-                                                        label={topic.hierarchy_path ? `${topic.hierarchy_path} > ${topic.topic_name}` : topic.topic_name}
-                                                        value={topic.id}
-                                                    />
-                                                ))}
-                                            </Picker>
-                                        </View>
-                                    </View>
-
-                                    {/* Mentor */}
-                                    <View style={styles.formGroup}>
-                                        <Text style={styles.label}>Mentor *</Text>
-                                        <View style={styles.pickerContainer}>
-                                            <Picker
-                                                selectedValue={activity.mentor_id}
-                                                onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'mentor_id', value)}
-                                                style={styles.picker}
-                                            >
-                                                <Picker.Item label="Select Mentor" value={null} />
-                                                {mentors.map(mentor => (
-                                                    <Picker.Item
-                                                        key={mentor.id}
-                                                        label={`${mentor.name} (${mentor.roll})`}
-                                                        value={mentor.id}
-                                                    />
-                                                ))}
-                                            </Picker>
-                                        </View>
-                                    </View>
-
-                                    {/* Assessment Toggle */}
-                                    <View style={styles.switchRow}>
-                                        <Text style={styles.label}>Has Assessment</Text>
-                                        <Switch
-                                            value={activity.has_assessment}
-                                            onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'has_assessment', value)}
-                                        />
-                                    </View>
-
-                                    {activity.has_assessment && (
-                                        <>
+                                            {/* Activity Type */}
                                             <View style={styles.formGroup}>
-                                                <Text style={styles.label}>Assessment Type</Text>
+                                                <Text style={styles.label}>Activity Type</Text>
                                                 <View style={styles.pickerContainer}>
                                                     <Picker
-                                                        selectedValue={activity.assessment_type}
-                                                        onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'assessment_type', value)}
+                                                        selectedValue={activity.activity_type}
+                                                        onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'activity_type', value)}
                                                         style={styles.picker}
                                                     >
-                                                        {assessmentTypes.map(type => (
+                                                        {activityTypes.map(type => (
                                                             <Picker.Item key={type} label={type} value={type} />
                                                         ))}
                                                     </Picker>
                                                 </View>
                                             </View>
 
+                                            {/* Time Range */}
+                                            <View style={styles.timeRow}>
+                                                <View style={styles.timeGroup}>
+                                                    <Text style={styles.label}>Start Time</Text>
+                                                    <TextInput
+                                                        style={styles.timeInput}
+                                                        value={activity.start_time}
+                                                        onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'start_time', value)}
+                                                        placeholder="HH:MM"
+                                                    />
+                                                </View>
+                                                <View style={styles.timeGroup}>
+                                                    <Text style={styles.label}>End Time</Text>
+                                                    <TextInput
+                                                        style={styles.timeInput}
+                                                        value={activity.end_time}
+                                                        onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'end_time', value)}
+                                                        placeholder="HH:MM"
+                                                    />
+                                                </View>
+                                            </View>
+
+                                            {/* Topic */}
                                             <View style={styles.formGroup}>
-                                                <Text style={styles.label}>Total Marks</Text>
-                                                <TextInput
-                                                    style={styles.input}
-                                                    value={activity.total_marks?.toString()}
-                                                    onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'total_marks', parseInt(value) || 100)}
-                                                    keyboardType="numeric"
-                                                    placeholder="100"
+                                                <Text style={styles.label}>Topic *</Text>
+                                                <View style={styles.pickerContainer}>
+                                                    <Picker
+                                                        selectedValue={activity.topic_id}
+                                                        onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'topic_id', value)}
+                                                        style={styles.picker}
+                                                    >
+                                                        <Picker.Item label="Select Topic" value={null} />
+                                                        {topics.map(topic => (
+                                                            <Picker.Item
+                                                                key={topic.id}
+                                                                label={topic.hierarchy_path ? `${topic.hierarchy_path} > ${topic.topic_name}` : topic.topic_name}
+                                                                value={topic.id}
+                                                            />
+                                                        ))}
+                                                    </Picker>
+                                                </View>
+                                            </View>
+
+                                            {/* Mentor */}
+                                            <View style={styles.formGroup}>
+                                                <Text style={styles.label}>Mentor *</Text>
+                                                <View style={styles.pickerContainer}>
+                                                    <Picker
+                                                        selectedValue={activity.mentor_id}
+                                                        onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'mentor_id', value)}
+                                                        style={styles.picker}
+                                                    >
+                                                        <Picker.Item label="Select Mentor" value={null} />
+                                                        {mentors.map(mentor => (
+                                                            <Picker.Item
+                                                                key={mentor.id}
+                                                                label={`${mentor.name} (${mentor.roll})`}
+                                                                value={mentor.id}
+                                                            />
+                                                        ))}
+                                                    </Picker>
+                                                </View>
+                                            </View>
+
+                                            {/* Assessment Toggle */}
+                                            <View style={styles.switchRow}>
+                                                <Text style={styles.label}>Has Assessment</Text>
+                                                <Switch
+                                                    value={activity.has_assessment}
+                                                    onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'has_assessment', value)}
                                                 />
                                             </View>
-                                        </>
-                                    )}
 
-                                    {/* Instructions */}
-                                    <View style={styles.formGroup}>
-                                        <Text style={styles.label}>Instructions (Optional)</Text>
-                                        <TextInput
-                                            style={styles.textArea}
-                                            value={activity.activity_instructions}
-                                            onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'activity_instructions', value)}
-                                            placeholder="Enter activity instructions..."
-                                            multiline
-                                            numberOfLines={3}
-                                        />
-                                    </View>
+                                            {activity.has_assessment && (
+                                                <>
+                                                    <View style={styles.formGroup}>
+                                                        <Text style={styles.label}>Assessment Type</Text>
+                                                        <View style={styles.pickerContainer}>
+                                                            <Picker
+                                                                selectedValue={activity.assessment_type}
+                                                                onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'assessment_type', value)}
+                                                                style={styles.picker}
+                                                            >
+                                                                {assessmentTypes.map(type => (
+                                                                    <Picker.Item key={type} label={type} value={type} />
+                                                                ))}
+                                                            </Picker>
+                                                        </View>
+                                                    </View>
+
+                                                    <View style={styles.formGroup}>
+                                                        <Text style={styles.label}>Total Marks</Text>
+                                                        <TextInput
+                                                            style={styles.input}
+                                                            value={activity.total_marks?.toString()}
+                                                            onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'total_marks', parseInt(value) || 100)}
+                                                            keyboardType="numeric"
+                                                            placeholder="100"
+                                                        />
+                                                    </View>
+                                                </>
+                                            )}
+
+                                            {/* Instructions */}
+                                            <View style={styles.formGroup}>
+                                                <Text style={styles.label}>Instructions (Optional)</Text>
+                                                <TextInput
+                                                    style={styles.textArea}
+                                                    value={activity.activity_instructions}
+                                                    onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'activity_instructions', value)}
+                                                    placeholder="Enter activity instructions..."
+                                                    multiline
+                                                    numberOfLines={3}
+                                                />
+                                            </View>
+                                        </View>
+                                    ))}
                                 </View>
-                            ))}
-                        </View>
-                    ))}
-                </ScrollView>
+                            );
+                        })}
+                    </ScrollView>
 
-                <View style={styles.footer}>
-                    <TouchableOpacity onPress={createActivities} style={styles.createButton}>
-                        <Text style={styles.createButtonText}>Create All Activities</Text>
-                    </TouchableOpacity>
+                    <View style={styles.footer}>
+                        <TouchableOpacity onPress={createActivities} style={styles.createButton}>
+                            <Text style={styles.createButtonText}>Create All Activities</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
-        </Modal>
+            </Modal>
+            {renderEditModal()}
+        </>
     );
 };
 
@@ -517,6 +828,12 @@ const styles = {
         fontSize: 16,
         fontWeight: 'bold',
         color: '#333',
+        flex: 1,
+    },
+    activityCount: {
+        fontSize: 12,
+        color: '#666',
+        fontWeight: 'normal',
     },
     addButton: {
         flexDirection: 'row',
@@ -535,6 +852,54 @@ const styles = {
         color: '#fff',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    existingActivitiesSection: {
+        marginBottom: 20,
+    },
+    existingActivitiesHeader: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 10,
+    },
+    existingActivity: {
+        backgroundColor: '#e8f5e8',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 10,
+        borderLeftWidth: 4,
+        borderLeftColor: '#4CAF50',
+    },
+    existingActivityHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    existingActivityTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#ff0000ff',
+        flex: 1,
+    },
+    existingActivityBadge: {
+        backgroundColor: '#4CAF50',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 12,
+    },
+    existingActivityBadgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '500',
+    },
+    existingActivityDetails: {
+        gap: 4,
+    },
+    existingActivityDetail: {
+        fontSize: 12,
+        color: '#2e7d2e',
+        lineHeight: 16,
     },
     activityForm: {
         backgroundColor: '#f9f9f9',

@@ -13,6 +13,7 @@ import {
   Switch,
   RefreshControl,
   Dimensions,
+  TouchableWithoutFeedbackComponent,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Feather';
@@ -22,6 +23,7 @@ import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
 import { API_URL } from '../../../../utils/env';
 import styles from './AcademicScheduleSty'
 import TimeBasedActivityCreator from '../../../../components/TimeBasedActivityCreator';
+import { TouchableWithoutFeedback } from 'react-native';
 
 const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   const { activeGrade } = route.params;
@@ -411,9 +413,9 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
           data={daySchedule.periods}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
-            <TouchableOpacity
+            <View
               style={styles.periodCard}
-              onPress={() => openPeriodActivities(item, daySchedule)}
+              // onPress={() => openPeriodActivities(item, daySchedule)}
             >
               <View style={{flexDirection:'column'}}>
                 <View style={styles.periodTime && {alignItems: 'center', flexDirection: 'row'}}>
@@ -448,8 +450,8 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   <Text style={styles.actionIcon}>✂️</Text>
                   <Text style={styles.actionText}>Quick Split</Text>
                 </TouchableOpacity> */}
-              </View>
-            </TouchableOpacity>
+              </View> 
+            </View>
           )}
         />
       </View>
