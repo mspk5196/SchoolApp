@@ -413,7 +413,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.periodCard}
-              // onPress={() => openPeriodActivities(item, daySchedule)}
+              onPress={() => openPeriodActivities(item, daySchedule)}
             >
               <View style={{flexDirection:'column'}}>
                 <View style={styles.periodTime && {alignItems: 'center', flexDirection: 'row'}}>
@@ -440,13 +440,13 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   <Text style={styles.actionIcon}>🕐</Text>
                   <Text style={styles.actionText}>Time-Based</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => openPeriodActivities(item, daySchedule)}
                 >
                   <Text style={styles.actionIcon}>✂️</Text>
                   <Text style={styles.actionText}>Quick Split</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
             </TouchableOpacity>
           )}
@@ -461,7 +461,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
-              Split Period: {selectedPeriod?.subject_name}
+              Period Activities: {selectedPeriod?.subject_name}
             </Text>
             <TouchableOpacity onPress={() => setShowActivityModal(false)}>
               <Text style={styles.closeIcon}>✕</Text>
@@ -482,6 +482,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                     <View style={styles.activityItem}>
                       <View style={styles.activityHeader}>
                         <Text style={styles.activityType}>{item.activity_type || 'Unknown'}</Text>
+                        <Text style={styles.activityDuration}>{item.start_time} - {item.end_time || 0}</Text>
                         <Text style={styles.activityDuration}>{item.duration || 0} min</Text>
                       </View>
                       <Text style={styles.activityBatch}>Batch {item.batch_number || 1}</Text>
@@ -503,7 +504,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
             </View>
 
             {/* Create New Activity Form */}
-            <View style={styles.section}>
+            {/* <View style={styles.section}>
               <Text style={styles.sectionTitle}>Create New Activity</Text>
 
               <View style={styles.formGroup}>
@@ -635,7 +636,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
               <TouchableOpacity style={styles.createButton} onPress={createActivity}>
                 <Text style={styles.createButtonText}>Create Activity</Text>
               </TouchableOpacity>
-            </View>
+            </View> */}
           </ScrollView>
         </View>
       </Modal>
