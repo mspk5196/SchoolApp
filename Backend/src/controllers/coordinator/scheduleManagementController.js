@@ -1460,21 +1460,22 @@ exports.updatePeriodActivity = (req, res) => {
         const { activityId } = req.params;
         const {
             activity_type, duration, batch_number,
-            mentor_id, topic_id, has_assessment, assessment_type, total_marks
+            mentor_id, topic_id, has_assessment, assessment_type, total_marks,
+            activity_instructions, activity_name, end_time, start_time
         } = req.body;
 
         const updateQuery = `
                 UPDATE period_activities 
                 SET activity_type = ?, duration = ?, batch_number = ?,
                     assigned_mentor_id = ?, topic_id = ?, is_assessment = ?,
-                    assessment_type = ?, total_marks = ?, updated_at = NOW()
+                    assessment_type = ?, total_marks = ?, activity_instructions = ?, activity_name = ?, end_time = ?, start_time = ?, updated_at = NOW()
                 WHERE id = ?
             `;
 
         db.query(updateQuery, [
             activity_type, duration, batch_number,
             mentor_id, topic_id, has_assessment, assessment_type, total_marks,
-            activityId
+            activity_instructions, activity_name, end_time, start_time, activityId
         ], (err, result) => {
             if (err) {
                 console.error('Update period activity error:', err);
