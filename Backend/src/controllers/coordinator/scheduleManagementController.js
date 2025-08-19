@@ -1459,7 +1459,7 @@ exports.updatePeriodActivity = (req, res) => {
     try {
         const { activityId } = req.params;
         const {
-            activity_type, duration_minutes, batch_number,
+            activity_type, duration, batch_number,
             mentor_id, topic_id, has_assessment, assessment_type, total_marks
         } = req.body;
 
@@ -1472,7 +1472,7 @@ exports.updatePeriodActivity = (req, res) => {
             `;
 
         db.query(updateQuery, [
-            activity_type, duration_minutes, batch_number,
+            activity_type, duration, batch_number,
             mentor_id, topic_id, has_assessment, assessment_type, total_marks,
             activityId
         ], (err, result) => {
