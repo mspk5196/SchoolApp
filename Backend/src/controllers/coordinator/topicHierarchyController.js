@@ -165,7 +165,7 @@ exports.getTopicsByGrade = (req, res) => {
 // Get topic hierarchy by activity (NEW FUNCTION)
 exports.getTopicHierarchyByActivity = (req, res) => {
     try {
-        const { activityId } = req.params;
+        const { activityId } = req.body;
 
         // Get section_subject_activity details first
         const activitySql = `

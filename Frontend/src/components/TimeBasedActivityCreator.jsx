@@ -21,7 +21,8 @@ const TimeBasedActivityCreator = ({
     selectedPeriod,
     selectedDate,
     activeGrade,
-    onActivityCreated
+    onActivityCreated,
+    periodActivities
 }) => {
     const [batches, setBatches] = useState([]);
     const [mentors, setMentors] = useState([]);

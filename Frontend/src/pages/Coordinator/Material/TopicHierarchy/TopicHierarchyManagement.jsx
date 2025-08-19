@@ -153,9 +153,10 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     setLoading(true);
     try {
       
-      const response = await fetch(`${API_URL}/api/coordinator/topics/hierarchy/activity/${selectedActivity}`, { 
+      const response = await fetch(`${API_URL}/api/coordinator/topics/hierarchy/activity`, { 
         method: 'GET', 
-        headers: { 'Content-Type': 'application/json' } 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activityId: selectedActivity })
       });
        
       // console.log('Topic hierarchy response status:', response.status);

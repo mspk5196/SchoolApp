@@ -211,7 +211,7 @@ const styles = {
 
   // Period Card Styles
   periodCard: {
-    flexDirection: 'column',
+    flexDirection: 'row',
     // alignItems: 'center',
     backgroundColor: '#f8fafc',
     paddingVertical: 20,
@@ -266,7 +266,9 @@ const styles = {
   periodActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    // gap: 12,
+    marginLeft: 'auto',
+
   },
   actionButton: {
     flexDirection: 'column',
@@ -331,7 +333,7 @@ const styles = {
   },
   modalContent: {
     flex: 1,
-    padding: 16,
+    padding: 6,
   },
   section: {
     backgroundColor: '#fff',

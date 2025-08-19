@@ -434,6 +434,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   style={styles.actionButton}
                   onPress={() => {
                     setSelectedPeriod({ ...item, ...daySchedule });
+                    fetchPeriodActivities(selectedPeriod?.id);
                     setShowTimeBasedModal(true);
                   }}
                 >
@@ -697,6 +698,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         selectedDate={selectedDate}
         activeGrade={activeGrade}
         sectionID={selectedPeriod?.section_id}
+        periodActivities={periodActivities}
         onActivityCreated={() => {
           setShowTimeBasedModal(false);
           fetchPeriodActivities(selectedPeriod?.id);
