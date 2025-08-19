@@ -154,7 +154,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     try {
       
       const response = await fetch(`${API_URL}/api/coordinator/topics/hierarchy/activity`, { 
-        method: 'GET', 
+        method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activityId: selectedActivity })
       });
