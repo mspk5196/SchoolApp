@@ -318,7 +318,7 @@ const TimeBasedActivityCreator = ({
                         try {
                             setLoading(true);
                             const response = await fetch(
-                                `${API_URL}/api/coordinator/academic-schedule/activity/${activityId}`,
+                                `${API_URL}/api/coordinator/academic-schedule/delete-period-activity/${activityId}`,
                                 {
                                     method: 'DELETE',
                                     headers: { 'Content-Type': 'application/json' }
@@ -346,17 +346,20 @@ const TimeBasedActivityCreator = ({
     // Save edited activity
     const handleSaveEditActivity = async () => {
         if (!activityToEdit) return;
+        console.log(activityToEdit);
+        
         try {
             setLoading(true);
             const response = await fetch(
                 `${API_URL}/api/coordinator/academic-schedule/edit-period-activity/${activityToEdit.id}`,
                 {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({activity_instructions:activityToEdit.activity_instructions,activity_name:activityToEdit.activity_name,activity_type:activityToEdit.activity_type, assessment_type:activityToEdit.assessment_type,batch_number:activityToEdit.batch_number,duration:activityToEdit.duration, end_time:activityToEdit.end_time, has_assessment:activityToEdit.has_assessment,id:activityToEdit.id, material_id:activityToEdit.material_id, material_name:activityToEdit.material_name,mentor_id:activityToEdit.mentor_id,mentor_name:activityToEdit.mentor_name,mentor_roll:activityToEdit.mentor_roll, start_time:activityToEdit.start_time, topic_hierarchy_path:activityToEdit.topic_hierarchy_path, topic_id:activityToEdit.topic_id, topic_name:activityToEdit.topic_name, total_marks:activityToEdit.total_marks    })
                 }
             );
             const result = await response.json();
-            if (result.success) {
+            if (result.success) { 
                 Alert.alert('Success', 'Activity updated successfully');
                 setEditModalVisible(false);
                 setActivityToEdit(null);
