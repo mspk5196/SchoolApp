@@ -3978,9 +3978,10 @@ exports.generateDailySchedulesManual = async (req, res) => {
           // Create daily schedule for today
           await db.promise().query(`
             INSERT INTO daily_schedule
-            (date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (original_schedule_id, date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `, [
+            weekly.id,
             todayStr, 
             gradeId,
             weekly.section_id,
@@ -4019,9 +4020,10 @@ exports.generateDailySchedulesManual = async (req, res) => {
             // Create daily schedule
             await db.promise().query(`
               INSERT INTO daily_schedule
-              (date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              (original_schedule_id, date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
+              weekly.id,
               dateStr, 
               gradeId,
               weekly.section_id,
