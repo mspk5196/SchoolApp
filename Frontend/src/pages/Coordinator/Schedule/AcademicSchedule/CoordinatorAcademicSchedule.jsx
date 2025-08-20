@@ -38,6 +38,8 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   const [mentors, setMentors] = useState([]);
   const [topics, setTopics] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeSection, setActiveSection] = useState(null);
+  const [sections, setSections] = useState([]);
 
   // Activity form state
   const [activityForm, setActivityForm] = useState({
@@ -66,6 +68,31 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       fetchMonthlySchedule();
     }
   }, [activeGrade, selectedDate]);
+
+  useEffect(() => {
+    const fetchSections = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/sections`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ activeGrade })
+        });
+        const data = await response.json();
+        if (data.success && data.gradeSections.length > 0) {
+          setSections(data.gradeSections);
+          setActiveSection(data.gradeSections[0].id);
+        } else {
+          Alert.alert('No Sections Found', data.message || 'No sections are associated with this grade.');
+        }
+      } catch (error) {
+        Alert.alert('Error', 'Failed to fetch sections data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSections();
+  }, [activeGrade]);
 
   const loadInitialData = async () => {
     try {
@@ -119,7 +146,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const year = selectedDate.getFullYear();
 
       const response = await fetch(
-        `${API_URL}/api/coordinator/academic-schedule/monthly/${activeGrade}/${month}/${year}`
+        `${API_URL}/api/coordinator/academic-schedule/monthly/${activeGrade}/${activeSection}/${month}/${year}`
       );
 
       const result = await response.json();
@@ -231,8 +258,8 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         'Generate Schedules',
         'This will create daily schedules from weekly templates for the next 7 days. Continue?',
         [
-          { 
-            text: 'Cancel', 
+          {
+            text: 'Cancel',
             style: 'cancel',
             onPress: () => setIsGenerating(false)
           },
@@ -417,10 +444,10 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
           renderItem={({ item }) => (
             <View
               style={styles.periodCard}
-              // onPress={() => openPeriodActivities(item, daySchedule)}
+            // onPress={() => openPeriodActivities(item, daySchedule)}
             >
-              <View style={{flexDirection:'column'}}>
-                <View style={styles.periodTime && {alignItems: 'center', flexDirection: 'row'}}>
+              <View style={{ flexDirection: 'column' }}>
+                <View style={styles.periodTime && { alignItems: 'center', flexDirection: 'row' }}>
                   <Text style={styles.timeText}>{item.timeStart}</Text>
                   <Text style={styles.timeSeparator}>-</Text>
                   <Text style={styles.timeText}>{item.timeEnd}</Text>
@@ -436,10 +463,19 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
               <View style={styles.periodActions}>
                 <TouchableOpacity
                   style={styles.actionButton}
-                  onPress={() => {
+                  onPress={async () => {
+                    // Set selected period first
                     setSelectedPeriod({ ...item, ...daySchedule });
-                    fetchPeriodActivities(selectedPeriod?.id);
-                    setShowTimeBasedModal(true);
+                    // Fetch period activities and open modal after loading
+                    setLoading(true);
+                    try {
+                      await fetchPeriodActivities(item.id, daySchedule.date);
+                      setShowTimeBasedModal(true);
+                    } catch (err) {
+                      Alert.alert('Error', 'Failed to load period activities');
+                    } finally {
+                      setLoading(false);
+                    }
                   }}
                 >
                   <Text style={styles.actionIcon}>🕐</Text>
@@ -452,7 +488,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   <Text style={styles.actionIcon}>✂️</Text>
                   <Text style={styles.actionText}>Quick Split</Text>
                 </TouchableOpacity> */}
-              </View> 
+              </View>
             </View>
           )}
         />
@@ -671,13 +707,40 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
+      {/* --- IMPROVED SECTION SELECTOR --- */}
+      <View style={styles.sectionSelectorContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sectionTabsContentContainer}
+        >
+          {sections.map(section => (
+            <TouchableOpacity
+              key={section.id}
+              style={[
+                styles.sectionTab,
+                activeSection === section.id && styles.activeSectionTab
+              ]}
+              onPress={() => setActiveSection(section.id)}
+            >
+              <Text style={[
+                styles.sectionTabText,
+                activeSection === section.id && styles.activeSectionTabText
+              ]}>
+                Section {section.section_name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
           <Text style={styles.loadingText}>Loading schedule...</Text>
         </View>
       ) : (
-        <ScrollView 
+        <ScrollView
           style={styles.content}
           refreshControl={
             <RefreshControl

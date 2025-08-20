@@ -698,7 +698,7 @@ exports.getWeeklyTemplate = async (req, res) => {
 // Get monthly schedule based on weekly template
 exports.getMonthlySchedule = (req, res) => {
     try {
-        const { gradeId, month, year } = req.params;
+        const { gradeId, month, year, sectionId } = req.params;
 
         // Get all daily schedules for the month at once
         const query = `
@@ -719,7 +719,7 @@ exports.getMonthlySchedule = (req, res) => {
             LEFT JOIN venues v ON dsn.venue_id = v.id  
             LEFT JOIN sections sec ON dsn.section_id = sec.id
             LEFT JOIN period_activities pa ON dsn.id = pa.daily_schedule_id
-            WHERE MONTH(dsn.date) = ? AND YEAR(dsn.date) = ? AND dsn.grade_id = ?
+            WHERE MONTH(dsn.date) = ? AND YEAR(dsn.date) = ? AND dsn.grade_id = ? AND dsn.section_id = ?
             GROUP BY dsn.id, dsn.date, dsn.period_number, dsn.start_time, dsn.end_time, 
                      s.subject_name, v.name, sec.section_name, s.id, sec.id
             ORDER BY dsn.date, dsn.period_number

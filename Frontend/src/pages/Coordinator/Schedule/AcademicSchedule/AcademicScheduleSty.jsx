@@ -60,10 +60,10 @@ const styles = {
     marginTop: 2,
   },
   content: {
-    flex: 1,
+    flex: 0,
   },
   loadingContainer: {
-    flex: 1,
+    flex: 3,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f8fafc',
@@ -73,6 +73,43 @@ const styles = {
     fontSize: 16,
     color: '#64748b',
     fontWeight: '500',
+  },
+
+  // Section Tabs (Improved)
+  sectionSelectorContainer: {
+    backgroundColor: '#ffffff',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  sectionTabsContentContainer: {
+    paddingHorizontal: 16,
+  },
+  sectionTab: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 10,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  activeSectionTab: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  sectionTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  activeSectionTabText: {
+    color: '#FFFFFF',
   },
 
   // Calendar Styles
@@ -170,6 +207,7 @@ const styles = {
   dayScheduleContainer: {
     backgroundColor: '#fff',
     margin: 16,
+    marginTop: 0, // Adjusted margin
     borderRadius: 16,
     padding: 20,
     elevation: 3,
@@ -212,7 +250,6 @@ const styles = {
   // Period Card Styles
   periodCard: {
     flexDirection: 'row',
-    // alignItems: 'center',
     backgroundColor: '#f8fafc',
     paddingVertical: 20,
     paddingHorizontal: 16,
@@ -227,8 +264,6 @@ const styles = {
     shadowRadius: 4,
   },
   periodTime: {
-    // flexDirection: 'column',
-    // alignItems: 'center',
     minWidth: 90,
     paddingRight: 16,
   },
@@ -237,7 +272,7 @@ const styles = {
     fontWeight: '600',
     color: '#1e293b',
   },
-  timeSeparator: { 
+  timeSeparator: {
     fontSize: 14,
     color: '#64748b',
     marginHorizontal: 6,
@@ -266,7 +301,6 @@ const styles = {
   periodActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    // gap: 12,
     marginLeft: 'auto',
 
   },
@@ -315,10 +349,6 @@ const styles = {
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   modalTitle: {
     fontSize: 20,
@@ -333,7 +363,7 @@ const styles = {
   },
   modalContent: {
     flex: 1,
-    padding: 6,
+    padding: 16,
   },
   section: {
     backgroundColor: '#fff',
@@ -341,10 +371,6 @@ const styles = {
     padding: 20,
     marginBottom: 16,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
   },
   sectionTitle: {
     fontSize: 18,
@@ -368,11 +394,6 @@ const styles = {
     marginBottom: 12,
     borderLeftWidth: 4,
     borderLeftColor: '#007AFF',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
   },
   activityHeader: {
     flexDirection: 'row',
@@ -421,8 +442,6 @@ const styles = {
     borderRadius: 6,
     alignSelf: 'flex-start',
     fontWeight: '500',
-    borderWidth: 1,
-    borderColor: '#fecaca',
   },
 
   // Form Styles
@@ -474,10 +493,6 @@ const styles = {
     alignItems: 'center',
     marginTop: 20,
     elevation: 3,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
   createButtonText: {
     color: '#fff',

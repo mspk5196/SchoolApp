@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
     View,
     Text,
@@ -32,6 +33,16 @@ const TimeBasedActivityCreator = ({
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [activityToEdit, setActivityToEdit] = useState(null);
 
+    // Time picker state for new activities
+    const [timePicker, setTimePicker] = useState({
+        visible: false,
+        mode: 'time',
+        batchLevel: null,
+        activityId: null,
+        field: null,
+        value: null,
+    });
+
     const activityTypes = [
         'Academic', 'Assessment', 'Quiz', 'Project Discussion',
         'Practical', 'Assignment Review', 'Doubt Clearing',
@@ -48,7 +59,7 @@ const TimeBasedActivityCreator = ({
 
     const fetchInitialData = async () => {
         setLoading(true);
-        console.log('Fetching initial data...', periodActivities);
+        console.log('Fetching initial data...', selectedPeriod);
         try {
             await Promise.all([
                 fetchBatches(),
@@ -140,6 +151,34 @@ const TimeBasedActivityCreator = ({
                 activity.id === activityId ? { ...activity, [field]: value } : activity
             )
         }));
+    };
+
+    // Show time picker for a specific activity and field
+    const showTimePicker = (batchLevel, activityId, field, currentValue) => {
+        setTimePicker({
+            visible: true,
+            mode: 'time',
+            batchLevel,
+            activityId,
+            field,
+            value: currentValue,
+        });
+    };
+
+    // Handle time picker change
+    const handleTimeChange = (event, selectedDate) => {
+        if (event.type === 'dismissed') {
+            setTimePicker(prev => ({ ...prev, visible: false }));
+            return;
+        }
+        setTimePicker(prev => ({ ...prev, visible: false }));
+        if (selectedDate) {
+            // Format to HH:mm
+            const hours = selectedDate.getHours().toString().padStart(2, '0');
+            const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
+            const formatted = `${hours}:${minutes}`;
+            updateActivity(timePicker.batchLevel, timePicker.activityId, timePicker.field, formatted);
+        }
     };
 
     const removeActivity = (batchLevel, activityId) => {
@@ -252,7 +291,7 @@ const TimeBasedActivityCreator = ({
         if (!periodActivities) return [];
         return periodActivities.filter(activity =>
             activity.batch_number === parseInt(batchLevel) &&
-            activity.period_id === selectedPeriod.id
+            activity.dailyScheduleId === selectedPeriod.id
         );
     }; 
 
@@ -563,11 +602,14 @@ const TimeBasedActivityCreator = ({
                     </View>
 
                     <ScrollView style={styles.content}>
-                        {batches.map(batch => {
+                        {batches.map((batch, idx) => {
                             const existingActivities = getExistingActivitiesForBatch(batch.batch_level);
 
+                            // Use batch.id if available, else fallback to batch_level + idx
+                            const batchKey = batch.id ? batch.id : `${batch.batch_level}-${idx}`;
+
                             return (
-                                <View key={batch.batch_level} style={styles.batchSection}>
+                                <View key={batchKey} style={styles.batchSection}>
                                     <View style={styles.batchHeader}>
                                         <Text style={styles.batchTitle}>
                                             Batch {batch.batch_level} ({batch.batch_name})
@@ -628,23 +670,45 @@ const TimeBasedActivityCreator = ({
                                             <View style={styles.timeRow}>
                                                 <View style={styles.timeGroup}>
                                                     <Text style={styles.label}>Start Time</Text>
-                                                    <TextInput
+                                                    <TouchableOpacity
                                                         style={styles.timeInput}
-                                                        value={activity.start_time}
-                                                        onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'start_time', value)}
-                                                        placeholder="HH:MM"
-                                                    />
+                                                        onPress={() => showTimePicker(batch.batch_level, activity.id, 'start_time', activity.start_time)}
+                                                    >
+                                                        <Text>{activity.start_time || 'Select Time'}</Text>
+                                                    </TouchableOpacity>
                                                 </View>
                                                 <View style={styles.timeGroup}>
                                                     <Text style={styles.label}>End Time</Text>
-                                                    <TextInput
+                                                    <TouchableOpacity
                                                         style={styles.timeInput}
-                                                        value={activity.end_time}
-                                                        onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'end_time', value)}
-                                                        placeholder="HH:MM"
-                                                    />
+                                                        onPress={() => showTimePicker(batch.batch_level, activity.id, 'end_time', activity.end_time)}
+                                                    >
+                                                        <Text>{activity.end_time || 'Select Time'}</Text>
+                                                    </TouchableOpacity>
                                                 </View>
                                             </View>
+                                            {/* Time Picker Modal */}
+                                            {timePicker.visible && timePicker.activityId === activity.id && (
+                                                <DateTimePicker
+                                                    value={
+                                                        timePicker.value
+                                                            ? (() => {
+                                                                const [h, m] = timePicker.value.split(':');
+                                                                const d = new Date();
+                                                                d.setHours(parseInt(h, 10));
+                                                                d.setMinutes(parseInt(m, 10));
+                                                                d.setSeconds(0);
+                                                                d.setMilliseconds(0);
+                                                                return d;
+                                                            })()
+                                                            : new Date()
+                                                    }
+                                                    mode="time"
+                                                    is24Hour={true}
+                                                    display="default"
+                                                    onChange={handleTimeChange}
+                                                />
+                                            )}
 
                                             {/* Topic */}
                                             <View style={styles.formGroup}>

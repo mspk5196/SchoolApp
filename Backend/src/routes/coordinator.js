@@ -283,7 +283,7 @@ router.post('/coordinator/schedule/:scheduleId/copy', ScheduleManagementControll
 
 // Enhanced Academic Schedule Routes (Date-wise from Weekly Template)
 router.get('/coordinator/academic-schedule/weekly-template/:gradeId', ScheduleManagementController.getWeeklyTemplate);
-router.get('/coordinator/academic-schedule/monthly/:gradeId/:month/:year', ScheduleManagementController.getMonthlySchedule);
+router.get('/coordinator/academic-schedule/monthly/:gradeId/:sectionId/:month/:year', ScheduleManagementController.getMonthlySchedule);
 router.get('/coordinator/academic-schedule/monthly-alt/:gradeId/:month/:year', ScheduleManagementController.getMonthlyScheduleAlt);
 router.get('/coordinator/academic-schedule/period-activities/:periodId/:date', ScheduleManagementController.getPeriodActivities);
 router.get('/coordinator/academic-schedule/period-activities-alt/:periodId/:date', ScheduleManagementController.getPeriodActivitiesAlt);
