@@ -77,7 +77,7 @@ const TimeBasedActivityCreator = ({
                     initialBatchActivities[batch.batch_level] = [];
                 });
                 setBatchActivities(initialBatchActivities);
-                console.log('Initialized batch activities:', result);
+                // console.log('Initialized batch activities:', result);
             }
         } catch (error) {
             console.error('Error fetching batches:', error);
@@ -249,11 +249,12 @@ const TimeBasedActivityCreator = ({
     };
 
     const getExistingActivitiesForBatch = (batchLevel) => {
-        if (!periodActivities || !periodActivities) return [];
+        if (!periodActivities) return [];
         return periodActivities.filter(activity =>
-            activity.batch_number === parseInt(batchLevel)
+            activity.batch_number === parseInt(batchLevel) &&
+            activity.period_id === selectedPeriod.id
         );
-    };
+    }; 
 
     const renderExistingActivity = (activity) => (
         <View key={`existing-${activity.id}`} style={styles.existingActivity}>
@@ -346,7 +347,7 @@ const TimeBasedActivityCreator = ({
     // Save edited activity
     const handleSaveEditActivity = async () => {
         if (!activityToEdit) return;
-        console.log(activityToEdit);
+        // console.log(activityToEdit);
         
         try {
             setLoading(true);

@@ -843,6 +843,7 @@ exports.getPeriodActivities = (req, res) => {
                     })
                     .map(activity => ({
                         id: activity.id,
+                        dailyScheduleId: activity.daily_schedule_id,
                         activity_type: activity.activity_type || '',
                         activity_name: activity.activity_name || '',
                         duration: activity.duration || activity.duration_minutes || 0,
@@ -921,6 +922,7 @@ exports.getPeriodActivities = (req, res) => {
 
                         return {
                             id: activity.id,
+                            dailyScheduleId: activity.daily_schedule_id,
                             activity_type: activity.activity_type || '',
                             activity_name: activity.activity_name || '',
                             duration: activity.duration || activity.duration_minutes || 0,
