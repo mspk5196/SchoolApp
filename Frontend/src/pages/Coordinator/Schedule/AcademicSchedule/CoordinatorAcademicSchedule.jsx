@@ -64,10 +64,10 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   }, [activeGrade, selectedPeriod]);
 
   useEffect(() => {
-    if (activeGrade) {
+    if (activeGrade && activeSection) {
       fetchMonthlySchedule();
     }
-  }, [activeGrade, selectedDate]);
+  }, [activeGrade, selectedDate, activeSection]);
 
   useEffect(() => {
     const fetchSections = async () => {

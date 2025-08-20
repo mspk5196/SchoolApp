@@ -725,7 +725,7 @@ exports.getMonthlySchedule = (req, res) => {
             ORDER BY dsn.date, dsn.period_number
         `;
 
-        db.query(query, [month, year, gradeId], (err, scheduleData) => {
+        db.query(query, [month, year, gradeId, sectionId], (err, scheduleData) => {
             if (err) {
                 console.error('Monthly schedule query error:', err);
                 return res.status(500).json({
