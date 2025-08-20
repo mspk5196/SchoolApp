@@ -267,7 +267,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
           onPress: async () => {
             try {
               const response = await fetch(
-                `${API_URL}/api/topics/${topicId}`,
+                `${API_URL}/api/coordinator/topics/delete/${topicId}`,
                 {
                   method: 'DELETE',
                   headers: { 'Content-Type': 'application/json' },
