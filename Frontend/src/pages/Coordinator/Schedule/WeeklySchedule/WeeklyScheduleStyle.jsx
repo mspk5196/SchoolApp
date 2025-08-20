@@ -3,10 +3,10 @@ import { StyleSheet } from 'react-native';
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F8F9FA', // A slightly off-white background for better contrast
     },
     scrollViewContent: {
-        paddingBottom: 80, // Space for the floating add button
+        paddingBottom: 100, // Increased space for the floating add button
     },
 
     // Header
@@ -16,138 +16,149 @@ const styles = StyleSheet.create({
         paddingVertical: 15,
         paddingHorizontal: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#E3E3E3', // Matched with Academic Schedule
+        borderBottomColor: '#E0E0E0',
+        backgroundColor: '#FFFFFF', // White header
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: 'bold',
-        color: '#000000',
-        marginLeft: 10,
+        color: '#1A1A1A',
+        marginLeft: 15,
     },
 
     // Section Tabs
     sectionTabsContainer: {
         paddingVertical: 10,
         paddingHorizontal: 15,
-        marginTop: 10, // Added from Academic Schedule
+        backgroundColor: '#FFFFFF',
     },
     sectionTab: {
-        paddingHorizontal: 20, // Matched with Academic Schedule
-        paddingVertical: 12,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
         borderRadius: 20,
         marginRight: 10,
-        backgroundColor: '#F5F5F5',
-        width: 110, // Fixed width from Academic Schedule
-    },
-    noScheduleText: {
-        color: 'grey',
-        alignSelf: 'center'
+        backgroundColor: '#F0F0F0',
     },
     activeSectionTab: {
         backgroundColor: '#0C36FF',
+        shadowColor: '#0C36FF',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+        elevation: 4,
     },
     sectionTabText: {
         fontSize: 14,
-        alignSelf: 'center',
+        fontWeight: '500',
         color: '#333333',
     },
     activeSectionTabText: {
         color: '#FFFFFF',
-        paddingLeft: 5, // Added from Academic Schedule
     },
 
     // Days Navigation
     daysContainer: {
         flexDirection: 'row',
-        paddingVertical: 10,
+        paddingVertical: 15,
         paddingHorizontal: 15,
-        marginBottom: 5, // Added from Academic Schedule
+        justifyContent: 'space-around', // Distribute days evenly
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E0E0E0',
+        marginBottom: 10,
     },
     dayItem: {
         alignItems: 'center',
-        marginRight: 18,
-        width: 50,
-        paddingVertical: 5, // Added for consistency
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 20,
     },
     activeDayItem: {
-        borderWidth: 2,
-        borderColor: '#0C36FF',
-        borderRadius: 20,
-        paddingVertical: 10,
+        backgroundColor: '#E6ECFF', // A light blue to indicate active state
     },
     dayText: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
-        alignSelf: 'center',
         color: '#666666',
-        // marginTop: 4,
     },
     activeDayText: {
-        color: '#0C36FF', // Added from Academic Schedule
-        paddingLeft: 5,
+        color: '#0C36FF',
     },
 
     // Schedule Container
     scheduleContainer: {
-        paddingHorizontal: 60,
+        paddingHorizontal: 15,
         paddingTop: 10,
     },
     scheduleItem: {
         flexDirection: 'row',
-        marginBottom: 5,
+        marginBottom: 10, // Space between timeline items
+    },
+    noScheduleText: {
+        marginTop: 50,
+        color: '#666666',
+        fontSize: 16,
+        textAlign: 'center',
     },
 
     // Time Section
     timeContainer: {
-        width: 120,
-        flexDirection: 'row',
-        alignItems: 'flex-start',
+        width: 90, // Adjusted width
+        alignItems: 'center',
     },
     timeText: {
-        fontSize: 12,
-        color: '#666666',
-        width: 110,
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#333333',
+        marginBottom: 5,
+        textAlign: 'center'
     },
     timeIndicator: {
         alignItems: 'center',
-        marginLeft: 5,
+        flex: 1,
     },
     timeCircle: {
-        width: 14, // Matched with Academic Schedule
-        height: 14, // Matched with Academic Schedule
-        borderRadius: 7, // Matched with Academic Schedule
+        width: 16,
+        height: 16,
+        borderRadius: 8,
         backgroundColor: '#FFFFFF',
-        borderWidth: 1,
+        borderWidth: 3,
         borderColor: '#0C36FF',
-        marginTop: 5,
-        marginVertical: 7, // Added from Academic Schedule
     },
     timeLine: {
+        flex: 1, // Make line fill the space
         width: 2,
-        height: 100,
-        backgroundColor: '#7991A4', // Matched with Academic Schedule
-        marginTop: 8,
+        backgroundColor: '#D0D0D0', // Lighter color for the timeline
     },
 
-    // Details Section
+    // Details Section as a Card
     detailsContainer: {
         flex: 1,
-        borderLeftWidth: 0,
-        paddingLeft: 15,
-        marginBottom: 10,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 15,
+        // marginLeft: 10,
+        marginBottom: 15, // Space between cards
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 3,
+        position: 'relative', // For absolute positioning of delete button
     },
     detailRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 10, // More space between details
     },
     detailIcon: {
-        marginRight: 8,
-        color: '#666666',
+        marginRight: 10,
+        color: '#0C36FF',
     },
     detailText: {
-        fontSize: 14,
+        fontSize: 15,
         color: '#333333',
+        flex: 1, // Allow text to wrap
     },
 
     // Add Button
@@ -156,62 +167,26 @@ const styles = StyleSheet.create({
         right: 20,
         bottom: 20,
         backgroundColor: '#0C36FF',
-        borderRadius: 25,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        elevation: 3,
-        gap: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-    },
-    addButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '500',
-        marginRight: 8,
-    },
-    addButtonIcon: {
-        color: '#FFFFFF',
-    },
-
-    // Create/Edit Button - updated with Academic Schedule styles
-    createButtonContainer: {
-        padding: 16,
-    },
-    createButton: {
-        flexDirection: 'row',
+        borderRadius: 30, // Make it circular
+        width: 60,
+        height: 60,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#0C36FF',
-        paddingVertical: 15,
-        borderRadius: 25,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
     },
-    createButtonText: {
-        fontSize: 16,
-        fontWeight: '500',
-        color: '#FFFFFF',
-        marginRight: 8,
-    },
-    editButton: {
-        padding: 20,
-        backgroundColor: '#0C36FF',
-        borderRadius: 50,
-        width: 60,
-        marginLeft: 'auto', // Improved from Academic Schedule
-        marginBottom: 15,
-    },
-
+    
     // Delete Button
     deleteButton: {
         position: 'absolute',
-        top: -10,
-        right: -26,
-        padding: 8,
+        top: 10,
+        right: 10,
+        padding: 5,
+        borderRadius: 15,
+        backgroundColor: '#FEEEEE',
     },
 
     // Modal Styles
@@ -225,55 +200,48 @@ const styles = StyleSheet.create({
         width: '90%',
         backgroundColor: '#FFFFFF',
         borderRadius: 16,
-        paddingHorizontal: 24,
-        paddingTop: 24,
-        paddingBottom: 32,
+        padding: 24,
         maxHeight: '85%',
         elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
     },
     modalTitle: {
         fontSize: 22,
-        fontWeight: '600',
-        marginBottom: 24,
+        fontWeight: 'bold',
+        marginBottom: 20,
         color: '#1A1A1A',
         textAlign: 'center',
-        letterSpacing: 0.3,
     },
     modalSection: {
-        marginBottom: 24,
+        marginBottom: 20,
     },
     modalSectionTitle: {
         fontSize: 16,
         fontWeight: '600',
         marginBottom: 10,
-        color: '#1A1A1A',
-        letterSpacing: 0.2,
+        color: '#333333',
     },
     timeInputRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 12,
     },
     timeLabel: {
         width: 50,
-        fontSize: 14,
+        fontSize: 15,
         color: '#666666',
     },
     timeInput: {
         flex: 1,
-        height: 40,
+        height: 48,
         borderWidth: 1,
-        borderColor: '#DDDDDD',
-        borderRadius: 5,
-        paddingHorizontal: 10,
+        borderColor: '#E0E0E0',
+        borderRadius: 8,
+        paddingHorizontal: 12,
         justifyContent: 'center',
+        backgroundColor: '#FAFAFA',
     },
     timeInputText: {
-        fontSize: 14,
+        fontSize: 15,
         color: '#333333',
     },
     selectionInput: {
@@ -283,118 +251,91 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E0E0E0',
         borderRadius: 8,
-        paddingHorizontal: 16,
+        paddingHorizontal: 12,
         backgroundColor: '#FAFAFA',
-        marginTop: 4,
     },
     selectionIcon: {
         marginRight: 12,
-        color: '#666666',
+        color: '#0C36FF',
     },
     selectionText: {
         fontSize: 15,
         color: '#333333',
         flex: 1,
     },
-    selectionChevron: {
-        marginLeft: 'auto',
-        color: '#666666',
-    },
     modalActions: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 10, // Matched with Academic Schedule
+        marginTop: 20,
     },
     cancelButton: {
-        paddingVertical: 12,
+        paddingVertical: 14,
         paddingHorizontal: 20,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: '#F0F0F0',
         borderRadius: 8,
         flex: 1,
-        marginRight: 20,
+        marginRight: 10, // Adjusted margin
         alignItems: 'center',
-        justifyContent: 'center',
     },
     cancelButtonText: {
         color: '#333333',
         fontSize: 16,
-        fontWeight: '500',
+        fontWeight: '600',
     },
     saveButton: {
-        paddingVertical: 12,
+        paddingVertical: 14,
         paddingHorizontal: 20,
         backgroundColor: '#0C36FF',
         borderRadius: 8,
-        alignItems: 'center',
         flex: 1,
-        justifyContent: 'center',
+        marginLeft: 10, // Adjusted margin
+        alignItems: 'center',
     },
     saveButtonText: {
-        fontSize: 14,
         color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 
     // List Modal Styles
     listModalContainer: {
-        width: '80%',
-        maxWidth: 320,
+        width: '90%',
+        maxWidth: 350,
         backgroundColor: '#FFFFFF',
         borderRadius: 16,
-        height: 300, // Fixed height
+        maxHeight: '60%', // Use max height instead of fixed height
         elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
+        overflow: 'hidden', // Ensures children conform to border radius
     },
     listModalScroll: {
-        flex: 1,
+        flexGrow: 0,
     },
     listModalHeader: {
-        paddingVertical: 15,
-        paddingHorizontal: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEEEEE',
-        backgroundColor: '#F8F9FA',
-    },
-    listModalItem: {
-        paddingVertical: 15,
-        paddingHorizontal: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEEEEE',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    listModalItemText: {
-        fontSize: 16,
-        color: '#333333',
-        flex: 1,
-    },
-    listModalHeader: {
-        backgroundColor: '#F8F9FA',
-        paddingVertical: 15,
-        paddingHorizontal: 20,
+        padding: 20,
         borderBottomWidth: 1,
         borderBottomColor: '#EEEEEE',
     },
     listModalHeaderText: {
         fontSize: 18,
-        fontWeight: '600',
+        fontWeight: 'bold',
         color: '#1A1A1A',
+        textAlign: 'center'
     },
-    listModalSearchContainer: {
-        padding: 12,
+    listModalItem: {
+        paddingVertical: 18,
+        paddingHorizontal: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEEEEE',
-        backgroundColor: '#FFFFFF',
+        borderBottomColor: '#F0F0F0',
     },
-    listModalSearchInput: {
-        backgroundColor: '#F5F5F5',
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        fontSize: 14,
+    listModalItemText: {
+        fontSize: 16,
+        color: '#333333',
+    },
+    noMentorsText: {
+        padding: 20,
+        textAlign: 'center',
+        color: '#666666',
+        fontSize: 15
     },
 
     // Time Picker Modal Styles
@@ -406,130 +347,13 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         overflow: 'hidden',
         elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-    },
-    timePickerContainer: {
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 20,
     },
 
-    // Select Button - from Academic Schedule
-    selectButton: {
-        padding: 12,
-        borderRadius: 8,
-        backgroundColor: '#0C36FF',
-        flex: 1,
-        marginLeft: 10,
-        alignItems: 'center',
-    },
-    selectButtonText: {
-        color: 'white',
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        marginVertical: 'auto'
     },
-    
-    // Improved Time Picker Styles
-    timePickerContainer: {
-        padding: 15,
-        backgroundColor: '#FFFFFF',
-    },
-    timePickerRow: {
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    timePickerLabels: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        width: '100%',
-        marginBottom: 8,
-        paddingHorizontal: 10,
-    },
-    timePickerLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#555',
-        width: 60,
-        textAlign: 'center',
-    },
-    timePickerSeparator: {
-        width: 20,
-        textAlign: 'center',
-    },
-    timePickerScrollsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginVertical: 10,
-        backgroundColor: '#F5F5F5',
-        borderRadius: 12,
-        padding: 8,
-    },
-    timePickerScrollWrapper: {
-        width: 60,
-        height: 150,
-        borderRadius: 8,
-        overflow: 'hidden',
-        backgroundColor: '#FFFFFF',
-        marginHorizontal: 4,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-    },
-    timePickerScroll: {
-        height: 150,
-    },
-    timePickerScrollContent: {
-        paddingVertical: 50, // Adds space before and after items for better scrolling
-    },
-    timePickerItem: {
-        height: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 8,
-    },
-    timePickerItemSelected: {
-        backgroundColor: '#E6ECFF',
-    },
-    timePickerItemText: {
-        fontSize: 18,
-        color: '#333',
-        fontWeight: '400',
-    },
-    timePickerItemTextSelected: {
-        fontWeight: '600',
-        color: '#0C36FF',
-    },
-    timePickerColon: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginHorizontal: 2,
-        color: '#555',
-        width: 20,
-        textAlign: 'center',
-    },
-    selectedTimePreview: {
-        marginTop: 15,
-        paddingVertical: 10,
-        paddingHorizontal: 15,
-        backgroundColor: '#E6ECFF',
-        borderRadius: 8,
-        alignSelf: 'center',
-    },
-    selectedTimePreviewText: {
-        fontSize: 18,
-        color: '#0C36FF',
-        fontWeight: '600',
-    }
 });
 
 export default styles;

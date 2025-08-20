@@ -2117,133 +2117,6 @@ exports.checkTimeConflict = (req, res) => {
 setInterval(() => {
   exports.updateVenueStatusBasedOnSchedule();
 }, 1 * 60 * 1000); // 5 minutes
- 
-// Add or update a schedule item
-
-// exports.addOrUpdateWeeklySchedule = (req, res) => {
-//   const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
-
-//   if (!sectionId || !day || !startTime || !endTime || !subjectId) {
-//     return res.status(400).json({ success: false, message: 'Missing required fields' });
-//   }
-
-//   // If we have an ID, this is an update - use UPDATE query
-//   if (id) {
-//     const updateQuery = `
-//       UPDATE weekly_schedule 
-//       SET 
-//         section_id = ?,
-//         day = ?,
-//         start_time = ?,
-//         end_time = ?,
-//         subject_id = ?,
-//         mentors_id = ?,
-//         activity = ?,
-//         venue = ?
-//       WHERE id = ?`;
-
-//     db.query(updateQuery,
-//       [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, id],
-//       (err, results) => {
-//         if (err) {
-//           console.error(err);
-//           return res.status(500).json({ success: false, message: 'Database error' });
-//         }
-
-//         exports.updateVenueStatusBasedOnSchedule();
-//         res.json({
-//           success: true,
-//           message: 'Schedule item updated successfully',
-//           id: id
-//         });
-//       });
-//   }
-//   // Otherwise, this is a new record - use INSERT
-//   else {
-//     const insertQuery = `
-//       INSERT INTO weekly_schedule 
-//       (section_id, day, start_time, end_time, subject_id, mentors_id, activity, venue)
-//       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-
-//     db.query(insertQuery,
-//       [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null],
-//       (err, results) => {
-//         if (err) {
-//           console.error(err);
-//           return res.status(500).json({ success: false, message: 'Database error' });
-//         }
-
-//         exports.updateVenueStatusBasedOnSchedule();
-//         res.json({
-//           success: true,
-//           message: 'Schedule item created successfully',
-//           id: results.insertId
-//         });
-//       });
-//   }
-// };
-
-// exports.addOrUpdateWeeklySchedule = async (req, res) => {
-//   const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
-
-//   if (!sectionId || !day || !startTime || !endTime || !subjectId) {
-//     return res.status(400).json({ success: false, message: 'Missing required fields' });
-//   }
-
-//   try {
-//     // If we have an ID, this is an update - use UPDATE query
-//     if (id) {
-//       const updateQuery = `
-//         UPDATE weekly_schedule 
-//         SET 
-//           section_id = ?,
-//           day = ?,
-//           start_time = ?,
-//           end_time = ?,
-//           subject_id = ?,
-//           mentors_id = ?,
-//           activity = ?,
-//           venue = ?
-//         WHERE id = ?`;
-
-//       await db.promise().query(updateQuery,
-//         [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, id]);
-
-//       // Regenerate future daily schedules based on this change
-//       await regenerateFutureDailySchedules(id);
-
-//       exports.updateVenueStatusBasedOnSchedule();
-//       return res.json({
-//         success: true,
-//         message: 'Schedule item updated successfully',
-//         id: id
-//       });
-//     }
-//     // Otherwise, this is a new record - use INSERT
-//     else {
-//       const insertQuery = `
-//         INSERT INTO weekly_schedule 
-//         (section_id, day, start_time, end_time, subject_id, mentors_id, activity, venue)
-//         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-
-//       const results = await db.promise().query(insertQuery,
-//         [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null]);
-
-//       // Generate daily schedules for future dates
-//       await generateDailySchedulesFromWeekly(results.insertId);
-
-//       exports.updateVenueStatusBasedOnSchedule();
-//       return res.json({
-//         success: true,
-//         message: 'Schedule item created successfully',
-//         id: results.insertId
-//       });
-//     }
-//   } catch (err) {
-//     console.error(err);
-//     return res.status(500).json({ success: false, message: 'Database error' });
-//   }
-// };
 
 exports.addOrUpdateWeeklySchedule = async (req, res) => {
   const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
@@ -2287,6 +2160,7 @@ exports.addOrUpdateWeeklySchedule = async (req, res) => {
       await regenerateFutureDailySchedules(id);
       exports.updateVenueStatusBasedOnSchedule();
       await regenerateFutureDailySchedules(id);
+
       // ✅ Sync academic sessions
       const today = new Date().toISOString().split('T')[0];
       await createAcademicSessionsByDate(today);
@@ -2410,7 +2284,7 @@ async function generateDailySchedulesFromWeekly(weeklyScheduleId) {
 
       // Create the daily schedule
       await db.promise().query(
-        `INSERT INTO daily_schedule 
+        `INSERT INTO daily_schedule
   (section_id, date, start_time, end_time, subject_id, mentors_id, activity, venue, original_schedule_id, session_no)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -2441,7 +2315,7 @@ async function regenerateFutureDailySchedules(id) {
 
   // Delete all future non-adjusted daily schedules from this template
   await db.promise().query(
-    `UPDATE daily_schedule 
+    `UPDATE daily_schedule
      SET start_time = ?, end_time = ?, subject_id = ?, mentors_id = ?, activity = ?, venue = ?, session_no = ?
      WHERE original_schedule_id = ? AND date >= CURDATE() AND status = 'Active'`,
     [weekly[0].start_time, weekly[0].end_time, weekly[0].subject_id, weekly[0].mentors_id, weekly[0].activity, weekly[0].session_no, weekly[0].venue, id]
@@ -3229,7 +3103,7 @@ exports.getAvailableMentorsForDate = async (req, res) => {
     // Get all mentors who have a schedule on that date
     const [busyMentors] = await db.promise().query(`
       SELECT DISTINCT mentors_id 
-      FROM daily_schedule 
+      FROM daily_schedule
       WHERE date = ?
     `, [date]);
 
@@ -4096,14 +3970,14 @@ exports.generateDailySchedulesManual = async (req, res) => {
         
         // Check if daily schedule already exists for today
         const [existing] = await db.promise().query(`
-          SELECT id FROM daily_schedule_new 
+          SELECT id FROM daily_schedule 
           WHERE date = ? AND section_id = ? AND start_time = ? AND end_time = ?
         `, [todayStr, weekly.section_id, weekly.start_time, weekly.end_time]);
 
         if (existing.length === 0) {
           // Create daily schedule for today
           await db.promise().query(`
-            INSERT INTO daily_schedule_new 
+            INSERT INTO daily_schedule
             (date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           `, [
@@ -4137,14 +4011,14 @@ exports.generateDailySchedulesManual = async (req, res) => {
           
           // Check if daily schedule already exists
           const [existing] = await db.promise().query(`
-            SELECT id FROM daily_schedule_new 
+            SELECT id FROM daily_schedule
             WHERE date = ? AND section_id = ? AND start_time = ? AND end_time = ?
           `, [dateStr, weekly.section_id, weekly.start_time, weekly.end_time]);
 
           if (existing.length === 0) {
             // Create daily schedule
             await db.promise().query(`
-              INSERT INTO daily_schedule_new 
+              INSERT INTO daily_schedule
               (date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [

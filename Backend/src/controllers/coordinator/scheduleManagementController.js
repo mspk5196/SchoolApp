@@ -21,7 +21,7 @@ exports.createDailySchedule = (req, res) => {
 
         // Create main schedule entry
         const scheduleQuery = `
-                INSERT INTO daily_schedule_new 
+                INSERT INTO daily_schedule
                 (date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id, is_eca)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
@@ -133,7 +133,7 @@ exports.getDailySchedule = (req, res) => {
                 th.topic_name, th.parent_id, th.subject_id as th_subject_id,
                 tm.activity_name as material_name,
                 m.roll as mentor_roll, m.phone as mentor_phone
-            FROM daily_schedule_new ds
+            FROM daily_schedule ds
             JOIN grades g ON ds.grade_id = g.id
             JOIN sections sec ON ds.section_id = sec.id
             JOIN subjects sub ON ds.subject_id = sub.id
@@ -312,7 +312,7 @@ exports.getWeeklySchedule = (req, res) => {
                 v.name as venue_name,
                 COUNT(pa.id) as activity_count,
                 ds.is_eca
-            FROM daily_schedule_new ds
+            FROM daily_schedule ds
             JOIN subjects sub ON ds.subject_id = sub.id
             JOIN venues v ON ds.venue_id = v.id
             LEFT JOIN period_activities pa ON ds.id = pa.daily_schedule_id
@@ -439,7 +439,7 @@ exports.getAvailableMentors = (req, res) => {
                 AND m.id NOT IN (
                     SELECT DISTINCT pa.assigned_mentor_id
                     FROM period_activities pa
-                    JOIN daily_schedule_new ds ON pa.daily_schedule_id = ds.id
+                    JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
                     WHERE ds.date = ?
                     AND pa.start_time < ?
                     AND TIME_ADD(pa.start_time, INTERVAL pa.duration MINUTE) > ?
@@ -488,7 +488,7 @@ exports.getAvailableVenues = (req, res) => {
                 AND (vg.grade_id = ? OR vg.grade_id IS NULL)
                 AND v.id NOT IN (
                     SELECT DISTINCT ds.venue_id
-                    FROM daily_schedule_new ds
+                    FROM daily_schedule ds
                     WHERE ds.date = ?
                     AND ds.start_time < ?
                     AND ds.end_time > ?
@@ -534,7 +534,7 @@ exports.deleteSchedule = async (req, res) => {
             await db.query('DELETE FROM period_activities WHERE daily_schedule_id = ?', [scheduleId]);
 
             // Delete schedule
-            await db.query('DELETE FROM daily_schedule_new WHERE id = ?', [scheduleId]);
+            await db.query('DELETE FROM daily_schedule WHERE id = ?', [scheduleId]);
 
             await db.query('COMMIT');
 
@@ -564,7 +564,7 @@ exports.copySchedule = async (req, res) => {
 
         // Get original schedule
         const [originalSchedule] = await db.query(
-            'SELECT * FROM daily_schedule_new WHERE id = ?',
+            'SELECT * FROM daily_schedule WHERE id = ?',
             [scheduleId]
         );
 
@@ -590,7 +590,7 @@ exports.copySchedule = async (req, res) => {
             for (const targetDate of targetDates) {
                 // Create new schedule
                 const [newScheduleResult] = await db.query(`
-                        INSERT INTO daily_schedule_new 
+                        INSERT INTO daily_schedule
                         (date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id, is_eca)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `, [
@@ -714,7 +714,7 @@ exports.getMonthlySchedule = (req, res) => {
                 sec.section_name,
                 sec.id as section_id,
                 COUNT(pa.id) as activity_count
-            FROM daily_schedule_new dsn
+            FROM daily_schedule dsn
             LEFT JOIN subjects s ON dsn.subject_id = s.id
             LEFT JOIN venues v ON dsn.venue_id = v.id  
             LEFT JOIN sections sec ON dsn.section_id = sec.id
@@ -977,7 +977,7 @@ exports.createPeriodActivity = (req, res) => {
 
         // Get the daily schedule info first
         db.query(
-            'SELECT start_time as period_start, end_time as period_end, subject_id FROM daily_schedule_new WHERE id = ?',
+            'SELECT start_time as period_start, end_time as period_end, subject_id FROM daily_schedule WHERE id = ?',
             [period_id],
             (err, scheduleInfo) => {
                 if (err) {
@@ -1071,7 +1071,7 @@ exports.getMonthlyScheduleAlt = (req, res) => {
 
         const query = `
                 SELECT dsn.*, sec.section_name, sub.subject_name, ven.name as venue_name
-                FROM daily_schedule_new dsn
+                FROM daily_schedule dsn
                 LEFT JOIN sections sec ON dsn.section_id = sec.id
                 LEFT JOIN subjects sub ON dsn.subject_id = sub.id
                 LEFT JOIN venues ven ON dsn.venue_id = ven.id
@@ -1244,9 +1244,9 @@ exports.createPeriodActivitySplit = (req, res) => {
 
             const startOffset = existing[0]?.total_duration || 0;
 
-            // Get the period's start time from daily_schedule_new
+            // Get the period's start time from daily_schedule
             const periodQuery = `
-                    SELECT start_time FROM daily_schedule_new WHERE id = ?
+                    SELECT start_time FROM daily_schedule WHERE id = ?
                 `;
 
             db.query(periodQuery, [period_id], (err, periodResult) => {

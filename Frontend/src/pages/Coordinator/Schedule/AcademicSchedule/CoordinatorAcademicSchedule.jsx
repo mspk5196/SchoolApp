@@ -113,6 +113,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   };
 
   const fetchMonthlySchedule = async () => {
+    setMonthlySchedule([]);
     try {
       const month = selectedDate.getMonth() + 1;
       const year = selectedDate.getFullYear();
@@ -124,7 +125,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const result = await response.json();
       if (result.success) {
         setMonthlySchedule(result.data);
-        // console.log('Monthly schedule data:', result.data[0]);
+        console.log('Monthly schedule data:', result.data);
       } else {
         console.log('Monthly schedule response:', result);
         setMonthlySchedule([]);
@@ -142,6 +143,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   };
 
   const fetchPeriodActivities = async (periodId, date) => {
+    setPeriodActivities([]);
     try {
       const response = await fetch(
         `${API_URL}/api/coordinator/academic-schedule/period-activities/${periodId}/${date}`,
