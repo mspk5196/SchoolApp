@@ -661,7 +661,7 @@ exports.getGradeSubject = (req, res) => {
     // Group results by subject
     const groupedSubjects = results.reduce((acc, row) => {
       const existingSubject = acc.find(subj => subj.subject_id === row.subject_id);
-      
+
       if (existingSubject) {
         existingSubject.activities.push({
           section_subject_activity_id: row.section_subject_activity_id,
@@ -1317,7 +1317,7 @@ exports.getSubjectActivities = (req, res) => {
   const { sectionID } = req.body;
 
   const sql = `
-    SELECT ssa.id, ssa.subject_id, ssa.section_id, at.activity_type, s.subject_name, at.id AS activity_type_id, ssa_sub.id AS subject_sub_activity_id, sub_act.name AS subject_sub_activity_name
+    SELECT ssa.id, ssa.subject_id, ssa.section_id, at.activity_type, s.subject_name, at.id AS activity_type_id, ssa_sub.id AS subject_sub_activity_id, sub_act.sub_act_name AS subject_sub_activity_name
     FROM section_subject_activities ssa
     JOIN subjects s ON ssa.subject_id = s.id
     JOIN ssa_sub_activities ssa_sub ON ssa.id = ssa_sub.ssa_id
@@ -1372,33 +1372,59 @@ exports.addSubjectSubActivity = (req, res) => {
 exports.removeSubjectActivity = (req, res) => {
   const { id } = req.body;
 
-  const sql = `
-    DELETE FROM section_subject_activities WHERE id=?
+  const deleteSubActivitiesSql = `
+    DELETE FROM ssa_sub_activities WHERE ssa_id = ?
   `;
-  db.query(sql, [id], (err, results) => {
+  db.query(deleteSubActivitiesSql, [id], (err, results) => {
     if (err) {
-      console.error("Error deleting subject section activities data:", err);
+      console.error("Error deleting subject sub-activities data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ success: true, message: "Sections subject data deleting successfully" });
-  });
+    const sql = `
+      DELETE FROM section_subject_activities WHERE id=?
+    `;
+    db.query(sql, [id], (err, results) => {
+      if (err) {
+        console.error("Error deleting subject section activities data:", err);
+        return res.status(500).json({ success: false, message: 'Database error' });
+      }
+
+      res.json({ success: true, message: "Sections subject data deleting successfully" });
+    });
+  })
 };
 
 exports.removeSubject = (req, res) => {
   const { section_id, subject_id } = req.body;
 
-  const sql = `
-    DELETE FROM section_subject_activities WHERE section_id=? AND subject_id=?
-  `;
-  db.query(sql, [section_id, subject_id], (err, results) => {
+  const deleteSubActivitiesSql = `
+      DELETE FROM ssa_sub_activities WHERE ssa_id IN (
+        SELECT id FROM section_subject_activities WHERE section_id=? AND subject_id=?
+      )
+    `;
+  db.query(deleteSubActivitiesSql, [section_id, subject_id], (err, results) => {
     if (err) {
-      console.error("Error deleting subject section activities data:", err);
+      console.error("Error deleting subject sub-activities data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
-    res.json({ success: true, message: "Sections subject data deleting successfully" });
+    const sql = `
+    DELETE FROM section_subject_activities WHERE section_id=? AND subject_id=?
+  `;
+    db.query(sql, [section_id, subject_id], (err, results) => {
+      if (err) {
+        console.error("Error deleting subject section activities data:", err);
+        return res.status(500).json({ success: false, message: 'Database error' });
+      }
+      // Also delete any sub-activities related to this subject
+
+      res.json({ success: true, message: "Sections subject data deleting successfully" });
+    });
+
   });
+
+
 };
 
 exports.addSubjectToSection = (req, res) => {
@@ -1594,7 +1620,7 @@ async function checkScheduleConflicts(grade_id, exam_date, start_time, end_time,
   return new Promise((resolve, reject) => {
     // Get all sections for the grade
     const getSectionsSql = `SELECT id, section_name FROM sections WHERE grade_id = ?`;
-    
+
     db.query(getSectionsSql, [grade_id], (err, sections) => {
       if (err) {
         return reject(err);
@@ -1638,7 +1664,7 @@ async function checkScheduleConflicts(grade_id, exam_date, start_time, end_time,
 // Helper function to schedule recurring exam conflict deletions
 function scheduleExamConflictDeletions(examId, grade_id, exam_date, start_time, end_time, recurrence) {
   const cron = require('node-cron');
-  
+
   // Determine cron pattern based on recurrence
   let cronPattern;
   const examTime = new Date(`2000-01-01 ${start_time}`);
@@ -1693,7 +1719,7 @@ async function deleteConflictingSchedules(grade_id, date, start_time, end_time) 
   return new Promise((resolve, reject) => {
     // Get sections for the grade
     const getSectionsSql = `SELECT id FROM sections WHERE grade_id = ?`;
-    
+
     db.query(getSectionsSql, [grade_id], (err, sections) => {
       if (err) {
         return reject(err);
@@ -1750,10 +1776,10 @@ async function deleteConflictingSchedules(grade_id, date, start_time, end_time) 
         // Execute deletions in sequence
         db.query(deleteAssessmentSessionsSql, scheduleIds, (err) => {
           if (err) console.error('Error deleting assessment sessions:', err);
-          
+
           db.query(deleteAcademicSessionsSql, scheduleIds, (err) => {
             if (err) console.error('Error deleting academic sessions:', err);
-            
+
             db.query(deleteDailyScheduleSql, scheduleIds, (err) => {
               if (err) {
                 return reject(err);
@@ -1776,11 +1802,11 @@ exports.createExamSchedule = async (req, res) => {
     if (!forceCreate) {
       const conflicts = await checkScheduleConflicts(grade_id, exam_date, start_time, end_time, recurrence);
       if (conflicts.length > 0) {
-        return res.status(409).json({ 
-          success: false, 
+        return res.status(409).json({
+          success: false,
           hasConflicts: true,
           conflicts: conflicts,
-          message: 'Schedule conflicts detected' 
+          message: 'Schedule conflicts detected'
         });
       }
     }
@@ -1792,12 +1818,12 @@ exports.createExamSchedule = async (req, res) => {
 
     db.query(sql, [grade_id, subject_id, exam_date, start_time, end_time, recurrence], (err, result) => {
       if (err) return res.status(500).json({ success: false, message: err.message });
-      
+
       // If recurrence is set, schedule the cron job for future deletions
       if (recurrence && recurrence !== 'Only Once') {
         scheduleExamConflictDeletions(result.insertId, grade_id, exam_date, start_time, end_time, recurrence);
       }
-      
+
       res.status(201).json({ success: true, id: result.insertId, message: 'Exam schedule added successfully' });
     });
   } catch (error) {
@@ -1868,9 +1894,9 @@ exports.getExamScheduleWithInvigilators = (req, res) => {
   console.log('Received grade_id:', grade_id); // Add debugging
 
   if (!grade_id) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'grade_id is required' 
+    return res.status(400).json({
+      success: false,
+      message: 'grade_id is required'
     });
   }
 
@@ -1900,36 +1926,36 @@ exports.getExamScheduleWithInvigilators = (req, res) => {
   db.query(sql, [grade_id], (err, results) => {
     if (err) {
       console.error("Error fetching exam schedule:", err);
-      return res.status(500).json({ 
-        success: false, 
+      return res.status(500).json({
+        success: false,
         message: 'Database error',
-        error: err.message 
+        error: err.message
       });
     }
 
     console.log('Raw query results:', results); // Add debugging
 
     if (!results || results.length === 0) {
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         exams: [],
-        message: 'No exams found for this grade' 
+        message: 'No exams found for this grade'
       });
     }
 
     // Transform the results to match the frontend format
     const formattedResults = results.map(exam => {
       console.log('Processing exam:', exam); // Add debugging
-      
+
       return {
         id: exam.id,
         subject: exam.subject || 'Unknown Subject',
         date: exam.date,
         time: `${exam.start_time || ''} - ${exam.end_time || ''}`,
         grade: exam.grade_name || '',
-        invigilators: exam.invigilator_ids ? 
+        invigilators: exam.invigilator_ids ?
           exam.invigilator_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [],
-        invigilatorNames: exam.invigilator_names ? 
+        invigilatorNames: exam.invigilator_names ?
           exam.invigilator_names.split(',').map(name => name.trim()) : [],
         color: '#6A5ACD'
       };
@@ -1937,8 +1963,8 @@ exports.getExamScheduleWithInvigilators = (req, res) => {
 
     console.log('Formatted results:', formattedResults); // Add debugging
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       exams: formattedResults,
       count: formattedResults.length
     });
@@ -2346,44 +2372,44 @@ exports.deleteWeeklySchedule = (req, res) => {
       }
       if (results.length > 0) {
         const dailyScheduleIds = results.map(row => row.id);
-        
+
         // First check if there are any non-completed assessment sessions
         const checkQuery = 'SELECT COUNT(*) as count FROM assessment_sessions WHERE dsa_id IN (?) AND status != "completed"';
-        
+
         db.query(checkQuery, [dailyScheduleIds], (err, checkResults) => {
           if (err) {
             console.error(err);
             return res.status(500).json({ success: false, message: 'Database error checking assessment sessions' });
           }
-          
+
           const nonCompletedCount = checkResults[0].count;
-          
+
           if (nonCompletedCount > 0) {
-            return res.status(400).json({ 
-              success: false, 
-              message: 'Cannot delete schedule: There are assessment sessions in progress or pending completion' 
+            return res.status(400).json({
+              success: false,
+              message: 'Cannot delete schedule: There are assessment sessions in progress or pending completion'
             });
           }
-          
+
           // Proceed with deletion if all assessment sessions are completed
           const query2 = 'DELETE FROM academic_sessions WHERE dsa_id IN (?)';
           const query3 = 'DELETE FROM assessment_sessions WHERE dsa_id IN (?) AND status = "completed"';
           const deleteQuery = 'DELETE FROM daily_schedule WHERE id IN (?)';
-          
+
           // First delete completed assessment_sessions
           db.query(query3, [dailyScheduleIds], (err) => {
             if (err) {
               console.error(err);
               return res.status(500).json({ success: false, message: 'Database error deleting assessment sessions' });
             }
-            
+
             // Then delete acadamic_sessions
             db.query(query2, [dailyScheduleIds], (err) => {
               if (err) {
                 console.error(err);
                 return res.status(500).json({ success: false, message: 'Database error deleting academic sessions' });
               }
-              
+
               // Finally delete daily_schedule
               db.query(deleteQuery, [dailyScheduleIds], (err) => {
                 if (err) {
@@ -3930,7 +3956,7 @@ exports.processAssessmentRequest = async (req, res) => {
 exports.generateDailySchedulesManual = async (req, res) => {
   try {
     const { gradeId, days = 7, includeToday = true } = req.body;
-    
+
     console.log('🔄 Manually generating daily schedules...');
     console.log('Grade ID:', gradeId);
     console.log('Days to generate:', days);
@@ -3950,7 +3976,7 @@ exports.generateDailySchedulesManual = async (req, res) => {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const todayDayIndex = today.getDay();
-    
+
     console.log(`Today is: ${todayStr} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][todayDayIndex]})`);
 
     // Generate daily schedules for each weekly template
@@ -3963,7 +3989,7 @@ exports.generateDailySchedulesManual = async (req, res) => {
       // If includeToday is true and today matches the weekly schedule day, create it first
       if (includeToday && todayDayIndex === dayIndex) {
         console.log(`Today matches ${weekly.day}, creating schedule for today`);
-        
+
         // Check if daily schedule already exists for today
         const [existing] = await db.promise().query(`
           SELECT id FROM daily_schedule 
@@ -3978,7 +4004,7 @@ exports.generateDailySchedulesManual = async (req, res) => {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `, [
             weekly.id,
-            todayStr, 
+            todayStr,
             gradeId,
             weekly.section_id,
             weekly.subject_id,
@@ -3988,7 +4014,7 @@ exports.generateDailySchedulesManual = async (req, res) => {
             weekly.venue,
             1 // Default coordinator ID
           ]);
-          
+
           totalCreated++;
           console.log(`✅ Created daily schedule for TODAY ${todayStr} - ${weekly.day}`);
         } else {
@@ -4000,12 +4026,12 @@ exports.generateDailySchedulesManual = async (req, res) => {
       for (let i = 1; i < days; i++) {
         const date = new Date();
         date.setDate(date.getDate() + i);
-        
+
         if (date.getDay() === dayIndex) {
           const dateStr = date.toISOString().split('T')[0];
-          
+
           console.log(`Checking future date: ${dateStr} (${weekly.day})`);
-          
+
           // Check if daily schedule already exists
           const [existing] = await db.promise().query(`
             SELECT id FROM daily_schedule
@@ -4020,7 +4046,7 @@ exports.generateDailySchedulesManual = async (req, res) => {
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
               weekly.id,
-              dateStr, 
+              dateStr,
               gradeId,
               weekly.section_id,
               weekly.subject_id,
@@ -4030,7 +4056,7 @@ exports.generateDailySchedulesManual = async (req, res) => {
               weekly.venue,
               1 // Default coordinator ID
             ]);
-            
+
             totalCreated++;
             console.log(`✅ Created daily schedule for ${dateStr} - ${weekly.day}`);
           } else {
@@ -4051,10 +4077,10 @@ exports.generateDailySchedulesManual = async (req, res) => {
 
   } catch (error) {
     console.error('Error generating daily schedules:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: 'Failed to generate daily schedules',
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -4063,10 +4089,10 @@ exports.generateDailySchedulesManual = async (req, res) => {
 exports.runDailyScheduleUpdateManual = async (req, res) => {
   try {
     console.log('🔄 Running manual daily schedule update...');
-    
+
     const { runDailyScheduleUpdate } = require('../mentor/dailyScheduleUpdate');
     const result = await runDailyScheduleUpdate();
-    
+
     res.json({
       success: true,
       message: 'Daily schedule update completed successfully',

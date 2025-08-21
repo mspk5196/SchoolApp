@@ -140,7 +140,9 @@ const SubjectAllotment = ({ navigation, route }) => {
             existingSubject.activities.push({
               id: item.id, // This is the section_subject_activity ID
               activity_id: item.activity_type,
-              name: activity ? activity.name : `${item.activity_type}`
+              name: activity ? activity.name : `${item.activity_type}`,
+              subject_sub_activity: item.subject_sub_activity_name || `Sub Activity ${item.subject_sub_activity_id}`,
+              subject_sub_activity_id: item.subject_sub_activity_id
             });
           } else {
             acc.push({
@@ -150,7 +152,11 @@ const SubjectAllotment = ({ navigation, route }) => {
                 id: item.id, // This is the section_subject_activity ID
                 activity_id: item.activity_type,
                 name: activity ? activity.name : `${item.activity_type}`
-              }]
+              }],
+              sub_activities: item.subject_sub_activity_name ? [{
+                id: item.subject_sub_activity_id,
+                name: item.subject_sub_activity_name
+              }] : []
             });
           }
           return acc;
