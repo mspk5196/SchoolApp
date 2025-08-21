@@ -1507,7 +1507,7 @@ exports.addSubActivities = (req, res) => {
   const values = activities.map(activity => [activity.name]);
 
   const sql = `
-    INSERT INTO sub_activities (activity_name)
+    INSERT INTO sub_activities (sub_act_name)
     VALUES ?
   `;
 

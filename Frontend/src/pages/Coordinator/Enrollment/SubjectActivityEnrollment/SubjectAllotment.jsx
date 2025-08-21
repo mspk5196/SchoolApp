@@ -821,7 +821,7 @@ const SubjectAllotment = ({ navigation, route }) => {
 
       <Modal
         transparent={true}
-        visible={showAddActivityModal}
+        visible={showAddSubActivityModal}
         animationType="fade"
         onRequestClose={() => setShowAddSubActivityModal(false)}
       >
