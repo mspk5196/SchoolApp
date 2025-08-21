@@ -1045,6 +1045,21 @@ exports.getActivities = (req, res) => {
   });
 };
 
+exports.getSubActivities = (req, res) => {
+
+  const sql = `
+    SELECT * FROM sub_activities
+  `;
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("Error fetching sub-activities:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ success: true, message: "Sub-activities fetched successfully", sub_activities: results });
+  });
+};
+
 const bcrypt = require('bcrypt');
 const { createTodayAcademicSessions } = require('../mentor/mentorController');
 const { log } = require('console');
@@ -1477,81 +1492,43 @@ exports.addActivities = (req, res) => {
   });
 };
 
-//AcadamicSchedule
-// Create or update academic schedule
-// exports.createOrUpdateSchedule = async (req, res) => {
-//   const { section_id, day, sessions } = req.body;
+exports.addSubActivities = (req, res) => {
+  const { activities } = req.body;
 
-//   // Step 1: Delete previous sessions
-//   const deleteSql = `
-//     DELETE FROM academic_schedule WHERE section_id = ? AND day = ?
-//   `;
-//   db.query(deleteSql, [section_id, day], (err, results) => {
-//     if (err) {
-//       console.error("Error deleting previous sessions of section:", err);
-//       return res.status(500).json({ success: false, message: 'Database error' });
-//     }
+  // Validate input
+  if (!activities || !Array.isArray(activities) || activities.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide an array of subjects'
+    });
+  }
 
-//     // Step 2: Insert new sessions
-//     const insertSessions = async () => {
-//       for (const session of sessions) {
-//         const { session_number, start_time, end_time, subject_id } = session;
+  // Create an array of arrays for parameter binding
+  const values = activities.map(activity => [activity.name]);
 
-//         const createSql = `
-//           INSERT INTO academic_schedule (section_id, day, session_number, start_time, end_time, subject_id)
-//           VALUES (?, ?, ?, ?, ?, ?)
-//         `;
-//         try {
-//           await new Promise((resolve, reject) => {
-//             db.query(createSql, [section_id, day, session_number, start_time, end_time, subject_id], (err, results) => {
-//               if (err) {
-//                 console.error("Error adding sessions of section:", err);
-//                 reject(err);
-//               }
-//               resolve(results);
-//             });
-//           });
-//         } catch (error) {
-//           return res.status(500).json({ success: false, message: 'Database error' });
-//         }
-//       }
+  const sql = `
+    INSERT INTO sub_activities (activity_name)
+    VALUES ?
+  `;
 
-//       // Once all sessions are inserted, send a single response
-//       res.status(200).json({ success: true, message: "Schedule added to section successfully" });
-//     };
+  db.query(sql, [values], (err, results) => {
+    if (err) {
+      console.error("Error adding activities:", err);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error',
+        error: err.message
+      });
+    }
 
-//     insertSessions();
-//   });
-// };
-
-// Get academic schedule by section and day
-// exports.getSchedule = async (req, res) => {
-//   const { section_id, day } = req.params;
-
-//   const sql = `
-//     SELECT 
-//         a.id, 
-//         a.section_id, 
-//         a.day,  
-//         a.session_number, 
-//         TIME_FORMAT(a.start_time, '%h:%i %p') as start_time, 
-//         TIME_FORMAT(a.end_time, '%h:%i %p') as end_time, 
-//         a.subject_id,
-//         s.subject_name
-//       FROM academic_schedule a
-//       JOIN subjects s ON a.subject_id = s.id
-//       WHERE a.section_id = ? AND a.day = ?
-//       ORDER BY a.session_number
-//   `;
-//   db.query(sql, [section_id, day], (err, results) => {
-//     if (err) {
-//       console.error("Error fetching academic schedule:", err);
-//       return res.status(500).json({ success: false, message: 'Database error' });
-//     }
-
-//     res.json({ success: true, message: "Academic schedule fetched", sessions: results });
-//   });
-// };
+    // Return the inserted count and IDs
+    res.json({
+      success: true,
+      message: `${results.affectedRows} sub-activities added successfully`,
+      insertedIds: results.insertId
+    });
+  });
+};
 
 // Get all sections for a grade
 exports.getSectionsByGrade = async (req, res) => {

@@ -1,3 +1,4 @@
+import { add } from 'date-fns';
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
@@ -258,6 +259,11 @@ export const styles = StyleSheet.create({
     color: '#505A72',
     fontSize: 15,
     fontWeight: '500',
+  },
+  addSubCategory: {
+    padding: 6,
+    backgroundColor: '#E6F7FF',
+    borderRadius: 6,
   },
   removeCategory: {
     padding: 6,

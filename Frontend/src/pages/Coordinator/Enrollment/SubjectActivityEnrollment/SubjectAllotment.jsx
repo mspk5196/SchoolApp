@@ -7,8 +7,9 @@ import CancelIcon from '../../../../assets/CoordinatorPage/SubjectActivityEnroll
 import AddIcon2 from '../../../../assets/CoordinatorPage/SubjectActivityEnrollment/Add2.svg';
 import { styles } from './SubjectAllotmentStyle';
 import { API_URL } from '../../../../utils/env.js';
+import { set } from 'date-fns';
 
-const SubjectAllotment = ({ navigation, route }) => { 
+const SubjectAllotment = ({ navigation, route }) => {
   const { coordinatorData, activeGrade } = route.params;
 
   const [activeSection, setActiveSection] = useState('');
@@ -22,6 +23,11 @@ const SubjectAllotment = ({ navigation, route }) => {
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
   const [subjectTypeOptions, setSubjectTypeOptions] = useState([]);
 
+  const [selectedSubjectSubActivityId, setSelectedSubjectSubActivityId] = useState(null);
+  const [showSubjectSubActivityTypeModal, setShowSubjectSubActivityTypeModal] = useState(false);
+  const [subjectSubActivityTypeOptions, setSubjectSubActivityTypeOptions] = useState([]);
+  const [subActivities, setSubActivities] = useState([]);
+
   // State for the floating action buttons
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
 
@@ -32,6 +38,9 @@ const SubjectAllotment = ({ navigation, route }) => {
   // State for Add Activity modal
   const [showAddActivityModal, setShowAddActivityModal] = useState(false);
   const [activityInputs, setActivityInputs] = useState(['']);
+
+  const [showAddSubActivityModal, setShowAddSubActivityModal] = useState(false);
+  const [subActivityInputs, setSubActivityInputs] = useState(['']);
 
   // State for subject titles
   const [subjectTitles, setSubjectTitles] = useState([]);
@@ -85,7 +94,7 @@ const SubjectAllotment = ({ navigation, route }) => {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      const data = await response.json(); 
+      const data = await response.json();
       if (data.success) {
         setSubjectTitles(data.subjects);
       }
@@ -158,6 +167,28 @@ const SubjectAllotment = ({ navigation, route }) => {
     }
   };
 
+  const fetchSubActivities = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/getSubActivities`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+      console.log('Sub Activities Data API Response:', data);
+
+      if (data.success) {
+        setSubActivities(data.sub_activities);
+      } else {
+        setSubjects([]);
+        Alert.alert('No Activities Found', 'No activities found for this section');
+      }
+    } catch (error) {
+      console.error('Error fetching subject activities data:', error);
+      Alert.alert('Error', 'Failed to fetch subject activities data');
+    }
+  };
+
   const handleRemoveCategory = async (subjectId, activityRecordId) => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/removeSubjectActivity`, {
@@ -190,6 +221,31 @@ const SubjectAllotment = ({ navigation, route }) => {
           section_id: activeSection,
           subject_id: subjectId,
           activity_type: activityType
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Refresh the data
+        fetchSubjectActivities();
+      } else {
+        Alert.alert('Error', data.message || 'Failed to add activity');
+      }
+    } catch (error) {
+      console.error('Error adding activity:', error);
+      Alert.alert('Error', 'Failed to add activity');
+    }
+    setShowSubjectTypeModal(false);
+  };
+
+  const handleAddSubCategory = async (selectedSubjectSubActivityId, subActivityId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/addSubjectSubActivity`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ssaID: selectedSubjectSubActivityId,
+          subActivityId: subActivityId
         }),
       });
 
@@ -270,6 +326,12 @@ const SubjectAllotment = ({ navigation, route }) => {
     setShowAddActivityModal(true);
     setIsAddMenuOpen(false);
   };
+  const handleAddMoreSubActivity = () => {
+    // Reset sub activity inputs to a single empty input
+    setSubActivityInputs(['']);
+    setShowAddSubActivityModal(true);
+    setIsAddMenuOpen(false);
+  };
 
   const openSubjectTypeModal = (subjectId) => {
     setSelectedSubjectId(subjectId);
@@ -287,6 +349,10 @@ const SubjectAllotment = ({ navigation, route }) => {
     setActivityInputs([...activityInputs, '']);
   };
 
+  const addSubActivityInput = () => {
+    setSubActivityInputs([...subActivityInputs, '']);
+  };
+
   // Handle updating a specific subject input
   const updateSubjectInput = (text, index) => {
     const newInputs = [...subjectInputs];
@@ -300,6 +366,12 @@ const SubjectAllotment = ({ navigation, route }) => {
     const newInputs = [...activityInputs];
     newInputs[index] = text;
     setActivityInputs(newInputs);
+  };
+
+  const updateSubActivityInput = (text, index) => {
+    const newInputs = [...subActivityInputs];
+    newInputs[index] = text;
+    setSubActivityInputs(newInputs);
   };
 
   // Submit all subject inputs
@@ -382,6 +454,39 @@ const SubjectAllotment = ({ navigation, route }) => {
       Alert.alert('Error', 'Failed to add subjects');
     }
   };
+  const submitSubActivities = async () => {
+    // Filter out empty inputs
+    const validActivities = subActivityInputs.filter(input => input.trim() !== '');
+
+    if (validActivities.length === 0) {
+      Alert.alert('Error', 'Please enter at least one subject');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/addSubActivities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activities: validActivities.map(name => ({ name: name.trim() }))
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('Success', 'Activities added successfully');
+        // Refresh the subject titles list
+        await fetchSubActivities();
+        setShowAddSubActivityModal(false);
+        setSubActivityInputs(['']); // Reset to one empty input
+      } else {
+        Alert.alert('Error', data.message || 'Failed to add sub activities');
+      }
+    } catch (error) {
+      console.error('Error adding sub activities:', error);
+      Alert.alert('Error', 'Failed to add sub activities');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -443,12 +548,23 @@ const SubjectAllotment = ({ navigation, route }) => {
               {subject.activities.map((activity) => (
                 <View key={activity.id} style={styles.categoryItem}>
                   <Text style={styles.categoryName}>{activity.name}</Text>
-                  <TouchableOpacity
-                    onPress={() => handleRemoveCategory(subject.id, activity.id)}
-                    style={styles.removeCategory}
-                  >
-                    <CancelIcon width={15} height={15} />
-                  </TouchableOpacity>
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap:10}}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedSubjectSubActivityId(subject.id, activity.id);
+                        setShowSubjectSubActivityTypeModal(true);
+                      }}
+                      style={styles.addSubCategory}
+                    >
+                      <AddIcon2 width={18} height={18} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleRemoveCategory(subject.id, activity.id)}
+                      style={styles.removeCategory}
+                    >
+                      <CancelIcon width={15} height={15} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
             </View>
@@ -471,7 +587,7 @@ const SubjectAllotment = ({ navigation, route }) => {
         >
           <View style={styles.listModalContainer} onStartShouldSetResponder={() => true}>
             <View style={styles.scrollIndicator} />
-            <ScrollView 
+            <ScrollView
               showsVerticalScrollIndicator={true}
               persistentScrollbar={true}
               bounces={true}
@@ -485,6 +601,40 @@ const SubjectAllotment = ({ navigation, route }) => {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.listModalItemText}>{activity.activity_type}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        transparent={true}
+        visible={showSubjectSubActivityTypeModal}
+        animationType="fade"
+        onRequestClose={() => setShowSubjectSubActivityTypeModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSubjectSubActivityTypeModal(false)}
+        >
+          <View style={styles.listModalContainer} onStartShouldSetResponder={() => true}>
+            <View style={styles.scrollIndicator} />
+            <ScrollView
+              showsVerticalScrollIndicator={true}
+              persistentScrollbar={true}
+              bounces={true}
+              indicatorStyle="black"
+            >
+              {subjectSubActivityTypeOptions.map(activity => (
+                <TouchableOpacity
+                  key={activity.id}
+                  style={styles.listModalItem}
+                  onPress={() => handleAddSubCategory(selectedSubjectSubActivityId, activity.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.listModalItemText}>{activity.activity_name}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -509,8 +659,8 @@ const SubjectAllotment = ({ navigation, route }) => {
             <Text style={[styles.modalTitle, { textAlign: 'center', alignSelf: 'center', marginBottom: 10 }]}>
               Select Subject
             </Text>
-            
-            <ScrollView 
+
+            <ScrollView
               showsVerticalScrollIndicator={true}
               persistentScrollbar={true}
               bounces={true}
@@ -541,7 +691,7 @@ const SubjectAllotment = ({ navigation, route }) => {
         onRequestClose={() => setShowAddSubjectModal(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay} 
+          style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowAddSubjectModal(true)}
         >
@@ -582,8 +732,8 @@ const SubjectAllotment = ({ navigation, route }) => {
               ))}
             </ScrollView>
 
-            <TouchableOpacity 
-              style={styles.addMoreButton} 
+            <TouchableOpacity
+              style={styles.addMoreButton}
               onPress={addSubjectInput}
               activeOpacity={0.7}
             >
@@ -650,8 +800,8 @@ const SubjectAllotment = ({ navigation, route }) => {
               ))}
             </ScrollView>
 
-            <TouchableOpacity 
-              style={styles.addMoreButton} 
+            <TouchableOpacity
+              style={styles.addMoreButton}
               onPress={addActivityInput}
               activeOpacity={0.7}
             >
@@ -661,6 +811,73 @@ const SubjectAllotment = ({ navigation, route }) => {
             <TouchableOpacity
               style={styles.enrollButton}
               onPress={submitActivities}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.enrollButtonText}>Add Activity</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        transparent={true}
+        visible={showAddActivityModal}
+        animationType="fade"
+        onRequestClose={() => setShowAddSubActivityModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowAddSubActivityModal(true)}
+        >
+          <View style={styles.formModalContainer}>
+            <View style={styles.scrollIndicator} />
+            <Text style={styles.modalTitle}>Add New Sub Activities</Text>
+
+            <ScrollView
+              style={styles.modalScrollContainer}
+              contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator={true}
+              indicatorStyle="black"
+              persistentScrollbar={true}
+              bounces={true}
+            >
+              {subActivityInputs.map((input, index) => (
+                <View key={`activity-${index}`} style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder={`Enter sub activity ${index + 1}`}
+                    placeholderTextColor='rgba(75, 85, 99, 0.6)'
+                    value={input}
+                    onChangeText={(text) => updateSubActivityInput(text, index)}
+                  />
+                  {index > 0 && (
+                    <TouchableOpacity
+                      style={styles.removeInputButton}
+                      onPress={() => {
+                        const newInputs = [...subActivityInputs];
+                        newInputs.splice(index, 1);
+                        setSubActivityInputs(newInputs);
+                      }}
+                    >
+                      <Text style={styles.removeInputButtonText}>×</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.addMoreButton}
+              onPress={addSubActivityInput}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.addMoreButtonText}>+ Add more Sub Activity</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.enrollButton}
+              onPress={submitSubActivities}
               activeOpacity={0.8}
             >
               <Text style={styles.enrollButtonText}>Add Activity</Text>
@@ -692,6 +909,13 @@ const SubjectAllotment = ({ navigation, route }) => {
               onPress={handleAddMoreActivity}
             >
               <Text style={styles.menuButtonText}>+ Add More Activity</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.menuButton}
+              onPress={handleAddMoreSubActivity}
+            >
+              <Text style={styles.menuButtonText}>+ Add More Sub Activity</Text>
             </Pressable>
           </View>
         )
