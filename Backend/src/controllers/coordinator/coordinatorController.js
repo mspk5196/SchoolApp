@@ -1317,9 +1317,11 @@ exports.getSubjectActivities = (req, res) => {
   const { sectionID } = req.body;
 
   const sql = `
-    SELECT ssa.id, ssa.subject_id, ssa.section_id, at.activity_type, s.subject_name, at.id AS activity_type_id
+    SELECT ssa.id, ssa.subject_id, ssa.section_id, at.activity_type, s.subject_name, at.id AS activity_type_id, ssa_sub.id AS subject_sub_activity_id, sub_act.name AS subject_sub_activity_name
     FROM section_subject_activities ssa
     JOIN subjects s ON ssa.subject_id = s.id
+    JOIN ssa_sub_activities ssa_sub ON ssa.id = ssa_sub.ssa_id
+    LEFT JOIN sub_activities sub_act ON ssa_sub.sub_act_id = sub_act.id
     LEFT JOIN activity_types at ON ssa.activity_type = at.id
     WHERE section_id = ?
   `;

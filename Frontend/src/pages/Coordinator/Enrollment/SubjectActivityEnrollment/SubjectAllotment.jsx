@@ -260,7 +260,7 @@ const SubjectAllotment = ({ navigation, route }) => {
       console.error('Error adding activity:', error);
       Alert.alert('Error', 'Failed to add activity');
     }
-    setShowSubjectTypeModal(false);
+    setShowSubjectSubActivityTypeModal(false);
   };
 
   const handleRemoveSubject = async (subjectId) => {
