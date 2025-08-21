@@ -389,7 +389,7 @@ const SubjectAllotment = ({ navigation, route }) => {
                   <View style={styles.categoryItem}>
                     <Text style={styles.categoryName}>{activity.name}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <TouchableOpacity onPress={() => { setSelectedSSAId(activity.id); setShowSubjectSubActivityTypeModal(true); }} style={styles.addSubCategory}>
+                      <TouchableOpacity onPress={() => { setSelectedSubjectSubActivityId(activity.id); setShowSubjectSubActivityTypeModal(true); }} style={styles.addSubCategory}>
                         <AddIcon2 width={18} height={18} />
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => handleRemoveCategory(activity.id)} style={styles.removeCategory}>
@@ -401,7 +401,7 @@ const SubjectAllotment = ({ navigation, route }) => {
                   {(activity.sub_activities || []).map(sub => (
                     <View key={sub.id} style={styles.subActivityContainer}>
                       <Text style={styles.subActivityText}>{sub.name}</Text>
-                      <TouchableOpacity onPress={() => handleRemoveSubActivity(sub.parent_ssa_id)} style={styles.removeSubCategory}>
+                      <TouchableOpacity onPress={() => handleRemoveSubActivity(sub.id)} style={styles.removeSubCategory}>
                         <CancelIcon width={14} height={14} />
                       </TouchableOpacity>
                     </View>
