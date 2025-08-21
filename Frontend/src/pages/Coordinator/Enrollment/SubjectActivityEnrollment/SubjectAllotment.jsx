@@ -627,14 +627,14 @@ const SubjectAllotment = ({ navigation, route }) => {
               bounces={true}
               indicatorStyle="black"
             >
-              {subjectSubActivityTypeOptions.map(activity => (
+              {subActivities.map(activity => (
                 <TouchableOpacity
                   key={activity.id}
                   style={styles.listModalItem}
                   onPress={() => handleAddSubCategory(selectedSubjectSubActivityId, activity.id)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.listModalItemText}>{activity.activity_name}</Text>
+                  <Text style={styles.listModalItemText}>{activity.sub_act_name}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>

@@ -1350,6 +1350,23 @@ exports.addSubjectActivity = (req, res) => {
   });
 };
 
+exports.addSubjectSubActivity = (req, res) => {
+  const { ssaID, subActivityId } = req.body;
+
+  const sql = `
+    INSERT INTO ssa_sub_activities (ssa_id, sub_act_id)
+    VALUES (?, ?)
+  `;
+  db.query(sql, [ssaID, subActivityId], (err, results) => {
+    if (err) {
+      console.error("Error adding subject section activities data:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ success: true, message: "Sections subject data added successfully" });
+  });
+};
+
 exports.removeSubjectActivity = (req, res) => {
   const { id } = req.body;
 
