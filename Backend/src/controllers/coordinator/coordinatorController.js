@@ -1048,7 +1048,7 @@ exports.getActivities = (req, res) => {
 exports.getSubActivities = (req, res) => {
 
   const sql = `
-    SELECT * FROM sub_activities
+    SELECT * FROM sub_activities;
   `;
   db.query(sql, (err, results) => {
     if (err) {
@@ -1366,6 +1366,22 @@ exports.addSubjectSubActivity = (req, res) => {
     }
 
     res.json({ success: true, message: "Sections subject data added successfully" });
+  });
+};
+
+exports.removeSubjectSubActivity = (req, res) => {
+  const { subject_sub_activity_id } = req.body;
+
+  const sql = `
+    DELETE FROM subject_sub_activities where id = ?
+  `;
+  db.query(sql, [subject_sub_activity_id], (err, results) => {
+    if (err) {
+      console.error("Error removing subject sub activities data:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ success: true, message: "Subject sub activity removed successfully" });
   });
 };
 

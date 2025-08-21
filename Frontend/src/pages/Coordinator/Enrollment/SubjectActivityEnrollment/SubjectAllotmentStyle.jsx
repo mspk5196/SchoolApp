@@ -1,4 +1,3 @@
-import { add } from 'date-fns';
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
@@ -6,7 +5,6 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FC',
   },
-  // Modal scroll indicators
   scrollIndicator: {
     height: 5,
     width: 60,
@@ -16,7 +14,6 @@ export const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 12,
   },
-  // Empty state
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -53,7 +50,6 @@ export const styles = StyleSheet.create({
     width: 22,
     height: 22,
   },
-  // Section Tabs
   sectionTabsContainer: {
     paddingVertical: 15,
     paddingHorizontal: 20,
@@ -86,14 +82,146 @@ export const styles = StyleSheet.create({
   activeSectionTabText: {
     color: '#FFFFFF',
   },
-
-  // Modal styles
+  subjectList: {
+    flex: 1,
+    padding: 18,
+  },
+  subjectCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F0F4F8',
+  },
+  subjectHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F4F8',
+  },
+  subjectName: {
+    fontWeight: '700',
+    fontSize: 17,
+    color: '#2E3A59',
+    letterSpacing: 0.2,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+  },
+  actionButton: {
+    padding: 8,
+    marginLeft: 12,
+    backgroundColor: '#F8F9FC',
+    borderRadius: 8,
+  },
+  categoryContainer: {
+    padding: 12,
+    paddingTop: 8,
+  },
+  categoryItemWrapper: {
+    backgroundColor: '#F8F9FC',
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ECF0F4',
+    overflow: 'hidden',
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    backgroundColor: '#F8F9FC',
+  },
+  categoryName: {
+    color: '#505A72',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  subActivityContainer: {
+    paddingLeft: 35,
+    paddingRight: 15,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#ECF0F4',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  subActivityText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  addSubCategory: {
+    padding: 6,
+    backgroundColor: '#E6F7FF',
+    borderRadius: 6,
+  },
+  removeCategory: {
+    padding: 6,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 6,
+  },
+  floatingButton: {
+    position: 'absolute',
+    right: 26,
+    bottom: 26,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#4361EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#4361EE',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    zIndex: 999,
+  },
+  floatingMenu: {
+    position: 'absolute',
+    right: 26,
+    bottom: 96,
+    width: 220,
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    overflow: 'hidden',
+    zIndex: 998,
+  },
+  menuButton: {
+    backgroundColor: '#4361EE',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginBottom: 2,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  menuButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(14, 23, 38, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
-    backdropFilter: 'blur(5px)', // This works on iOS but might need additional setup for Android
   },
   listModalContainer: {
     width: 300,
@@ -102,11 +230,6 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     maxHeight: '70%',
     elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    paddingTop: 6,
     paddingBottom: 6,
   },
   listModalItem: {
@@ -124,8 +247,6 @@ export const styles = StyleSheet.create({
     flex: 1,
     letterSpacing: 0.2,
   },
-  
-  // Form Modal styles
   formModalContainer: {
     width: '92%',
     backgroundColor: '#FFFFFF',
@@ -135,11 +256,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 24,
     alignItems: 'center',
     elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    maxHeight: '80%', // Control max height for large screens
+    maxHeight: '80%',
   },
   modalTitle: {
     fontSize: 20,
@@ -189,133 +306,11 @@ export const styles = StyleSheet.create({
     backgroundColor: '#4361EE',
     borderRadius: 12,
     elevation: 4,
-    shadowColor: '#4361EE',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
   },
   enrollButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-
-  subjectList: {
-    flex: 1,
-    padding: 18,
-  },
-  subjectCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#F0F4F8',
-  },
-  subjectHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F4F8',
-  },
-  subjectName: {
-    fontWeight: '700',
-    fontSize: 17,
-    color: '#2E3A59',
-    letterSpacing: 0.2,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-  },
-  actionButton: {
-    padding: 8,
-    marginLeft: 12,
-    backgroundColor: '#F8F9FC',
-    borderRadius: 8,
-  },
-  categoryContainer: {
-    padding: 12,
-    paddingTop: 8,
-  },
-  categoryItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#F8F9FC',
-    borderRadius: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#ECF0F4',
-  },
-  categoryName: {
-    color: '#505A72',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  addSubCategory: {
-    padding: 6,
-    backgroundColor: '#E6F7FF',
-    borderRadius: 6,
-  },
-  removeCategory: {
-    padding: 6,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 6,
-  },
-  floatingButton: {
-    position: 'absolute',
-    right: 26,
-    bottom: 26,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#4361EE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 6,
-    shadowColor: '#4361EE',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    zIndex: 999,
-  },
-  // Floating menu styles
-  floatingMenu: {
-    position: 'absolute',
-    right: 26,
-    bottom: 96,
-    width: 220,
-    backgroundColor: 'transparent',
-    borderRadius: 12,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    overflow: 'hidden',
-    zIndex: 998,
-  },
-  menuButton: {
-    backgroundColor: '#4361EE',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    marginBottom: 2,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  menuButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 0.3,
   },
   modalScrollContainer: {
     width: '100%',
@@ -326,7 +321,7 @@ export const styles = StyleSheet.create({
   },
   modalScrollContent: {
     paddingBottom: 15,
-    paddingRight: 5, // Space for scrollbar
+    paddingRight: 5,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -348,18 +343,11 @@ export const styles = StyleSheet.create({
     height: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#E53E3E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
   },
   removeInputButtonText: {
     fontSize: 20,
     color: '#E53E3E',
     fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 22,
   },
 });
 

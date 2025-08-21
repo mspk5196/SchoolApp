@@ -126,6 +126,7 @@ router.post('/coordinator/addActivities', coordinatorController.addActivities);
 router.post('/coordinator/addSubActivities', coordinatorController.addSubActivities);
 router.get('/coordinator/getSubActivities', coordinatorController.getSubActivities);
 router.post('/coordinator/addSubjectSubActivity', coordinatorController.addSubjectSubActivity);
+router.post('/coordinator/removeSubjectSubActivity', coordinatorController.removeSubjectSubActivity);
 
 //InfrastructureEnrollemt
 router.get('/coordinator/enrollment/getAllVenues/', infraEnrollment.getAllVenues);
