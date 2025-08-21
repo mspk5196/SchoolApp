@@ -1373,7 +1373,7 @@ exports.removeSubjectSubActivity = (req, res) => {
   const { subject_sub_activity_id } = req.body;
 
   const sql = `
-    DELETE FROM subject_sub_activities where id = ?
+    DELETE FROM ssa_sub_activities where id = ?
   `;
   db.query(sql, [subject_sub_activity_id], (err, results) => {
     if (err) {
