@@ -15,6 +15,7 @@ import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../utils/env';
+import { set } from 'date-fns';
 
 const TimeBasedActivityCreator = ({
     visible,
@@ -23,7 +24,8 @@ const TimeBasedActivityCreator = ({
     selectedDate,
     activeGrade,
     onActivityCreated,
-    periodActivities
+    periodActivities,
+    sectionID
 }) => {
     const [batches, setBatches] = useState([]);
     const [mentors, setMentors] = useState([]);
@@ -32,6 +34,12 @@ const TimeBasedActivityCreator = ({
     const [batchActivities, setBatchActivities] = useState({});
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [activityToEdit, setActivityToEdit] = useState(null);
+
+
+    const [activities, setActivities] = useState([]);
+    const [selectedActivity, setSelectedActivity] = useState(null);
+    const [subActivities, setSubActivities] = useState([]);
+    const [selectedSubActivity, setSelectedSubActivity] = useState(null);
 
     // Time picker state for new activities
     const [timePicker, setTimePicker] = useState({
@@ -110,6 +118,79 @@ const TimeBasedActivityCreator = ({
             console.error('Error fetching mentors:', error);
         }
     };
+
+    const fetchActivitiesForSubject = async () => {
+        console.log('fetchActivitiesForSubject called with:', { selectedPeriod });
+        try {
+
+            const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectActivities/${selectedPeriod.section_id}/${selectedPeriod.subject_id}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            // console.log('Activities response status:', response.status);
+            const result = await response.json();
+            // console.log('Activities result:', result);
+
+            if (result.success) {
+                console.log('Fetched activities:', result.sectionSubjectActivity);
+                setActivities(result.sectionSubjectActivity || []);
+                if (result.sectionSubjectActivity.length > 0) {
+                    setSelectedActivity(result.sectionSubjectActivity[0].id);
+                    if (selectedActivity) {
+                        fetchSubActivitiesForSubject();
+                    }
+                } else {
+                    setSelectedActivity(null);
+                }
+            } else {
+                console.log('Failed to fetch activities:', result.message);
+            }
+        } catch (error) {
+            console.error('Fetch activities error:', error);
+            Alert.alert('Error', 'Failed to fetch activities');
+        }
+    };
+
+    useEffect(() => {
+        if (selectedPeriod) {
+            fetchActivitiesForSubject();
+        }
+    }, [selectedPeriod])
+
+    const fetchSubActivitiesForSubject = async () => {
+        console.log('fetchSubActivitiesForSubject called with:', { selectedActivity, selectedPeriod });
+        try {
+
+            const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectSubActivities/${selectedActivity}/${selectedPeriod.subject_id}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            // console.log('Activities response status:', response.status);
+            const result = await response.json();
+            // console.log('Activities result:', result);
+
+            if (result.success) {
+                // console.log('Fetched activities:', result.sectionSubjectActivity);
+                setSubActivities(result.sectionSubjectSubActivity || []);
+                if (result.sectionSubjectSubActivity.length > 0) {
+                    setSelectedSubActivity(result.sectionSubjectSubActivity[0].id);
+                } else {
+                    setSelectedSubActivity(null);
+                }
+            } else {
+                console.log('Failed to fetch activities:', result.message);
+            }
+        } catch (error) {
+            console.error('Fetch activities error:', error);
+            Alert.alert('Error', 'Failed to fetch activities');
+        }
+    };
+
+    useEffect(() => {
+        fetchSubActivitiesForSubject();
+    }, [selectedPeriod, selectedActivity]);
 
     const fetchTopics = async () => {
         try {
@@ -293,7 +374,7 @@ const TimeBasedActivityCreator = ({
             activity.batch_number === parseInt(batchLevel) &&
             activity.dailyScheduleId === selectedPeriod.id
         );
-    }; 
+    };
 
     const renderExistingActivity = (activity) => (
         <View key={`existing-${activity.id}`} style={styles.existingActivity}>
@@ -301,7 +382,7 @@ const TimeBasedActivityCreator = ({
                 <Text style={styles.existingActivityTitle}>
                     {activity.activity_type} {activity.has_assessment ? '(Assessment)' : ''}
                 </Text>
-                <View style={{flexDirection:'row', gap:12, marginRight:8}}>
+                <View style={{ flexDirection: 'row', gap: 12, marginRight: 8 }}>
                     <TouchableOpacity onPress={() => handleEditActivity(activity)}>
                         <Text style={styles.existingActivityEdit}>✏️</Text>
                     </TouchableOpacity>
@@ -387,7 +468,7 @@ const TimeBasedActivityCreator = ({
     const handleSaveEditActivity = async () => {
         if (!activityToEdit) return;
         // console.log(activityToEdit);
-        
+
         try {
             setLoading(true);
             const response = await fetch(
@@ -395,11 +476,11 @@ const TimeBasedActivityCreator = ({
                 {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({activity_instructions:activityToEdit.activity_instructions,activity_name:activityToEdit.activity_name,activity_type:activityToEdit.activity_type, assessment_type:activityToEdit.assessment_type,batch_number:activityToEdit.batch_number,duration:activityToEdit.duration, end_time:activityToEdit.end_time, has_assessment:activityToEdit.has_assessment,id:activityToEdit.id, material_id:activityToEdit.material_id, material_name:activityToEdit.material_name,mentor_id:activityToEdit.mentor_id,mentor_name:activityToEdit.mentor_name,mentor_roll:activityToEdit.mentor_roll, start_time:activityToEdit.start_time, topic_hierarchy_path:activityToEdit.topic_hierarchy_path, topic_id:activityToEdit.topic_id, topic_name:activityToEdit.topic_name, total_marks:activityToEdit.total_marks    })
+                    body: JSON.stringify({ activity_instructions: activityToEdit.activity_instructions, activity_name: activityToEdit.activity_name, activity_type: activityToEdit.activity_type, activity_type_id: activityToEdit.activity_type_id, sub_activity_type_id: activityToEdit.sub_activity_type_id, assessment_type: activityToEdit.assessment_type, batch_number: activityToEdit.batch_number, duration: activityToEdit.duration, end_time: activityToEdit.end_time, has_assessment: activityToEdit.has_assessment, id: activityToEdit.id, material_id: activityToEdit.material_id, material_name: activityToEdit.material_name, mentor_id: activityToEdit.mentor_id, mentor_name: activityToEdit.mentor_name, mentor_roll: activityToEdit.mentor_roll, start_time: activityToEdit.start_time, topic_hierarchy_path: activityToEdit.topic_hierarchy_path, topic_id: activityToEdit.topic_id, topic_name: activityToEdit.topic_name, total_marks: activityToEdit.total_marks })
                 }
             );
             const result = await response.json();
-            if (result.success) { 
+            if (result.success) {
                 Alert.alert('Success', 'Activity updated successfully');
                 setEditModalVisible(false);
                 setActivityToEdit(null);
@@ -433,15 +514,32 @@ const TimeBasedActivityCreator = ({
                             <View style={styles.pickerContainer}>
                                 <Picker
                                     selectedValue={activityToEdit.activity_type}
-                                    onValueChange={(value) => setActivityToEdit(prev => ({ ...prev, activity_type: value }))}
+                                    onValueChange={(value, label) => { setActivityToEdit(prev => ({ ...prev, activity_type: label, activity_type_id: value })); setSelectedActivity(value) }}
                                     style={styles.picker}
                                 >
-                                    {activityTypes.map(type => (
-                                        <Picker.Item key={type} label={type} value={type} />
+                                    {activities.map(type => (
+                                        <Picker.Item key={type.id} label={type.activity_name} value={type.id} />
                                     ))}
                                 </Picker>
                             </View>
                         </View>
+
+                        {selectedActivity && (
+                            <View style={styles.formGroup}>
+                                <Text style={styles.label}>Sub Activity</Text>
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={activityToEdit.activity_type}
+                                        onValueChange={(value, label) => { setActivityToEdit(prev => ({ ...prev, sub_activity_type_id: value })); setSelectedSubActivity(value) }}
+                                        style={styles.picker}
+                                    >
+                                        {subActivities.map(type => (
+                                            <Picker.Item key={type.id} label={type.sub_act_name} value={type.id} />
+                                        ))}
+                                    </Picker>
+                                </View>
+                            </View>
+                        )}
 
                         {/* Start Time */}
                         <View style={styles.formGroup}>
@@ -656,15 +754,32 @@ const TimeBasedActivityCreator = ({
                                                 <View style={styles.pickerContainer}>
                                                     <Picker
                                                         selectedValue={activity.activity_type}
-                                                        onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'activity_type', value)}
+                                                        onValueChange={(value, label) => { updateActivity(batch.batch_level, activity.id, 'activity_type_id', value); setSelectedActivity(value); updateActivity(batch.batch_level, activity.id, 'activity_type', label); }}
                                                         style={styles.picker}
                                                     >
-                                                        {activityTypes.map(type => (
-                                                            <Picker.Item key={type} label={type} value={type} />
+                                                        {activities.map(type => (
+                                                            <Picker.Item key={type.id} label={type.activity_name} value={type.id} />
                                                         ))}
                                                     </Picker>
                                                 </View>
                                             </View>
+
+                                            {selectedActivity && (
+                                                <View style={styles.formGroup}>
+                                                    <Text style={styles.label}>Sub Activity</Text>
+                                                    <View style={styles.pickerContainer}>
+                                                        <Picker
+                                                            selectedValue={activity.sub_activity}
+                                                            onValueChange={(value) => { updateActivity(batch.batch_level, activity.id, 'sub_activity_id', value); setSelectedSubActivity(value); }}
+                                                            style={styles.picker}
+                                                        >
+                                                            {subActivities.map(type => (
+                                                                <Picker.Item key={type.id} label={type.sub_act_name} value={type.id} />
+                                                            ))}
+                                                        </Picker>
+                                                    </View>
+                                                </View>
+                                            )}
 
                                             {/* Time Range */}
                                             <View style={styles.timeRow}>

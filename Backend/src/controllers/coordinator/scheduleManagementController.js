@@ -1392,7 +1392,7 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
 
                     const activity = activities[currentIndex];
                     const {
-                        batch_number, activity_type, start_time, end_time, topic_id,
+                        batch_number, activity_type, activity_type_id, sub_activity_id, start_time, end_time, topic_id,
                         mentor_id, has_assessment, assessment_type, total_marks, activity_instructions
                     } = activity;
 
@@ -1403,16 +1403,16 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
 
                     const insertQuery = `
                         INSERT INTO period_activities 
-                        (daily_schedule_id, activity_date, activity_name, activity_type, duration, 
+                        (daily_schedule_id, activity_date, activity_name, activity_type, section_subject_activity_id, ssa_sub_activity_id, duration, 
                          batch_number, assigned_mentor_id, topic_id, is_assessment, assessment_type, 
                          total_marks, start_time, end_time, activity_instructions, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     `;
 
                     const activityName = `${activity_type} - Batch ${batch_number}`;
 
                     db.query(insertQuery, [
-                        period_id, date, activityName, activity_type,
+                        period_id, date, activityName, activity_type, activity_type_id, sub_activity_id,
                         duration_minutes, batch_number, mentor_id, topic_id,
                         has_assessment ? 1 : 0, assessment_type, total_marks,
                         start_time, end_time, activity_instructions || ''
@@ -1461,7 +1461,7 @@ exports.updatePeriodActivity = (req, res) => {
     try {
         const { activityId } = req.params;
         const {
-            activity_type, duration, batch_number,
+            activity_type, activity_type_id, sub_activity_id, duration, batch_number,
             mentor_id, topic_id, has_assessment, assessment_type, total_marks,
             activity_instructions, activity_name, end_time, start_time
         } = req.body;
@@ -1469,14 +1469,14 @@ exports.updatePeriodActivity = (req, res) => {
         const updateQuery = `
                 UPDATE period_activities 
                 SET activity_type = ?, duration = ?, batch_number = ?,
-                    assigned_mentor_id = ?, topic_id = ?, is_assessment = ?,
+                    assigned_mentor_id = ?, topic_id = ?, is_assessment = ?, section_subject_activity_id = ?, ssa_sub_activity_id = ?
                     assessment_type = ?, total_marks = ?, activity_instructions = ?, activity_name = ?, end_time = ?, start_time = ?, updated_at = NOW()
                 WHERE id = ?
             `;
 
         db.query(updateQuery, [
             activity_type, duration, batch_number,
-            mentor_id, topic_id, has_assessment, assessment_type, total_marks,
+            mentor_id, topic_id, has_assessment, activity_type_id, sub_activity_id, assessment_type, total_marks,
             activity_instructions, activity_name, end_time, start_time, activityId
         ], (err, result) => {
             if (err) {
