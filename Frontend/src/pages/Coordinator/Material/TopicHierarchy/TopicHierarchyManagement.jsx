@@ -181,6 +181,10 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     }
   };
 
+  useEffect(() => {
+    fetchSubActivitiesForSubject();
+  }, [selectedSubject, selectedActivity]);
+
   const fetchTopicHierarchy = async () => {
     if (!selectedSubActivity) return;
     setTopicHierarchy([]);
@@ -236,7 +240,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         Alert.alert('Error', 'Topic code is required');
         return;
       }
-      if (!selectedActivity) {
+      if (!selectedActivity || !selectedSubActivity) {
         Alert.alert('Error', 'Please select an activity first');
         return;
       }
@@ -253,6 +257,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         isBottomLevel: formData.is_bottom_level,
         expectedCompletionDays: formData.expected_completion_days,
         passPercentage: formData.pass_percentage,
+        ssaSubActivityId: selectedSubActivity
       };
 
       console.log('Sending payload:', payload);

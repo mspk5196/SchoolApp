@@ -291,11 +291,11 @@ exports.createTopic = (req, res) => {
     try {
         const {
             subjectId, sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,
-            hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+            hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage, ssaSubActivityId
         } = req.body;
 
         // Check if we're using the new activity-based approach or the old subject-based approach
-        if (sectionSubjectActivityId) {
+        if (sectionSubjectActivityId && ssaSubActivityId) {
             // New activity-based approach - first get the subject_id from section_subject_activities
             const getSubjectSql = `
                 SELECT subject_id FROM section_subject_activities WHERE id = ?
@@ -323,18 +323,18 @@ exports.createTopic = (req, res) => {
                 const sql = `
                     INSERT INTO topic_hierarchy 
                     (subject_id, section_subject_activity_id, parent_id, level, topic_name, topic_code, order_sequence,
-                     has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage, ssa_sub_activity_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
 
                 console.log('Creating topic with activity-based approach. Parameters:', [
                     subjectIdFromActivity, sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,
-                    hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+                    hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage, ssaSubActivityId
                 ]);
 
                 db.query(sql, [
                     subjectIdFromActivity, sectionSubjectActivityId, parentId, level, topicName, topicCode, orderSequence,
-                    hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+                    hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage, ssaSubActivityId
                 ], (error, result) => {
                     if (error) {
                         console.error('Insert topic error (activity-based):', error);
@@ -357,18 +357,18 @@ exports.createTopic = (req, res) => {
             const sql = `
                 INSERT INTO topic_hierarchy 
                 (subject_id, parent_id, level, topic_name, topic_code, order_sequence,
-                 has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage, ssa_sub_activity_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             console.log('Creating topic with subject-based approach. Parameters:', [
                 subjectId, parentId, level, topicName, topicCode, orderSequence,
-                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage, ssaSubActivityId
             ]);
 
             db.query(sql, [
                 subjectId, parentId, level, topicName, topicCode, orderSequence,
-                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage
+                hasAssessment, hasHomework, isBottomLevel, expectedCompletionDays, passPercentage, ssaSubActivityId
             ], (error, result) => {
                 if (error) {
                     console.error('Insert topic error (subject-based):', error);
