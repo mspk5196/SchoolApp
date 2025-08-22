@@ -1570,21 +1570,22 @@ exports.getMentorDailySchedule = (req, res) => {
       ds.section_id,
       sec.grade_id,
       pa.activity_name AS activity,
+      pa.is_assessment,
       v.name AS venue,
       TIMEDIFF(pa.end_time, pa.start_time) AS duration,
       CASE
-          WHEN pa.activity_name LIKE '%Academic%' THEN '#F8ECD2A8'
-          WHEN pa.activity_name LIKE '%Assessment%' THEN '#9BD6EE3B'
+          WHEN pa.is_assessment LIKE '%0%' THEN '#F8ECD2A8'
+          WHEN pa.is_assessment LIKE '%1%' THEN '#9BD6EE3B'
           ELSE '#F8ECD2A8'
       END AS bgColor,
       CASE
-          WHEN pa.activity_name LIKE '%Academic%' THEN '#EF7B0E'
-          WHEN pa.activity_name LIKE '%Assessment%' THEN '#1857C0'
+          WHEN pa.is_assessment LIKE '%0%' THEN '#EF7B0E'
+          WHEN pa.is_assessment LIKE '%1%' THEN '#1857C0'
           ELSE '#EF7B0E'
       END AS sideColor,
       CASE
-          WHEN pa.activity_name LIKE '%Academic%' THEN '#EF7B0E'
-          WHEN pa.activity_name LIKE '%Assessment%' THEN '#1857C0'
+          WHEN pa.is_assessment LIKE '%0%' THEN '#EF7B0E'
+          WHEN pa.is_assessment LIKE '%1%' THEN '#1857C0'
           ELSE '#EF7B0E'
       END AS fontColor
     FROM period_activities pa

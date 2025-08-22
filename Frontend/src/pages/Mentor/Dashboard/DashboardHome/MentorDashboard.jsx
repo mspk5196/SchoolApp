@@ -169,7 +169,7 @@ const MentorDashboard = ({ route }) => {
       const data = await response.json();
       if (data.success) {
         setScheduleData(data.scheduleData);
-        console.log("Schedule Data:", data.scheduleData);
+        // console.log("Schedule Data:", data.scheduleData);
 
       } else {
         console.error('Failed to fetch schedule data');
