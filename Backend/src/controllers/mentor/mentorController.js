@@ -1558,26 +1558,7 @@ exports.getMentorDailySchedule = (req, res) => {
   }
 
   const query = `
-    SELECT
-      pa.id,
-      ds.date,
-      pa.activity_name,
-      pa.start_time,
-      pa.end_time,
-      ds.grade_id,
-      sub.subject_name,
-      s.section_name,
-      ds.section_id,
-      v.name AS venue
-    FROM period_activities pa
-    JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
-    JOIN sections s ON ds.section_id = s.id
-    JOIN subjects sub ON ds.subject_id = sub.id
-    LEFT JOIN venues v ON ds.venue_id = v.id
-    WHERE pa.assigned_mentor_id = '1'
-    AND ds.date = '2025-08-25'
-    ORDER BY pa.start_time ASC;
-    
+      
     SELECT
       pa.id,
       ds.date,
