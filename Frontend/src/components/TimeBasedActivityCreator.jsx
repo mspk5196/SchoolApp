@@ -71,8 +71,7 @@ const TimeBasedActivityCreator = ({
         try {
             await Promise.all([
                 fetchBatches(),
-                fetchMentors(),
-                fetchTopics()
+                fetchMentors()
             ]);
         } catch (error) {
             console.error('Error fetching initial data:', error);
@@ -198,12 +197,19 @@ const TimeBasedActivityCreator = ({
             const result = await response.json();
             if (result.success) {
                 setTopics(result.data);
+                console.log('Fetched topics:', result.data);
             }
         } catch (error) {
             console.error('Error fetching topics:', error);
         }
     };
 
+    useEffect(()=>{
+        if(selectedActivity && selectedSubActivity){
+            fetchTopics();
+        }
+    },[selectedActivity, selectedSubActivity])
+    
     const addActivityToBatch = (batchLevel) => {
         const newActivity = {
             id: Date.now(), // Temporary ID

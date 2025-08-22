@@ -1404,9 +1404,9 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
                     const insertQuery = `
                         INSERT INTO period_activities 
                         (daily_schedule_id, activity_date, activity_name, activity_type, section_subject_activity_id, ssa_sub_activity_id, duration, 
-                         batch_number, assigned_mentor_id, topic_id, is_assessment, assessment_type, 
+                         batch_number, assigned_mentor_id, topic_id, is_assessment, 
                          total_marks, start_time, end_time, activity_instructions, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     `;
 
                     const activityName = `${activity_type} - Batch ${batch_number}`;
@@ -1414,7 +1414,7 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
                     db.query(insertQuery, [
                         period_id, date, activityName, activity_type, activity_type_id, sub_activity_id,
                         duration_minutes, batch_number, mentor_id, topic_id,
-                        has_assessment ? 1 : 0, assessment_type, total_marks,
+                        has_assessment ? 1 : 0, total_marks,
                         start_time, end_time, activity_instructions || ''
                     ], (insertErr, result) => {
                         if (insertErr) {
