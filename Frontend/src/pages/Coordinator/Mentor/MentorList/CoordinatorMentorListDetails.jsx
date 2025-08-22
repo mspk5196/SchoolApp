@@ -124,6 +124,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
       const data = await response.json();
       if (data.success) {
         setMentorSchedule(data.schedule);
+        console.log(data.schedule);
       }
     } catch (error) {
       console.error('Error fetching schedule:', error);

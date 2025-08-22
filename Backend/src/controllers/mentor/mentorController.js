@@ -1558,41 +1558,61 @@ exports.getMentorDailySchedule = (req, res) => {
   }
 
   const query = `
-    SELECT 
-      ds.id,
+    SELECT
+      pa.id,
       ds.date,
-      ds.start_time,
-      ds.end_time,
-      s.subject_name AS subject,
+      pa.activity_name,
+      pa.start_time,
+      pa.end_time,
+      ds.grade_id,
+      sub.subject_name,
+      s.section_name,
+      ds.section_id,
+      v.name AS venue
+    FROM period_activities pa
+    JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
+    JOIN sections s ON ds.section_id = s.id
+    JOIN subjects sub ON ds.subject_id = sub.id
+    LEFT JOIN venues v ON ds.venue_id = v.id
+    WHERE pa.assigned_mentor_id = '1'
+    AND ds.date = '2025-08-25'
+    ORDER BY pa.start_time ASC;
+    
+    SELECT
+      pa.id,
+      ds.date,
+      pa.start_time,
+      pa.end_time,
+      sub.subject_name AS subject,
       ds.subject_id,
-      sec.section_name ,
+      sec.section_name,
       ds.section_id,
       sec.grade_id,
-      avt.activity_type AS activity,
+      pa.activity_name AS activity,
       v.name AS venue,
-      TIMEDIFF(ds.end_time, ds.start_time) AS duration,
-      CASE 
-        WHEN avt.activity_type = 'Academics' THEN '#F8ECD2A8'
-        WHEN avt.activity_type = 'Assessment' THEN '#9BD6EE3B'
-        ELSE '#F8ECD2A8'
+      TIMEDIFF(pa.end_time, pa.start_time) AS duration,
+      CASE
+          WHEN pa.activity_name LIKE '%Academic%' THEN '#F8ECD2A8'
+          WHEN pa.activity_name LIKE '%Assessment%' THEN '#9BD6EE3B'
+          ELSE '#F8ECD2A8'
       END AS bgColor,
-      CASE 
-        WHEN avt.activity_type = 'Academics' THEN '#EF7B0E'
-        WHEN avt.activity_type = 'Assessment' THEN '#1857C0'
-        ELSE '#EF7B0E'
+      CASE
+          WHEN pa.activity_name LIKE '%Academic%' THEN '#EF7B0E'
+          WHEN pa.activity_name LIKE '%Assessment%' THEN '#1857C0'
+          ELSE '#EF7B0E'
       END AS sideColor,
-      CASE 
-        WHEN avt.activity_type = 'Academics' THEN '#EF7B0E'
-        WHEN avt.activity_type = 'Assessment' THEN '#1857C0'
-        ELSE '#EF7B0E'
+      CASE
+          WHEN pa.activity_name LIKE '%Academic%' THEN '#EF7B0E'
+          WHEN pa.activity_name LIKE '%Assessment%' THEN '#1857C0'
+          ELSE '#EF7B0E'
       END AS fontColor
-    FROM daily_schedule ds
-    JOIN subjects s ON ds.subject_id = s.id
+    FROM period_activities pa
+    JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
+    JOIN subjects sub ON ds.subject_id = sub.id
     JOIN sections sec ON ds.section_id = sec.id
-    LEFT JOIN activity_types avt ON ds.activity = avt.id
-    LEFT JOIN venues v ON ds.venue = v.id
-    WHERE ds.mentors_id = ? AND ds.date = ? AND ds.status = 'Active'
-    ORDER BY ds.start_time
+    LEFT JOIN venues v ON ds.venue_id = v.id
+    WHERE pa.assigned_mentor_id = ? AND ds.date = ?
+    ORDER BY pa.start_time;
   `;
 
   db.query(query, [mentorId, date], (err, results) => {

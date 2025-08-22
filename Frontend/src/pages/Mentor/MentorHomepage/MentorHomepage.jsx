@@ -125,10 +125,10 @@ const MentorHomepage = ({ navigation, route }) => {
             <Text style={styles.menutitle1}>Assessment Request</Text>
           </Pressable>
 
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('EnhancedAssessmentManagement', { mentorId: mentorData[0]?.id })}>
+          {/* <Pressable style={styles.card1} onPress={() => navigation.navigate('EnhancedAssessmentManagement', { mentorId: mentorData[0]?.id })}>
             <AssessmentRequest style={styles.icons1} />
             <Text style={styles.menutitle1}>Enhanced Assessment</Text>
-          </Pressable>
+          </Pressable> */}
         </View>
 
         <View style={styles.menus}>
