@@ -188,7 +188,9 @@ const TimeBasedActivityCreator = ({
     }; 
 
     useEffect(() => {
-        fetchSubActivitiesForSubject();
+        if (selectedActivity) { // Ensure selectedActivity is set before fetching
+            fetchSubActivitiesForSubject();
+        }
     }, [selectedPeriod, selectedActivity]);
 
     const fetchTopics = async () => {
@@ -211,12 +213,14 @@ const TimeBasedActivityCreator = ({
     },[selectedActivity, selectedSubActivity])
 
     const addActivityToBatch = (batchLevel) => {
+        const selectedActivityObject = activities.find(act => act.id === selectedActivity);
+    
         const newActivity = {
             id: Date.now(), // Temporary ID
             batch_number: batchLevel,
-            activity_type: null,
-            activity_type_id: null,
-            sub_activity_type_id: null,
+            activity_type: selectedActivityObject ? selectedActivityObject.activity_name : null,
+            activity_type_id: selectedActivity,
+            sub_activity_type_id: selectedSubActivity,
             start_time: selectedPeriod.start_time,
             end_time: selectedPeriod.end_time,
             topic_id: null,
@@ -226,27 +230,20 @@ const TimeBasedActivityCreator = ({
             total_marks: 100,
             activity_instructions: ''
         };
-
-        console.log(batchLevel);
+    
         setBatchActivities(prev => ({
             ...prev,
-            [batchLevel]: [...prev[batchLevel], newActivity]
+            [batchLevel]: [...(prev[batchLevel] || []), newActivity]
         }));
-        
     };
-
+    
     const updateActivity = (batchLevel, activityId, field, value) => {
-        console.log(batchLevel, activityId, field, value);
-
         setBatchActivities(prev => ({
             ...prev,
             [batchLevel]: prev[batchLevel].map(activity =>
                 activity.id === activityId ? { ...activity, [field]: value } : activity
             )
         }));
-
-        console.log("Batch",batchActivities);
-        
     };
 
     // Show time picker for a specific activity and field
@@ -345,10 +342,7 @@ const TimeBasedActivityCreator = ({
             }
 
             setLoading(true);
-            // console.log(allActivities);
             
-            // const token = await AsyncStorage.getItem('userToken');
-
             const response = await fetch(
                 `${API_URL}/api/coordinator/academic-schedule/create-time-based-activities`,
                 {
@@ -401,10 +395,10 @@ const TimeBasedActivityCreator = ({
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 12, marginRight: 8 }}>
                     <TouchableOpacity onPress={() => handleEditActivity(activity)}>
-                        <Text style={styles.existingActivityEdit}>✏️</Text>
+                        <Text>✏️</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleDeleteActivity(activity.id)}>
-                        <Text style={styles.existingActivityDelete}>🗑️</Text>
+                        <Text>🗑️</Text>
                     </TouchableOpacity>
                 </View>
                 <View style={styles.existingActivityBadge}>
@@ -484,7 +478,6 @@ const TimeBasedActivityCreator = ({
     // Save edited activity
     const handleSaveEditActivity = async () => {
         if (!activityToEdit) return;
-        // console.log(activityToEdit);
 
         try {
             setLoading(true);
@@ -493,7 +486,7 @@ const TimeBasedActivityCreator = ({
                 {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ activity_instructions: activityToEdit.activity_instructions, activity_name: activityToEdit.activity_name, activity_type: activityToEdit.activity_type, activity_type_id: activityToEdit.activity_type_id, sub_activity_type_id: activityToEdit.sub_activity_type_id, assessment_type: activityToEdit.assessment_type, batch_number: activityToEdit.batch_number, duration: activityToEdit.duration, end_time: activityToEdit.end_time, has_assessment: activityToEdit.has_assessment, id: activityToEdit.id, material_id: activityToEdit.material_id, material_name: activityToEdit.material_name, mentor_id: activityToEdit.mentor_id, mentor_name: activityToEdit.mentor_name, mentor_roll: activityToEdit.mentor_roll, start_time: activityToEdit.start_time, topic_hierarchy_path: activityToEdit.topic_hierarchy_path, topic_id: activityToEdit.topic_id, topic_name: activityToEdit.topic_name, total_marks: activityToEdit.total_marks })
+                    body: JSON.stringify(activityToEdit)
                 }
             );
             const result = await response.json();
@@ -730,8 +723,6 @@ const TimeBasedActivityCreator = ({
                     <ScrollView style={styles.content}>
                         {batches.map((batch, idx) => {
                             const existingActivities = getExistingActivitiesForBatch(batch.batch_level);
-
-                            // Use batch.id if available, else fallback to batch_level + idx
                             const batchKey = batch.id ? batch.id : `${batch.batch_level}-${idx}`;
 
                             return (
@@ -752,7 +743,6 @@ const TimeBasedActivityCreator = ({
                                         </TouchableOpacity>
                                     </View>
 
-                                    {/* Existing Activities */}
                                     {existingActivities.length > 0 && (
                                         <View style={styles.existingActivitiesSection}>
                                             <Text style={styles.existingActivitiesHeader}>Existing Activities:</Text>
@@ -763,7 +753,6 @@ const TimeBasedActivityCreator = ({
                                         </View>
                                     )}
 
-                                    {/* New Activities */}
                                     {batchActivities[batch.batch_level]?.map(activity => (
                                         <View key={activity.id} style={styles.activityForm}>
                                             <View style={styles.activityHeader}>
@@ -776,7 +765,6 @@ const TimeBasedActivityCreator = ({
                                                 </TouchableOpacity>
                                             </View>
 
-                                            {/* Activity Type */}
                                             <View style={styles.formGroup}>
                                                 <Text style={styles.label}>Activity Type</Text>
                                                 <View style={styles.pickerContainer}>
@@ -817,7 +805,6 @@ const TimeBasedActivityCreator = ({
                                                 </View>
                                             )}
 
-                                            {/* Time Range */}
                                             <View style={styles.timeRow}>
                                                 <View style={styles.timeGroup}>
                                                     <Text style={styles.label}>Start Time</Text>
@@ -838,7 +825,7 @@ const TimeBasedActivityCreator = ({
                                                     </TouchableOpacity>
                                                 </View>
                                             </View>
-                                            {/* Time Picker Modal */}
+
                                             {timePicker.visible && timePicker.activityId === activity.id && (
                                                 <DateTimePicker
                                                     value={
@@ -849,7 +836,6 @@ const TimeBasedActivityCreator = ({
                                                                 d.setHours(parseInt(h, 10));
                                                                 d.setMinutes(parseInt(m, 10));
                                                                 d.setSeconds(0);
-                                                                d.setMilliseconds(0);
                                                                 return d;
                                                             })()
                                                             : new Date()
@@ -861,7 +847,6 @@ const TimeBasedActivityCreator = ({
                                                 />
                                             )}
 
-                                            {/* Topic */}
                                             <View style={styles.formGroup}>
                                                 <Text style={styles.label}>Topic *</Text>
                                                 <View style={styles.pickerContainer}>
@@ -882,7 +867,6 @@ const TimeBasedActivityCreator = ({
                                                 </View>
                                             </View>
 
-                                            {/* Mentor */}
                                             <View style={styles.formGroup}>
                                                 <Text style={styles.label}>Mentor *</Text>
                                                 <View style={styles.pickerContainer}>
@@ -903,7 +887,6 @@ const TimeBasedActivityCreator = ({
                                                 </View>
                                             </View>
 
-                                            {/* Assessment Toggle */}
                                             <View style={styles.switchRow}>
                                                 <Text style={styles.label}>Has Assessment</Text>
                                                 <Switch
@@ -942,7 +925,6 @@ const TimeBasedActivityCreator = ({
                                                 </>
                                             )}
 
-                                            {/* Instructions */}
                                             <View style={styles.formGroup}>
                                                 <Text style={styles.label}>Instructions (Optional)</Text>
                                                 <TextInput
@@ -951,7 +933,6 @@ const TimeBasedActivityCreator = ({
                                                     onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'activity_instructions', value)}
                                                     placeholder="Enter activity instructions..."
                                                     multiline
-                                                    numberOfLines={3}
                                                 />
                                             </View>
                                         </View>
@@ -973,6 +954,7 @@ const TimeBasedActivityCreator = ({
     );
 };
 
+// Styles remain unchanged
 const styles = {
     container: {
         flex: 1,
@@ -1178,6 +1160,8 @@ const styles = {
         padding: 12,
         fontSize: 16,
         backgroundColor: '#fff',
+        height: 50,
+        justifyContent: 'center'
     },
     input: {
         borderWidth: 1,
@@ -1222,4 +1206,4 @@ const styles = {
     },
 };
 
-export default TimeBasedActivityCreator;
+export default TimeBasedActivityCreator; 

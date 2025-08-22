@@ -266,26 +266,47 @@ exports.getMentorIssues = (req, res) => {
 exports.getMentorSchedule = (req, res) => {
   const { mentorId, date } = req.body;
 
+  // SELECT 
+  //     ds.id,
+  //     ds.date,
+  //     ds.start_time,
+  //     ds.end_time,
+  //     s.subject_name,
+  //     ds.subject_id,
+  //     sec.section_name ,
+  //     ds.section_id,
+  //     sec.grade_id,
+  //     avt.activity_type AS activity_name,
+  //     v.name AS venue
+  //   FROM daily_schedule ds
+  //   JOIN subjects s ON ds.subject_id = s.id
+  //   JOIN sections sec ON ds.section_id = sec.id
+  //   LEFT JOIN activity_types avt ON ds.activity = avt.id
+  //   LEFT JOIN venues v ON ds.venue = v.id
+  //   WHERE ds.mentors_id = ? AND ds.date = ?
+  //   ORDER BY ds.start_time
+
+
   const query = `
-      SELECT 
-      ds.id,
+      SELECT
+      pa.id,
       ds.date,
-      ds.start_time,
-      ds.end_time,
-      s.subject_name,
-      ds.subject_id,
-      sec.section_name ,
+      pa.activity_name,
+      pa.start_time,
+      pa.end_time,
+      ds.grade_id,
+      sub.subject_name,
+      s.section_name,
       ds.section_id,
-      sec.grade_id,
-      avt.activity_type AS activity_name,
       v.name AS venue
-    FROM daily_schedule ds
-    JOIN subjects s ON ds.subject_id = s.id
-    JOIN sections sec ON ds.section_id = sec.id
-    LEFT JOIN activity_types avt ON ds.activity = avt.id
+    FROM period_activities pa
+    JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
+    JOIN sections s ON ds.section_id = s.id
+    JOIN subjects sub ON ds.subject_id = sub.id
     LEFT JOIN venues v ON ds.venue = v.id
-    WHERE ds.mentors_id = ? AND ds.date = ?
-    ORDER BY ds.start_time
+    WHERE pa.assigned_mentor_id = ?
+    AND ds.date = ?
+    ORDER BY pa.start_time ASC;
   `;
 
   db.query(query, [mentorId, date], (err, results) => {
