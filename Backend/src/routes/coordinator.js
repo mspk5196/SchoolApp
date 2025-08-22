@@ -259,7 +259,8 @@ router.get('/coordinator/topics/materials/view/:filename', TopicHierarchyControl
 router.get('/coordinator/topics/assessment-eligible/:studentRoll/:subjectId', TopicHierarchyController.getAssessmentEligibleTopics);
 router.get('/coordinator/students/:studentRoll/progress/:subjectId', TopicHierarchyController.getStudentProgress);
 router.post('/coordinator/students/progress/update', TopicHierarchyController.updateStudentProgress);
-router.get('/coordinator/getSectionSubjectActivities/:sectionId/:subjectId', TopicHierarchyController.getSectionSubjectActivitiesRecords);
+router.get('/coordinator/topics/getSectionSubjectActivities/:sectionId/:subjectId', TopicHierarchyController.getSectionSubjectActivitiesRecords);
+router.get('/coordinator/topics/getSectionSubjectSubActivities/:activityId/:subjectId', TopicHierarchyController.getSectionSubjectSubActivitiesRecords);
 
 // Enhanced Batch Management Routes
 router.get('/coordinator/batches/:sectionId/:subjectId', BatchManagementController.getBatches);

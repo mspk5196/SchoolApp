@@ -165,7 +165,7 @@ exports.getTopicsByGrade = (req, res) => {
 // Get topic hierarchy by activity (NEW FUNCTION)
 exports.getTopicHierarchyByActivity = (req, res) => {
     try {
-        const { activityId } = req.body;
+        const { activityId, subActivityId } = req.body;
 
         // Get section_subject_activity details first
         const activitySql = `
@@ -193,17 +193,17 @@ exports.getTopicHierarchyByActivity = (req, res) => {
             // Get topic hierarchy for this activity
             const sql = `
                 SELECT 
-                    id, subject_id, section_subject_activity_id, parent_id, level, topic_name, topic_code, 
+                    id, subject_id, section_subject_activity_id, parent_id, level, topic_name, topic_code, ssa_sub_activity_id,
                     order_sequence, has_assessment, has_homework, is_bottom_level,
                     expected_completion_days, pass_percentage, created_at, updated_at
                 FROM topic_hierarchy 
-                WHERE section_subject_activity_id = ?
+                WHERE section_subject_activity_id = ? AND ssa_sub_activity_id = ?
                 ORDER BY level, order_sequence
             `;
 
-            console.log('Executing hierarchy query for activityId:', activityId);
+            console.log('Executing hierarchy query for activityId:', activityId, 'subActivityId:', subActivityId);
 
-            db.query(sql, [activityId], (err, result) => {
+            db.query(sql, [activityId, subActivityId], (err, result) => {
                 if (err) {
                     console.error('Get topic hierarchy by activity error:', err);
                     return res.status(500).json({ success: false, message: 'Database error' });
@@ -1166,5 +1166,28 @@ exports.getSectionSubjectActivitiesRecords = (req, res) => {
     
     console.log('Section subject activities results:', results);
     res.json({ success: true, message: "Section subject activities fetched successfully", sectionSubjectActivity: results });
+  });
+};
+
+exports.getSectionSubjectSubActivitiesRecords = (req, res) => {
+  const { activityId, subjectId } = req.params;
+
+  console.log('Getting section subject activities for:', { activityId, subjectId });
+
+  const sql = `
+    SELECT ssa.id, at.sub_act_name
+    FROM ssa_sub_activities ssa
+    JOIN sub_activities at ON ssa.sub_act_id = at.id
+    WHERE ssa.ssa_id = ?
+  `;
+  
+  db.query(sql, [activityId], (err, results) => {
+    if (err) {
+      console.error("Error fetching section subject sub activities:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    console.log('Section subject sub activities results:', results);
+    res.json({ success: true, message: "Section subject sub activities fetched successfully", sectionSubjectSubActivity: results });
   });
 };
