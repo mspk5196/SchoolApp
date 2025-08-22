@@ -194,7 +194,7 @@ const TimeBasedActivityCreator = ({
 
     const fetchTopics = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}/${selectedPeriod.subject_id}`);
+            const response = await fetch(`${API_URL}/api/coordinator/topics/sectionSubject/${selectedActivity}/${selectedSubActivity}`);
             const result = await response.json();
             if (result.success) {
                 setTopics(result.data);

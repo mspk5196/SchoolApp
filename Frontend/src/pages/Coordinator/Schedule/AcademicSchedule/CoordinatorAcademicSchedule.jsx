@@ -59,9 +59,9 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     'Presentation', 'Group Discussion'
   ];
 
-  useEffect(() => {
-    loadInitialData();
-  }, [activeGrade, selectedPeriod]);
+  // useEffect(() => {
+  //   loadInitialData();
+  // }, [activeGrade, selectedPeriod]);
 
   useEffect(() => {
     if (activeGrade && activeSection) {
@@ -94,50 +94,19 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     fetchSections();
   }, [activeGrade]);
 
-  const loadInitialData = async () => {
-    try {
-      if (activeGrade && selectedPeriod) {
-        await fetchMentors();
-        await fetchTopics();
-      }
-    } catch (error) {
-      console.error('Error loading initial data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const loadInitialData = async () => {
+  //   try {
+  //     if (activeGrade && selectedPeriod) {
+  //       await fetchMentors();
+  //       // await fetchTopics();
+  //     }
+  //   } catch (error) {
+  //     console.error('Error loading initial data:', error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  const fetchMentors = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeMentors`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: activeGrade })
-      });
-      const result = await response.json();
-      if (result.success) {
-        // console.log(result.gradeMentors);
-        setMentors(result.gradeMentors);
-      }
-    } catch (error) {
-      console.error('Error fetching mentors:', error);
-    }
-  };
-
-  const fetchTopics = async () => {
-    // console.log('selected',selectedPeriod.subject_id);
-
-    try {
-      const response = await fetch(`${API_URL}/api/coordinator/topics/grade/${activeGrade}/${selectedPeriod.subject_id}`);
-      const result = await response.json();
-      if (result.success) {
-        setTopics(result.data);
-        // console.log('Fetched topics:', result.data);
-      }
-    } catch (error) {
-      console.error('Error fetching topics:', error);
-    }
-  };
 
   const fetchMonthlySchedule = async () => {
     setMonthlySchedule([]);
