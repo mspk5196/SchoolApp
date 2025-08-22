@@ -303,7 +303,7 @@ exports.getMentorSchedule = (req, res) => {
     JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
     JOIN sections s ON ds.section_id = s.id
     JOIN subjects sub ON ds.subject_id = sub.id
-    LEFT JOIN venues v ON ds.venue = v.id
+    LEFT JOIN venues v ON ds.venue_id = v.id
     WHERE pa.assigned_mentor_id = ?
     AND ds.date = ?
     ORDER BY pa.start_time ASC;

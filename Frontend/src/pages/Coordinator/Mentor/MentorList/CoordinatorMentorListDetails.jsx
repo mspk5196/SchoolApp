@@ -20,7 +20,7 @@ const Staff = require('../../../../assets/CoordinatorPage/MentorList/staff.png')
 const CoordinatorMentorListDetails = ({ route, navigation }) => {
   const { mentor = {} } = route.params || {};
   // console.log(mentor);
- 
+  
   const [selectedSessions, setSelectedSessions] = useState([]);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
 
@@ -110,6 +110,8 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
 
   // Fetch mentor schedule
   const fetchScheduleForDate = async (date) => {
+    console.log(date,mentor.id);
+    
     try {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getMentorSchedule`, {
         method: 'POST',
