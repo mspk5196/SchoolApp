@@ -67,7 +67,7 @@ const TimeBasedActivityCreator = ({
 
     const fetchInitialData = async () => {
         setLoading(true);
-        console.log('Fetching initial data...', selectedPeriod);
+        // console.log('Fetching initial data...', selectedPeriod);
         try {
             await Promise.all([
                 fetchBatches(),
@@ -119,7 +119,7 @@ const TimeBasedActivityCreator = ({
     };
 
     const fetchActivitiesForSubject = async () => {
-        console.log('fetchActivitiesForSubject called with:', { selectedPeriod });
+        // console.log('fetchActivitiesForSubject called with:', { selectedPeriod });
         try {
 
             const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectActivities/${selectedPeriod.section_id}/${selectedPeriod.subject_id}`, {
@@ -132,7 +132,7 @@ const TimeBasedActivityCreator = ({
             // console.log('Activities result:', result);
 
             if (result.success) {
-                console.log('Fetched activities:', result.sectionSubjectActivity);
+                // console.log('Fetched activities:', result.sectionSubjectActivity);
                 setActivities(result.sectionSubjectActivity || []);
                 if (result.sectionSubjectActivity.length > 0) {
                     setSelectedActivity(result.sectionSubjectActivity[0].id);
@@ -143,7 +143,7 @@ const TimeBasedActivityCreator = ({
                     setSelectedActivity(null);
                 }
             } else {
-                console.log('Failed to fetch activities:', result.message);
+                // console.log('Failed to fetch activities:', result.message);
             }
         } catch (error) {
             console.error('Fetch activities error:', error);
@@ -158,7 +158,7 @@ const TimeBasedActivityCreator = ({
     }, [selectedPeriod])
 
     const fetchSubActivitiesForSubject = async () => {
-        console.log('fetchSubActivitiesForSubject called with:', { selectedActivity, selectedPeriod });
+        // console.log('fetchSubActivitiesForSubject called with:', { selectedActivity, selectedPeriod });
         try {
 
             const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectSubActivities/${selectedActivity}/${selectedPeriod.subject_id}`, {
@@ -179,13 +179,13 @@ const TimeBasedActivityCreator = ({
                     setSelectedSubActivity(null);
                 }
             } else {
-                console.log('Failed to fetch activities:', result.message);
+                // console.log('Failed to fetch activities:', result.message);
             }
         } catch (error) {
             console.error('Fetch activities error:', error);
             Alert.alert('Error', 'Failed to fetch activities');
         }
-    };
+    }; 
 
     useEffect(() => {
         fetchSubActivitiesForSubject();
@@ -197,7 +197,7 @@ const TimeBasedActivityCreator = ({
             const result = await response.json();
             if (result.success) {
                 setTopics(result.data);
-                console.log('Fetched topics:', result.data);
+                // console.log('Fetched topics:', result.data);
             }
         } catch (error) {
             console.error('Error fetching topics:', error);
@@ -209,35 +209,44 @@ const TimeBasedActivityCreator = ({
             fetchTopics();
         }
     },[selectedActivity, selectedSubActivity])
-    
+
     const addActivityToBatch = (batchLevel) => {
         const newActivity = {
             id: Date.now(), // Temporary ID
             batch_number: batchLevel,
-            activity_type: 'Academic',
+            activity_type: null,
+            activity_type_id: null,
+            sub_activity_type_id: null,
             start_time: selectedPeriod.start_time,
             end_time: selectedPeriod.end_time,
             topic_id: null,
             mentor_id: null,
             has_assessment: false,
-            assessment_type: 'Quiz',
+            assessment_type: null,
             total_marks: 100,
             activity_instructions: ''
         };
 
+        console.log(batchLevel);
         setBatchActivities(prev => ({
             ...prev,
             [batchLevel]: [...prev[batchLevel], newActivity]
         }));
+        
     };
 
     const updateActivity = (batchLevel, activityId, field, value) => {
+        console.log(batchLevel, activityId, field, value);
+
         setBatchActivities(prev => ({
             ...prev,
             [batchLevel]: prev[batchLevel].map(activity =>
                 activity.id === activityId ? { ...activity, [field]: value } : activity
             )
         }));
+
+        console.log("Batch",batchActivities);
+        
     };
 
     // Show time picker for a specific activity and field
@@ -312,7 +321,7 @@ const TimeBasedActivityCreator = ({
             const allActivities = [];
             for (const batchLevel in batchActivities) {
                 for (const activity of batchActivities[batchLevel]) {
-                    if (!activity.mentor_id || !activity.topic_id) {
+                    if (!activity.mentor_id || !activity.topic_id || !activity.activity_type_id) {
                         Alert.alert('Error', `Please fill all required fields for Batch ${batchLevel}`);
                         return;
                     }
@@ -336,6 +345,8 @@ const TimeBasedActivityCreator = ({
             }
 
             setLoading(true);
+            // console.log(allActivities);
+            
             // const token = await AsyncStorage.getItem('userToken');
 
             const response = await fetch(
@@ -519,8 +530,16 @@ const TimeBasedActivityCreator = ({
                             <Text style={styles.label}>Activity Type</Text>
                             <View style={styles.pickerContainer}>
                                 <Picker
-                                    selectedValue={activityToEdit.activity_type}
-                                    onValueChange={(value, label) => { setActivityToEdit(prev => ({ ...prev, activity_type: label, activity_type_id: value })); setSelectedActivity(value) }}
+                                    selectedValue={activityToEdit.activity_type_id}
+                                    onValueChange={(value) => {
+                                        const selected = activities.find(a => a.id === value);
+                                        setActivityToEdit(prev => ({
+                                            ...prev,
+                                            activity_type_id: value,
+                                            activity_type: selected ? selected.activity_name : prev.activity_type
+                                        }));
+                                        setSelectedActivity(value);
+                                    }}
                                     style={styles.picker}
                                 >
                                     {activities.map(type => (
@@ -535,8 +554,11 @@ const TimeBasedActivityCreator = ({
                                 <Text style={styles.label}>Sub Activity</Text>
                                 <View style={styles.pickerContainer}>
                                     <Picker
-                                        selectedValue={activityToEdit.activity_type}
-                                        onValueChange={(value, label) => { setActivityToEdit(prev => ({ ...prev, sub_activity_type_id: value })); setSelectedSubActivity(value) }}
+                                        selectedValue={activityToEdit.sub_activity_type_id}
+                                        onValueChange={(value) => {
+                                            setActivityToEdit(prev => ({ ...prev, sub_activity_type_id: value }));
+                                            setSelectedSubActivity(value);
+                                        }}
                                         style={styles.picker}
                                     >
                                         {subActivities.map(type => (
@@ -759,15 +781,20 @@ const TimeBasedActivityCreator = ({
                                                 <Text style={styles.label}>Activity Type</Text>
                                                 <View style={styles.pickerContainer}>
                                                     <Picker
-                                                        selectedValue={activity.activity_type}
-                                                        onValueChange={(value, label) => { updateActivity(batch.batch_level, activity.id, 'activity_type_id', value); setSelectedActivity(value); updateActivity(batch.batch_level, activity.id, 'activity_type', label); }}
+                                                        selectedValue={activity.activity_type_id}
+                                                        onValueChange={(value) => {
+                                                            const selected = activities.find(a => a.id === value);
+                                                            updateActivity(batch.batch_level, activity.id, 'activity_type_id', value);
+                                                            updateActivity(batch.batch_level, activity.id, 'activity_type', selected ? selected.activity_name : '');
+                                                            setSelectedActivity(value);
+                                                        }}
                                                         style={styles.picker}
                                                     >
                                                         {activities.map(type => (
                                                             <Picker.Item key={type.id} label={type.activity_name} value={type.id} />
                                                         ))}
                                                     </Picker>
-                                                </View>
+                                                </View> 
                                             </View>
 
                                             {selectedActivity && (
@@ -775,8 +802,11 @@ const TimeBasedActivityCreator = ({
                                                     <Text style={styles.label}>Sub Activity</Text>
                                                     <View style={styles.pickerContainer}>
                                                         <Picker
-                                                            selectedValue={activity.sub_activity}
-                                                            onValueChange={(value) => { updateActivity(batch.batch_level, activity.id, 'sub_activity_id', value); setSelectedSubActivity(value); }}
+                                                            selectedValue={activity.sub_activity_type_id}
+                                                            onValueChange={(value) => {
+                                                                updateActivity(batch.batch_level, activity.id, 'sub_activity_type_id', value);
+                                                                setSelectedSubActivity(value);
+                                                            }}
                                                             style={styles.picker}
                                                         >
                                                             {subActivities.map(type => (

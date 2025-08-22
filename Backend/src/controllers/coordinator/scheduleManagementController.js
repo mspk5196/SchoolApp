@@ -1392,7 +1392,7 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
 
                     const activity = activities[currentIndex];
                     const {
-                        batch_number, activity_type, activity_type_id, sub_activity_id, start_time, end_time, topic_id,
+                        batch_number, activity_type, activity_type_id, sub_activity_type_id, start_time, end_time, topic_id,
                         mentor_id, has_assessment, assessment_type, total_marks, activity_instructions
                     } = activity;
 
@@ -1412,7 +1412,7 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
                     const activityName = `${activity_type} - Batch ${batch_number}`;
 
                     db.query(insertQuery, [
-                        period_id, date, activityName, activity_type, activity_type_id, sub_activity_id,
+                        period_id, date, activityName, activity_type, activity_type_id, sub_activity_type_id,
                         duration_minutes, batch_number, mentor_id, topic_id,
                         has_assessment ? 1 : 0, total_marks,
                         start_time, end_time, activity_instructions || ''
