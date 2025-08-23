@@ -1485,7 +1485,7 @@ exports.updateDailySchedule = async (req, res) => {
 
     res.json({ success: true, message: 'Schedule updated successfully' });
     const today = new Date().toISOString().split('T')[0];
-    await createAcademicSessionsByDate(today);
+    // await createAcademicSessionsByDate(today);
   } catch (error) {
     console.error('Error updating schedule:', error);
     res.status(500).json({ success: false, message: 'Error updating schedule' });
@@ -1619,9 +1619,7 @@ async function createAcademicSessionsByDate(date) {
   const [schedules] = await db.promise().query(`
     SELECT ds.* FROM daily_schedule ds
     JOIN activity_types at ON ds.activity = at.id
-    WHERE ds.date >= ? AND ds.date < DATE_ADD(?, INTERVAL 1 DAY) 
-    AND ds.mentors_id IS NOT NULL 
-    AND at.activity_type = 'Academics'
+    WHERE ds.date >= ? AND ds.date < DATE_ADD(?, INTERVAL 1 DAY)
   `, [date, date]);
 
   // console.log('Schedules:', schedules, Array.isArray(schedules), schedules.length);
