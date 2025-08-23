@@ -2288,7 +2288,7 @@ exports.adjustDailySchedule = async (req, res) => {
           mentors_id = ?,
           activity = ?,
           venue = ?
-        WHERE id = ? AND status = 'Active'`,
+        WHERE id = ?`,
         [startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, existing.id]
       );
     } else {
