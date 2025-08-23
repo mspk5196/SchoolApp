@@ -2285,7 +2285,7 @@ exports.adjustDailySchedule = async (req, res) => {
           start_time = ?,
           end_time = ?,
           subject_id = ?,
-          venue = ?
+          venue_id = ?
         WHERE id = ?`,
         [startTime, endTime, subjectId, venue || null, existing.id]
       );
@@ -2372,7 +2372,7 @@ async function regenerateFutureDailySchedules(id) {
   // Delete all future non-adjusted daily schedules from this template
   await db.promise().query(
     `UPDATE daily_schedule
-     SET start_time = ?, end_time = ?, subject_id = ?, venue = ?, session_no = ?
+     SET start_time = ?, end_time = ?, subject_id = ?, venue_id = ?, session_no = ?
      WHERE original_schedule_id = ? AND date >= CURDATE()`,
     [weekly[0].start_time, weekly[0].end_time, weekly[0].subject_id, weekly[0].venue, weekly[0].session_no, id]
   );
