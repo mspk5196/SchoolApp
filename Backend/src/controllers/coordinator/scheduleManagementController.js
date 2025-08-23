@@ -1469,7 +1469,7 @@ exports.updatePeriodActivity = (req, res) => {
         const updateQuery = `
                 UPDATE period_activities 
                 SET activity_type = ?, duration = ?, batch_number = ?,
-                    assigned_mentor_id = ?, topic_id = ?, is_assessment = ?, section_subject_activity_id = ?, ssa_sub_activity_id = ?
+                    assigned_mentor_id = ?, topic_id = ?, is_assessment = ?, section_subject_activity_id = ?, ssa_sub_activity_id = ?,
                     assessment_type = ?, total_marks = ?, activity_instructions = ?, activity_name = ?, end_time = ?, start_time = ?, updated_at = NOW()
                 WHERE id = ?
             `;

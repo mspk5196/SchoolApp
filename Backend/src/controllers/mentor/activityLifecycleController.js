@@ -41,7 +41,7 @@ const db = require('../../config/db');
  * @description Updates status of activities from 'Schedule Created' to 'Not Started'
  * when their start time is reached. Runs every minute via cron job.
  */
-const updateActivityStatuses = async () => {
+const updateActivityStatuses = async (req, res) => {
     try {
         const query = `
             UPDATE period_activities
@@ -55,7 +55,7 @@ const updateActivityStatuses = async () => {
                 console.error('CRON ERROR: Failed to update activity statuses:', err);
                 return;
             } 
-            result.json({ success: true, message: `Updated ${result.affectedRows} activities to 'Not Started'.` });
+            res.json({ success: true, message: `Updated ${result.affectedRows} activities to 'Not Started'.` });
         });
     } catch (error) {
         console.error('CRON ERROR: Failed to update activity statuses:', error);
