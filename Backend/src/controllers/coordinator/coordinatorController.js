@@ -2221,7 +2221,7 @@ exports.addOrUpdateWeeklySchedule = async (req, res) => {
 
       // ✅ Sync academic sessions
       const today = new Date().toISOString().split('T')[0];
-      await createAcademicSessionsByDate(today);
+      // await createAcademicSessionsByDate(today);
 
       return res.json({
         success: true,

@@ -50,10 +50,15 @@ const updateActivityStatuses = async () => {
               AND activity_date = CURDATE()
               AND start_time <= CURTIME()
         `;
-        const [result] = await db.query(query);
-        if (result.affectedRows > 0) {
-            console.log(`CRON: Updated ${result.affectedRows} activities to 'Not Started'.`);
-        }
+        db.query(query, (err, result) => {
+            if (err) {
+                console.error('CRON ERROR: Failed to update activity statuses:', err);
+                return;
+            }
+            if (result.affectedRows > 0) {
+                console.log(`CRON: Updated ${result.affectedRows} activities to 'Not Started'.`);
+            }
+        });
     } catch (error) {
         console.error('CRON ERROR: Failed to update activity statuses:', error);
     }
