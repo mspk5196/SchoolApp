@@ -35,7 +35,7 @@
 // module.exports = { runDailyScheduleUpdate, createTodayAcademicSessions };
 
 
-const db = require('../config/db');
+const db = require('../../config/db');
 
 /**
  * @description Updates status of activities from 'Schedule Created' to 'Not Started'
