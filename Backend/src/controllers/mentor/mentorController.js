@@ -1615,7 +1615,8 @@ exports.getMentorDailySchedule = (req, res) => {
       duration: formatDuration(item.duration),
       bgColor: item.bgColor,
       sideColor: item.sideColor,
-      fontColor: item.fontColor
+      fontColor: item.fontColor,
+      is_assessment:item.is_assessment
     }));
     // console.log('formattedResults', formattedResults);
     res.json({ success: true, scheduleData: formattedResults });

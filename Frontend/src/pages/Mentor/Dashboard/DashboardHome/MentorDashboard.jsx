@@ -830,8 +830,8 @@ const MentorDashboard = ({ route }) => {
             }
             renderItem={({ item }) => (
               <Pressable onPress={() => {
-                if (item.activity === ('Academic')) {
-                  console.log("Hi", convertDateFormat(formatDate(date)));
+                console.log("Hi", item.is_assessment);
+                if (item.is_assessment === 0) {
                   // console.log(item.subject_id),
                   navigation.navigate("MentorDashboardAcademics", {
                     sessionId: item.dsa_id, // You'll need to pass the actual session ID
