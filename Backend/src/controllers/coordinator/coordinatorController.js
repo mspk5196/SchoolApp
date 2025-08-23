@@ -2204,7 +2204,6 @@ exports.addOrUpdateWeeklySchedule = async (req, res) => {
           start_time = ?,
           end_time = ?,
           subject_id = ?,
-          mentors_id = ?,
           activity = ?,
           venue = ?,
           session_no = ?
@@ -2212,7 +2211,7 @@ exports.addOrUpdateWeeklySchedule = async (req, res) => {
 
 
       await db.promise().query(updateQuery,
-        [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, sessionNo, id]);
+        [sectionId, day, startTime, endTime, subjectId, activity || null, venue || null, sessionNo, id]);
       // await db.promise().query(updateAcademicSessionsQuery,
       //   [id]);
 
@@ -2234,11 +2233,11 @@ exports.addOrUpdateWeeklySchedule = async (req, res) => {
     else {
       const insertQuery = `
         INSERT INTO weekly_schedule 
-        (section_id, day, start_time, end_time, subject_id, mentors_id, activity, venue, session_no)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (section_id, day, start_time, end_time, subject_id, activity, venue, session_no)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
 
       const [results] = await db.promise().query(insertQuery,
-        [sectionId, day, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, sessionNo]);
+        [sectionId, day, startTime, endTime, subjectId, activity || null, venue || null, sessionNo]);
 
       await generateDailySchedulesFromWeekly(results.insertId);
       await generateAcademicSessionsForNextNDays();
