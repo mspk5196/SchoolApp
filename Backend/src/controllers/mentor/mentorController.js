@@ -1741,7 +1741,7 @@ async function getStudentsForActivity(activityId) {
 exports.startActivity = async (req, res) => {
     const { activityId } = req.params;
     const [result] = await db.promise().query(
-        "UPDATE period_activities SET status = 'In Progress' WHERE id = ? AND status = 'Not Started'",
+        "UPDATE period_activities SET status = 'In Progress', actual_start_time = NOW() WHERE id = ? AND status = 'Not Started'",
         [activityId]
     );
     if (result.affectedRows === 0) {
@@ -1772,26 +1772,26 @@ exports.getAcademicActivityDetails = async (req, res) => {
  */
 exports.completeAcademicActivity = async (req, res) => {
     const { activityId } = req.params;
-    const { studentPerformances } = req.body; // Expecting [{ student_roll, performance }]
-    const connection = await db.promise().getConnection();
-    await connection.beginTransaction();
-
+    const { studentPerformances, feedback } = req.body; // Expecting [{ student_roll, performance }]
+    let trx;
     try {
+        trx = await db.promise().beginTransaction(); // get transaction object
+
         for (const item of studentPerformances) {
-            await connection.query(
+            await trx.query(
                 `INSERT INTO period_activities_attendance (period_activity_id, student_roll, performance) VALUES (?, ?, ?)
                  ON DUPLICATE KEY UPDATE performance = VALUES(performance)`,
                 [activityId, item.student_roll, item.performance]
             );
         }
-        await connection.query("UPDATE period_activities SET status = 'Completed' WHERE id = ?", [activityId]);
-        await connection.commit();
+        await trx.query("UPDATE period_activities SET status = 'Completed', completion_notes = ?, actual_end_time = NOW() WHERE id = ?", [activityId, feedback]);
+        await trx.commit();
         res.json({ success: true, message: 'Academic activity completed.' });
     } catch (error) {
-        await connection.rollback();
+        if (trx && typeof trx.rollback === 'function') {
+            await trx.rollback();
+        }
         res.status(500).json({ success: false, error: error.message });
-    } finally {
-        connection.release();
     }
 };
 

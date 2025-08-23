@@ -700,11 +700,12 @@ exports.getMonthlySchedule = (req, res) => {
     try {
         const { gradeId, month, year, sectionId } = req.params;
 
-        // Get all daily schedules for the month at once
+        // Format date as string in MySQL (IST assumed)
         const query = `
             SELECT 
                 dsn.id,
-                dsn.date,
+                DATE_FORMAT(dsn.date, '%Y-%m-%d') as date,
+                DAYNAME(dsn.date) as day_name,
                 dsn.period_number,
                 dsn.start_time,
                 dsn.end_time,
@@ -740,8 +741,8 @@ exports.getMonthlySchedule = (req, res) => {
             const groupedByDate = {};
 
             scheduleData.forEach(period => {
-                const date = period.date.toISOString().split('T')[0];
-                const dayName = new Date(period.date).toLocaleDateString('en-US', { weekday: 'long' });
+                const date = period.date; // Already formatted as 'YYYY-MM-DD'
+                const dayName = period.day_name; // Already correct
 
                 if (!groupedByDate[date]) {
                     groupedByDate[date] = {
@@ -776,6 +777,7 @@ exports.getMonthlySchedule = (req, res) => {
             });
 
             monthlySchedule.sort((a, b) => new Date(a.date) - new Date(b.date));
+            console.log('Monthly Schedule:', JSON.stringify(monthlySchedule, null, 2));
 
             res.json({
                 success: true,

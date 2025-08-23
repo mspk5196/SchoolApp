@@ -26,6 +26,16 @@ import Checkbox from '../../../../assets/MentorPage/checkbox2.svg';
 const Staff = require('../../../../assets/MentorPage/User.svg');
 
 const MentorDashboardAcademics = ({ navigation, route }) => {
+  // Helper to format time left as mm:ss
+  const formatTimeLeft = (msLeft) => {
+    if (msLeft < 0) msLeft = 0;
+    const totalSeconds = Math.floor(msLeft / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s left`;
+  };
+
+  const [timeLeftString, setTimeLeftString] = useState('');
   const { activityId, subject, grade, section_name, startTime, endTime, duration } = route.params;
   
   // State management
@@ -38,6 +48,8 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   const [selectedFeedback, setSelectedFeedback] = useState('');
   const [editingStudent, setEditingStudent] = useState(null);
   const [sessionProgress, setSessionProgress] = useState(0);
+  const [sessionStartTimestamp, setSessionStartTimestamp] = useState(null);
+  const [sessionEndTimestamp, setSessionEndTimestamp] = useState(null);
   
   // Animation values
   const [slideAnim] = useState(new Animated.Value(hp('100%')));
@@ -54,6 +66,30 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   // Mock levels for demonstration
   // const levels = ['Level 1', 'Level 2', 'Level 3'];
 
+
+  // Helper to set session timestamps
+  // Helper to parse 'h:mm AM/PM' format to hour and minute
+  const parseTimeString = (timeStr) => {
+    // Example: '2:40 PM' or '11:05 AM'
+    const [time, period] = timeStr.trim().split(' ');
+    const [hourStr, minuteStr] = time.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+    if (period === 'PM' && hour !== 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
+    return { hour, minute };
+  };
+
+  const setSessionTimestamps = () => {
+    const today = new Date();
+    const { hour: startHour, minute: startMinute } = parseTimeString(startTime);
+    const { hour: endHour, minute: endMinute } = parseTimeString(endTime);
+    const startTimestamp = new Date(today.getFullYear(), today.getMonth(), today.getDate(), startHour, startMinute).getTime();
+    const endTimestamp = new Date(today.getFullYear(), today.getMonth(), today.getDate(), endHour, endMinute).getTime();
+    setSessionStartTimestamp(startTimestamp);
+    setSessionEndTimestamp(endTimestamp);
+  };
+
   useEffect(() => {
     fetchActivityDetails();
   }, [activityId]);
@@ -68,15 +104,41 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
     }
   }, [students]);
 
-  // Simulate session progress
+  // Set timestamps if activity status changes to In Progress
   useEffect(() => {
     if (activity?.status === 'In Progress') {
-      const interval = setInterval(() => {
-        setSessionProgress(prev => Math.min(prev + 1, 100));
-      }, 1000);
-      return () => clearInterval(interval);
+      setSessionTimestamps();
     }
+    console.log(startTime);
+    
   }, [activity?.status]);
+
+  // Simulate session progress and update time left
+  useEffect(() => {
+    let interval;
+    if (activity?.status === 'In Progress' && sessionStartTimestamp && sessionEndTimestamp) {
+      interval = setInterval(() => {
+        const now = Date.now();
+        const total = sessionEndTimestamp - sessionStartTimestamp;
+        const elapsed = Math.max(0, Math.min(now - sessionStartTimestamp, total));
+        const percent = Math.round((elapsed / total) * 100);
+        setSessionProgress(percent);
+
+        // Update time left string every second
+        const msLeft = sessionEndTimestamp - now;
+        setTimeLeftString(formatTimeLeft(msLeft));
+ 
+        // Auto-complete session when time is up
+        if (percent >= 100) {
+          setActivity(prev => ({ ...prev, status: 'Finished(need to update performance)' }));
+          clearInterval(interval);
+        }
+      }, 1000);
+    } else {
+      setTimeLeftString('');
+    }
+    return () => clearInterval(interval);
+  }, [activity?.status, sessionStartTimestamp, sessionEndTimestamp]);
 
   const fetchActivityDetails = async () => {
     setIsLoading(true);
@@ -86,6 +148,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       if (data.success) {
         setActivity(data.activity);
         setStudents(data.students);
+        // Timestamps will be set by useEffect when status is 'In Progress'
       } else {
         Alert.alert('Error', data.message || 'Failed to fetch activity details.');
       }
@@ -104,6 +167,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success) {
         setActivity(prev => ({ ...prev, status: 'In Progress' }));
+        setSessionTimestamps();
         Alert.alert('Success', 'Session has been started.');
       } else {
         Alert.alert('Error', data.message || 'Could not start the session.');
@@ -113,7 +177,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
     }
   };
 
-  const handleCompleteSession = async () => {
+  const handleCompleteSession = async (feedback) => {
     const pendingStudents = students.filter(s => 
       !s.has_approved_leave && !performances[s.roll]
     );
@@ -124,7 +188,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         `Please mark performance for ${pendingStudents.length} student(s).`
       );
       return;
-    }
+    } 
 
     const studentPerformances = Object.keys(performances).map(roll => ({
       student_roll: roll,
@@ -135,10 +199,11 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/mentor/activity/${activityId}/academic/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentPerformances }),
+        body: JSON.stringify({ studentPerformances, feedback }),
       });
       const data = await response.json();
       if (data.success) {
+        setSessionEndTimestamp(new Date().toISOString());
         Alert.alert('Success', 'Session completed successfully.', [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
@@ -321,11 +386,55 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
               styles.actionButton,
               !isComplete && styles.actionButtonDisabled
             ]}
-            onPress={handleCompleteSession}
+            onPress={()=>{
+              Alert.alert('Session time is not over, do you want to complete it earlier?', [
+                {
+                  text: 'Cancel',
+                  style: 'cancel'
+                },
+                {
+                  text: 'Yes',
+                  onPress: () => {
+                    const feedback = <TextInput placeholder="Enter reason" />;
+                    // Handle feedback submission
+                    Alert.alert('Submit Feedback', feedback, [
+                      {
+                        text: 'Cancel',
+                        style: 'cancel'
+                      },
+                      {
+                        text: 'Submit',
+                        onPress: () => {
+                          // Submit feedback logic
+                          handleCompleteSession(feedback)
+                        }
+                      }
+                    ]);
+                  }
+                }
+              ])
+            }}
             disabled={!isComplete}
           >
             <Text style={styles.actionButtonText}>
-              Complete Session ({completedCount}/{totalStudents})
+              Wait ({timeLeftString})
+            </Text>
+          </TouchableOpacity>
+        );
+
+      case 'Finished(need to update performance)':
+        // const isComplete = completedCount >= totalStudents;
+        return (
+          <TouchableOpacity 
+            style={[
+              styles.actionButton,
+              !isComplete && styles.actionButtonDisabled
+            ]}
+            onPress={() => handleCompleteSession('Completed normally')}
+            disabled={!isComplete}
+          >
+            <Text style={styles.actionButtonText}>
+              Finish Session {completedCount}/{totalStudents}
             </Text>
           </TouchableOpacity>
         );
@@ -334,6 +443,13 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         return (
           <View style={[styles.actionButton, styles.actionButtonDisabled]}>
             <Text style={styles.actionButtonText}>Session Completed</Text>
+          </View>
+        );
+        
+      case 'Time Over':
+        return (
+          <View style={[styles.actionButton, styles.actionButtonDisabled]}>
+            <Text style={styles.actionButtonText}>Session Time Over, cannot start</Text>
           </View>
         );
         
@@ -404,18 +520,23 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         </View>
 
         {/* Progress Bar for In Progress Sessions */}
-        {activity?.status === 'In Progress' && (
-          <View style={{ marginTop: hp('2%') }}>
-            <View style={styles.progressContainer}>
-              <View 
-                style={[styles.progressBar, { width: `${sessionProgress}%` }]} 
-              />
+          {activity?.status === 'In Progress' && (
+            <View style={{ marginTop: hp('2%') }}>
+              <View style={styles.progressContainer}>
+                <View 
+                  style={[styles.progressBar, { width: `${sessionProgress}%` }]} 
+                />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={styles.progressText}>
+                  Session Progress: {sessionProgress}%
+                </Text>
+                <Text style={[styles.progressText, { color: '#2563EB', fontWeight: 'bold' }]}> 
+                  {timeLeftString}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.progressText}>
-              Session Progress: {sessionProgress}%
-            </Text>
-          </View>
-        )}
+          )}
 
         {/* Level Selection */}
         {/* <View style={styles.levelContainer}>
@@ -566,4 +687,4 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   );
 };
 
-export default MentorDashboardAcademics; 
+export default MentorDashboardAcademics;

@@ -41,7 +41,7 @@ const db = require('../../config/db');
  * @description Updates status of activities from 'Schedule Created' to 'Not Started'
  * when their start time is reached. Runs every minute via cron job.
  */
-const updateActivityStatuses = async (req, res) => {
+const updateActivityStatuses = async () => {
     try {
         const query = `
             UPDATE period_activities
@@ -50,15 +50,50 @@ const updateActivityStatuses = async (req, res) => {
               AND activity_date = CURDATE()
               AND start_time <= CURTIME()
         `;
-        db.query(query, (err, result) => {
-            if (err) {
-                console.error('CRON ERROR: Failed to update activity statuses:', err);
-                return;
-            } 
-            res.json({ success: true, message: `Updated ${result.affectedRows} activities to 'Not Started'.` });
-        });
+        // Use promise-based query for async/await
+        const [result] = await db.promise().query(query);
+        const message = `Updated ${result.affectedRows} activities to 'Not Started'.`;
+        return { success: true, message };
     } catch (error) {
         console.error('CRON ERROR: Failed to update activity statuses:', error);
+        return { success: false, message: error.message };
+    }
+};
+const updateActivityStatuses1 = async () => {
+    try {
+        const query = `
+            UPDATE period_activities
+            SET status = 'Time Over'
+            WHERE status = 'Not Started'
+              AND activity_date = CURDATE()
+              AND end_time <= CURTIME()
+        `;
+        // Use promise-based query for async/await
+        const [result] = await db.promise().query(query);
+        const message = `Updated ${result.affectedRows} activities to 'Time Over'.`;
+        return { success: true, message };
+    } catch (error) {
+        console.error('CRON ERROR: Failed to update activity statuses:', error);
+        return { success: false, message: error.message };
+    }
+};
+
+const updateActivityStatuses2 = async () => {
+    try {
+        const query = `
+            UPDATE period_activities
+            SET status = 'Finished(need to update performance)'
+            WHERE status = 'In Progress'
+              AND activity_date = CURDATE()
+              AND end_time = CURTIME()
+        `;
+        // Use promise-based query for async/await
+        const [result] = await db.promise().query(query);
+        const message = `Updated ${result.affectedRows} activities to 'Finished(need to update performance)'.`;
+        return { success: true, message };
+    } catch (error) {
+        console.error('CRON ERROR: Failed to update activity statuses:', error);
+        return { success: false, message: error.message };
     }
 };
 
@@ -102,5 +137,7 @@ const generateDailyPeriodActivities = async () => {
 
 module.exports = {
     updateActivityStatuses,
-    generateDailyPeriodActivities
+    generateDailyPeriodActivities,
+    updateActivityStatuses1,
+    updateActivityStatuses2
 };

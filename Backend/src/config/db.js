@@ -12,7 +12,8 @@ const connection = mysql.createPool({
   port: 4000,
   ssl: {
     ca: process.env.DB_CA_CERT
-  }
+  },
+  timezone: '+05:30'
 });
 
 connection.beginTransaction = (callback) => {

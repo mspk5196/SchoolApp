@@ -2,7 +2,7 @@ const cron = require('node-cron');
 // const { runAttendanceUpdater } = require('./controllers/student/attendanceCron');
 // const { runDailyScheduleUpdate } = require('./controllers/mentor/dailyScheduleUpdate');
 // const { createAssessmentSessionsByDate } = require('./controllers/mentor/assesmentCronJob');
-const { updateActivityStatuses, generateDailyPeriodActivities } = require('./controllers/mentor/activityLifecycleController');
+const { updateActivityStatuses, generateDailyPeriodActivities, updateActivityStatuses1, updateActivityStatuses2 } = require('./controllers/mentor/activityLifecycleController');
 const { runAttendanceUpdater } = require('./controllers/student/attendanceCron');
 const { runOverdueCheck } = require('./controllers/mentor/studentBacklogsCron');
 
@@ -187,7 +187,11 @@ if (shouldRunCrons) {
         console.log('🔄 Running update activity status...');
         try {
             const result = await updateActivityStatuses();
+            const result1 = await updateActivityStatuses1();
+            const result2 = await updateActivityStatuses2();
             console.log('✅ Update activity status completed:', result.message);
+            console.log('✅ Update activity status completed:', result1.message);
+            console.log('✅ Update activity status completed:', result2.message);
         } catch (error) {
             console.error('❌ Update activity status failed:', error);
         }
@@ -303,6 +307,8 @@ module.exports = {
     updateActivityStatuses,
     generateDailyPeriodActivities,
     runOverdueCheck,
+    updateActivityStatuses1,
+    updateActivityStatuses2
     // runDailyScheduleUpdate,
     // createAssessmentSessionsByDate,
 };
