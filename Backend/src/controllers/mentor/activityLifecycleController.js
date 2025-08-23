@@ -54,10 +54,8 @@ const updateActivityStatuses = async () => {
             if (err) {
                 console.error('CRON ERROR: Failed to update activity statuses:', err);
                 return;
-            }
-            if (result.affectedRows > 0) {
-                console.log(`CRON: Updated ${result.affectedRows} activities to 'Not Started'.`);
-            }
+            } 
+            result.json({ success: true, message: `Updated ${result.affectedRows} activities to 'Not Started'.` });
         });
     } catch (error) {
         console.error('CRON ERROR: Failed to update activity statuses:', error);
