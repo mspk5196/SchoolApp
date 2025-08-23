@@ -2375,7 +2375,7 @@ async function regenerateFutureDailySchedules(id) {
   await db.promise().query(
     `UPDATE daily_schedule
      SET start_time = ?, end_time = ?, subject_id = ?, mentors_id = ?, activity = ?, venue = ?, session_no = ?
-     WHERE original_schedule_id = ? AND date >= CURDATE() AND status = 'Active'`,
+     WHERE original_schedule_id = ? AND date >= CURDATE()`,
     [weekly[0].start_time, weekly[0].end_time, weekly[0].subject_id, weekly[0].mentors_id, weekly[0].activity, weekly[0].session_no, weekly[0].venue, id]
   );
 
