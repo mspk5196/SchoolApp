@@ -50,7 +50,7 @@ const updateActivityStatuses = async () => {
               AND activity_date = CURDATE()
               AND start_time <= CURTIME()
         `;
-        const [result] = await db.promise().query(query);
+        const [result] = await db.query(query);
         if (result.affectedRows > 0) {
             console.log(`CRON: Updated ${result.affectedRows} activities to 'Not Started'.`);
         }
