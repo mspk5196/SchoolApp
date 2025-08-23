@@ -2285,11 +2285,10 @@ exports.adjustDailySchedule = async (req, res) => {
           start_time = ?,
           end_time = ?,
           subject_id = ?,
-          mentors_id = ?,
           activity = ?,
           venue = ?
         WHERE id = ?`,
-        [startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, existing.id]
+        [startTime, endTime, subjectId, activity || null, venue || null, existing.id]
       );
     } else {
       // Create new adjustment
@@ -2374,9 +2373,9 @@ async function regenerateFutureDailySchedules(id) {
   // Delete all future non-adjusted daily schedules from this template
   await db.promise().query(
     `UPDATE daily_schedule
-     SET start_time = ?, end_time = ?, subject_id = ?, mentors_id = ?, activity = ?, venue = ?, session_no = ?
+     SET start_time = ?, end_time = ?, subject_id = ?, activity = ?, venue = ?, session_no = ?
      WHERE original_schedule_id = ? AND date >= CURDATE()`,
-    [weekly[0].start_time, weekly[0].end_time, weekly[0].subject_id, weekly[0].mentors_id, weekly[0].activity, weekly[0].session_no, weekly[0].venue, id]
+    [weekly[0].start_time, weekly[0].end_time, weekly[0].subject_id, weekly[0].activity, weekly[0].session_no, weekly[0].venue, id]
   );
 
   // Regenerate them
@@ -3213,28 +3212,28 @@ exports.approveMentorLeave = async (req, res) => {
 
     const scheduleIds = schedules.map(s => s.id);
 
-    if (scheduleIds.length > 0) {
-      // 3. Update daily_schedule with substitute mentor
-      await db.promise().query(`
-        UPDATE daily_schedule 
-        SET mentors_id = ? 
-        WHERE id IN (?)
-      `, [substituteMentorId, scheduleIds]);
+    // if (scheduleIds.length > 0) {
+    //   // 3. Update daily_schedule with substitute mentor
+    //   await db.promise().query(`
+    //     UPDATE daily_schedule 
+    //     SET mentors_id = ? 
+    //     WHERE id IN (?)
+    //   `, [substituteMentorId, scheduleIds]);
 
-      // 4. Update academic_sessions with substitute mentor
-      await db.promise().query(`
-        UPDATE academic_sessions 
-        SET mentor_id = ? 
-        WHERE dsa_id IN (?)
-      `, [substituteMentorId, scheduleIds]);
+    //   // 4. Update academic_sessions with substitute mentor
+    //   await db.promise().query(`
+    //     UPDATE academic_sessions 
+    //     SET mentor_id = ? 
+    //     WHERE dsa_id IN (?)
+    //   `, [substituteMentorId, scheduleIds]);
 
-      // 5. Update assessment_sessions with substitute mentor
-      await db.promise().query(`
-        UPDATE assessment_sessions 
-        SET mentor_id = ? 
-        WHERE dsa_id IN (?)
-      `, [substituteMentorId, scheduleIds]);
-    }
+    //   // 5. Update assessment_sessions with substitute mentor
+    //   await db.promise().query(`
+    //     UPDATE assessment_sessions 
+    //     SET mentor_id = ? 
+    //     WHERE dsa_id IN (?)
+    //   `, [substituteMentorId, scheduleIds]);
+    // }
 
     // 6. Update leave request status to Approved
     await db.promise().query(`
