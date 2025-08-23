@@ -831,9 +831,10 @@ const MentorDashboard = ({ route }) => {
             renderItem={({ item }) => (
               <Pressable onPress={() => {
                 console.log("Hi", item.is_assessment);
-                if (item.is_assessment === 0) {
+                if ((item.is_assessment === 0) || (item.activity_type === 'Academic')) {
                   // console.log(item.subject_id),
                   navigation.navigate("MentorDashboardAcademics", {
+                    activityId: item.id,
                     sessionId: item.dsa_id, // You'll need to pass the actual session ID
                     subject: item.subject,
                     subject_id: item.subject_id,
@@ -848,7 +849,8 @@ const MentorDashboard = ({ route }) => {
                 } else {
                   // Handle other activity types
                   navigation.navigate("MentorDashboardAssessment", {
-                    sessionId: item.dsa_id, // You'll need to pass the actual session ID
+                    activityId: item.id,
+                    sessionId: item.dsa_id,
                     subject: item.subject,
                     subject_id: item.subject_id,
                     grade: item.grade,
