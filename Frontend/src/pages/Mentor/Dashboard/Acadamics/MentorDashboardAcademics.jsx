@@ -11,6 +11,7 @@ import {
   Modal,
   Pressable,
   Animated,
+  TextInput,
 } from 'react-native';
 import styles from './Academicssty'; // Updated import
 import { API_URL } from '../../../../utils/env';
@@ -18,14 +19,17 @@ import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
- 
+
 // Import your SVG icons
 import Arrow from '../../../../assets/MentorPage/arrow.svg';
 import Pencil from '../../../../assets/MentorPage/edit.svg';
 import Checkbox from '../../../../assets/MentorPage/checkbox2.svg';
-const Staff = require('../../../../assets/MentorPage/User.svg');
+const Staff = require('../../../../assets/MentorPage/staff.png');
 
 const MentorDashboardAcademics = ({ navigation, route }) => {
+  // State for early completion feedback modal
+  const [showEarlyFeedbackModal, setShowEarlyFeedbackModal] = useState(false);
+  const [earlyFeedback, setEarlyFeedback] = useState('');
   // Helper to format time left as mm:ss
   const formatTimeLeft = (msLeft) => {
     if (msLeft < 0) msLeft = 0;
@@ -37,7 +41,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
 
   const [timeLeftString, setTimeLeftString] = useState('');
   const { activityId, subject, grade, section_name, startTime, endTime, duration } = route.params;
-  
+
   // State management
   const [activity, setActivity] = useState(null);
   const [students, setStudents] = useState([]);
@@ -50,7 +54,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   const [sessionProgress, setSessionProgress] = useState(0);
   const [sessionStartTimestamp, setSessionStartTimestamp] = useState(null);
   const [sessionEndTimestamp, setSessionEndTimestamp] = useState(null);
-  
+
   // Animation values
   const [slideAnim] = useState(new Animated.Value(hp('100%')));
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -110,7 +114,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       setSessionTimestamps();
     }
     console.log(startTime);
-    
+
   }, [activity?.status]);
 
   // Simulate session progress and update time left
@@ -127,7 +131,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         // Update time left string every second
         const msLeft = sessionEndTimestamp - now;
         setTimeLeftString(formatTimeLeft(msLeft));
- 
+
         // Auto-complete session when time is up
         if (percent >= 100) {
           setActivity(prev => ({ ...prev, status: 'Finished(need to update performance)' }));
@@ -161,8 +165,8 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
 
   const handleStartSession = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/activity/${activityId}/start`, { 
-        method: 'POST' 
+      const response = await fetch(`${API_URL}/api/mentor/activity/${activityId}/start`, {
+        method: 'POST'
       });
       const data = await response.json();
       if (data.success) {
@@ -178,23 +182,24 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   };
 
   const handleCompleteSession = async (feedback) => {
-    const pendingStudents = students.filter(s => 
+    const pendingStudents = students.filter(s =>
       !s.has_approved_leave && !performances[s.roll]
     );
 
     if (pendingStudents.length > 0) {
       Alert.alert(
-        'Incomplete Assessment', 
+        'Incomplete Assessment',
         `Please mark performance for ${pendingStudents.length} student(s).`
       );
       return;
-    } 
+    }
 
     const studentPerformances = Object.keys(performances).map(roll => ({
       student_roll: roll,
       performance: performances[roll],
     }));
-
+    console.log(studentPerformances, feedback);
+    
     try {
       const response = await fetch(`${API_URL}/api/mentor/activity/${activityId}/academic/complete`, {
         method: 'POST',
@@ -219,7 +224,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
     setEditingStudent(student);
     setSelectedFeedback(student ? performances[student.roll] || '' : '');
     setShowFeedbackModal(true);
-    
+
     // Animate modal in
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -293,13 +298,13 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       >
         <Image
           source={
-            student.profile_photo 
+            student.profile_photo
               ? { uri: `${API_URL}/${student.profile_photo}`.replace(/\\/g, '/') }
               : Staff
           }
           style={styles.profileImg}
         />
-        
+
         <View style={styles.studentInfo}>
           <Text style={styles.profileName}>{student.name}</Text>
           <Text style={styles.profileId}>{student.roll}</Text>
@@ -317,9 +322,9 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
             </View>
           ) : performance ? (
             <View style={styles.performanceStatus}>
-              <Text 
+              <Text
                 style={[
-                  styles.performanceText, 
+                  styles.performanceText,
                   { color: getPerformanceColor(performance) }
                 ]}
               >
@@ -346,7 +351,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
                     [student.roll]: option.key
                   }))}
                 >
-                  <Text 
+                  <Text
                     style={[
                       styles.perfButtonText,
                       performance === option.key && styles.selectedPerfButtonText
@@ -366,66 +371,107 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   const renderActionButton = () => {
     const completedCount = Object.values(performances).filter(p => p).length;
     const totalStudents = students.filter(s => !s.has_approved_leave).length;
-    
+
     switch (activity?.status) {
       case 'Not Started':
         return (
-          <TouchableOpacity 
-            style={styles.actionButton} 
+          <TouchableOpacity
+            style={styles.actionButton}
             onPress={handleStartSession}
           >
             <Text style={styles.actionButtonText}>Start Session</Text>
           </TouchableOpacity>
         );
-        
+
       case 'In Progress':
         const isComplete = completedCount >= totalStudents;
         return (
-          <TouchableOpacity 
-            style={[
-              styles.actionButton,
-              !isComplete && styles.actionButtonDisabled
-            ]}
-            onPress={()=>{
-              Alert.alert('Session time is not over, do you want to complete it earlier?', [
-                {
-                  text: 'Cancel',
-                  style: 'cancel'
-                },
-                {
-                  text: 'Yes',
-                  onPress: () => {
-                    const feedback = <TextInput placeholder="Enter reason" />;
-                    // Handle feedback submission
-                    Alert.alert('Submit Feedback', feedback, [
-                      {
-                        text: 'Cancel',
-                        style: 'cancel'
-                      },
-                      {
-                        text: 'Submit',
-                        onPress: () => {
-                          // Submit feedback logic
-                          handleCompleteSession(feedback)
-                        }
-                      }
-                    ]);
-                  }
-                }
-              ])
-            }}
-            disabled={!isComplete}
-          >
-            <Text style={styles.actionButtonText}>
-              Wait ({timeLeftString})
-            </Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                !isComplete && styles.actionButtonDisabled
+              ]}
+              onPress={() => {
+                Alert.alert(
+                  'Session time is not over',
+                  'Do you want to complete it earlier?', // ✅ added message
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Yes', onPress: () => setShowEarlyFeedbackModal(true) }
+                  ]
+                );
+              }}
+              disabled={!isComplete}
+            >
+              <Text style={styles.actionButtonText}>
+                Wait ({timeLeftString})
+              </Text>
+            </TouchableOpacity>
+
+            {/* Early Completion Feedback Modal */}
+            <Modal
+              visible={showEarlyFeedbackModal}
+              transparent={true}
+              animationType="slide"
+              onRequestClose={() => setShowEarlyFeedbackModal(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={[styles.feedbackModal, { padding: 20 }]}>
+                  <Text style={styles.modalTitle}>Reason for Early Completion</Text>
+                  <Text style={styles.modalQuestion}>
+                    Please enter a reason for completing the session early:
+                  </Text>
+                  <View style={{ marginVertical: 10 }}>
+                    <TextInput
+                      style={{
+                        borderWidth: 1,
+                        borderColor: '#2563EB',
+                        borderRadius: 8,
+                        padding: 10,
+                        fontSize: 16,
+                        backgroundColor: '#fff',
+                        marginBottom: 10
+                      }}
+                      placeholder="Enter reason..."
+                      value={earlyFeedback}
+                      onChangeText={setEarlyFeedback}
+                      multiline
+                    />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                    <TouchableOpacity
+                      style={[styles.confirmButton, { marginRight: 10 }]}
+                      onPress={() => setShowEarlyFeedbackModal(false)}
+                    >
+                      <Text style={styles.confirmButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.confirmButton,
+                        !earlyFeedback && styles.actionButtonDisabled
+                      ]}
+                      onPress={() => {
+                        setShowEarlyFeedbackModal(false);
+                        handleCompleteSession(earlyFeedback);
+                        setEarlyFeedback('');
+                      }}
+                      disabled={!earlyFeedback}
+                    >
+                      <Text style={styles.confirmButtonText}>Submit</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          </>
         );
+
 
       case 'Finished(need to update performance)':
         // const isComplete = completedCount >= totalStudents;
         return (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.actionButton,
               !isComplete && styles.actionButtonDisabled
@@ -438,21 +484,21 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
             </Text>
           </TouchableOpacity>
         );
-        
+
       case 'Completed':
         return (
           <View style={[styles.actionButton, styles.actionButtonDisabled]}>
             <Text style={styles.actionButtonText}>Session Completed</Text>
           </View>
         );
-        
+
       case 'Time Over':
         return (
           <View style={[styles.actionButton, styles.actionButtonDisabled]}>
             <Text style={styles.actionButtonText}>Session Time Over, cannot start</Text>
           </View>
         );
-        
+
       default:
         return null;
     }
@@ -473,18 +519,18 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       {/* Enhanced Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Arrow width={wp('6%')} height={wp('6%')} />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerText}>Academic Session</Text>
-        
-        <View 
+
+        <View
           style={[
-            styles.statusIndicator, 
+            styles.statusIndicator,
             { backgroundColor: getStatusColor(activity?.status) }
           ]}
         >
@@ -508,7 +554,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
               </View>
             </View>
           </View>
-          
+
           <View style={styles.timeContainer}>
             <Text style={styles.timeText}>
               {startTime} - {endTime}
@@ -520,23 +566,23 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         </View>
 
         {/* Progress Bar for In Progress Sessions */}
-          {activity?.status === 'In Progress' && (
-            <View style={{ marginTop: hp('2%') }}>
-              <View style={styles.progressContainer}>
-                <View 
-                  style={[styles.progressBar, { width: `${sessionProgress}%` }]} 
-                />
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={styles.progressText}>
-                  Session Progress: {sessionProgress}%
-                </Text>
-                <Text style={[styles.progressText, { color: '#2563EB', fontWeight: 'bold' }]}> 
-                  {timeLeftString}
-                </Text>
-              </View>
+        {activity?.status === 'In Progress' && (
+          <View style={{ marginTop: hp('2%') }}>
+            <View style={styles.progressContainer}>
+              <View
+                style={[styles.progressBar, { width: `${sessionProgress}%` }]}
+              />
             </View>
-          )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.progressText}>
+                Session Progress: {sessionProgress}%
+              </Text>
+              <Text style={[styles.progressText, { color: '#2563EB', fontWeight: 'bold' }]}>
+                {timeLeftString}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Level Selection */}
         {/* <View style={styles.levelContainer}>
@@ -574,7 +620,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
           </Text>
         </View>
 
-        <ScrollView 
+        <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
@@ -603,17 +649,17 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         animationType="none"
         onRequestClose={closeFeedbackModal}
       >
-        <Pressable 
+        <Pressable
           style={styles.modalOverlay}
           onPress={closeFeedbackModal}
         >
-          <Animated.View
+          <View
             style={[
               styles.modalOverlay,
               { opacity: fadeAnim }
             ]}
           >
-            <Animated.View
+            <View
               style={[
                 styles.feedbackModal,
                 { transform: [{ translateY: slideAnim }] }
@@ -625,7 +671,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
                   {editingStudent ? 'Edit Performance' : 'Mark Performance'}
                 </Text>
                 <Text style={styles.modalQuestion}>
-                  {editingStudent 
+                  {editingStudent
                     ? `How was ${editingStudent.name}'s performance?`
                     : 'How was the student\'s performance?'
                   }
@@ -644,10 +690,10 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
                   <View
                     style={[
                       styles.radioCircle,
-                      { 
+                      {
                         borderColor: option.color,
-                        backgroundColor: selectedFeedback === option.key 
-                          ? option.color 
+                        backgroundColor: selectedFeedback === option.key
+                          ? option.color
                           : 'transparent'
                       }
                     ]}
@@ -656,7 +702,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
                       <View style={styles.radioInner} />
                     )}
                   </View>
-                  <Text 
+                  <Text
                     style={[
                       styles.radioText,
                       { color: selectedFeedback === option.key ? option.color : '#64748B' }
@@ -679,8 +725,8 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
                   {editingStudent ? 'Update Performance' : 'Confirm Performance'}
                 </Text>
               </TouchableOpacity>
-            </Animated.View>
-          </Animated.View>
+            </View>
+          </View>
         </Pressable>
       </Modal>
     </SafeAreaView>

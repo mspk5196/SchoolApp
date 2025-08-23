@@ -1,4 +1,4 @@
-import {StyleSheet} from 'react-native';
+import { StyleSheet } from 'react-native';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     fontSize: wp('3%'),
     fontWeight: '600',
   },
-  
+
   // Session Information Card
   sessionCard: {
     backgroundColor: '#FFFFFF',
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: hp('0.2%'),
   },
-  
+
   // Level Selection
   levelContainer: {
     marginTop: hp('2%'),
@@ -174,11 +174,11 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontWeight: '500',
   },
-  
+
   scrollContainer: {
     paddingBottom: hp('12%'),
   },
-  
+
   // Student Profile Card
   profileCard: {
     flexDirection: 'row',
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     marginTop: hp('0.5%'),
     alignSelf: 'flex-start',
   },
-  
+
   // Performance Selection
   performanceContainer: {
     flexDirection: 'column',
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   selectedPerfButtonText: {
     color: '#FFFFFF',
   },
-  
+
   // Performance Status Display
   performanceStatus: {
     flexDirection: 'row',
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#F3F4F6',
   },
-  
+
   // Action Buttons
   actionButtonContainer: {
     position: 'absolute',
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     fontSize: wp('4.5%'),
     fontWeight: '700',
   },
-  
+
   // Progress Bar
   progressContainer: {
     height: hp('1%'),
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontWeight: '500',
   },
-  
+
   // Empty State
   emptyState: {
     flex: 1,
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: wp('6%'),
   },
-  
+
   // Modal Styles (Enhanced)
   modalOverlay: {
     position: 'absolute',
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     zIndex: 1000,
   },
-  
+
   feedbackModal: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: hp('3%'),
   },
-  
+
   // Radio Options (Enhanced)
   radioOption: {
     flexDirection: 'row',
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
-  
+
   // Confirm Button
   confirmButton: {
     backgroundColor: '#3B82F6',
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     fontSize: wp('4.5%'),
     fontWeight: '700',
   },
-  
+
   // Centered Modal
   centeredModalOverlay: {
     position: 'absolute',
@@ -488,7 +488,15 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 25,
   },
-  
+
+  feedbackModal: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    margin: 20,
+    elevation: 5,
+  },
+
   // Utility Classes
   shadow: {
     shadowColor: '#000',
@@ -497,7 +505,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  
+
   // Color variants for performance status
   performanceHighlyAttentive: { color: '#059669' },
   performanceModeratelyAttentive: { color: '#0369A1' },

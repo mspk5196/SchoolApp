@@ -1784,7 +1784,7 @@ exports.completeAcademicActivity = async (req, res) => {
                 [activityId, item.student_roll, item.performance]
             );
         }
-        await trx.query("UPDATE period_activities SET status = 'Completed', completion_notes = ?, actual_end_time = NOW() WHERE id = ?", [activityId, feedback]);
+        await trx.query("UPDATE period_activities SET status = 'Completed', completion_notes = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId ]);
         await trx.commit();
         res.json({ success: true, message: 'Academic activity completed.' });
     } catch (error) {
