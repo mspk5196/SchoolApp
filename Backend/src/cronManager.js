@@ -266,7 +266,7 @@ const { runAttendanceUpdater } = require('./controllers/student/attendanceCron')
 const { runOverdueCheck } = require('./controllers/mentor/studentBacklogsCron');
 
 // Run cron jobs based on environment
-const shouldRunCrons = process.env.CRON_WORKER === 'true' || process.env.NODE_ENV !== 'production';
+const shouldRunCrons = process.env.CRON_WORKER === 'true' || process.env.NODE_ENV == 'production';
 
 if (shouldRunCrons) {
     console.log('🕐 Starting cron jobs...');
