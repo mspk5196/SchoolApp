@@ -79,14 +79,15 @@ const updateActivityStatuses1 = async () => {
 };
 
 const updateActivityStatuses2 = async () => {
+    
+//             UPDATE period_activities
+// SET status = 'Finished(need to update performance)',
+//     actual_end_time = NOW()
+// WHERE status = 'In Progress'
+//   AND activity_date = CURDATE()
+//   AND end_time = CURTIME();
     try {
         const query = `
-            UPDATE period_activities
-SET status = 'Finished(need to update performance)',
-    actual_end_time = NOW()
-WHERE status = 'In Progress'
-  AND activity_date = CURDATE()
-  AND end_time = CURTIME();
         `;
         // Use promise-based query for async/await
         const [result] = await db.promise().query(query);
