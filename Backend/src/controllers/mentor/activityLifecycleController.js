@@ -82,14 +82,15 @@ const updateActivityStatuses2 = async () => {
     try {
         const query = `
             UPDATE period_activities
-            SET status = 'Finished(need to update performance)'
-            WHERE status = 'In Progress'
-              AND activity_date = CURDATE()
-              AND end_time = CURTIME()
+SET status = 'Finished(need to update performance)',
+    actual_end_time = NOW()
+WHERE status = 'In Progress'
+  AND activity_date = CURDATE()
+  AND end_time = CURTIME();
         `;
         // Use promise-based query for async/await
         const [result] = await db.promise().query(query);
-        const message = `Updated ${result.affectedRows} activities to 'Finished(need to update performance)'.`;
+        const message = `Updated ${result.affectedRows} activities to 'Finished(need to update performance)' and set end_time to CURTIME().`;
         return { success: true, message };
     } catch (error) {
         console.error('CRON ERROR: Failed to update activity statuses:', error);

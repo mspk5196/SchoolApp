@@ -2293,9 +2293,9 @@ exports.adjustDailySchedule = async (req, res) => {
       // Create new adjustment
       await db.promise().query(
         `INSERT INTO daily_schedule 
-        (section_id, date, start_time, end_time, subject_id, mentors_id, activity, venue, is_adjusted, original_schedule_id)
+        (section_id, date, start_time, end_time, subject_id, venue, is_adjusted, original_schedule_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-        [sectionId, date, startTime, endTime, subjectId, mentorsId || null, activity || null, venue || null, originalScheduleId]
+        [sectionId, date, startTime, endTime, subjectId, venue || null, originalScheduleId]
       );
     }
 
@@ -2341,16 +2341,14 @@ async function generateDailySchedulesFromWeekly(weeklyScheduleId) {
       // Create the daily schedule
       await db.promise().query(
         `INSERT INTO daily_schedule
-  (section_id, date, start_time, end_time, subject_id, mentors_id, activity, venue, original_schedule_id, session_no)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  (section_id, date, start_time, end_time, subject_id, venue, original_schedule_id, session_no)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           weekly.section_id,
           date,
           weekly.start_time,
           weekly.end_time,
           weekly.subject_id,
-          weekly.mentors_id,
-          weekly.activity,
           weekly.venue,
           weeklyScheduleId,
           weekly.session_no || '0'
@@ -3927,15 +3925,14 @@ exports.processAssessmentRequest = async (req, res) => {
       // 2. Insert into daily_schedule
       const insertResult = await conn.query(
         `INSERT INTO daily_schedule 
-         (section_id, date, start_time, end_time, subject_id, mentors_id, activity)
-         VALUES (?, ?, ?, ?, ?, ?, 5)`,
+         (section_id, date, start_time, end_time, subject_id)
+         VALUES (?, ?, ?, ?, ?)`,
         [
           assessment.section_id,
           assessment.date,
           assessment.start_time,
           assessment.end_time,
           assessment.subject_id,
-          assessment.mentor_id
         ]
       );
 

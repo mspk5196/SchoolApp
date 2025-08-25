@@ -199,7 +199,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       performance: performances[roll],
     }));
     console.log(studentPerformances, feedback);
-    
+
     try {
       const response = await fetch(`${API_URL}/api/mentor/activity/${activityId}/academic/complete`, {
         method: 'POST',
@@ -469,15 +469,15 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
 
 
       case 'Finished(need to update performance)':
-        // const isComplete = completedCount >= totalStudents;
+        const isComplete1 = completedCount >= totalStudents;
         return (
           <TouchableOpacity
             style={[
               styles.actionButton,
-              !isComplete && styles.actionButtonDisabled
+              !isComplete1 && styles.actionButtonDisabled
             ]}
             onPress={() => handleCompleteSession('Completed normally')}
-            disabled={!isComplete}
+            disabled={!isComplete1}
           >
             <Text style={styles.actionButtonText}>
               Finish Session {completedCount}/{totalStudents}
@@ -489,6 +489,13 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         return (
           <View style={[styles.actionButton, styles.actionButtonDisabled]}>
             <Text style={styles.actionButtonText}>Session Completed</Text>
+          </View>
+        );
+
+      case 'Cancelled':
+        return (
+          <View style={[styles.actionButton, styles.actionButtonDisabled]}>
+            <Text style={styles.actionButtonText}>Session Cancelled</Text>
           </View>
         );
 
@@ -653,13 +660,15 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
           style={styles.modalOverlay}
           onPress={closeFeedbackModal}
         >
-          <View
+          {/* This first View is for the fade animation, so it should also be an Animated.View */}
+          <Animated.View
             style={[
               styles.modalOverlay,
               { opacity: fadeAnim }
             ]}
           >
-            <View
+            {/* This is the key change: from View to Animated.View */}
+            <Animated.View
               style={[
                 styles.feedbackModal,
                 { transform: [{ translateY: slideAnim }] }
@@ -725,8 +734,8 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
                   {editingStudent ? 'Update Performance' : 'Confirm Performance'}
                 </Text>
               </TouchableOpacity>
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         </Pressable>
       </Modal>
     </SafeAreaView>
