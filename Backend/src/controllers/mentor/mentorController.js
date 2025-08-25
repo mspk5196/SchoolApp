@@ -1584,8 +1584,8 @@ exports.getMentorDailySchedule = (req, res) => {
       bgColor: item.bgColor,
       sideColor: item.sideColor,
       fontColor: item.fontColor,
-      is_assessment:item.is_assessment,
-      activity_type:item.activity_type
+      is_assessment: item.is_assessment,
+      activity_type: item.activity_type
     }));
     // console.log('formattedResults', formattedResults);
     res.json({ success: true, scheduleData: formattedResults });
@@ -1697,57 +1697,57 @@ exports.createAcademicSessionsByDate = createAcademicSessionsByDate;
  * HELPER: Get students for a given activity based on batch number.
  */
 async function getStudentsForActivity(activityId) {
-    const [activityDetails] = await db.promise().query(
-        `SELECT pa.activity_date, pa.batch_number, ds.subject_id, ds.section_id
+  const [activityDetails] = await db.promise().query(
+    `SELECT pa.activity_date, pa.batch_number, ds.subject_id, ds.section_id
          FROM period_activities pa
          JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
          WHERE pa.id = ?`,
-        [activityId]
-    );
+    [activityId]
+  );
 
-    if (!activityDetails.length) return [];
-    const { activity_date, batch_number, subject_id, section_id } = activityDetails[0];
+  if (!activityDetails.length) return [];
+  const { activity_date, batch_number, subject_id, section_id } = activityDetails[0];
 
-    const [students] = await db.promise().query(
-        `SELECT s.id, s.name, s.roll, s.profile_photo
+  const [students] = await db.promise().query(
+    `SELECT s.id, s.name, s.roll, s.profile_photo
          FROM students s
          JOIN student_batch_assignments sba ON s.roll = sba.student_roll
          JOIN section_batches sb ON sba.batch_id = sb.id
          WHERE sb.batch_level = ? AND sb.subject_id = ? AND sb.section_id = ? AND sba.is_current = 1
          ORDER BY s.name ASC`,
-        [batch_number, subject_id, section_id]
-    );
+    [batch_number, subject_id, section_id]
+  );
 
-    if (!students.length) return [];
-    
-    const studentRolls = students.map(s => s.roll);
-    const [leaves] = await db.promise().query(
-        `SELECT student_roll FROM studentleaverequests
+  if (!students.length) return [];
+
+  const studentRolls = students.map(s => s.roll);
+  const [leaves] = await db.promise().query(
+    `SELECT student_roll FROM studentleaverequests
          WHERE status = 'Approved' AND student_roll IN (?) AND ? BETWEEN start_date AND end_date`,
-        [studentRolls, activity_date]
-    );
+    [studentRolls, activity_date]
+  );
 
-    const studentsOnLeave = new Set(leaves.map(l => l.student_roll));
+  const studentsOnLeave = new Set(leaves.map(l => l.student_roll));
 
-    return students.map(student => ({
-        ...student,
-        has_approved_leave: studentsOnLeave.has(student.roll)
-    }));
+  return students.map(student => ({
+    ...student,
+    has_approved_leave: studentsOnLeave.has(student.roll)
+  }));
 }
 
 /**
  * API: Start an activity session
  */
 exports.startActivity = async (req, res) => {
-    const { activityId } = req.params;
-    const [result] = await db.promise().query(
-        "UPDATE period_activities SET status = 'In Progress', actual_start_time = NOW() WHERE id = ? AND status = 'Not Started'",
-        [activityId]
-    );
-    if (result.affectedRows === 0) {
-        return res.status(400).json({ success: false, message: 'Activity could not be started.' });
-    }
-    res.json({ success: true, message: 'Activity started.' });
+  const { activityId } = req.params;
+  const [result] = await db.promise().query(
+    "UPDATE period_activities SET status = 'In Progress', actual_start_time = NOW() WHERE id = ? AND status = 'Not Started'",
+    [activityId]
+  );
+  if (result.affectedRows === 0) {
+    return res.status(400).json({ success: false, message: 'Activity could not be started.' });
+  }
+  res.json({ success: true, message: 'Activity started.' });
 };
 
 
@@ -1755,129 +1755,136 @@ exports.startActivity = async (req, res) => {
  * API: Get details for an academic activity (students & status)
  */
 exports.getAcademicActivityDetails = async (req, res) => {
-    try {
-        const { activityId } = req.params;
-        const [activity] = await db.promise().query("SELECT * FROM period_activities WHERE id = ?", [activityId]);
-        if (!activity.length) return res.status(404).json({ success: false, message: 'Activity not found' });
-        
-        const students = await getStudentsForActivity(activityId);
-        res.json({ success: true, activity: activity[0], students });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
+  try {
+    const { activityId } = req.params;
+    const [activity] = await db.promise().query("SELECT * FROM period_activities WHERE id = ?", [activityId]);
+    if (!activity.length) return res.status(404).json({ success: false, message: 'Activity not found' });
+
+    const students = await getStudentsForActivity(activityId);
+    res.json({ success: true, activity: activity[0], students });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 };
 
 /**
  * API: Complete an academic activity by submitting student performances
  */
 exports.completeAcademicActivity = async (req, res) => {
-    const { activityId } = req.params;
-    const { studentPerformances, feedback } = req.body; // Expecting [{ student_roll, performance }]
-    let trx;
-    try {
-        trx = await db.promise().beginTransaction(); // get transaction object
+  const { activityId } = req.params;
+  const { studentPerformances, feedback, aet } = req.body; // Expecting [{ student_roll, performance }]
+  console.log(feedback);
+  
+  let trx;
+  try {
+    trx = await db.promise().beginTransaction(); // get transaction object
 
-        for (const item of studentPerformances) {
-            await trx.query(
-                `INSERT INTO period_activities_attendance (period_activity_id, student_roll, performance) VALUES (?, ?, ?)
+    for (const item of studentPerformances) {
+      await trx.query(
+        `INSERT INTO period_activities_attendance (period_activity_id, student_roll, performance) VALUES (?, ?, ?)
                  ON DUPLICATE KEY UPDATE performance = VALUES(performance)`,
-                [activityId, item.student_roll, item.performance]
-            );
-        }
-        await trx.query("UPDATE period_activities SET status = 'Completed', completion_notes = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId ]);
-        await trx.commit();
-        res.json({ success: true, message: 'Academic activity completed.' });
-    } catch (error) {
-        if (trx && typeof trx.rollback === 'function') {
-            await trx.rollback();
-        }
-        res.status(500).json({ success: false, error: error.message });
+        [activityId, item.student_roll, item.performance]
+      );
     }
+    if (feedback === 'Completed normally') {
+      await trx.query("UPDATE period_activities SET status = 'Completed', completion_notes = ? WHERE id = ?", [feedback, activityId]);
+    }
+    else{
+      await trx.query("UPDATE period_activities SET status = 'Completed', completion_notes = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId]);
+    }
+    await trx.commit();
+    res.json({ success: true, message: 'Academic activity completed.' });
+  } catch (error) {
+    if (trx && typeof trx.rollback === 'function') {
+      await trx.rollback();
+    }
+    res.status(500).json({ success: false, error: error.message });
+  }
 };
 
 /**
  * API: Get details for an assessment activity (students & leave status)
  */
 exports.getAssessmentActivityDetails = async (req, res) => {
-     try {
-        const { activityId } = req.params;
-        const [activity] = await db.promise().query("SELECT * FROM period_activities WHERE id = ?", [activityId]);
-        if (!activity.length) return res.status(404).json({ success: false, message: 'Activity not found' });
-        
-        const students = await getStudentsForActivity(activityId);
-        res.json({ success: true, activity: activity[0], students });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
+  try {
+    const { activityId } = req.params;
+    const [activity] = await db.promise().query("SELECT * FROM period_activities WHERE id = ?", [activityId]);
+    if (!activity.length) return res.status(404).json({ success: false, message: 'Activity not found' });
+
+    const students = await getStudentsForActivity(activityId);
+    res.json({ success: true, activity: activity[0], students });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 };
 
 /**
  * API: Complete an assessment activity, updating marks and student progress
  */
 exports.completeAssessmentActivity = async (req, res) => {
-    const { activityId } = req.params;
-    // Expecting [{ student_roll, marks_obtained, total_marks, is_absent }]
-    const { studentSubmissions } = req.body; 
+  const { activityId } = req.params;
+  // Expecting [{ student_roll, marks_obtained, total_marks, is_absent }]
+  const { studentSubmissions } = req.body;
 
-    const connection = await db.promise().getConnection();
-    await connection.beginTransaction();
+  const connection = await db.promise().getConnection();
+  await connection.beginTransaction();
 
-    try {
-        const [actDetails] = await connection.query(
-            `SELECT pa.topic_id, th.pass_percentage, ds.subject_id FROM period_activities pa
+  try {
+    const [actDetails] = await connection.query(
+      `SELECT pa.topic_id, th.pass_percentage, ds.subject_id FROM period_activities pa
              JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
              JOIN topic_hierarchy th ON pa.topic_id = th.id WHERE pa.id = ?`,
-            [activityId]
-        );
-        const { topic_id, pass_percentage, subject_id } = actDetails[0];
+      [activityId]
+    );
+    const { topic_id, pass_percentage, subject_id } = actDetails[0];
 
-        for (const sub of studentSubmissions) {
-            const status = sub.is_absent 
-                ? 'Absent' 
-                : (((sub.marks_obtained / sub.total_marks) * 100) >= pass_percentage ? 'Passed' : 'Failed');
+    for (const sub of studentSubmissions) {
+      const status = sub.is_absent
+        ? 'Absent'
+        : (((sub.marks_obtained / sub.total_marks) * 100) >= pass_percentage ? 'Passed' : 'Failed');
 
-            await connection.query(
-                `INSERT INTO period_activities_submissions (period_activity_id, student_roll, marks_obtained, total_marks, status)
+      await connection.query(
+        `INSERT INTO period_activities_submissions (period_activity_id, student_roll, marks_obtained, total_marks, status)
                  VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE marks_obtained=VALUES(marks_obtained), total_marks=VALUES(total_marks), status=VALUES(status)`,
-                [activityId, sub.student_roll, status === 'Absent' ? null : sub.marks_obtained, sub.total_marks, status]
-            );
+        [activityId, sub.student_roll, status === 'Absent' ? null : sub.marks_obtained, sub.total_marks, status]
+      );
 
-            if (status === 'Passed') {
-                await connection.query(
-                    `INSERT INTO student_topic_progress (student_roll, topic_id, subject_id, status, completed_at) VALUES (?, ?, ?, 'Completed', NOW())
+      if (status === 'Passed') {
+        await connection.query(
+          `INSERT INTO student_topic_progress (student_roll, topic_id, subject_id, status, completed_at) VALUES (?, ?, ?, 'Completed', NOW())
                      ON DUPLICATE KEY UPDATE status = 'Completed', completed_at = NOW()`,
-                    [sub.student_roll, topic_id, subject_id]
-                );
-                await connection.query(
-                    `INSERT INTO student_topic_completion_history (student_roll, topic_id, subject_id, actual_completion_date, final_score)
+          [sub.student_roll, topic_id, subject_id]
+        );
+        await connection.query(
+          `INSERT INTO student_topic_completion_history (student_roll, topic_id, subject_id, actual_completion_date, final_score)
                      VALUES (?, ?, ?, CURDATE(), ?)`,
-                    [sub.student_roll, topic_id, subject_id, sub.marks_obtained]
-                );
-            }
-        }
-        await connection.query("UPDATE period_activities SET status = 'Completed' WHERE id = ?", [activityId]);
-        await connection.commit();
-        res.json({ success: true, message: "Assessment completed." });
-    } catch (error) {
-        await connection.rollback();
-        res.status(500).json({ success: false, error: error.message });
-    } finally {
-        connection.release();
+          [sub.student_roll, topic_id, subject_id, sub.marks_obtained]
+        );
+      }
     }
+    await connection.query("UPDATE period_activities SET status = 'Completed' WHERE id = ?", [activityId]);
+    await connection.commit();
+    res.json({ success: true, message: "Assessment completed." });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    connection.release();
+  }
 };
 
 /**
  * API: Manual trigger for cron job (for testing)
  */
 exports.triggerActivityStatusUpdate = async (req, res) => {
-    // This is essentially the same logic as the cron job for manual triggering
-    try {
-        const query = `UPDATE period_activities SET status = 'Not Started' WHERE status = 'Schedule Created' AND activity_date = CURDATE() AND start_time <= CURTIME()`;
-        const [result] = await db.promise().query(query);
-        res.json({ success: true, updated: result.affectedRows });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
+  // This is essentially the same logic as the cron job for manual triggering
+  try {
+    const query = `UPDATE period_activities SET status = 'Not Started' WHERE status = 'Schedule Created' AND activity_date = CURDATE() AND start_time <= CURTIME()`;
+    const [result] = await db.promise().query(query);
+    res.json({ success: true, updated: result.affectedRows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 };
 
 exports.getSectionStudents = (req, res) => {

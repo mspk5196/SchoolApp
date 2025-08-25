@@ -204,7 +204,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       const response = await fetch(`${API_URL}/api/mentor/activity/${activityId}/academic/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentPerformances, feedback }),
+        body: JSON.stringify({ studentPerformances, feedback, aet: feedback == 'Completed normally' ? '0' : '1' }),
       });
       const data = await response.json();
       if (data.success) {
