@@ -1,0 +1,165 @@
+import React, { useEffect, useState } from "react";
+import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, Image } from "react-native";
+import styles from "./LeaveApprovalHistorysty";
+import SearchIcon from "../../../../assets/AdminPage/LeaveApproval/search.svg";
+import LeaveType from '../../../../assets/AdminPage/LeaveApproval/leavetype.svg';
+import Date from '../../../../assets/AdminPage/LeaveApproval/date.svg';
+import Home from '../../../../assets/AdminPage/LeaveApproval/Back.svg';
+import Approved from '../../../../assets/AdminPage/LeaveApproval/greentick.svg';
+const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
+import { API_URL } from '../../../../utils/env.js';
+import Nodata from "../../../../components/General/Nodata";
+
+const AdminLeaveApprovalHistory = ({ navigation }) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [leaveData, setLeaveData] = useState([]);
+
+  useEffect(() => {
+    fetchLeaveRequestHistory();
+  }, []);
+
+  const fetchLeaveRequestHistory = () => {
+    fetch(`${API_URL}/api/admin/getLeaveRequestHistory`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          setLeaveData(data.leaveRequests);
+        } else {
+          Alert.alert('Error', 'Failed to fetch leave history');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        Alert.alert('Error', 'An error occurred while fetching leave history');
+      });
+  };
+
+  const filteredData = leaveData.filter(item =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.roll.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+   const formatDate = (sqlDate) => {
+    if (!sqlDate || typeof sqlDate !== 'string') return 'Invalid date';
+    const dateOnly = sqlDate.split('T')[0]; // gets '2025-05-21'
+    const [year, month, day] = dateOnly.split('-');
+    return `${day}/${month}/${year}`; // returns '21/05/2025'
+  };
+
+  const groupByDate = (data) => {
+    const grouped = {};
+    data.forEach(item => {
+      const date = formatDate(item.requested_at);
+      if (!grouped[date]) {
+        grouped[date] = [];
+      }
+      grouped[date].push(item);
+    });
+    return grouped;
+  };
+
+  const groupedData = groupByDate(filteredData);
+  const sections = Object.keys(groupedData).map(date => ({
+    date,
+    data: groupedData[date]
+  }));
+
+  const getProfileImageSource = (profilePath) => {
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const fullImageUrl = `${API_URL}/${normalizedPath}`;
+      return { uri: fullImageUrl };
+    } else {
+      return Staff;
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.activityHeader}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Home height={30} width={30} style={styles.homeIcon} />
+        </TouchableOpacity>
+        <Text style={styles.activityText}>Leave Approval History</Text>
+      </View>
+
+      <View style={styles.underline} />
+
+      <View style={styles.searchView}>
+        <View style={styles.searchBar}>
+          <SearchIcon width={20} height={20} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search..."
+            placeholderTextColor="#767676"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+      </View>
+
+      <FlatList
+        data={sections}
+        keyExtractor={(item) => item.date}
+        ListEmptyComponent={() => (
+          <Nodata />
+        )}
+        renderItem={({ item: section }) => (
+          sections.length === 0 ? (
+            <Nodata />
+          ) : (
+            <View>
+              <Text style={styles.sectionHeader}>{section.date}</Text>
+              {section.data.map(item => (
+                <View style={styles.card} key={item.id}>
+                  <View style={styles.topInfoBox}>
+                    <View style={styles.leftBox}>
+                      <View>
+                        <Image source={getProfileImageSource(item.file_path)} style={styles.profileCircle} />
+                      </View>
+                      <View>
+                        <Text style={styles.name}>{item.name}</Text>
+                        <Text style={styles.phone}>{item.roll}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.statusBox}>
+                      {item.status === 'Approved' ? (
+                        <Approved width={15} height={15} />
+                      ) : (
+                        <Rejected width={15} height={15} />
+                      )}
+                      <Text style={[
+                        styles.status,
+                        item.status === 'Approved' ? styles.approvedStatus : styles.rejectedStatus
+                      ]}>
+                        {item.status}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.dateText}>
+                      {formatDate(item.start_date)} - {formatDate(item.end_date)}
+                    </Text>
+                    <Text style={styles.leaveType}>{item.leave_type}</Text>
+                  </View>
+                  <View style={styles.reasonBox}>
+                    <Text style={styles.reasonText}>{item.description}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )
+        )}
+      />
+    </View>
+  );
+};
+
+export default AdminLeaveApprovalHistory;
