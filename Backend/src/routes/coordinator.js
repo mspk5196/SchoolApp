@@ -300,6 +300,11 @@ router.delete('/coordinator/academic-schedule/delete-period-activity/:activityId
 router.get('/coordinator/academic-schedule/batch-activities/:batchId/:date', ScheduleManagementController.getBatchActivities);
 router.get('/coordinator/academic-schedule/batches/:sectionId/:subjectId', ScheduleManagementController.getSectionBatches);
 
+// Student-Specific Schedule Management
+router.get('/coordinator/schedule/student/:date/:studentRoll', ScheduleManagementController.getStudentSchedule);
+router.post('/coordinator/schedule/student/override', ScheduleManagementController.createOrUpdateStudentScheduleOverride);
+router.delete('/coordinator/schedule/student/override/:id', ScheduleManagementController.deleteStudentScheduleOverride);
+
 // Manual schedule generation endpoints for testing
 router.post('/coordinator/generate-daily-schedules-manual', coordinatorController.generateDailySchedulesManual);
 router.post('/coordinator/run-daily-schedule-update-manual', coordinatorController.runDailyScheduleUpdateManual);

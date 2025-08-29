@@ -164,6 +164,8 @@ import ProgressAnalytics from '../../pages/Parent/EnhancedDashboard/ProgressAnal
 import BatchHistory from '../../pages/Parent/EnhancedDashboard/BatchHistory';
 import WeeklySchedule from '../../pages/Parent/EnhancedDashboard/WeeklySchedule';
 import TopicMaterials from '../../pages/Coordinator/Material/TopicHierarchy/TopicMaterials';
+import { StatusBar } from 'react-native';
+import CoordinatorStudentSchedule from '../../pages/Coordinator/Schedule/StudentSchedule/CoordinatorStudentSchedule';
 
 const Stack = createNativeStackNavigator();
 
@@ -172,6 +174,10 @@ const Routes = () => {
     return (
         <MenuProvider>
             <ExamProvider>
+                {/* <StatusBar
+                    barStyle="dark-content"
+                    backgroundColor="#fff" // match your background
+                /> */}
                 <NavigationContainer>
                     <Stack.Navigator initialRouteName="AuthLoader" screenOptions={{ headerShown: false }}>
 
@@ -236,6 +242,7 @@ const Routes = () => {
                         <Stack.Screen name="CoordinatorExamSchedule" component={CoordinatorExamSchedule} />
                         <Stack.Screen name="CoordinatorInvigilationDuties" component={CoordinatorInvigilationDuties} />
                         <Stack.Screen name="CoordinatorWeeklySchedule" component={CoordinatorWeeklySchedule} />
+                        <Stack.Screen name="CoordinatorStudentSchedule" component={CoordinatorStudentSchedule} />
                         {/* CoordinatorEvent */}
                         <Stack.Screen name="AddEventForm" component={AddEventForm} />
                         {/* CoordinatorRequest */}
@@ -262,7 +269,7 @@ const Routes = () => {
                         <Stack.Screen name="MentorMessages" component={MentorMessage} />
                         <Stack.Screen name="MentorActivity" component={MentorActivity} />
                         <Stack.Screen name="MentorAssesmentRequest" component={MentorAssesmentRequest} />
-                        
+
                         {/* Enhanced Assessment Management - Mentor */}
                         <Stack.Screen name="EnhancedAssessmentManagement" component={EnhancedAssessmentManagement} options={{ headerShown: false }} />
                         <Stack.Screen name="MentorMaterialHome" component={MentorMaterialHome} />
@@ -349,7 +356,7 @@ const Routes = () => {
                         <Stack.Screen name="StudentPageTerms" component={Setting} />
                         <Stack.Screen name="StudentPageReport" component={Setting} />
                         <Stack.Screen name="StudentPageAddAccount" component={Setting} />
-                        
+
 
                         {/* AdminPages */}
                         <Stack.Screen name="AdminSchools" component={AdminSchools} />

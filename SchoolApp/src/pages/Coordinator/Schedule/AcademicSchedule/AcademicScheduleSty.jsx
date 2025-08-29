@@ -112,7 +112,7 @@ const styles = {
     color: '#FFFFFF',
   },
 
-  // Calendar Styles
+  // Calendar Styles - Enhanced for minimization
   calendarContainer: {
     backgroundColor: '#fff',
     margin: 16,
@@ -123,6 +123,11 @@ const styles = {
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
+    transition: 'all 0.3s ease',
+  },
+  calendarMinimized: {
+    padding: 16,
+    marginBottom: 8,
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -141,6 +146,25 @@ const styles = {
     color: '#007AFF',
     fontWeight: 'bold',
     padding: 8,
+  },
+  expandButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+  },
+  expandIcon: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  minimizedCalendarInfo: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  selectedDateDisplay: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
   },
   weekDaysHeader: {
     flexDirection: 'row',
@@ -207,7 +231,7 @@ const styles = {
   dayScheduleContainer: {
     backgroundColor: '#fff',
     margin: 16,
-    marginTop: 0, // Adjusted margin
+    marginTop: 0,
     borderRadius: 16,
     padding: 20,
     elevation: 3,
@@ -247,14 +271,16 @@ const styles = {
     lineHeight: 20,
   },
 
-  // Period Card Styles
+  // Enhanced Period Card Styles with Inline Support
+  periodCardContainer: {
+    marginBottom: 16,
+  },
   periodCard: {
     flexDirection: 'row',
     backgroundColor: '#f8fafc',
     paddingVertical: 20,
     paddingHorizontal: 16,
     borderRadius: 12,
-    marginBottom: 16,
     borderLeftWidth: 4,
     borderLeftColor: '#007AFF',
     elevation: 1,
@@ -262,6 +288,14 @@ const styles = {
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
+  },
+  expandedPeriodCard: {
+    backgroundColor: '#e0f2fe',
+    borderLeftColor: '#0ea5e9',
+    borderRadius: 12,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    marginBottom: 0,
   },
   periodTime: {
     minWidth: 90,
@@ -302,7 +336,15 @@ const styles = {
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: 'auto',
-
+  },
+  expandIndicator: {
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: 'bold',
+    transform: [{ rotate: '0deg' }],
+  },
+  expandIndicatorRotated: {
+    transform: [{ rotate: '180deg' }],
   },
   actionButton: {
     flexDirection: 'column',
@@ -332,6 +374,87 @@ const styles = {
     fontSize: 12,
     color: '#007AFF',
     marginTop: 4,
+  },
+
+  // Inline Editor Styles
+  inlineEditorContainer: {
+    backgroundColor: '#ffffff',
+    borderLeftWidth: 4,
+    borderLeftColor: '#0ea5e9',
+    borderRadius: 12,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  inlineEditorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#f0f9ff',
+  },
+  inlineEditorTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  closeInlineButton: {
+    padding: 4,
+  },
+  closeInlineIcon: {
+    fontSize: 18,
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  inlineEditorContent: {
+    maxHeight: 400,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  activitiesSection: {
+    marginBottom: 16,
+  },
+  activitiesSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 12,
+  },
+  quickActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  quickActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    elevation: 2,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  quickActionIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  quickActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 
   // Modal Styles

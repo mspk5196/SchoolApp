@@ -30,6 +30,7 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
         { id: '2', title: 'Exam Schedule', bgColor: '#65558F12', iconColor: '#EEAA16', Icon: <ExamIcon width={50} height={50} />, color: '#65558F' },
         { id: '3', title: 'Invigilation Duties', bgColor: '#FFF3DC', iconColor: '#D81B60', Icon: <InvigilatorIcon width={50} height={50} />, color: '#EEAA16' },
         { id: '4', title: 'Weekly Schedules', bgColor: '#EBEEFF', iconColor: '#3557FF', Icon: <CollegeIcon2 width={50} height={50} />, color: '#3557FF' },
+        { id: '5', title: 'Student Schedule', bgColor: '#EBEEFF', iconColor: '#3557FF', Icon: <CollegeIcon2 width={50} height={50} />, color: '#3557FF' },
       ],
     },
   ];
@@ -85,6 +86,8 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
                 navigation.navigate('CoordinatorInvigilationDuties', { activeGrade });
               } else if (item.title === 'Weekly Schedules') {
                 navigation.navigate('CoordinatorWeeklySchedule', { activeGrade });
+              } else if (item.title === 'Student Schedule') {
+                navigation.navigate('CoordinatorStudentSchedule', { activeGrade });
               }
             }}
           >
@@ -95,6 +98,12 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
         )}
       />
 
+      <TouchableOpacity
+        style={styles.uploadButton}
+        onPress={() => uploadingScheduleSheet()}
+      >
+        <Text style={styles.uploadButtonText}>Upload Schedule sheet</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

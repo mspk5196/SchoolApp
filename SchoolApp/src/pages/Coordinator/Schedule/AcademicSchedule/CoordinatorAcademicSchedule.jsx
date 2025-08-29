@@ -40,6 +40,10 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeSection, setActiveSection] = useState(null);
   const [sections, setSections] = useState([]);
+  
+  // New state for inline editing
+  const [expandedPeriod, setExpandedPeriod] = useState(null);
+  const [calendarMinimized, setCalendarMinimized] = useState(false);
 
   // Activity form state
   const [activityForm, setActivityForm] = useState({
@@ -58,10 +62,6 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     'Practical', 'Assignment Review', 'Doubt Clearing',
     'Presentation', 'Group Discussion'
   ];
-
-  // useEffect(() => {
-  //   loadInitialData();
-  // }, [activeGrade, selectedPeriod]);
 
   useEffect(() => {
     if (activeGrade && activeSection) {
@@ -93,20 +93,6 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     };
     fetchSections();
   }, [activeGrade]);
-
-  // const loadInitialData = async () => {
-  //   try {
-  //     if (activeGrade && selectedPeriod) {
-  //       await fetchMentors();
-  //       // await fetchTopics();
-  //     }
-  //   } catch (error) {
-  //     console.error('Error loading initial data:', error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
 
   const fetchMonthlySchedule = async () => {
     setMonthlySchedule([]);
@@ -287,6 +273,39 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     setSelectedDate(newDate);
   };
 
+  // Handle date selection - minimize calendar
+  const handleDateSelection = (date) => {
+    setSelectedDate(date);
+    setCalendarMinimized(true);
+    setExpandedPeriod(null); // Close any expanded period
+  };
+
+  // Handle period card click - expand inline
+  const handlePeriodClick = async (period, daySchedule) => {
+    const periodKey = `${period.id}-${daySchedule.date}`;
+    
+    if (expandedPeriod === periodKey) {
+      // If clicking the same period, collapse it
+      setExpandedPeriod(null);
+      setSelectedPeriod(null);
+      setPeriodActivities([]);
+    } else {
+      // Expand new period
+      setExpandedPeriod(periodKey);
+      setSelectedPeriod({ ...period, date: daySchedule.date });
+      
+      // Fetch activities for this period
+      setLoading(true);
+      try {
+        await fetchPeriodActivities(period.id, daySchedule.date);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to load period activities');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const renderCalendar = () => {
     const today = new Date();
     const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
@@ -317,7 +336,10 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     }
 
     return (
-      <View style={styles.calendarContainer}>
+      <View style={[
+        styles.calendarContainer,
+        calendarMinimized && styles.calendarMinimized
+      ]}>
         <View style={styles.calendarHeader}>
           <TouchableOpacity onPress={() => changeMonth(-1)}>
             <Text style={styles.chevronIcon}>‹</Text>
@@ -328,71 +350,162 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
           <TouchableOpacity onPress={() => changeMonth(1)}>
             <Text style={styles.chevronIcon}>›</Text>
           </TouchableOpacity>
+          {calendarMinimized && (
+            <TouchableOpacity 
+              onPress={() => {
+                setCalendarMinimized(false);
+                setExpandedPeriod(null);
+              }}
+              style={styles.expandButton}
+            >
+              <Text style={styles.expandIcon}>⬇</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Week day headers */}
-        <View style={styles.weekDaysHeader}>
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <View key={day} style={styles.weekDayCell}>
-              <Text style={styles.weekDayText}>{day}</Text>
+        {!calendarMinimized && (
+          <>
+            {/* Week day headers */}
+            <View style={styles.weekDaysHeader}>
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <View key={day} style={styles.weekDayCell}>
+                  <Text style={styles.weekDayText}>{day}</Text>
+                </View>
+              ))}
             </View>
-          ))}
+
+            <FlatList
+              data={calendarDays}
+              keyExtractor={(item) => item.key}
+              numColumns={7}
+              renderItem={({ item }) => {
+                if (item.empty) {
+                  return <View style={styles.dateCell} />;
+                }
+
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.dateCell,
+                      item.date.toDateString() === today.toDateString() && styles.todayCell,
+                      item.date.toDateString() === selectedDate.toDateString() && styles.selectedDateCell
+                    ]}
+                    onPress={() => handleDateSelection(item.date)}
+                  >
+                    <Text style={[
+                      styles.dateText,
+                      item.date.toDateString() === today.toDateString() && styles.todayText,
+                      item.date.toDateString() === selectedDate.toDateString() && styles.selectedDateText
+                    ]}>
+                      {item.day}
+                    </Text>
+                    {item.hasSchedule && (
+                      <View style={styles.periodIndicator} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </>
+        )}
+
+        {calendarMinimized && (
+          <View style={styles.minimizedCalendarInfo}>
+            <Text style={styles.selectedDateDisplay}>
+              {selectedDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderInlinePeriodEditor = (period, daySchedule) => {
+    const periodKey = `${period.id}-${daySchedule.date}`;
+    const isExpanded = expandedPeriod === periodKey;
+
+    if (!isExpanded) return null;
+
+    return (
+      <View style={styles.inlineEditorContainer}>
+        <View style={styles.inlineEditorHeader}>
+          <Text style={styles.inlineEditorTitle}>
+            Period Activities: {period.subject_name}
+          </Text>
+          <TouchableOpacity 
+            onPress={() => setExpandedPeriod(null)}
+            style={styles.closeInlineButton}
+          >
+            <Text style={styles.closeInlineIcon}>✕</Text>
+          </TouchableOpacity>
         </View>
 
-        <FlatList
-          data={calendarDays}
-          keyExtractor={(item) => item.key}
-          numColumns={7}
-          renderItem={({ item }) => {
-            if (item.empty) {
-              return <View style={styles.dateCell} />;
-            }
-
-            return (
-              <TouchableOpacity
-                style={[
-                  styles.dateCell,
-                  item.date.toDateString() === today.toDateString() && styles.todayCell,
-                  item.date.toDateString() === selectedDate.toDateString() && styles.selectedDateCell
-                ]}
-                onPress={() => setSelectedDate(item.date)}
-              >
-                <Text style={[
-                  styles.dateText,
-                  item.date.toDateString() === today.toDateString() && styles.todayText,
-                  item.date.toDateString() === selectedDate.toDateString() && styles.selectedDateText
-                ]}>
-                  {item.day}
-                </Text>
-                {item.hasSchedule && (
-                  <View style={styles.periodIndicator} />
+        <ScrollView style={styles.inlineEditorContent} nestedScrollEnabled={true}>
+          {/* Existing Activities */}
+          <View style={styles.activitiesSection}>
+            <Text style={styles.activitiesSectionTitle}>Current Activities</Text>
+            {periodActivities.length === 0 ? (
+              <Text style={styles.noActivitiesText}>No activities created yet</Text>
+            ) : (
+              <FlatList
+                data={periodActivities}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.activityItem}>
+                    <View style={styles.activityHeader}>
+                      <Text style={styles.activityType}>{item.activity_type || 'Unknown'}</Text>
+                      <Text style={styles.activityDuration}>{item.start_time} - {item.end_time || 0}</Text>
+                      <Text style={styles.activityDuration}>{item.duration || 0} min</Text>
+                    </View>
+                    <Text style={styles.activityBatch}>Batch {item.batch_number || 1}</Text>
+                    <Text style={styles.activityMentor}>{item.mentor_name || 'No mentor assigned'}</Text>
+                    {item.topic_name && (
+                      <Text style={styles.activityTopic}>
+                        Topic: {item.topic_hierarchy_path && item.topic_hierarchy_path !== null
+                          ? `${item.topic_name} (${item.topic_hierarchy_path})`
+                          : item.topic_name}
+                      </Text>
+                    )}
+                    {item.has_assessment && (
+                      <Text style={styles.assessmentBadge}>Assessment ({item.total_marks || 0} marks)</Text>
+                    )}
+                  </View>
                 )}
-              </TouchableOpacity>
-            );
-          }}
-        />
+              />
+            )}
+          </View>
+
+          {/* Quick Action Buttons */}
+          <View style={styles.quickActionsContainer}>
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => {
+                setShowTimeBasedModal(true);
+              }}
+            >
+              <Text style={styles.quickActionIcon}>🕐</Text>
+              <Text style={styles.quickActionText}>Time-Based Creator</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
     );
   };
 
   const renderDaySchedule = () => {
     const selectedDateString = formatDateToString(selectedDate);
-    // console.log('Selected date string (formatted):', selectedDateString);
-    // console.log('Available schedule dates:', monthlySchedule.map(s => s.date));
-
     const daySchedule = monthlySchedule.find(
       schedule => schedule.date === selectedDateString
     );
-
-    // console.log('Found day schedule:', daySchedule ? 'Yes' : 'No');
-    // console.log('Selected date object:', selectedDate);
 
     if (!daySchedule || daySchedule.periods.length === 0) {
       return (
         <View style={styles.noScheduleContainer}>
           <Text style={styles.noScheduleText}>No schedule available for this date</Text>
-          <Text style={styles.noScheduleSubtext}>Selected: {selectedDateString}</Text>
-          <Text style={styles.noScheduleSubtext}>Available: {monthlySchedule.map(s => s.date).join(', ')}</Text>
         </View>
       );
     }
@@ -410,56 +523,48 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         <FlatList
           data={daySchedule.periods}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View
-              style={styles.periodCard}
-            // onPress={() => openPeriodActivities(item, daySchedule)}
-            >
-              <View style={{ flexDirection: 'column' }}>
-                <View style={styles.periodTime && { alignItems: 'center', flexDirection: 'row' }}>
-                  <Text style={styles.timeText}>{item.timeStart}</Text>
-                  <Text style={styles.timeSeparator}>-</Text>
-                  <Text style={styles.timeText}>{item.timeEnd}</Text>
-                </View>
-
-                <View style={styles.periodInfo}>
-                  <Text style={styles.subjectName}>{item.subject_name}</Text>
-                  <Text style={styles.venueText}>{item.venue_name}</Text>
-                  <Text style={styles.sectionText}>Section {item.section_name}</Text>
-                </View>
-              </View>
-
-              <View style={styles.periodActions}>
+          renderItem={({ item }) => {
+            const periodKey = `${item.id}-${daySchedule.date}`;
+            const isExpanded = expandedPeriod === periodKey;
+            
+            return (
+              <View style={styles.periodCardContainer}>
                 <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={async () => {
-                    // Set selected period first
-                    setSelectedPeriod({ ...item, ...daySchedule });
-                    // Fetch period activities and open modal after loading
-                    setLoading(true);
-                    try {
-                      await fetchPeriodActivities(item.id, daySchedule.date);
-                      setShowTimeBasedModal(true);
-                    } catch (err) {
-                      Alert.alert('Error', 'Failed to load period activities');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
+                  style={[
+                    styles.periodCard,
+                    isExpanded && styles.expandedPeriodCard
+                  ]}
+                  onPress={() => handlePeriodClick(item, daySchedule)}
                 >
-                  <Text style={styles.actionIcon}>🕐</Text>
-                  <Text style={styles.actionText}>Time-Based</Text>
+                  <View style={{ flexDirection: 'column' }}>
+                    <View style={styles.periodTime && { alignItems: 'center', flexDirection: 'row' }}>
+                      <Text style={styles.timeText}>{item.timeStart}</Text>
+                      <Text style={styles.timeSeparator}>-</Text>
+                      <Text style={styles.timeText}>{item.timeEnd}</Text>
+                    </View>
+
+                    <View style={styles.periodInfo}>
+                      <Text style={styles.subjectName}>{item.subject_name}</Text>
+                      <Text style={styles.venueText}>{item.venue_name}</Text>
+                      <Text style={styles.sectionText}>Section {item.section_name}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.periodActions}>
+                    <Text style={[
+                      styles.expandIndicator,
+                      isExpanded && styles.expandIndicatorRotated
+                    ]}>
+                      ▼
+                    </Text>
+                  </View>
                 </TouchableOpacity>
-                {/* <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => openPeriodActivities(item, daySchedule)}
-                >
-                  <Text style={styles.actionIcon}>✂️</Text>
-                  <Text style={styles.actionText}>Quick Split</Text>
-                </TouchableOpacity> */}
+                
+                {/* Inline Period Editor */}
+                {renderInlinePeriodEditor(item, daySchedule)}
               </View>
-            </View>
-          )}
+            );
+          }}
         />
       </View>
     );
@@ -512,141 +617,6 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                 />
               )}
             </View>
-
-            {/* Create New Activity Form */}
-            {/* <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Create New Activity</Text>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Activity Type</Text>
-                <Picker
-                  selectedValue={activityForm.activity_type}
-                  onValueChange={(value) => setActivityForm(prev => ({ ...prev, activity_type: value }))}
-                  style={styles.picker}
-                >
-                  {activityTypes.map(type => (
-                    <Picker.Item key={type} label={type} value={type} />
-                  ))}
-                </Picker>
-              </View>
-
-              <View style={styles.formRow}>
-                <View style={styles.formGroupHalf}>
-                  <Text style={styles.label}>Duration (min)</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={activityForm.duration_minutes.toString()}
-                    onChangeText={(text) => setActivityForm(prev => ({
-                      ...prev,
-                      duration_minutes: parseInt(text) || 30
-                    }))}
-                    keyboardType="numeric"
-                    placeholder="30"
-                  />
-                </View>
-
-                <View style={styles.formGroupHalf}>
-                  <Text style={styles.label}>Batch Number</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={activityForm.batch_number.toString()}
-                    onChangeText={(text) => setActivityForm(prev => ({
-                      ...prev,
-                      batch_number: parseInt(text) || 1
-                    }))}
-                    keyboardType="numeric"
-                    placeholder="1"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Mentor</Text>
-                <Picker
-                  selectedValue={activityForm.mentor_id}
-                  onValueChange={(value) => setActivityForm(prev => ({ ...prev, mentor_id: value }))}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select Mentor" value={null} />
-                  {mentors.map(mentor => (
-                    <Picker.Item
-                      key={mentor.id}
-                      label={mentor.name}
-                      value={mentor.id}
-                    />
-                  ))}
-                </Picker>
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Topic</Text>
-                <Picker
-                  selectedValue={activityForm.topic_id}
-                  onValueChange={(value) => setActivityForm(prev => ({ ...prev, topic_id: value }))}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select Topic" value={null} />
-                  {topics.map(topic => {
-                    // Build the hierarchy path display
-                    const displayName = topic.hierarchy_path
-                      ? `${topic.topic_name} (${topic.hierarchy_path})`
-                      : topic.topic_name;
-
-                    return (
-                      <Picker.Item
-                        key={topic.id}
-                        label={displayName}
-                        value={topic.id}
-                      />
-                    );
-                  })}
-                </Picker>
-              </View>
-
-              <View style={styles.switchGroup}>
-                <Text style={styles.label}>Has Assessment</Text>
-                <Switch
-                  value={activityForm.has_assessment}
-                  onValueChange={(value) => setActivityForm(prev => ({ ...prev, has_assessment: value }))}
-                />
-              </View>
-
-              {activityForm.has_assessment && (
-                <>
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Assessment Type</Text>
-                    <Picker
-                      selectedValue={activityForm.assessment_type}
-                      onValueChange={(value) => setActivityForm(prev => ({ ...prev, assessment_type: value }))}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="Quiz" value="Quiz" />
-                      <Picker.Item label="Test" value="Test" />
-                      <Picker.Item label="Assignment" value="Assignment" />
-                      <Picker.Item label="Practical" value="Practical" />
-                    </Picker>
-                  </View>
-
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Total Marks</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={activityForm.total_marks.toString()}
-                      onChangeText={(text) => setActivityForm(prev => ({
-                        ...prev,
-                        total_marks: parseInt(text) || 100
-                      }))}
-                      keyboardType="numeric"
-                      placeholder="100"
-                    />
-                  </View>
-                </>
-              )}
-
-              <TouchableOpacity style={styles.createButton} onPress={createActivity}>
-                <Text style={styles.createButtonText}>Create Activity</Text>
-              </TouchableOpacity>
-            </View> */}
           </ScrollView>
         </View>
       </Modal>
@@ -676,7 +646,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
-      {/* --- IMPROVED SECTION SELECTOR --- */}
+      {/* Section Selector */}
       <View style={styles.sectionSelectorContainer}>
         <ScrollView
           horizontal
@@ -737,13 +707,14 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         periodActivities={periodActivities}
         onActivityCreated={() => {
           setShowTimeBasedModal(false);
-          fetchPeriodActivities(selectedPeriod?.id);
+          if (selectedPeriod) {
+            fetchPeriodActivities(selectedPeriod.id, selectedPeriod.date);
+          }
           fetchMonthlySchedule();
         }}
       />
     </SafeAreaView>
   );
 };
-
 
 export default CoordinatorAcademicSchedule;

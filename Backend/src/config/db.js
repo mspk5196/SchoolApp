@@ -9,10 +9,10 @@ const connection = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 20,
-  port: 4000,
-  ssl: {
-    ca: process.env.DB_CA_CERT
-  },
+  port: 3306,
+  // ssl: {
+  //   ca: process.env.DB_CA_CERT
+  // },
   timezone: '+05:30'
 });
 

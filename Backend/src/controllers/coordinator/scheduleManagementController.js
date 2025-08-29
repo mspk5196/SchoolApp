@@ -1463,10 +1463,17 @@ exports.updatePeriodActivity = (req, res) => {
     try {
         const { activityId } = req.params;
         const {
-            activity_type, activity_type_id, sub_activity_id, duration, batch_number,
+            activity_type, activity_type_id, sub_activity_id, sub_activity_type_id, duration, batch_number,
             mentor_id, topic_id, has_assessment, assessment_type, total_marks,
             activity_instructions, activity_name, end_time, start_time
         } = req.body;
+
+        console.log('Updating activity:', {
+            activityId,
+            activity_type, activity_type_id, sub_activity_id, sub_activity_type_id, duration, batch_number,
+            mentor_id, topic_id, has_assessment, assessment_type, total_marks,
+            activity_instructions, activity_name, end_time, start_time
+        });
 
         const updateQuery = `
                 UPDATE period_activities 
@@ -1478,7 +1485,7 @@ exports.updatePeriodActivity = (req, res) => {
 
         db.query(updateQuery, [
             activity_type, duration, batch_number,
-            mentor_id, topic_id, has_assessment, activity_type_id, sub_activity_id, total_marks,
+            mentor_id, topic_id, has_assessment, activity_type_id, sub_activity_type_id, total_marks,
             activity_instructions, activity_name, end_time, start_time, activityId
         ], (err, result) => {
             if (err) {
@@ -1631,4 +1638,88 @@ exports.getSectionBatches = (req, res) => {
             error: error.message
         });
     }
+};
+
+
+// Get daily schedule for a specific student with overrides
+exports.getStudentSchedule = async (req, res) => {
+    const { date, studentRoll } = req.params;
+
+    try {
+        const [student] = await db.promise().query('SELECT section_id FROM students WHERE roll = ?', [studentRoll]);
+        if (student.length === 0) {
+            return res.status(404).json({ success: false, message: 'Student not found' });
+        }
+        const sectionId = student[0].section_id;
+
+        const baseScheduleQuery = `
+            SELECT 
+                ds.id as daily_schedule_id, ds.date, ds.start_time as period_start_time, ds.end_time as period_end_time,
+                s.subject_name, v.name as venue_name,
+                pa.id as period_activity_id, pa.activity_type, pa.start_time, pa.end_time,
+                pa.batch_number, u.name as mentor_name, th.topic_name
+            FROM daily_schedule ds
+            JOIN subjects s ON ds.subject_id = s.id
+            JOIN venues v ON ds.venue_id = v.id
+            LEFT JOIN period_activities pa ON ds.id = pa.daily_schedule_id
+            LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
+            LEFT JOIN users u ON m.phone = u.phone
+            LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
+            WHERE ds.date = ? AND ds.section_id = ?
+            ORDER BY ds.start_time, pa.start_time;
+        `;
+        const [baseSchedule] = await db.promise().query(baseScheduleQuery, [date, sectionId]);
+
+        const overrideQuery = `
+            SELECT 
+                sso.id, sso.daily_schedule_id, sso.start_time, sso.end_time, 
+                sso.activity_type, u.name as mentor_name, th.topic_name, v.name as venue_name, sso.notes
+            FROM student_schedule_overrides sso
+            LEFT JOIN mentors m ON sso.mentor_id = m.id
+            LEFT JOIN users u ON m.phone = u.phone
+            LEFT JOIN topic_hierarchy th ON sso.topic_id = th.id
+            LEFT JOIN venues v ON sso.venue_id = v.id
+            JOIN daily_schedule ds ON sso.daily_schedule_id = ds.id
+            WHERE ds.date = ? AND sso.student_roll = ?;
+        `;
+        const [overrides] = await db.promise().query(overrideQuery, [date, studentRoll]);
+        console.log("Student Schedule Overrides:", overrides);
+
+        res.json({ success: true, schedule: baseSchedule, overrides });
+
+    } catch (error) {
+        console.error("Error fetching student schedule:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+// Create or update a student-specific schedule override
+exports.createOrUpdateStudentScheduleOverride = async (req, res) => {
+    const { id, daily_schedule_id, student_roll, activity_type, start_time, end_time, topic_id, mentor_id, venue_id, notes } = req.body;
+
+    if (id) {
+        // Update
+        const query = `UPDATE student_schedule_overrides SET activity_type = ?, start_time = ?, end_time = ?, topic_id = ?, mentor_id = ?, venue_id = ?, notes = ? WHERE id = ?`;
+        db.query(query, [activity_type, start_time, end_time, topic_id, mentor_id, venue_id, notes, id], (err, result) => {
+            if (err) return res.status(500).json({ success: false, message: 'Database error' });
+            res.json({ success: true, message: 'Override updated' });
+        });
+    } else {
+        // Insert
+        const query = `INSERT INTO student_schedule_overrides (daily_schedule_id, student_roll, activity_type, start_time, end_time, topic_id, mentor_id, venue_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        db.query(query, [daily_schedule_id, student_roll, activity_type, start_time, end_time, topic_id, mentor_id, venue_id, notes], (err, result) => {
+            if (err) return res.status(500).json({ success: false, message: 'Database error' });
+            res.json({ success: true, message: 'Override created', id: result.insertId });
+        });
+    }
+};
+
+// Delete a student-specific schedule override
+exports.deleteStudentScheduleOverride = (req, res) => {
+    const { id } = req.params;
+    const query = 'DELETE FROM student_schedule_overrides WHERE id = ?';
+    db.query(query, [id], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: 'Database error' });
+        res.json({ success: true, message: 'Override deleted' });
+    });
 };

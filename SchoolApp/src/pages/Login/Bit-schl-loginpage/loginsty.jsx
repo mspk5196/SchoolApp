@@ -1,14 +1,31 @@
-import {StyleSheet} from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
+
+const { height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'white',
     flex: 1,
-    paddingBottom:20,
+    paddingBottom: 20,
+  },
+  // Updated for better keyboard handling
+  keyboardAvoidingView: {
+    flex: 1,
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent:'center',
+    minHeight: height * 0.9, // Use 90% of screen height
+  },
+  // New container for better content organization
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'space-between', // Distribute content evenly
+    paddingVertical: 10,
+  },
+  // New header container
+  headerContainer: {
+    alignItems: 'flex-start',
+    marginBottom: 10,
   },
   hi: {
     marginLeft: 20,
@@ -22,26 +39,45 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  // Updated image container for better keyboard handling
+  imageContainer: {
+    alignItems: 'center',
+    flex: 0.25, // Take 25% of available space
+    justifyContent: 'center',
+    minHeight: 150, // Minimum height to prevent too much shrinking
+  },
   logimg: {
-    marginTop: 28,
     alignSelf: 'center',
   },
   inputcontainer: {
     marginHorizontal: 20,
-    gap: 28,
+    gap: 20, // Reduced gap slightly for better spacing
+    marginBottom: 15,
+  },
+  // New password container for eye icon positioning
+  passwordContainer: {
+    position: 'relative',
+  },
+  // New eye icon styles
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 22,
+    padding: 5,
+    zIndex: 1,
   },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    marginLeft: 20,
-    marginTop: 10,
+    marginHorizontal: 20,
+    marginBottom: 15, // Changed from marginTop to marginBottom
   },
   checkboxText: {
     marginLeft: 10,
     fontSize: 12,
     fontWeight: '500',
     color: '#000000',
+    flex: 1, // Allow text to wrap if needed
   },
   btn: {
     width: 211,
@@ -58,17 +94,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   pressablebtn: {
-    marginTop: 30,
+    marginBottom: 20, // Changed from marginTop to marginBottom
     alignSelf: 'center',
   },
   separator: {
-    marginTop: 30,
+    marginBottom: 15, // Reduced margin for better spacing
     alignSelf: 'center',
     height: 16,
     width: 281,
   },
   googletext: {
-    marginTop: 20,
+    marginBottom: 15, // Changed from marginTop to marginBottom
     alignSelf: 'center',
     color: '#595959',
     fontSize: 16,
@@ -80,7 +116,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
-    marginTop: 20,
+    marginBottom: 20, // Added bottom margin for spacing
     height: 50,
     width: 270,
     backgroundColor: '#FFFFFF',

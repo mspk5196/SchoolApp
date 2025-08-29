@@ -147,7 +147,7 @@ const TimeBasedActivityCreator = ({
             }
         } catch (error) {
             console.error('Fetch activities error:', error);
-            Alert.alert('Error', 'Failed to fetch activities');
+            // Alert.alert('Error', 'Failed to fetch activities');
         }
     };
 
@@ -183,7 +183,7 @@ const TimeBasedActivityCreator = ({
             }
         } catch (error) {
             console.error('Fetch activities error:', error);
-            Alert.alert('Error', 'Failed to fetch activities');
+            // Alert.alert('Error', 'Failed to fetch activities');
         }
     }; 
 
@@ -478,6 +478,8 @@ const TimeBasedActivityCreator = ({
     // Save edited activity
     const handleSaveEditActivity = async () => {
         if (!activityToEdit) return;
+        console.log(activityToEdit);
+        
 
         try {
             setLoading(true);

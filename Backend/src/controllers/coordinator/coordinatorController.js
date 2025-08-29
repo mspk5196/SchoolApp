@@ -2512,11 +2512,12 @@ exports.getSectionSubjectActivities = (req, res) => {
 //Students Page
 exports.getSectionStudents = (req, res) => {
   const { sectionID } = req.body;
-
+  console.log(sectionID);
+  
   const sql = `
     SELECT st.id, st.name, st.roll, st.profile_photo
     FROM Students st
-    WHERE section_id = ?
+    WHERE st.section_id = ?
   `;
   db.query(sql, [sectionID], (err, results) => {
     if (err) {
