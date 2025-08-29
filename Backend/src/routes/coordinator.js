@@ -305,6 +305,13 @@ router.get('/coordinator/schedule/student/:date/:studentRoll', ScheduleManagemen
 router.post('/coordinator/schedule/student/override', ScheduleManagementController.createOrUpdateStudentScheduleOverride);
 router.delete('/coordinator/schedule/student/override/:id', ScheduleManagementController.deleteStudentScheduleOverride);
 
+router.post(
+  '/coordinator/upload-schedule-sheet',
+  upload.single('scheduleFile'),
+  ScheduleManagementController.processScheduleSheet
+);
+router.get('/coordinator/generate-schedule-template/:gradeId/:sectionId', ScheduleManagementController.generateScheduleTemplate);
+
 // Manual schedule generation endpoints for testing
 router.post('/coordinator/generate-daily-schedules-manual', coordinatorController.generateDailySchedulesManual);
 router.post('/coordinator/run-daily-schedule-update-manual', coordinatorController.runDailyScheduleUpdateManual);

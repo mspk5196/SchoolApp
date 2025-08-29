@@ -1,4 +1,5 @@
 const db = require('../../config/db');
+const ExcelJS = require('exceljs');
 
 // Create daily schedule with multiple activities
 exports.createDailySchedule = (req, res) => {
@@ -1722,4 +1723,870 @@ exports.deleteStudentScheduleOverride = (req, res) => {
         if (err) return res.status(500).json({ success: false, message: 'Database error' });
         res.json({ success: true, message: 'Override deleted' });
     });
+};
+
+
+exports.processScheduleSheet = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No file uploaded'
+            });
+        }
+
+        const { sectionId } = req.body;
+        const filePath = req.file.path;
+
+        // Use the promise wrapper
+        const dbPromise = db.promise();
+
+        // Read Excel file using exceljs
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(filePath);
+        const worksheet = workbook.getWorksheet('Schedule Data');
+
+        const rows = [];
+        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+            if (rowNumber > 1) { // Skip header row
+                rows.push(row.values);
+            }
+        });
+
+        // Start transaction using promise wrapper
+        const connection = await dbPromise.getConnection();
+        await connection.execute('START TRANSACTION');
+
+        try {
+            const weeklyScheduleMap = new Map();
+
+            for (const row of rows) {
+                const [
+                    , sno, date, fromTime, toTime, subjectName, venueName, batchLevel,
+                    activityType, subActivityName, topicPath, mentorInfo, isAssessment, instructions
+                ] = row;
+
+                // Lookup IDs using promise wrapper
+                const [subject] = await connection.execute('SELECT id FROM subjects WHERE subject_name = ?', [subjectName]);
+                const [venue] = await connection.execute('SELECT id FROM venues WHERE name = ?', [venueName]);
+
+                // Extract mentor name and roll from format "NAME (ROLL)"
+                const mentorMatch = mentorInfo.match(/(.+?)\s*\(([^)]+)\)/);
+                const mentorName = mentorMatch ? mentorMatch[1].trim() : mentorInfo;
+                const mentorRoll = mentorMatch ? mentorMatch[2].trim() : '';
+
+                const [mentor] = await connection.execute(`
+          SELECT m.id FROM mentors m 
+          JOIN users u ON m.phone = u.phone 
+          WHERE u.name = ? AND m.roll = ?
+        `, [mentorName, mentorRoll]);
+
+                const [activity] = await connection.execute('SELECT id FROM activity_types WHERE activity_type = ?', [activityType]);
+                const [subActivity] = await connection.execute('SELECT id FROM sub_activities WHERE sub_act_name = ?', [subActivityName]);
+
+                // Process topic hierarchy
+                const topicParts = topicPath.split(' > ');
+                let parentId = null;
+                let topicId = null;
+
+                for (const topicName of topicParts) {
+                    const [topic] = await connection.execute(
+                        'SELECT id FROM topic_hierarchy WHERE topic_name = ? AND parent_id = ? AND subject_id = ?',
+                        [topicName.trim(), parentId, subject[0]?.id]
+                    );
+                    if (topic.length > 0) {
+                        parentId = topic[0].id;
+                        topicId = topic[0].id;
+                    }
+                }
+
+                // Create weekly schedule entry
+                const dayOfWeek = new Date(date).toLocaleString('en-US', { weekday: 'long' });
+                const weeklyScheduleKey = `${dayOfWeek}-${subject[0]?.id}-${sectionId}`;
+
+                if (!weeklyScheduleMap.has(weeklyScheduleKey)) {
+                    const [weeklySchedule] = await connection.execute(
+                        `INSERT INTO weekly_schedule 
+             (day, subject_id, section_id, venue_id, start_time, end_time, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE venue_id = ?, start_time = ?, end_time = ?`,
+                        [dayOfWeek, subject[0]?.id, sectionId, venue[0]?.id, fromTime, toTime,
+                            venue[0]?.id, fromTime, toTime]
+                    );
+                    weeklyScheduleMap.set(weeklyScheduleKey, weeklySchedule.insertId);
+                }
+
+                // Create period activity
+                await connection.execute(
+                    `INSERT INTO period_activities 
+           (activity_date, activity_name, activity_type, 
+            batch_number, topic_id, start_time, end_time, duration,
+            assigned_mentor_id, activity_instructions, is_assessment, 
+            section_subject_activity_id, ssa_sub_activity_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 
+                   TIMESTAMPDIFF(MINUTE, CONCAT(?, ' ', ?), CONCAT(?, ' ', ?)), 
+                   ?, ?, ?, ?, ?, NOW())`,
+                    [date, `${activityType} - Batch ${batchLevel}`, activityType,
+                        batchLevel, topicId, fromTime, toTime,
+                        date, fromTime, date, toTime,
+                        mentor[0]?.id, instructions, isAssessment,
+                        activity[0]?.id, subActivity[0]?.id]
+                );
+            }
+
+            await connection.execute('COMMIT');
+            connection.release();
+
+            // Clean up file
+            const fs = require('fs');
+            fs.unlinkSync(filePath);
+
+            res.json({
+                success: true,
+                message: 'Schedule uploaded successfully',
+                data: { processedRows: rows.length }
+            });
+
+        } catch (error) {
+            await connection.execute('ROLLBACK');
+            connection.release();
+            throw error;
+        }
+
+    } catch (error) {
+        console.error('Process schedule sheet error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to process schedule sheet',
+            error: error.message
+        });
+    }
+};
+
+// exports.generateScheduleTemplate = async (req, res) => {
+//   try {
+//     const { gradeId, sectionId } = req.params;
+//     const dbPromise = db.promise();
+
+//     // Fetch dropdown data
+//     const [subjects, venues, mentors, activities, subActivities, batches, topics] =
+//       await Promise.all([
+//         dbPromise.query("SELECT id, subject_name FROM subjects"),
+//         dbPromise.query(
+//           `SELECT v.id, v.name 
+//            FROM venues v
+//            WHERE v.grade_id = ?`,
+//           [gradeId]
+//         ),
+//         dbPromise.query(
+//           `SELECT m.id, u.name, m.roll 
+//            FROM mentors m 
+//            JOIN users u ON m.phone = u.phone
+//            WHERE m.grade_id = ?`,
+//           [gradeId]
+//         ),
+//         dbPromise.query("SELECT id, activity_type FROM activity_types"),
+//         dbPromise.query("SELECT id, sub_act_name FROM sub_activities"),
+//         dbPromise.query(
+//           `SELECT DISTINCT batch_level 
+//            FROM section_batches 
+//            WHERE section_id = ?
+//            ORDER BY batch_level`,
+//           [sectionId]
+//         ),
+//         dbPromise.query(
+//           `SELECT th.id, th.topic_name, th.parent_id, th.subject_id, s.subject_name
+//            FROM topic_hierarchy th
+//            JOIN subjects s ON th.subject_id = s.id
+//            ORDER BY th.subject_id, th.topic_name`,
+//         ),
+//       ]);
+
+//     // Extract results
+//     const subjectsData = subjects[0];
+//     const venuesData = venues[0];
+//     const mentorsData = mentors[0];
+//     const activitiesData = activities[0];
+//     const subActivitiesData = subActivities[0];
+//     const batchesData = batches[0];
+//     const topicsData = topics[0];
+
+//     // Create workbook + sheets
+//     const workbook = new ExcelJS.Workbook();
+//     const worksheet = workbook.addWorksheet("Schedule Data");
+//     const validationSheet = workbook.addWorksheet("Validation Data");
+
+//     // Define columns for Schedule Data
+//     worksheet.columns = [
+//       { header: "SNo", key: "sno", width: 5 },
+//       { header: "Date (YYYY-MM-DD)", key: "date", width: 15 },
+//       { header: "From Time (HH:MM)", key: "fromTime", width: 15 },
+//       { header: "To Time (HH:MM)", key: "toTime", width: 15 },
+//       { header: "Subject", key: "subject", width: 20 },
+//       { header: "Venue", key: "venue", width: 15 },
+//       { header: "Batch Level", key: "batchLevel", width: 12 },
+//       { header: "Activity Type", key: "activityType", width: 20 },
+//       { header: "Sub Activity", key: "subActivity", width: 20 },
+//       { header: "Topic", key: "topic", width: 30 },
+//       { header: "Mentor", key: "mentor", width: 25 },
+//       { header: "Is Assessment (0/1)", key: "isAssessment", width: 15 },
+//       { header: "Instructions", key: "instructions", width: 30 },
+//     ];
+
+//     // Sample row
+//     worksheet.addRow({
+//       sno: 1,
+//       date: "2025-08-25",
+//       fromTime: "09:30",
+//       toTime: "10:00",
+//       subject: "",
+//       venue: "",
+//       batchLevel: "",
+//       activityType: "",
+//       subActivity: "",
+//       topic: "Arithmetic operations > Addition",
+//       mentor: "",
+//       isAssessment: 0,
+//       instructions: "Nil",
+//     });
+
+//     // ===============================
+//     // Fill Validation Data (IMPROVED APPROACH)
+//     // ===============================
+    
+//     // Helper function to add validation data and return the range
+//     const addValidationData = (title, data, startCol = 1) => {
+//       const titleRowNum = validationSheet.lastRow ? validationSheet.lastRow.number + 2 : 1;
+//       validationSheet.getCell(titleRowNum, startCol).value = title;
+      
+//       const dataStartRow = titleRowNum + 1;
+//       data.forEach((item, index) => {
+//         validationSheet.getCell(dataStartRow + index, startCol).value = item;
+//       });
+      
+//       const dataEndRow = dataStartRow + data.length - 1;
+//       const colLetter = String.fromCharCode(64 + startCol);
+      
+//       return `'Validation Data'!${colLetter}${dataStartRow}:${colLetter}${dataEndRow}`;
+//     };
+
+//     // Helper function to build topic hierarchy path
+//     const buildHierarchyPath = (topicId, topics, path = []) => {
+//       const topic = topics.find(t => t.id === topicId);
+//       if (!topic) return path;
+
+//       path.unshift(topic.topic_name);
+
+//       if (topic.parent_id) {
+//         return buildHierarchyPath(topic.parent_id, topics, path);
+//       }
+
+//       return path;
+//     };
+
+//     // Create validation data arrays
+//     const subjectNames = subjectsData.map(s => s.subject_name);
+//     const venueNames = venuesData.map(v => v.name);
+//     const batchLevels = batchesData.map(b => b.batch_level);
+//     const activityTypes = activitiesData.map(a => a.activity_type);
+//     const subActivityNames = subActivitiesData.map(s => s.sub_act_name);
+//     const mentorDisplayNames = mentorsData.map(m => `${m.name} (${m.roll})`);
+    
+//     // Create topic hierarchy display with subject grouping
+//     const topicHierarchy = topicsData.map(topic => {
+//       const hierarchyPath = buildHierarchyPath(topic.id, topicsData);
+//       return `[${topic.subject_name}] ${hierarchyPath.join(' > ')}`;
+//     });
+
+//     // Add validation data to sheet and get ranges
+//     const subjectRange = addValidationData("SUBJECTS", subjectNames, 1);
+//     const venueRange = addValidationData("VENUES", venueNames, 2);
+//     const batchRange = addValidationData("BATCH LEVELS", batchLevels, 3);
+//     const activityRange = addValidationData("ACTIVITY TYPES", activityTypes, 4);
+//     const subActivityRange = addValidationData("SUB ACTIVITIES", subActivityNames, 5);
+//     const mentorRange = addValidationData("MENTORS", mentorDisplayNames, 6);
+//     const topicRange = addValidationData("TOPICS", topicHierarchy, 7);
+
+//     // ===============================
+//     // Apply Data Validations (IMPROVED)
+//     // ===============================
+    
+//     // Add multiple rows for template (50 rows should be enough)
+//     for (let i = 2; i <= 51; i++) { // Starting from row 2 (after header)
+//       // Subject validation (column E - index 5)
+//       worksheet.getCell(`E${i}`).dataValidation = {
+//         type: 'list',
+//         allowBlank: true,
+//         formulae: [subjectRange],
+//         showErrorMessage: true,
+//         errorStyle: 'error',
+//         errorTitle: 'Invalid Subject',
+//         error: 'Please select a valid subject from the dropdown list.'
+//       };
+
+//       // Venue validation (column F - index 6)
+//       worksheet.getCell(`F${i}`).dataValidation = {
+//         type: 'list',
+//         allowBlank: true,
+//         formulae: [venueRange],
+//         showErrorMessage: true,
+//         errorStyle: 'error',
+//         errorTitle: 'Invalid Venue',
+//         error: 'Please select a valid venue from the dropdown list.'
+//       };
+
+//       // Batch Level validation (column G - index 7)
+//       worksheet.getCell(`G${i}`).dataValidation = {
+//         type: 'list',
+//         allowBlank: true,
+//         formulae: [batchRange],
+//         showErrorMessage: true,
+//         errorStyle: 'error',
+//         errorTitle: 'Invalid Batch Level',
+//         error: 'Please select a valid batch level from the dropdown list.'
+//       };
+
+//       // Activity Type validation (column H - index 8)
+//       worksheet.getCell(`H${i}`).dataValidation = {
+//         type: 'list',
+//         allowBlank: true,
+//         formulae: [activityRange],
+//         showErrorMessage: true,
+//         errorStyle: 'error',
+//         errorTitle: 'Invalid Activity Type',
+//         error: 'Please select a valid activity type from the dropdown list.'
+//       };
+
+//       // Sub Activity validation (column I - index 9)
+//       worksheet.getCell(`I${i}`).dataValidation = {
+//         type: 'list',
+//         allowBlank: true,
+//         formulae: [subActivityRange],
+//         showErrorMessage: true,
+//         errorStyle: 'error',
+//         errorTitle: 'Invalid Sub Activity',
+//         error: 'Please select a valid sub activity from the dropdown list.'
+//       };
+
+//       // Topic validation (column J - index 10)
+//       worksheet.getCell(`J${i}`).dataValidation = {
+//         type: 'list',
+//         allowBlank: true,
+//         formulae: [topicRange],
+//         showErrorMessage: true,
+//         errorStyle: 'error',
+//         errorTitle: 'Invalid Topic',
+//         error: 'Please select a valid topic from the dropdown list.'
+//       };
+
+//       // Mentor validation (column K - index 11)
+//       worksheet.getCell(`K${i}`).dataValidation = {
+//         type: 'list',
+//         allowBlank: true,
+//         formulae: [mentorRange],
+//         showErrorMessage: true,
+//         errorStyle: 'error',
+//         errorTitle: 'Invalid Mentor',
+//         error: 'Please select a valid mentor from the dropdown list.'
+//       };
+
+//       // Is Assessment validation (column L - index 12)
+//       worksheet.getCell(`L${i}`).dataValidation = {
+//         type: 'list',
+//         allowBlank: true,
+//         formulae: ['"0,1"'],
+//         showErrorMessage: true,
+//         errorStyle: 'error',
+//         errorTitle: 'Invalid Assessment Value',
+//         error: 'Please enter 0 for No or 1 for Yes.'
+//       };
+//     }
+
+//     // ===============================
+//     // Instructions Sheet
+//     // ===============================
+//     const instructionsSheet = workbook.addWorksheet("Instructions");
+//     instructionsSheet.addRows([
+//       ["SCHEDULE TEMPLATE INSTRUCTIONS"],
+//       [""],
+//       ["1. Fill in the Schedule Data sheet with your schedule information"],
+//       ["2. Use the dropdown menus in each column to select valid values"],
+//       ["3. Date format: YYYY-MM-DD (e.g., 2025-08-25)"],
+//       ["4. Time format: HH:MM (24-hour format, e.g., 09:30, 14:00)"],
+//       ['5. For mentors, use the dropdown (format: "Name (Roll)")'],
+//       ["6. Is Assessment: 0 for No, 1 for Yes"],
+//       ["7. Refer to Validation Data sheet for available options"],
+//       [""],
+//       ["REQUIRED FIELDS:"],
+//       ["- Date, From Time, To Time, Subject, Venue, Batch Level"],
+//       ["- Activity Type, Sub Activity, Topic, Mentor"],
+//       [""],
+//       ["TOPIC FORMAT:"],
+//       ["- Topics are displayed with subject prefix: [Subject Name] Parent > Child > Topic"],
+//       ["- Select the topic that matches your chosen subject"],
+//       [""],
+//       ["OPTIONAL FIELDS:"],
+//       ["- Instructions"],
+//       [""],
+//       ["NOTE: Template includes 50 pre-configured rows with dropdown validations"]
+//     ]);
+
+//     // ===============================
+//     // Styling and Protection
+//     // ===============================
+    
+//     // Style the headers
+//     const headerRow = worksheet.getRow(1);
+//     headerRow.font = { bold: true };
+//     headerRow.fill = {
+//       type: 'pattern',
+//       pattern: 'solid',
+//       fgColor: { argb: 'FFE0E0E0' }
+//     };
+
+//     // Hide the validation sheet from normal view (optional)
+//     validationSheet.state = 'hidden';
+
+//     // ===============================
+//     // Send File
+//     // ===============================
+//     res.setHeader(
+//       "Content-Type",
+//       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+//     );
+//     res.setHeader(
+//       "Content-Disposition",
+//       `attachment; filename=schedule_template_grade${gradeId}_section${sectionId}.xlsx`
+//     );
+
+//     await workbook.xlsx.write(res);
+//     res.end();
+//   } catch (error) {
+//     console.error("Generate template error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to generate template",
+//       error: error.message,
+//     });
+//   }
+// };
+
+exports.generateScheduleTemplate = async (req, res) => {
+  try {
+    const { gradeId, sectionId } = req.params;
+    const dbPromise = db.promise();
+
+    // Fetch dropdown data
+    const [subjects, venues, mentors, activities, subActivities, batches, topics] =
+      await Promise.all([
+        dbPromise.query("SELECT id, subject_name FROM subjects"),
+        dbPromise.query(
+          `SELECT v.id, v.name 
+           FROM venues v
+           WHERE v.grade_id = ?`,
+          [gradeId]
+        ),
+        dbPromise.query(
+          `SELECT m.id, u.name, m.roll 
+           FROM mentors m 
+           JOIN users u ON m.phone = u.phone
+           WHERE m.grade_id = ?`,
+          [gradeId]
+        ),
+        dbPromise.query("SELECT id, activity_type FROM activity_types"),
+        dbPromise.query(
+            `
+            SELECT DISTINCT sa.id, sa.sub_act_name, ssa.ssa_id as activity_type_id 
+            FROM sub_activities sa
+            JOIN ssa_sub_activities ssa ON sa.id = ssa.sub_act_id`
+        ),
+        dbPromise.query(
+          `SELECT DISTINCT sb.batch_level, s.subject_name, s.id as subject_id
+           FROM section_batches sb
+           JOIN subjects s ON sb.subject_id = s.id
+           WHERE sb.section_id = ?
+           ORDER BY s.subject_name, sb.batch_level`,
+          [sectionId]
+        ),
+        dbPromise.query(
+          `SELECT th.id, th.topic_name, th.parent_id, th.subject_id, s.subject_name
+           FROM topic_hierarchy th
+           JOIN subjects s ON th.subject_id = s.id
+           ORDER BY th.subject_id, th.topic_name`,
+        ),
+      ]);
+
+    // Extract results
+    const subjectsData = subjects[0];
+    const venuesData = venues[0];
+    const mentorsData = mentors[0];
+    const activitiesData = activities[0];
+    const subActivitiesData = subActivities[0];
+    const batchesData = batches[0];
+    const topicsData = topics[0];
+
+    // Create workbook + sheets
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Schedule Data");
+    const validationSheet = workbook.addWorksheet("Validation Data");
+    const configSheet = workbook.addWorksheet("Configuration");
+
+    // Define columns for Schedule Data
+    worksheet.columns = [
+      { header: "SNo", key: "sno", width: 5 },
+      { header: "Date (YYYY-MM-DD)", key: "date", width: 15 },
+      { header: "From Time (HH:MM)", key: "fromTime", width: 15 },
+      { header: "To Time (HH:MM)", key: "toTime", width: 15 },
+      { header: "Subject", key: "subject", width: 20 },
+      { header: "Venue", key: "venue", width: 15 },
+      { header: "Batch Level", key: "batchLevel", width: 12 },
+      { header: "Activity Type", key: "activityType", width: 20 },
+      { header: "Sub Activity", key: "subActivity", width: 20 },
+      { header: "Topic", key: "topic", width: 30 },
+      { header: "Mentor", key: "mentor", width: 25 },
+      { header: "Is Assessment (0/1)", key: "isAssessment", width: 15 },
+      { header: "Total Marks", key: "totalMarks", width: 12 },
+      { header: "Instructions", key: "instructions", width: 30 },
+    ];
+
+    // Sample row
+    worksheet.addRow({
+      sno: 1,
+      date: "2025-08-25",
+      fromTime: "09:30",
+      toTime: "10:00",
+      subject: "",
+      venue: "",
+      batchLevel: "",
+      activityType: "",
+      subActivity: "",
+      topic: "",
+      mentor: "",
+      isAssessment: 0,
+      totalMarks: "",
+      instructions: "Nil",
+    });
+
+    // ===============================
+    // Store configuration data for JavaScript filtering
+    // ===============================
+    
+    // Store batch levels by subject
+    const batchLevelsBySubject = {};
+    batchesData.forEach(batch => {
+      const subjectName = batch.subject_name;
+      if (!batchLevelsBySubject[subjectName]) {
+        batchLevelsBySubject[subjectName] = [];
+      }
+      batchLevelsBySubject[subjectName].push(batch.batch_level);
+    });
+    
+    // Store sub-activities by activity type
+    const subActivitiesByActivity = {};
+    subActivitiesData.forEach(subActivity => {
+      const activityId = subActivity.activity_type_id;
+      if (!subActivitiesByActivity[activityId]) {
+        subActivitiesByActivity[activityId] = [];
+      }
+      // Find activity name for this ID
+      const activity = activitiesData.find(a => a.id === activityId);
+      if (activity) {
+        subActivitiesByActivity[activityId].push({
+          id: subActivity.id,
+          name: subActivity.sub_act_name,
+          activityName: activity.activity_type
+        });
+      }
+    });
+    
+    // Store activity types by subject (if you have this mapping)
+    // This would require additional database query if you need this filtering
+    
+    // Store topics by subject
+    const topicsBySubject = {};
+    topicsData.forEach(topic => {
+      const subjectName = topic.subject_name;
+      if (!topicsBySubject[subjectName]) {
+        topicsBySubject[subjectName] = [];
+      }
+      
+      // Build hierarchy path
+      const buildHierarchyPath = (topicId, topics, path = []) => {
+        const topic = topics.find(t => t.id === topicId);
+        if (!topic) return path;
+
+        path.unshift(topic.topic_name);
+
+        if (topic.parent_id) {
+          return buildHierarchyPath(topic.parent_id, topics, path);
+        }
+
+        return path;
+      };
+      
+      const hierarchyPath = buildHierarchyPath(topic.id, topicsData);
+      topicsBySubject[subjectName].push(hierarchyPath.join(' > '));
+    });
+
+    // ===============================
+    // Fill Configuration Sheet with data for JavaScript
+    // ===============================
+    
+    configSheet.state = 'veryHidden'; // Hide completely from users
+    
+    // Add batch levels by subject
+    configSheet.addRow(["BATCH_LEVELS_BY_SUBJECT"]);
+    Object.keys(batchLevelsBySubject).forEach(subject => {
+      configSheet.addRow([subject, ...batchLevelsBySubject[subject]]);
+    });
+    configSheet.addRow([""]);
+    
+    // Add sub-activities by activity
+    configSheet.addRow(["SUB_ACTIVITIES_BY_ACTIVITY"]);
+    Object.keys(subActivitiesByActivity).forEach(activityId => {
+      const activity = activitiesData.find(a => a.id === parseInt(activityId));
+      if (activity) {
+        const subActs = subActivitiesByActivity[activityId].map(sa => sa.name);
+        configSheet.addRow([activity.activity_type, ...subActs]);
+      }
+    });
+    configSheet.addRow([""]);
+    
+    // Add topics by subject
+    configSheet.addRow(["TOPICS_BY_SUBJECT"]);
+    Object.keys(topicsBySubject).forEach(subject => {
+      configSheet.addRow([subject, ...topicsBySubject[subject]]);
+    });
+
+    // ===============================
+    // Fill Validation Data
+    // ===============================
+    
+    // Helper function to add validation data and return the range
+    const addValidationData = (title, data, startCol = 1) => {
+      const titleRowNum = validationSheet.lastRow ? validationSheet.lastRow.number + 2 : 1;
+      validationSheet.getCell(titleRowNum, startCol).value = title;
+      
+      const dataStartRow = titleRowNum + 1;
+      data.forEach((item, index) => {
+        validationSheet.getCell(dataStartRow + index, startCol).value = item;
+      });
+      
+      const dataEndRow = dataStartRow + data.length - 1;
+      const colLetter = String.fromCharCode(64 + startCol);
+      
+      return `'Validation Data'!${colLetter}${dataStartRow}:${colLetter}${dataEndRow}`;
+    };
+
+    // Create validation data arrays
+    const subjectNames = subjectsData.map(s => s.subject_name);
+    const venueNames = venuesData.map(v => v.name);
+    const batchLevels = [...new Set(batchesData.map(b => b.batch_level))];
+    const activityTypes = activitiesData.map(a => a.activity_type);
+    const subActivityNames = subActivitiesData.map(s => s.sub_act_name);
+    const mentorDisplayNames = mentorsData.map(m => `${m.name} (${m.roll})`);
+    
+    // Create topic hierarchy display
+    const buildHierarchyPath = (topicId, topics, path = []) => {
+      const topic = topics.find(t => t.id === topicId);
+      if (!topic) return path;
+
+      path.unshift(topic.topic_name);
+
+      if (topic.parent_id) {
+        return buildHierarchyPath(topic.parent_id, topics, path);
+      }
+
+      return path;
+    };
+    
+    const topicHierarchy = topicsData.map(topic => {
+      const hierarchyPath = buildHierarchyPath(topic.id, topicsData);
+      return hierarchyPath.join(' > ');
+    });
+
+    // Add validation data to sheet and get ranges
+    const subjectRange = addValidationData("SUBJECTS", subjectNames, 1);
+    const venueRange = addValidationData("VENUES", venueNames, 2);
+    const batchRange = addValidationData("BATCH LEVELS", batchLevels, 3);
+    const activityRange = addValidationData("ACTIVITY TYPES", activityTypes, 4);
+    const subActivityRange = addValidationData("SUB ACTIVITIES", subActivityNames, 5);
+    const mentorRange = addValidationData("MENTORS", mentorDisplayNames, 6);
+    const topicRange = addValidationData("TOPICS", topicHierarchy, 7);
+
+    // ===============================
+    // Apply Data Validations
+    // ===============================
+    
+    // Add multiple rows for template (50 rows should be enough)
+    for (let i = 2; i <= 51; i++) {
+      // Subject validation (column E - index 5)
+      worksheet.getCell(`E${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: [subjectRange],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Subject',
+        error: 'Please select a valid subject from the dropdown list.'
+      };
+
+      // Venue validation (column F - index 6)
+      worksheet.getCell(`F${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: [venueRange],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Venue',
+        error: 'Please select a valid venue from the dropdown list.'
+      };
+
+      // Batch Level validation (column G - index 7)
+      worksheet.getCell(`G${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: [batchRange],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Batch Level',
+        error: 'Please select a valid batch level from the dropdown list.'
+      };
+
+      // Activity Type validation (column H - index 8)
+      worksheet.getCell(`H${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: [activityRange],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Activity Type',
+        error: 'Please select a valid activity type from the dropdown list.'
+      };
+
+      // Sub Activity validation (column I - index 9)
+      worksheet.getCell(`I${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: [subActivityRange],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Sub Activity',
+        error: 'Please select a valid sub activity from the dropdown list.'
+      };
+
+      // Topic validation (column J - index 10)
+      worksheet.getCell(`J${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: [topicRange],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Topic',
+        error: 'Please select a valid topic from the dropdown list.'
+      };
+
+      // Mentor validation (column K - index 11)
+      worksheet.getCell(`K${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: [mentorRange],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Mentor',
+        error: 'Please select a valid mentor from the dropdown list.'
+      };
+
+      // Is Assessment validation (column L - index 12)
+      worksheet.getCell(`L${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: ['"0,1"'],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Assessment Value',
+        error: 'Please enter 0 for No or 1 for Yes.'
+      };
+
+      // Total Marks (column M - index 13) - No validation, just numeric format
+      worksheet.getCell(`M${i}`).numFmt = '0';
+    }
+
+    // ===============================
+    // Add JavaScript for dynamic filtering
+    // ===============================
+    const instructionsSheet = workbook.addWorksheet("Instructions");
+    instructionsSheet.addRows([
+      ["SCHEDULE TEMPLATE INSTRUCTIONS"],
+      [""],
+      ["1. Fill in the Schedule Data sheet with your schedule information"],
+      ["2. Use the dropdown menus in each column to select valid values"],
+      ["3. Date format: YYYY-MM-DD (e.g., 2025-08-25)"],
+      ["4. Time format: HH:MM (24-hour format, e.g., 09:30, 14:00)"],
+      ['5. For mentors, use the dropdown (format: "Name (Roll)")'],
+      ["6. Is Assessment: 0 for No, 1 for Yes"],
+      ["7. If Is Assessment is 1, enter Total Marks in the next column"],
+      ["8. Refer to Validation Data sheet for available options"],
+      [""],
+      ["DYNAMIC FILTERING:"],
+      ["- Batch Levels will filter based on selected Subject"],
+      ["- Sub Activities will filter based on selected Activity Type"],
+      ["- Topics will filter based on selected Subject"],
+      [""],
+      ["REQUIRED FIELDS:"],
+      ["- Date, From Time, To Time, Subject, Venue, Batch Level"],
+      ["- Activity Type, Sub Activity, Topic, Mentor, Is Assessment"],
+      ["- Total Marks (only when Is Assessment = 1)"],
+      [""],
+      ["OPTIONAL FIELDS:"],
+      ["- Instructions"],
+      [""],
+      ["NOTE: Template includes 50 pre-configured rows with dropdown validations"],
+      [""],
+      ["IMPORTANT: Enable macros/content for dynamic filtering to work properly"]
+    ]);
+
+    // ===============================
+    // Add VBA macro for Excel filtering (optional)
+    // This would require a different approach for .xlsm files
+    // ===============================
+
+    // ===============================
+    // Styling
+    // ===============================
+    
+    // Style the headers
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Hide the validation sheet from normal view
+    validationSheet.state = 'hidden';
+
+    // ===============================
+    // Send File
+    // ===============================
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=schedule_template_grade${gradeId}_section${sectionId}.xlsx`
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("Generate template error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate template",
+      error: error.message,
+    });
+  }
 };

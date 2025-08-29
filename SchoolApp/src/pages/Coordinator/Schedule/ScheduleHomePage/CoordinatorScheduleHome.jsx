@@ -7,11 +7,43 @@ import CollegeIcon2 from '../../../../assets/CoordinatorPage/ScheduleHome/Colleg
 import ExamIcon from '../../../../assets/CoordinatorPage/ScheduleHome/Exam.svg';
 import InvigilatorIcon from '../../../../assets/CoordinatorPage/ScheduleHome/Invigilator.svg';
 import styles from './ScheduleHomeStyle';
+import SectionSelectionModal from '../../../../components/Coordinator/SectionSelectionModal';
+import { API_URL } from '../../../../utils/env';
 
 const CoordinatorScheduleHome = ({ navigation, route }) => {
   const { coordinatorData, coordinatorGrades } = route.params;
   const [activeGrade, setActiveGrade] = useState(null);
   const [activeSection, setActiveSection] = useState(null);
+  const [showSectionModal, setShowSectionModal] = useState(false);
+
+  // Add this function to generate Excel template
+  // In CoordinatorScheduleHome.jsx
+  const generateExcelTemplate = async (section) => {
+    try {
+      // Use the backend endpoint to generate and download the template
+      const downloadUrl = `${API_URL}/api/coordinator/generate-schedule-template/${activeGrade}/${section.id}`;
+
+      // Open the download URL in browser (this will trigger file download)
+      Linking.openURL(downloadUrl);
+
+    } catch (error) {
+      console.error('Error generating template:', error);
+      alert('Error generating template: ' + error.message);
+    }
+  };
+
+  const handleSectionSelect = (section) => {
+    setActiveSection(section);
+    generateExcelTemplate(section);
+  };
+
+  const uploadingScheduleSheet = () => {
+    if (!activeGrade) {
+      alert('Please select a grade first');
+      return;
+    }
+    setShowSectionModal(true);
+  };
 
 
   useEffect(() => {
@@ -104,6 +136,13 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
       >
         <Text style={styles.uploadButtonText}>Upload Schedule sheet</Text>
       </TouchableOpacity>
+
+      <SectionSelectionModal
+        visible={showSectionModal}
+        onClose={() => setShowSectionModal(false)}
+        gradeId={activeGrade}
+        onSectionSelect={handleSectionSelect}
+      />
     </SafeAreaView>
   );
 };

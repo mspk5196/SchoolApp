@@ -22,7 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
 import { API_URL } from '../../../../utils/env';
 import styles from './AcademicScheduleSty'
-import TimeBasedActivityCreator from '../../../../components/TimeBasedActivityCreator';
+import TimeBasedActivityCreator from '../../../../components/Coordinator/TimeBasedActivityCreator';
 import { TouchableWithoutFeedback } from 'react-native';
 
 const CoordinatorAcademicSchedule = ({ navigation, route }) => {

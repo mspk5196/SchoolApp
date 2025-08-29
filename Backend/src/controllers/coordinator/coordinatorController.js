@@ -1022,18 +1022,19 @@ exports.getSubjects = (req, res) => {
 
 exports.getGradeSections = (req, res) => {
   const { gradeID } = req.body;
-  // console.log("Received gradeID:", req.body.gradeID);
+  console.log("Received gradeID:", gradeID);
   const sql = `
     SELECT sec.id, sec.section_name, sec.grade_id
     FROM Sections sec
-    WHERE grade_id = ?
+    WHERE sec.grade_id = ?
   `;
   db.query(sql, [gradeID], (err, results) => {
     if (err) {
       console.error("Error fetching sections data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
-
+    console.log(results);
+    
     res.json({ success: true, message: "Sections data fetched successfully", gradeSections: results });
   });
 };

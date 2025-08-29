@@ -14,7 +14,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../utils/env';
+import { API_URL } from '../../utils/env';
 import { set } from 'date-fns';
 
 const TimeBasedActivityCreator = ({
