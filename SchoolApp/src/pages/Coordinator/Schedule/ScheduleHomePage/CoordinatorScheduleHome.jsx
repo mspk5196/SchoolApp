@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity } from 'react-native';
+import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HomeIcon from '../../../../assets/CoordinatorPage/ScheduleHome/Home.svg';
 import CollegeIcon from '../../../../assets/CoordinatorPage/ScheduleHome/College.svg';
@@ -39,10 +39,23 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
 
   const uploadingScheduleSheet = () => {
     if (!activeGrade) {
-      alert('Please select a grade first');
+      Alert.alert('Please select a grade first');
       return;
     }
-    setShowSectionModal(true);
+    Alert.alert('Schedule sheet', 'Do you want to generate template or upload filled sheet?', [
+      {
+        text: 'Generate Template',
+        onPress: () => {
+          setShowSectionModal(true);
+        },
+      },
+      {
+        text: 'Upload Filled Sheet',
+        onPress: () => {
+          // Handle upload filled sheet
+        },
+      },
+    ]);
   };
 
 

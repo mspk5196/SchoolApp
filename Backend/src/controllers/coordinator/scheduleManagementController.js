@@ -1953,20 +1953,20 @@ exports.processScheduleSheet = async (req, res) => {
 //     // ===============================
 //     // Fill Validation Data (IMPROVED APPROACH)
 //     // ===============================
-    
+
 //     // Helper function to add validation data and return the range
 //     const addValidationData = (title, data, startCol = 1) => {
 //       const titleRowNum = validationSheet.lastRow ? validationSheet.lastRow.number + 2 : 1;
 //       validationSheet.getCell(titleRowNum, startCol).value = title;
-      
+
 //       const dataStartRow = titleRowNum + 1;
 //       data.forEach((item, index) => {
 //         validationSheet.getCell(dataStartRow + index, startCol).value = item;
 //       });
-      
+
 //       const dataEndRow = dataStartRow + data.length - 1;
 //       const colLetter = String.fromCharCode(64 + startCol);
-      
+
 //       return `'Validation Data'!${colLetter}${dataStartRow}:${colLetter}${dataEndRow}`;
 //     };
 
@@ -1991,7 +1991,7 @@ exports.processScheduleSheet = async (req, res) => {
 //     const activityTypes = activitiesData.map(a => a.activity_type);
 //     const subActivityNames = subActivitiesData.map(s => s.sub_act_name);
 //     const mentorDisplayNames = mentorsData.map(m => `${m.name} (${m.roll})`);
-    
+
 //     // Create topic hierarchy display with subject grouping
 //     const topicHierarchy = topicsData.map(topic => {
 //       const hierarchyPath = buildHierarchyPath(topic.id, topicsData);
@@ -2010,7 +2010,7 @@ exports.processScheduleSheet = async (req, res) => {
 //     // ===============================
 //     // Apply Data Validations (IMPROVED)
 //     // ===============================
-    
+
 //     // Add multiple rows for template (50 rows should be enough)
 //     for (let i = 2; i <= 51; i++) { // Starting from row 2 (after header)
 //       // Subject validation (column E - index 5)
@@ -2134,7 +2134,7 @@ exports.processScheduleSheet = async (req, res) => {
 //     // ===============================
 //     // Styling and Protection
 //     // ===============================
-    
+
 //     // Style the headers
 //     const headerRow = worksheet.getRow(1);
 //     headerRow.font = { bold: true };
@@ -2176,8 +2176,8 @@ exports.generateScheduleTemplate = async (req, res) => {
     const { gradeId, sectionId } = req.params;
     const dbPromise = db.promise();
 
-    // Fetch dropdown data
-    const [subjects, venues, mentors, activities, subActivities, batches, topics] =
+    // Fetch all data needed for filtering
+    const [subjects, venues, mentors, activities, subActivities, batches, topics, ssaMappings] =
       await Promise.all([
         dbPromise.query("SELECT id, subject_name FROM subjects"),
         dbPromise.query(
@@ -2187,33 +2187,37 @@ exports.generateScheduleTemplate = async (req, res) => {
           [gradeId]
         ),
         dbPromise.query(
-          `SELECT m.id, u.name, m.roll 
+          `SELECT m.id, u.name, m.roll, m.subject_id
            FROM mentors m 
            JOIN users u ON m.phone = u.phone
            WHERE m.grade_id = ?`,
           [gradeId]
         ),
         dbPromise.query("SELECT id, activity_type FROM activity_types"),
+        dbPromise.query("SELECT id, sub_act_name FROM sub_activities"),
         dbPromise.query(
-            `
-            SELECT DISTINCT sa.id, sa.sub_act_name, ssa.ssa_id as activity_type_id 
-            FROM sub_activities sa
-            JOIN ssa_sub_activities ssa ON sa.id = ssa.sub_act_id`
-        ),
-        dbPromise.query(
-          `SELECT DISTINCT sb.batch_level, s.subject_name, s.id as subject_id
+          `SELECT DISTINCT sb.batch_level, sb.subject_id, s.subject_name
            FROM section_batches sb
            JOIN subjects s ON sb.subject_id = s.id
            WHERE sb.section_id = ?
-           ORDER BY s.subject_name, sb.batch_level`,
+           ORDER BY sb.batch_level`,
           [sectionId]
         ),
         dbPromise.query(
-          `SELECT th.id, th.topic_name, th.parent_id, th.subject_id, s.subject_name
+          `SELECT th.id, th.topic_name, th.parent_id, th.subject_id, s.subject_name,
+                  th.section_subject_activity_id, th.ssa_sub_activity_id
            FROM topic_hierarchy th
            JOIN subjects s ON th.subject_id = s.id
            ORDER BY th.subject_id, th.topic_name`,
         ),
+        dbPromise.query(
+          `SELECT ssa.id, ssa.activity_type, ssa.section_id, ssa.subject_id, 
+                  ssa_sub.sub_act_id
+           FROM section_subject_activities ssa
+           LEFT JOIN ssa_sub_activities ssa_sub ON ssa.id = ssa_sub.ssa_id
+           WHERE ssa.section_id = ?`,
+          [sectionId]
+        )
       ]);
 
     // Extract results
@@ -2224,12 +2228,12 @@ exports.generateScheduleTemplate = async (req, res) => {
     const subActivitiesData = subActivities[0];
     const batchesData = batches[0];
     const topicsData = topics[0];
+    const ssaMappingsData = ssaMappings[0];
 
     // Create workbook + sheets
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Schedule Data");
     const validationSheet = workbook.addWorksheet("Validation Data");
-    const configSheet = workbook.addWorksheet("Configuration");
 
     // Define columns for Schedule Data
     worksheet.columns = [
@@ -2245,7 +2249,6 @@ exports.generateScheduleTemplate = async (req, res) => {
       { header: "Topic", key: "topic", width: 30 },
       { header: "Mentor", key: "mentor", width: 25 },
       { header: "Is Assessment (0/1)", key: "isAssessment", width: 15 },
-      { header: "Total Marks", key: "totalMarks", width: 12 },
       { header: "Instructions", key: "instructions", width: 30 },
     ];
 
@@ -2263,131 +2266,79 @@ exports.generateScheduleTemplate = async (req, res) => {
       topic: "",
       mentor: "",
       isAssessment: 0,
-      totalMarks: "",
       instructions: "Nil",
     });
 
     // ===============================
-    // Store configuration data for JavaScript filtering
+    // Prepare data for dynamic filtering
     // ===============================
+
+    // Create subject mapping
+    const subjectMap = {};
+    subjectsData.forEach((subject, index) => {
+      subjectMap[subject.subject_name] = subject.id;
+    });
+
+    // Create activity mapping by subject
+    const subjectActivityMap = {};
+    ssaMappingsData.forEach(ssa => {
+      if (!subjectActivityMap[ssa.subject_id]) {
+        subjectActivityMap[ssa.subject_id] = new Set();
+      }
+      subjectActivityMap[ssa.subject_id].add(ssa.activity_type);
+    });
+
+    // Create sub-activity mapping by activity and subject
+    const activitySubActivityMap = {};
+    ssaMappingsData.forEach(ssa => {
+      const key = `${ssa.subject_id}-${ssa.activity_type}`;
+      if (!activitySubActivityMap[key]) {
+        activitySubActivityMap[key] = new Set();
+      }
+      if (ssa.sub_act_id) {
+        activitySubActivityMap[key].add(ssa.sub_act_id);
+      }
+    });
+
+    // Create batch levels by subject
+    console.log(batchesData);
     
-    // Store batch levels by subject
-    const batchLevelsBySubject = {};
+    const subjectBatchMap = {};
     batchesData.forEach(batch => {
-      const subjectName = batch.subject_name;
-      if (!batchLevelsBySubject[subjectName]) {
-        batchLevelsBySubject[subjectName] = [];
+      if (!subjectBatchMap[batch.subject_id]) {
+        subjectBatchMap[batch.subject_id] = new Set();
       }
-      batchLevelsBySubject[subjectName].push(batch.batch_level);
+      subjectBatchMap[batch.subject_id].add(`[${batch.subject_name}] ${batch.batch_level}`);
     });
-    
-    // Store sub-activities by activity type
-    const subActivitiesByActivity = {};
-    subActivitiesData.forEach(subActivity => {
-      const activityId = subActivity.activity_type_id;
-      if (!subActivitiesByActivity[activityId]) {
-        subActivitiesByActivity[activityId] = [];
-      }
-      // Find activity name for this ID
-      const activity = activitiesData.find(a => a.id === activityId);
-      if (activity) {
-        subActivitiesByActivity[activityId].push({
-          id: subActivity.id,
-          name: subActivity.sub_act_name,
-          activityName: activity.activity_type
-        });
-      }
-    });
-    
-    // Store activity types by subject (if you have this mapping)
-    // This would require additional database query if you need this filtering
-    
-    // Store topics by subject
-    const topicsBySubject = {};
+
+    // Create topics by subject, activity, and sub-activity
+    const subjectTopicMap = {};
     topicsData.forEach(topic => {
-      const subjectName = topic.subject_name;
-      if (!topicsBySubject[subjectName]) {
-        topicsBySubject[subjectName] = [];
+      const key = `${topic.subject_id}-${topic.section_subject_activity_id || '0'}-${topic.ssa_sub_activity_id || '0'}`;
+      if (!subjectTopicMap[key]) {
+        subjectTopicMap[key] = [];
       }
       
       // Build hierarchy path
-      const buildHierarchyPath = (topicId, topics, path = []) => {
-        const topic = topics.find(t => t.id === topicId);
-        if (!topic) return path;
-
-        path.unshift(topic.topic_name);
-
-        if (topic.parent_id) {
-          return buildHierarchyPath(topic.parent_id, topics, path);
-        }
-
-        return path;
-      };
-      
       const hierarchyPath = buildHierarchyPath(topic.id, topicsData);
-      topicsBySubject[subjectName].push(hierarchyPath.join(' > '));
-    });
-
-    // ===============================
-    // Fill Configuration Sheet with data for JavaScript
-    // ===============================
-    
-    configSheet.state = 'veryHidden'; // Hide completely from users
-    
-    // Add batch levels by subject
-    configSheet.addRow(["BATCH_LEVELS_BY_SUBJECT"]);
-    Object.keys(batchLevelsBySubject).forEach(subject => {
-      configSheet.addRow([subject, ...batchLevelsBySubject[subject]]);
-    });
-    configSheet.addRow([""]);
-    
-    // Add sub-activities by activity
-    configSheet.addRow(["SUB_ACTIVITIES_BY_ACTIVITY"]);
-    Object.keys(subActivitiesByActivity).forEach(activityId => {
-      const activity = activitiesData.find(a => a.id === parseInt(activityId));
-      if (activity) {
-        const subActs = subActivitiesByActivity[activityId].map(sa => sa.name);
-        configSheet.addRow([activity.activity_type, ...subActs]);
-      }
-    });
-    configSheet.addRow([""]);
-    
-    // Add topics by subject
-    configSheet.addRow(["TOPICS_BY_SUBJECT"]);
-    Object.keys(topicsBySubject).forEach(subject => {
-      configSheet.addRow([subject, ...topicsBySubject[subject]]);
-    });
-
-    // ===============================
-    // Fill Validation Data
-    // ===============================
-    
-    // Helper function to add validation data and return the range
-    const addValidationData = (title, data, startCol = 1) => {
-      const titleRowNum = validationSheet.lastRow ? validationSheet.lastRow.number + 2 : 1;
-      validationSheet.getCell(titleRowNum, startCol).value = title;
-      
-      const dataStartRow = titleRowNum + 1;
-      data.forEach((item, index) => {
-        validationSheet.getCell(dataStartRow + index, startCol).value = item;
+      subjectTopicMap[key].push({
+          id: topic.id,
+          display: hierarchyPath.join(' > '),
+          fullPath: hierarchyPath.join(' > ')
       });
-      
-      const dataEndRow = dataStartRow + data.length - 1;
-      const colLetter = String.fromCharCode(64 + startCol);
-      
-      return `'Validation Data'!${colLetter}${dataStartRow}:${colLetter}${dataEndRow}`;
-    };
+    });
 
-    // Create validation data arrays
-    const subjectNames = subjectsData.map(s => s.subject_name);
-    const venueNames = venuesData.map(v => v.name);
-    const batchLevels = [...new Set(batchesData.map(b => b.batch_level))];
-    const activityTypes = activitiesData.map(a => a.activity_type);
-    const subActivityNames = subActivitiesData.map(s => s.sub_act_name);
-    const mentorDisplayNames = mentorsData.map(m => `${m.name} (${m.roll})`);
-    
-    // Create topic hierarchy display
-    const buildHierarchyPath = (topicId, topics, path = []) => {
+    // Create mentors by subject
+    const subjectMentorMap = {};
+    mentorsData.forEach(mentor => {
+      if (!subjectMentorMap[mentor.subject_id]) {
+        subjectMentorMap[mentor.subject_id] = [];
+      }
+      subjectMentorMap[mentor.subject_id].push(`${mentor.name} (${mentor.roll})`);
+    });
+
+    // Helper function to build topic hierarchy path
+    function buildHierarchyPath(topicId, topics, path = []) {
       const topic = topics.find(t => t.id === topicId);
       if (!topic) return path;
 
@@ -2396,13 +2347,43 @@ exports.generateScheduleTemplate = async (req, res) => {
       if (topic.parent_id) {
         return buildHierarchyPath(topic.parent_id, topics, path);
       }
-
+    //   console.log(path);
+      
       return path;
+    }
+
+    // ===============================
+    // Fill Validation Data
+    // ===============================
+
+    // Helper function to add validation data and return the range
+    const addValidationData = (title, data, startCol = 1) => {
+      const titleRowNum = validationSheet.lastRow ? validationSheet.lastRow.number + 2 : 1;
+      validationSheet.getCell(titleRowNum, startCol).value = title;
+
+      const dataStartRow = titleRowNum + 1;
+      data.forEach((item, index) => {
+        validationSheet.getCell(dataStartRow + index, startCol).value = item;
+      });
+
+      const dataEndRow = dataStartRow + data.length - 1;
+      const colLetter = String.fromCharCode(64 + startCol);
+
+      return `'Validation Data'!$${colLetter}$${dataStartRow}:$${colLetter}$${dataEndRow}`;
     };
-    
+
+    // Create validation data arrays
+    const subjectNames = subjectsData.map(s => s.subject_name);
+    const venueNames = venuesData.map(v => v.name);
+    const batchLevels = batchesData.map(b => `[${b.subject_name}] ${b.batch_level}`);
+    const activityTypes = activitiesData.map(a => a.activity_type);
+    const subActivityNames = subActivitiesData.map(s => s.sub_act_name);
+    const mentorDisplayNames = mentorsData.map(m => `${m.name} (${m.roll})`);
+
+    // Create topic hierarchy display
     const topicHierarchy = topicsData.map(topic => {
       const hierarchyPath = buildHierarchyPath(topic.id, topicsData);
-      return hierarchyPath.join(' > ');
+      return `[${topic.subject_name}] ${hierarchyPath.join(' > ')}`
     });
 
     // Add validation data to sheet and get ranges
@@ -2417,10 +2398,9 @@ exports.generateScheduleTemplate = async (req, res) => {
     // ===============================
     // Apply Data Validations
     // ===============================
-    
-    // Add multiple rows for template (50 rows should be enough)
+
     for (let i = 2; i <= 51; i++) {
-      // Subject validation (column E - index 5)
+      // Subject validation (column E)
       worksheet.getCell(`E${i}`).dataValidation = {
         type: 'list',
         allowBlank: false,
@@ -2431,10 +2411,10 @@ exports.generateScheduleTemplate = async (req, res) => {
         error: 'Please select a valid subject from the dropdown list.'
       };
 
-      // Venue validation (column F - index 6)
+      // Venue validation (column F)
       worksheet.getCell(`F${i}`).dataValidation = {
         type: 'list',
-        allowBlank: false,
+        allowBlank: true,
         formulae: [venueRange],
         showErrorMessage: true,
         errorStyle: 'error',
@@ -2442,10 +2422,10 @@ exports.generateScheduleTemplate = async (req, res) => {
         error: 'Please select a valid venue from the dropdown list.'
       };
 
-      // Batch Level validation (column G - index 7)
+      // Batch Level validation (column G)
       worksheet.getCell(`G${i}`).dataValidation = {
         type: 'list',
-        allowBlank: false,
+        allowBlank: true,
         formulae: [batchRange],
         showErrorMessage: true,
         errorStyle: 'error',
@@ -2453,10 +2433,10 @@ exports.generateScheduleTemplate = async (req, res) => {
         error: 'Please select a valid batch level from the dropdown list.'
       };
 
-      // Activity Type validation (column H - index 8)
+      // Activity Type validation (column H)
       worksheet.getCell(`H${i}`).dataValidation = {
         type: 'list',
-        allowBlank: false,
+        allowBlank: true,
         formulae: [activityRange],
         showErrorMessage: true,
         errorStyle: 'error',
@@ -2464,10 +2444,10 @@ exports.generateScheduleTemplate = async (req, res) => {
         error: 'Please select a valid activity type from the dropdown list.'
       };
 
-      // Sub Activity validation (column I - index 9)
+      // Sub Activity validation (column I)
       worksheet.getCell(`I${i}`).dataValidation = {
         type: 'list',
-        allowBlank: false,
+        allowBlank: true,
         formulae: [subActivityRange],
         showErrorMessage: true,
         errorStyle: 'error',
@@ -2475,10 +2455,10 @@ exports.generateScheduleTemplate = async (req, res) => {
         error: 'Please select a valid sub activity from the dropdown list.'
       };
 
-      // Topic validation (column J - index 10)
+      // Topic validation (column J)
       worksheet.getCell(`J${i}`).dataValidation = {
         type: 'list',
-        allowBlank: false,
+        allowBlank: true,
         formulae: [topicRange],
         showErrorMessage: true,
         errorStyle: 'error',
@@ -2486,10 +2466,10 @@ exports.generateScheduleTemplate = async (req, res) => {
         error: 'Please select a valid topic from the dropdown list.'
       };
 
-      // Mentor validation (column K - index 11)
+      // Mentor validation (column K)
       worksheet.getCell(`K${i}`).dataValidation = {
         type: 'list',
-        allowBlank: false,
+        allowBlank: true,
         formulae: [mentorRange],
         showErrorMessage: true,
         errorStyle: 'error',
@@ -2497,23 +2477,20 @@ exports.generateScheduleTemplate = async (req, res) => {
         error: 'Please select a valid mentor from the dropdown list.'
       };
 
-      // Is Assessment validation (column L - index 12)
+      // Is Assessment validation (column L)
       worksheet.getCell(`L${i}`).dataValidation = {
         type: 'list',
-        allowBlank: false,
+        allowBlank: true,
         formulae: ['"0,1"'],
         showErrorMessage: true,
         errorStyle: 'error',
         errorTitle: 'Invalid Assessment Value',
         error: 'Please enter 0 for No or 1 for Yes.'
       };
-
-      // Total Marks (column M - index 13) - No validation, just numeric format
-      worksheet.getCell(`M${i}`).numFmt = '0';
     }
 
     // ===============================
-    // Add JavaScript for dynamic filtering
+    // Instructions Sheet
     // ===============================
     const instructionsSheet = workbook.addWorksheet("Instructions");
     instructionsSheet.addRows([
@@ -2525,36 +2502,26 @@ exports.generateScheduleTemplate = async (req, res) => {
       ["4. Time format: HH:MM (24-hour format, e.g., 09:30, 14:00)"],
       ['5. For mentors, use the dropdown (format: "Name (Roll)")'],
       ["6. Is Assessment: 0 for No, 1 for Yes"],
-      ["7. If Is Assessment is 1, enter Total Marks in the next column"],
-      ["8. Refer to Validation Data sheet for available options"],
-      [""],
-      ["DYNAMIC FILTERING:"],
-      ["- Batch Levels will filter based on selected Subject"],
-      ["- Sub Activities will filter based on selected Activity Type"],
-      ["- Topics will filter based on selected Subject"],
+      ["7. Refer to Validation Data sheet for available options"],
       [""],
       ["REQUIRED FIELDS:"],
       ["- Date, From Time, To Time, Subject, Venue, Batch Level"],
-      ["- Activity Type, Sub Activity, Topic, Mentor, Is Assessment"],
-      ["- Total Marks (only when Is Assessment = 1)"],
+      ["- Activity Type, Sub Activity, Topic, Mentor"],
+      [""],
+      ["TOPIC FORMAT:"],
+      ["- Topics are displayed in hierarchy: Parent > Child > Topic"],
+      ["- Select the topic that matches your chosen subject"],
       [""],
       ["OPTIONAL FIELDS:"],
       ["- Instructions"],
       [""],
-      ["NOTE: Template includes 50 pre-configured rows with dropdown validations"],
-      [""],
-      ["IMPORTANT: Enable macros/content for dynamic filtering to work properly"]
+      ["NOTE: Template includes 50 pre-configured rows with dropdown validations"]
     ]);
 
     // ===============================
-    // Add VBA macro for Excel filtering (optional)
-    // This would require a different approach for .xlsm files
+    // Styling and Protection
     // ===============================
 
-    // ===============================
-    // Styling
-    // ===============================
-    
     // Style the headers
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true };
@@ -2564,7 +2531,7 @@ exports.generateScheduleTemplate = async (req, res) => {
       fgColor: { argb: 'FFE0E0E0' }
     };
 
-    // Hide the validation sheet from normal view
+    // Hide the validation sheet from normal view (optional)
     validationSheet.state = 'hidden';
 
     // ===============================
