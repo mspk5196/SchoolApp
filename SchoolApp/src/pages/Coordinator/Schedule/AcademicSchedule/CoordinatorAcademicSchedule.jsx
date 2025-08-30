@@ -9,21 +9,14 @@ import {
   Modal,
   ActivityIndicator,
   FlatList,
-  TextInput,
-  Switch,
-  RefreshControl,
   Dimensions,
-  TouchableWithoutFeedbackComponent,
+  RefreshControl,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import Icon from 'react-native-vector-icons/Feather';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-// import styles from './CoordinatorAcademicScheduleStyles';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
 import { API_URL } from '../../../../utils/env';
-import styles from './AcademicScheduleSty'
+import styles from './AcademicScheduleSty';
 import TimeBasedActivityCreator from '../../../../components/Coordinator/TimeBasedActivityCreator';
-import { TouchableWithoutFeedback } from 'react-native';
 
 const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   const { activeGrade } = route.params;
@@ -31,37 +24,16 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
   const [monthlySchedule, setMonthlySchedule] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showActivityModal, setShowActivityModal] = useState(false);
   const [showTimeBasedModal, setShowTimeBasedModal] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [periodActivities, setPeriodActivities] = useState([]);
-  const [mentors, setMentors] = useState([]);
-  const [topics, setTopics] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeSection, setActiveSection] = useState(null);
   const [sections, setSections] = useState([]);
-  
+
   // New state for inline editing
-  const [expandedPeriod, setExpandedPeriod] = useState(null);
+  const [expandedPeriod, setExpandedPeriod] = useState(null); // Stores a key like "periodId-dateString"
   const [calendarMinimized, setCalendarMinimized] = useState(false);
-
-  // Activity form state
-  const [activityForm, setActivityForm] = useState({
-    activity_type: 'Academic',
-    duration_minutes: 30,
-    batch_number: 1,
-    mentor_id: null,
-    topic_id: null,
-    has_assessment: false,
-    assessment_type: 'Quiz',
-    total_marks: 100,
-  });
-
-  const activityTypes = [
-    'Academic', 'Quiz', 'Assessment', 'Project Discussion',
-    'Practical', 'Assignment Review', 'Doubt Clearing',
-    'Presentation', 'Group Discussion'
-  ];
 
   useEffect(() => {
     if (activeGrade && activeSection) {
@@ -81,6 +53,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         const data = await response.json();
         if (data.success && data.gradeSections.length > 0) {
           setSections(data.gradeSections);
+          // Set the first section as active by default, or remember previous
           setActiveSection(data.gradeSections[0].id);
         } else {
           Alert.alert('No Sections Found', data.message || 'No sections are associated with this grade.');
@@ -96,6 +69,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
 
   const fetchMonthlySchedule = async () => {
     setMonthlySchedule([]);
+    setLoading(true); // Indicate loading when fetching schedule
     try {
       const month = selectedDate.getMonth() + 1;
       const year = selectedDate.getFullYear();
@@ -107,25 +81,20 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const result = await response.json();
       if (result.success) {
         setMonthlySchedule(result.data);
-        console.log('Monthly schedule data:', result.data);
       } else {
-        console.log('Monthly schedule response:', result);
         setMonthlySchedule([]);
       }
     } catch (error) {
       console.error('Error fetching monthly schedule:', error);
       setMonthlySchedule([]);
+    } finally {
+      setLoading(false); // Done loading schedule
     }
   };
 
-  const openPeriodActivities = async (period, daySchedule) => {
-    setSelectedPeriod({ ...period, date: daySchedule.date });
-    setShowActivityModal(true);
-    await fetchPeriodActivities(period.id, daySchedule.date);
-  };
-
   const fetchPeriodActivities = async (periodId, date) => {
-    setPeriodActivities([]);
+    setPeriodActivities([]); // Clear previous activities while loading new ones
+    setLoading(true); // Indicate loading when fetching activities
     try {
       const response = await fetch(
         `${API_URL}/api/coordinator/academic-schedule/period-activities/${periodId}/${date}`,
@@ -137,65 +106,16 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       const result = await response.json();
       if (result.success) {
         setPeriodActivities(result.data);
-        console.log('Fetched period activities:', result);
+      } else {
+        Alert.alert('Error', result.message || 'Failed to fetch activities.');
       }
     } catch (error) {
       console.error('Error fetching period activities:', error);
       setPeriodActivities([]);
+      Alert.alert('Error', 'Failed to fetch activities.');
+    } finally {
+      setLoading(false); // Done loading activities
     }
-  };
-
-  const createActivity = async () => {
-    try {
-      if (!selectedPeriod || !activityForm.mentor_id) {
-        Alert.alert('Error', 'Please select mentor and fill all required fields');
-        return;
-      }
-
-      const payload = {
-        period_id: selectedPeriod.id,
-        date: selectedPeriod.date,
-        activity_type: activityForm.activity_type,
-        duration_minutes: activityForm.duration_minutes,
-        batch_number: activityForm.batch_number,
-        mentor_id: activityForm.mentor_id,
-        topic_id: activityForm.topic_id,
-        has_assessment: activityForm.has_assessment,
-        assessment_type: activityForm.assessment_type,
-        total_marks: activityForm.total_marks,
-      };
-
-      const response = await fetch(`${API_URL}/api/coordinator/academic-schedule/create-activity`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        Alert.alert('Success', 'Activity created successfully');
-        fetchPeriodActivities(selectedPeriod.id, selectedPeriod.date);
-        resetActivityForm();
-      } else {
-        Alert.alert('Error', result.message || 'Failed to create activity');
-      }
-    } catch (error) {
-      console.error('Error creating activity:', error);
-      Alert.alert('Error', 'Failed to create activity');
-    }
-  };
-
-  const resetActivityForm = () => {
-    setActivityForm({
-      activity_type: 'Academic',
-      duration_minutes: 30,
-      batch_number: 1,
-      mentor_id: null,
-      topic_id: null,
-      has_assessment: false,
-      assessment_type: 'Quiz',
-      total_marks: 100,
-    });
   };
 
   // Helper function to format date without timezone issues
@@ -211,7 +131,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       setIsGenerating(true);
       Alert.alert(
         'Generate Schedules',
-        'This will create daily schedules from weekly templates for the next 7 days. Continue?',
+        'This will create student wise schedules from daily templates for the next 7 days. Continue?',
         [
           {
             text: 'Cancel',
@@ -222,7 +142,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
             text: 'Generate',
             onPress: async () => {
               try {
-                const response = await fetch(`${API_URL}/api/coordinator/generate-daily-schedules-manual`, {
+                const response = await fetch(`${API_URL}/api/coordinator/generate-student-wise-schedules-manual`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -260,30 +180,35 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     setRefreshing(true);
     try {
       await fetchMonthlySchedule();
+      if (selectedPeriod && expandedPeriod) { // If an inline editor is open, refresh its activities too
+        await fetchPeriodActivities(selectedPeriod.id, selectedPeriod.date);
+      }
     } catch (error) {
       console.error('Error refreshing:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [selectedDate, activeGrade]);
+  }, [selectedDate, activeGrade, selectedPeriod, expandedPeriod]);
 
   const changeMonth = (direction) => {
     const newDate = new Date(selectedDate);
     newDate.setMonth(newDate.getMonth() + direction);
     setSelectedDate(newDate);
+    setCalendarMinimized(true); // Minimize calendar on month change
+    setExpandedPeriod(null); // Close any expanded period
   };
 
   // Handle date selection - minimize calendar
   const handleDateSelection = (date) => {
     setSelectedDate(date);
     setCalendarMinimized(true);
-    setExpandedPeriod(null); // Close any expanded period
+    setExpandedPeriod(null); // Close any expanded period when date changes
   };
 
   // Handle period card click - expand inline
   const handlePeriodClick = async (period, daySchedule) => {
-    const periodKey = `${period.id}-${daySchedule.date}`;
-    
+    const periodKey = `${period.id}-${formatDateToString(new Date(daySchedule.date))}`; // Ensure date is formatted consistently
+
     if (expandedPeriod === periodKey) {
       // If clicking the same period, collapse it
       setExpandedPeriod(null);
@@ -293,15 +218,12 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       // Expand new period
       setExpandedPeriod(periodKey);
       setSelectedPeriod({ ...period, date: daySchedule.date });
-      
+
       // Fetch activities for this period
-      setLoading(true);
       try {
         await fetchPeriodActivities(period.id, daySchedule.date);
       } catch (error) {
         Alert.alert('Error', 'Failed to load period activities');
-      } finally {
-        setLoading(false);
       }
     }
   };
@@ -342,23 +264,26 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       ]}>
         <View style={styles.calendarHeader}>
           <TouchableOpacity onPress={() => changeMonth(-1)}>
-            <Text style={styles.chevronIcon}>‹</Text>
+            {/* <Icon name="chevron-left" size={28} color={styles.chevronIcon.color} /> */}
+            <Text style={styles.chevronIcon}>{"◀️"}</Text>
           </TouchableOpacity>
           <Text style={styles.monthYear}>
             {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </Text>
           <TouchableOpacity onPress={() => changeMonth(1)}>
-            <Text style={styles.chevronIcon}>›</Text>
+            {/* <Icon name="chevron-right" size={28} color={styles.chevronIcon.color} /> */}
+            <Text style={styles.chevronIcon}>{"▶️"}</Text>
           </TouchableOpacity>
           {calendarMinimized && (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => {
                 setCalendarMinimized(false);
                 setExpandedPeriod(null);
               }}
               style={styles.expandButton}
             >
-              <Text style={styles.expandIcon}>⬇</Text>
+              {/* <Icon name="chevron-down" size={16} color={styles.expandIcon.color} /> */}
+              <Text style={styles.expandIcon}>{"⬇️"}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -378,6 +303,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
               data={calendarDays}
               keyExtractor={(item) => item.key}
               numColumns={7}
+              scrollEnabled={false}
               renderItem={({ item }) => {
                 if (item.empty) {
                   return <View style={styles.dateCell} />;
@@ -424,78 +350,6 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     );
   };
 
-  const renderInlinePeriodEditor = (period, daySchedule) => {
-    const periodKey = `${period.id}-${daySchedule.date}`;
-    const isExpanded = expandedPeriod === periodKey;
-
-    if (!isExpanded) return null;
-
-    return (
-      <View style={styles.inlineEditorContainer}>
-        <View style={styles.inlineEditorHeader}>
-          <Text style={styles.inlineEditorTitle}>
-            Period Activities: {period.subject_name}
-          </Text>
-          <TouchableOpacity 
-            onPress={() => setExpandedPeriod(null)}
-            style={styles.closeInlineButton}
-          >
-            <Text style={styles.closeInlineIcon}>✕</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.inlineEditorContent} nestedScrollEnabled={true}>
-          {/* Existing Activities */}
-          <View style={styles.activitiesSection}>
-            <Text style={styles.activitiesSectionTitle}>Current Activities</Text>
-            {periodActivities.length === 0 ? (
-              <Text style={styles.noActivitiesText}>No activities created yet</Text>
-            ) : (
-              <FlatList
-                data={periodActivities}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <View style={styles.activityItem}>
-                    <View style={styles.activityHeader}>
-                      <Text style={styles.activityType}>{item.activity_type || 'Unknown'}</Text>
-                      <Text style={styles.activityDuration}>{item.start_time} - {item.end_time || 0}</Text>
-                      <Text style={styles.activityDuration}>{item.duration || 0} min</Text>
-                    </View>
-                    <Text style={styles.activityBatch}>Batch {item.batch_number || 1}</Text>
-                    <Text style={styles.activityMentor}>{item.mentor_name || 'No mentor assigned'}</Text>
-                    {item.topic_name && (
-                      <Text style={styles.activityTopic}>
-                        Topic: {item.topic_hierarchy_path && item.topic_hierarchy_path !== null
-                          ? `${item.topic_name} (${item.topic_hierarchy_path})`
-                          : item.topic_name}
-                      </Text>
-                    )}
-                    {item.has_assessment && (
-                      <Text style={styles.assessmentBadge}>Assessment ({item.total_marks || 0} marks)</Text>
-                    )}
-                  </View>
-                )}
-              />
-            )}
-          </View>
-
-          {/* Quick Action Buttons */}
-          <View style={styles.quickActionsContainer}>
-            <TouchableOpacity
-              style={styles.quickActionButton}
-              onPress={() => {
-                setShowTimeBasedModal(true);
-              }}
-            >
-              <Text style={styles.quickActionIcon}>🕐</Text>
-              <Text style={styles.quickActionText}>Time-Based Creator</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </View>
-    );
-  };
-
   const renderDaySchedule = () => {
     const selectedDateString = formatDateToString(selectedDate);
     const daySchedule = monthlySchedule.find(
@@ -505,7 +359,8 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     if (!daySchedule || daySchedule.periods.length === 0) {
       return (
         <View style={styles.noScheduleContainer}>
-          <Text style={styles.noScheduleText}>No schedule available for this date</Text>
+          <Text style={styles.noScheduleText}>No schedule available for this date.</Text>
+          <Text style={styles.noScheduleSubtext}>Tap "Generate" to create schedules from templates, or switch to a date with a pre-existing schedule.</Text>
         </View>
       );
     }
@@ -520,106 +375,126 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
           })}
         </Text>
 
-        <FlatList
-          data={daySchedule.periods}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => {
-            const periodKey = `${item.id}-${daySchedule.date}`;
-            const isExpanded = expandedPeriod === periodKey;
-            
-            return (
-              <View style={styles.periodCardContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.periodCard,
-                    isExpanded && styles.expandedPeriodCard
-                  ]}
-                  onPress={() => handlePeriodClick(item, daySchedule)}
-                >
-                  <View style={{ flexDirection: 'column' }}>
-                    <View style={styles.periodTime && { alignItems: 'center', flexDirection: 'row' }}>
-                      <Text style={styles.timeText}>{item.timeStart}</Text>
-                      <Text style={styles.timeSeparator}>-</Text>
-                      <Text style={styles.timeText}>{item.timeEnd}</Text>
-                    </View>
+        {daySchedule.periods.map((item) => {
+          const periodKey = `${item.id}-${daySchedule.date}`;
+          const isExpanded = expandedPeriod === periodKey;
 
-                    <View style={styles.periodInfo}>
-                      <Text style={styles.subjectName}>{item.subject_name}</Text>
-                      <Text style={styles.venueText}>{item.venue_name}</Text>
-                      <Text style={styles.sectionText}>Section {item.section_name}</Text>
-                    </View>
+          return (
+            <View key={item.id} style={styles.periodCardContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.periodCard,
+                  isExpanded && styles.expandedPeriodCard
+                ]}
+                onPress={() => handlePeriodClick(item, daySchedule)}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={styles.periodTime}>
+                    <Text style={styles.timeText}>{String(item.timeStart || '')}</Text>
+                    <Text style={styles.timeSeparator}>-</Text>
+                    <Text style={styles.timeText}>{String(item.timeEnd || '')}</Text>
                   </View>
 
-                  <View style={styles.periodActions}>
-                    <Text style={[
-                      styles.expandIndicator,
-                      isExpanded && styles.expandIndicatorRotated
-                    ]}>
-                      ▼
+                  <View style={styles.periodInfo}>
+                    <Text style={styles.subjectName}>{String(item.subject_name || '')}</Text>
+                    <Text style={styles.venueText}>{String(item.venue_name || '')}</Text>
+                    <Text style={styles.sectionText}>Section {String(item.section_name || '')}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.periodActions}>
+                  {/* <Icon
+                    name="chevron-down"
+                    size={22}
+                    color={styles.expandIndicator.color}
+                    style={isExpanded && styles.expandIndicatorRotated}
+                  /> */}
+                  <Text style={isExpanded && styles.expandIndicatorRotated}>{"⬇️"}</Text>
+                </View>
+              </TouchableOpacity>
+
+              {isExpanded && (
+                <View style={styles.periodEditorContentContainer}>
+                  <View style={styles.inlineEditorHeader}>
+                    <Text style={styles.inlineEditorTitle}>
+                      Period Activities: {String(item.subject_name || '')}
                     </Text>
+                    {/* <TouchableOpacity
+                      onPress={() => {
+                        setExpandedPeriod(null);
+                        setSelectedPeriod(null);
+                      }}
+                      style={styles.closeInlineButton}
+                    >
+                      <Icon name="close-circle" size={24} color={styles.closeInlineIcon.color} />
+                      <Text style={styles.closeInlineIcon}>{"❌"}</Text>
+                    </TouchableOpacity> */}
                   </View>
-                </TouchableOpacity>
-                
-                {/* Inline Period Editor */}
-                {renderInlinePeriodEditor(item, daySchedule)}
-              </View>
-            );
-          }}
-        />
-      </View>
-    );
-  };
 
-  const renderActivityModal = () => {
-    return (
-      <Modal visible={showActivityModal} animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              Period Activities: {selectedPeriod?.subject_name}
-            </Text>
-            <TouchableOpacity onPress={() => setShowActivityModal(false)}>
-              <Text style={styles.closeIcon}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            {/* Existing Activities */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Current Activities</Text>
-              {periodActivities.length === 0 ? (
-                <Text style={styles.noActivitiesText}>No activities created yet</Text>
-              ) : (
-                <FlatList
-                  data={periodActivities}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <View style={styles.activityItem}>
-                      <View style={styles.activityHeader}>
-                        <Text style={styles.activityType}>{item.activity_type || 'Unknown'}</Text>
-                        <Text style={styles.activityDuration}>{item.start_time} - {item.end_time || 0}</Text>
-                        <Text style={styles.activityDuration}>{item.duration || 0} min</Text>
-                      </View>
-                      <Text style={styles.activityBatch}>Batch {item.batch_number || 1}</Text>
-                      <Text style={styles.activityMentor}>{item.mentor_name || 'No mentor assigned'}</Text>
-                      {item.topic_name && (
-                        <Text style={styles.activityTopic}>
-                          Topic: {item.topic_hierarchy_path && item.topic_hierarchy_path !== null
-                            ? `${item.topic_name} (${item.topic_hierarchy_path})`
-                            : item.topic_name}
-                        </Text>
-                      )}
-                      {item.has_assessment && (
-                        <Text style={styles.assessmentBadge}>Assessment ({item.total_marks || 0} marks)</Text>
+                  <ScrollView
+                    style={styles.inlineEditorScrollContent}
+                    contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                  >
+                    <View style={styles.activitiesSection}>
+                      <Text style={styles.activitiesSectionTitle}>Current Activities</Text>
+                      {periodActivities.length === 0 ? (
+                        loading ? (
+                          <ActivityIndicator size="small" color="#007AFF" />
+                        ) : (
+                          <Text style={styles.noActivitiesText}>No activities created yet</Text>
+                        )
+                      ) : (
+                        <>
+                          {periodActivities.map((activity) => (
+                            <View key={activity.id} style={styles.activityItem}>
+                              <View style={styles.activityHeader}>
+                                <Text style={styles.activityType}>{String(activity.activity_type || 'Unknown')}</Text>
+                                <Text style={styles.activityDuration}>{String(activity.start_time || '')} - {String(activity.end_time || '')}</Text>
+                                {activity.duration && <Text style={styles.activityDuration}>{String(activity.duration)} min</Text>}
+                              </View>
+                              {activity.batch_number ? <Text style={styles.activityBatch}>Batch {String(activity.batch_number)}</Text> : null}
+                              {activity.mentor_name ? <Text style={styles.activityMentor}>Mentor: {String(activity.mentor_name)}</Text> : null}
+                              {/* Using 'item' for venue_name if needed, assuming activity doesn't have it directly */}
+                              {item.venue_name ? <Text style={styles.venueText}>Venue: {String(item.venue_name)}</Text> : null}
+                              {activity.topic_name ? (
+                                <Text style={styles.activityTopic}>
+                                  Topic: {activity.topic_hierarchy_path && activity.topic_hierarchy_path !== null
+                                    ? `${String(activity.topic_name || '')} (${String(activity.topic_hierarchy_path || '')})`
+                                    : String(activity.topic_name || '')}
+                                </Text>
+                              ) : null}
+                              {activity.has_assessment ? (
+                                <Text style={styles.assessmentBadge}>
+                                  {String(activity.assessment_type || 'Assessment')} ({String(activity.total_marks || 0)} marks)
+                                </Text>
+                              ) : null}
+                            </View>
+                          ))}
+                        </>
                       )}
                     </View>
-                  )}
-                />
+
+                    <View style={styles.quickActionsContainer}>
+                      <TouchableOpacity
+                        style={styles.quickActionButton}
+                        onPress={() => {
+                          setShowTimeBasedModal(true);
+                        }}
+                      >
+                        {/* <Icon name="clock" size={16} color={styles.quickActionIcon.color} style={styles.quickActionIcon} /> */}
+                        <Text style={styles.quickActionIcon}>{"🕒"}</Text>
+                        <Text style={styles.quickActionText}>Time-Based Creator</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
               )}
             </View>
-          </ScrollView>
-        </View>
-      </Modal>
+          );
+        })}
+      </View>
     );
   };
 
@@ -646,7 +521,6 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Section Selector */}
       <View style={styles.sectionSelectorContainer}>
         <ScrollView
           horizontal
@@ -666,14 +540,14 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                 styles.sectionTabText,
                 activeSection === section.id && styles.activeSectionTabText
               ]}>
-                Section {section.section_name}
+                Section {String(section.section_name || '')}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {loading ? (
+      {loading && (!monthlySchedule.length && !refreshing) ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
           <Text style={styles.loadingText}>Loading schedule...</Text>
@@ -681,6 +555,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       ) : (
         <ScrollView
           style={styles.content}
+          scrollEnabled={!expandedPeriod}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -694,8 +569,6 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
           {renderDaySchedule()}
         </ScrollView>
       )}
-
-      {renderActivityModal()}
 
       <TimeBasedActivityCreator
         visible={showTimeBasedModal}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity, Alert } from 'react-native';
+import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DocumentPicker from 'react-native-document-picker';
 import HomeIcon from '../../../../assets/CoordinatorPage/ScheduleHome/Home.svg';
 import CollegeIcon from '../../../../assets/CoordinatorPage/ScheduleHome/College.svg';
 import CollegeIcon2 from '../../../../assets/CoordinatorPage/ScheduleHome/College2.svg';
@@ -15,58 +16,169 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
   const [activeGrade, setActiveGrade] = useState(null);
   const [activeSection, setActiveSection] = useState(null);
   const [showSectionModal, setShowSectionModal] = useState(false);
-
-  // Add this function to generate Excel template
-  // In CoordinatorScheduleHome.jsx
-  const generateExcelTemplate = async (section) => {
-    try {
-      // Use the backend endpoint to generate and download the template
-      const downloadUrl = `${API_URL}/api/coordinator/generate-schedule-template/${activeGrade}/${section.id}`;
-
-      // Open the download URL in browser (this will trigger file download)
-      Linking.openURL(downloadUrl);
-
-    } catch (error) {
-      console.error('Error generating template:', error);
-      alert('Error generating template: ' + error.message);
-    }
-  };
-
-  const handleSectionSelect = (section) => {
-    setActiveSection(section);
-    generateExcelTemplate(section);
-  };
-
-  const uploadingScheduleSheet = () => {
-    if (!activeGrade) {
-      Alert.alert('Please select a grade first');
-      return;
-    }
-    Alert.alert('Schedule sheet', 'Do you want to generate template or upload filled sheet?', [
-      {
-        text: 'Generate Template',
-        onPress: () => {
-          setShowSectionModal(true);
-        },
-      },
-      {
-        text: 'Upload Filled Sheet',
-        onPress: () => {
-          // Handle upload filled sheet
-        },
-      },
-    ]);
-  };
-
+  const [modalMode, setModalMode] = useState('template'); // 'template' or 'upload'
+  const [sections, setSections] = useState([]);
 
   useEffect(() => {
     setActiveGrade(activeGrade)
   }, [coordinatorData])
+
   useEffect(() => {
     if (coordinatorGrades) {
       setActiveGrade(coordinatorGrades[0].grade_id)
     }
   }, [coordinatorGrades])
+
+  // Fetch sections for the selected grade
+  const fetchSections = async (gradeId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ gradeID: gradeId }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setSections(result.gradeSections);
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+      Alert.alert('Error', 'Failed to fetch sections');
+    }
+  };
+
+  // Generate Excel template
+  const generateExcelTemplate = async (section) => {
+    try {
+      const downloadUrl = `${API_URL}/api/coordinator/generate-schedule-template/${activeGrade}/${section.id}`;
+      Linking.openURL(downloadUrl);
+    } catch (error) {
+      console.error('Error generating template:', error);
+      Alert.alert('Error', 'Error generating template: ' + error.message);
+    }
+  };
+
+  // Handle section selection based on modal mode
+  const handleSectionSelect = (section) => {
+    setActiveSection(section);
+    setShowSectionModal(false);
+    
+    if (modalMode === 'template') {
+      generateExcelTemplate(section);
+    } else if (modalMode === 'upload') {
+      uploadScheduleFile(section.id);
+    }
+  };
+
+  // Handle file upload for filled sheet
+  const uploadScheduleFile = async (sectionId) => {
+    try {
+      // Pick document
+      const result = await DocumentPicker.pick({
+        type: [DocumentPicker.types.xlsx, DocumentPicker.types.xls],
+        allowMultiSelection: false,
+      });
+
+      if (result && result.length > 0) {
+        const file = result[0];
+        
+        // Show loading state
+        // Alert.alert('Processing', 'Uploading and processing schedule sheet...');
+
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('scheduleSheet', {
+          uri: file.uri,
+          type: file.type,
+          name: file.name,
+        });
+        formData.append('sectionId', sectionId.toString());
+
+        // Upload to backend
+        const response = await fetch(`${API_URL}/api/coordinator/schedule/process-schedule-sheet`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          body: formData,
+        });
+
+        const responseData = await response.json();
+
+        if (responseData.success) {
+          console.log("Uploaded successfully");
+
+          const errorMessage = responseData.data.errors && responseData.data.errors.length > 0
+            ? `\n\nWarnings:\n${responseData.data.errors.slice(0, 3).join('\n')}${responseData.data.errors.length > 3 ? '\n...' : ''}`
+            : '';
+
+          Alert.alert(
+            'Success', 
+            `Schedule uploaded successfully!\nProcessed: ${responseData.data.processedRows}/${responseData.data.totalRows} rows${errorMessage}`,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  // Navigate to view the uploaded schedule
+                  // navigation.navigate('CoordinatorAcademicSchedule', { 
+                  //   activeGrade,
+                  //   refreshData: true 
+                  // });
+                }
+              }
+            ]
+          );
+        } else {
+          Alert.alert('Error', responseData.message || 'Failed to process schedule sheet');
+        }
+      }
+    } catch (error) {
+      if (DocumentPicker.isCancel(error)) {
+        console.log('User cancelled document picker');
+      } else {
+        console.error('Error uploading schedule:', error);
+        Alert.alert('Error', 'Failed to upload schedule sheet: ' + error.message);
+      }
+    }
+  };
+
+  // Enhanced upload function with section selection
+  const uploadingScheduleSheet = async () => {
+    if (!activeGrade) {
+      Alert.alert('Error', 'Please select a grade first');
+      return;
+    }
+
+    // Fetch sections for the active grade first
+    await fetchSections(activeGrade);
+    
+    Alert.alert(
+      'Schedule Sheet Options', 
+      'Choose an option:',
+      [
+        {
+          text: 'Generate Template',
+          onPress: () => {
+            setModalMode('template');
+            setShowSectionModal(true);
+          },
+        },
+        {
+          text: 'Upload Filled Sheet',
+          onPress: () => {
+            setModalMode('upload');
+            setShowSectionModal(true);
+          },
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        }
+      ]
+    );
+  };
 
   const data = [
     {
@@ -79,7 +191,6 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
       ],
     },
   ];
-
 
   const Cards = ({ title, Icon, bgColor, color }) => (
     <View style={[styles.card, { backgroundColor: bgColor }]}>
@@ -113,14 +224,12 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
         ))}
       </ScrollView>
 
-
       <SectionList
         vertical={true}
         scrollEnabled={true}
         sections={data}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-
           <Pressable
             onPress={() => {
               if (item.title === 'Academic Schedule') {
@@ -145,15 +254,18 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
 
       <TouchableOpacity
         style={styles.uploadButton}
-        onPress={() => uploadingScheduleSheet()}
+        onPress={uploadingScheduleSheet}
       >
-        <Text style={styles.uploadButtonText}>Upload Schedule sheet</Text>
+        <Text style={styles.uploadButtonText}>Upload Schedule Sheet</Text>
       </TouchableOpacity>
 
+      {/* Enhanced Section Selection Modal */}
       <SectionSelectionModal
         visible={showSectionModal}
         onClose={() => setShowSectionModal(false)}
         gradeId={activeGrade}
+        sections={sections}
+        modalMode={modalMode}
         onSectionSelect={handleSectionSelect}
       />
     </SafeAreaView>

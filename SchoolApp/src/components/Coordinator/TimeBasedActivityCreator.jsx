@@ -35,7 +35,6 @@ const TimeBasedActivityCreator = ({
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [activityToEdit, setActivityToEdit] = useState(null);
 
-
     const [activities, setActivities] = useState([]);
     const [selectedActivity, setSelectedActivity] = useState(null);
     const [subActivities, setSubActivities] = useState([]);
@@ -67,7 +66,6 @@ const TimeBasedActivityCreator = ({
 
     const fetchInitialData = async () => {
         setLoading(true);
-        // console.log('Fetching initial data...', selectedPeriod);
         try {
             await Promise.all([
                 fetchBatches(),
@@ -83,19 +81,19 @@ const TimeBasedActivityCreator = ({
 
     const fetchBatches = async () => {
         try {
-            const token = await AsyncStorage.getItem('userToken');
             const response = await fetch(
                 `${API_URL}/api/coordinator/academic-schedule/batches/${selectedPeriod.section_id}/${selectedPeriod.subject_id}`);
             const result = await response.json();
             if (result.success) {
                 setBatches(result.data);
-                // Initialize batch activities for each batch
+                // FIX: Initialize batch activities with consistent keys
                 const initialBatchActivities = {};
                 result.data.forEach(batch => {
-                    initialBatchActivities[batch.batch_level] = [];
+                    // Use batch.id as the key for consistency
+                    initialBatchActivities[batch.id] = [];
                 });
                 setBatchActivities(initialBatchActivities);
-                // console.log('Initialized batch activities:', result);
+                console.log('Initialized batch activities:', initialBatchActivities);
             }
         } catch (error) {
             console.error('Error fetching batches:', error);
@@ -119,35 +117,24 @@ const TimeBasedActivityCreator = ({
     };
 
     const fetchActivitiesForSubject = async () => {
-        // console.log('fetchActivitiesForSubject called with:', { selectedPeriod });
         try {
-
             const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectActivities/${selectedPeriod.section_id}/${selectedPeriod.subject_id}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            // console.log('Activities response status:', response.status);
             const result = await response.json();
-            // console.log('Activities result:', result);
 
             if (result.success) {
-                // console.log('Fetched activities:', result.sectionSubjectActivity);
                 setActivities(result.sectionSubjectActivity || []);
                 if (result.sectionSubjectActivity.length > 0) {
                     setSelectedActivity(result.sectionSubjectActivity[0].id);
-                    if (selectedActivity) {
-                        fetchSubActivitiesForSubject();
-                    }
                 } else {
                     setSelectedActivity(null);
                 }
-            } else {
-                // console.log('Failed to fetch activities:', result.message);
             }
         } catch (error) {
             console.error('Fetch activities error:', error);
-            // Alert.alert('Error', 'Failed to fetch activities');
         }
     };
 
@@ -158,40 +145,32 @@ const TimeBasedActivityCreator = ({
     }, [selectedPeriod])
 
     const fetchSubActivitiesForSubject = async () => {
-        // console.log('fetchSubActivitiesForSubject called with:', { selectedActivity, selectedPeriod });
         try {
-
             const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectSubActivities/${selectedActivity}/${selectedPeriod.subject_id}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            // console.log('Activities response status:', response.status);
             const result = await response.json();
-            // console.log('Activities result:', result);
 
             if (result.success) {
-                // console.log('Fetched activities:', result.sectionSubjectActivity);
                 setSubActivities(result.sectionSubjectSubActivity || []);
                 if (result.sectionSubjectSubActivity.length > 0) {
                     setSelectedSubActivity(result.sectionSubjectSubActivity[0].id);
                 } else {
                     setSelectedSubActivity(null);
                 }
-            } else {
-                // console.log('Failed to fetch activities:', result.message);
             }
         } catch (error) {
-            console.error('Fetch activities error:', error);
-            // Alert.alert('Error', 'Failed to fetch activities');
+            console.error('Fetch sub activities error:', error);
         }
     }; 
 
     useEffect(() => {
-        if (selectedActivity) { // Ensure selectedActivity is set before fetching
+        if (selectedActivity) {
             fetchSubActivitiesForSubject();
         }
-    }, [selectedPeriod, selectedActivity]);
+    }, [selectedActivity]);
 
     const fetchTopics = async () => {
         try {
@@ -199,30 +178,31 @@ const TimeBasedActivityCreator = ({
             const result = await response.json();
             if (result.success) {
                 setTopics(result.data);
-                // console.log('Fetched topics:', result.data);
             }
         } catch (error) {
             console.error('Error fetching topics:', error);
         }
     };
 
-    useEffect(()=>{
-        if(selectedActivity && selectedSubActivity){
+    useEffect(() => {
+        if (selectedActivity && selectedSubActivity) {
             fetchTopics();
         }
-    },[selectedActivity, selectedSubActivity])
+    }, [selectedActivity, selectedSubActivity])
 
-    const addActivityToBatch = (batchLevel) => {
+    // FIX: Use batch.id consistently
+    const addActivityToBatch = (batchId) => {
+        console.log('Adding activity to batch:', batchId);
         const selectedActivityObject = activities.find(act => act.id === selectedActivity);
     
         const newActivity = {
             id: Date.now(), // Temporary ID
-            batch_number: batchLevel,
+            batch_number: batchId, // Use batchId directly
             activity_type: selectedActivityObject ? selectedActivityObject.activity_name : null,
             activity_type_id: selectedActivity,
             sub_activity_type_id: selectedSubActivity,
-            start_time: selectedPeriod.start_time,
-            end_time: selectedPeriod.end_time,
+            start_time: selectedPeriod?.timeStart || selectedPeriod?.start_time,
+            end_time: selectedPeriod?.timeEnd || selectedPeriod?.end_time,
             topic_id: null,
             mentor_id: null,
             has_assessment: false,
@@ -231,27 +211,33 @@ const TimeBasedActivityCreator = ({
             activity_instructions: ''
         };
     
-        setBatchActivities(prev => ({
-            ...prev,
-            [batchLevel]: [...(prev[batchLevel] || []), newActivity]
-        }));
+        setBatchActivities(prev => {
+            console.log('Previous batch activities:', prev);
+            const updated = {
+                ...prev,
+                [batchId]: [...(prev[batchId] || []), newActivity]
+            };
+            console.log('Updated batch activities:', updated);
+            return updated;
+        });
     };
     
-    const updateActivity = (batchLevel, activityId, field, value) => {
+    // FIX: Use consistent batchId parameter
+    const updateActivity = (batchId, activityId, field, value) => {
         setBatchActivities(prev => ({
             ...prev,
-            [batchLevel]: prev[batchLevel].map(activity =>
+            [batchId]: prev[batchId]?.map(activity =>
                 activity.id === activityId ? { ...activity, [field]: value } : activity
-            )
+            ) || []
         }));
     };
 
     // Show time picker for a specific activity and field
-    const showTimePicker = (batchLevel, activityId, field, currentValue) => {
+    const showTimePicker = (batchId, activityId, field, currentValue) => {
         setTimePicker({
             visible: true,
             mode: 'time',
-            batchLevel,
+            batchLevel: batchId, // Store batchId here
             activityId,
             field,
             value: currentValue,
@@ -274,17 +260,17 @@ const TimeBasedActivityCreator = ({
         }
     };
 
-    const removeActivity = (batchLevel, activityId) => {
+    const removeActivity = (batchId, activityId) => {
         setBatchActivities(prev => ({
             ...prev,
-            [batchLevel]: prev[batchLevel].filter(activity => activity.id !== activityId)
+            [batchId]: prev[batchId]?.filter(activity => activity.id !== activityId) || []
         }));
     };
 
     const validateTimeOverlaps = () => {
-        for (const batchLevel in batchActivities) {
-            const activities = batchActivities[batchLevel];
-            const existingActivities = getExistingActivitiesForBatch(batchLevel);
+        for (const batchId in batchActivities) {
+            const activities = batchActivities[batchId];
+            const existingActivities = getExistingActivitiesForBatch(batchId);
 
             // Check overlaps within new activities
             for (let i = 0; i < activities.length; i++) {
@@ -294,7 +280,8 @@ const TimeBasedActivityCreator = ({
 
                     if (activity1.start_time < activity2.end_time &&
                         activity1.end_time > activity2.start_time) {
-                        return `Time overlap detected in new activities for Batch ${batchLevel}`;
+                        const batch = batches.find(b => b.id == batchId);
+                        return `Time overlap detected in new activities for Batch ${batch?.batch_level || batchId}`;
                     }
                 }
             }
@@ -304,7 +291,8 @@ const TimeBasedActivityCreator = ({
                 for (const existingActivity of existingActivities) {
                     if (newActivity.start_time < existingActivity.end_time &&
                         newActivity.end_time > existingActivity.start_time) {
-                        return `New activity overlaps with existing activity in Batch ${batchLevel}`;
+                        const batch = batches.find(b => b.id == batchId);
+                        return `New activity overlaps with existing activity in Batch ${batch?.batch_level || batchId}`;
                     }
                 }
             }
@@ -316,15 +304,17 @@ const TimeBasedActivityCreator = ({
         try {
             // Validate required fields
             const allActivities = [];
-            for (const batchLevel in batchActivities) {
-                for (const activity of batchActivities[batchLevel]) {
+            for (const batchId in batchActivities) {
+                const batch = batches.find(b => b.id == batchId);
+                for (const activity of batchActivities[batchId]) {
                     if (!activity.mentor_id || !activity.topic_id || !activity.activity_type_id) {
-                        Alert.alert('Error', `Please fill all required fields for Batch ${batchLevel}`);
+                        Alert.alert('Error', `Please fill all required fields for Batch ${batch?.batch_level || batchId}`);
                         return;
                     }
                     allActivities.push({
                         ...activity,
-                        batch_number: parseInt(batchLevel)
+                        batch_number: batch?.batch_level || batchId,
+                        batch_id: batchId
                     });
                 }
             }
@@ -353,7 +343,8 @@ const TimeBasedActivityCreator = ({
                     body: JSON.stringify({
                         period_id: selectedPeriod.id,
                         date: selectedDate.toISOString().split('T')[0],
-                        activities: allActivities
+                        activities: allActivities,
+                        sectionId: sectionID
                     })
                 }
             );
@@ -379,10 +370,11 @@ const TimeBasedActivityCreator = ({
         return timeString ? timeString.slice(0, 5) : '';
     };
 
-    const getExistingActivitiesForBatch = (batchLevel) => {
+    const getExistingActivitiesForBatch = (batchId) => {
         if (!periodActivities) return [];
+        
         return periodActivities.filter(activity =>
-            activity.batch_number === parseInt(batchLevel) &&
+            activity.batch_id === parseInt(batchId) &&
             activity.dailyScheduleId === selectedPeriod.id
         );
     };
@@ -724,11 +716,10 @@ const TimeBasedActivityCreator = ({
 
                     <ScrollView style={styles.content}>
                         {batches.map((batch, idx) => {
-                            const existingActivities = getExistingActivitiesForBatch(batch.batch_level);
-                            const batchKey = batch.id ? batch.id : `${batch.batch_level}-${idx}`;
+                            const existingActivities = getExistingActivitiesForBatch(batch.id);
 
                             return (
-                                <View key={batchKey} style={styles.batchSection}>
+                                <View key={batch.id} style={styles.batchSection}>
                                     <View style={styles.batchHeader}>
                                         <Text style={styles.batchTitle}>
                                             Batch {batch.batch_level} ({batch.batch_name})
@@ -737,7 +728,7 @@ const TimeBasedActivityCreator = ({
                                             )}
                                         </Text>
                                         <TouchableOpacity
-                                            onPress={() => addActivityToBatch(batch.batch_level)}
+                                            onPress={() => addActivityToBatch(batch.id)}
                                             style={styles.addButton}
                                         >
                                             <Text style={styles.addIcon}>+</Text>
@@ -755,12 +746,13 @@ const TimeBasedActivityCreator = ({
                                         </View>
                                     )}
 
-                                    {batchActivities[batch.batch_level]?.map(activity => (
+                                    {/* FIX: Use batch.id consistently */}
+                                    {batchActivities[batch.id]?.map(activity => (
                                         <View key={activity.id} style={styles.activityForm}>
                                             <View style={styles.activityHeader}>
                                                 <Text style={styles.activityTitle}>New Activity</Text>
                                                 <TouchableOpacity
-                                                    onPress={() => removeActivity(batch.batch_level, activity.id)}
+                                                    onPress={() => removeActivity(batch.id, activity.id)}
                                                     style={styles.removeButton}
                                                 >
                                                     <Text style={styles.removeIcon}>🗑️</Text>
@@ -774,8 +766,8 @@ const TimeBasedActivityCreator = ({
                                                         selectedValue={activity.activity_type_id}
                                                         onValueChange={(value) => {
                                                             const selected = activities.find(a => a.id === value);
-                                                            updateActivity(batch.batch_level, activity.id, 'activity_type_id', value);
-                                                            updateActivity(batch.batch_level, activity.id, 'activity_type', selected ? selected.activity_name : '');
+                                                            updateActivity(batch.id, activity.id, 'activity_type_id', value);
+                                                            updateActivity(batch.id, activity.id, 'activity_type', selected ? selected.activity_name : '');
                                                             setSelectedActivity(value);
                                                         }}
                                                         style={styles.picker}
@@ -794,7 +786,7 @@ const TimeBasedActivityCreator = ({
                                                         <Picker
                                                             selectedValue={activity.sub_activity_type_id}
                                                             onValueChange={(value) => {
-                                                                updateActivity(batch.batch_level, activity.id, 'sub_activity_type_id', value);
+                                                                updateActivity(batch.id, activity.id, 'sub_activity_type_id', value);
                                                                 setSelectedSubActivity(value);
                                                             }}
                                                             style={styles.picker}
@@ -812,7 +804,7 @@ const TimeBasedActivityCreator = ({
                                                     <Text style={styles.label}>Start Time</Text>
                                                     <TouchableOpacity
                                                         style={styles.timeInput}
-                                                        onPress={() => showTimePicker(batch.batch_level, activity.id, 'start_time', activity.start_time)}
+                                                        onPress={() => showTimePicker(batch.id, activity.id, 'start_time', activity.start_time)}
                                                     >
                                                         <Text>{activity.start_time || 'Select Time'}</Text>
                                                     </TouchableOpacity>
@@ -821,7 +813,7 @@ const TimeBasedActivityCreator = ({
                                                     <Text style={styles.label}>End Time</Text>
                                                     <TouchableOpacity
                                                         style={styles.timeInput}
-                                                        onPress={() => showTimePicker(batch.batch_level, activity.id, 'end_time', activity.end_time)}
+                                                        onPress={() => showTimePicker(batch.id, activity.id, 'end_time', activity.end_time)}
                                                     >
                                                         <Text>{activity.end_time || 'Select Time'}</Text>
                                                     </TouchableOpacity>
@@ -854,7 +846,7 @@ const TimeBasedActivityCreator = ({
                                                 <View style={styles.pickerContainer}>
                                                     <Picker
                                                         selectedValue={activity.topic_id}
-                                                        onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'topic_id', value)}
+                                                        onValueChange={(value) => updateActivity(batch.id, activity.id, 'topic_id', value)}
                                                         style={styles.picker}
                                                     >
                                                         <Picker.Item label="Select Topic" value={null} />
@@ -874,7 +866,7 @@ const TimeBasedActivityCreator = ({
                                                 <View style={styles.pickerContainer}>
                                                     <Picker
                                                         selectedValue={activity.mentor_id}
-                                                        onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'mentor_id', value)}
+                                                        onValueChange={(value) => updateActivity(batch.id, activity.id, 'mentor_id', value)}
                                                         style={styles.picker}
                                                     >
                                                         <Picker.Item label="Select Mentor" value={null} />
@@ -893,7 +885,7 @@ const TimeBasedActivityCreator = ({
                                                 <Text style={styles.label}>Has Assessment</Text>
                                                 <Switch
                                                     value={activity.has_assessment}
-                                                    onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'has_assessment', value)}
+                                                    onValueChange={(value) => updateActivity(batch.id, activity.id, 'has_assessment', value)}
                                                 />
                                             </View>
 
@@ -904,7 +896,7 @@ const TimeBasedActivityCreator = ({
                                                         <View style={styles.pickerContainer}>
                                                             <Picker
                                                                 selectedValue={activity.assessment_type}
-                                                                onValueChange={(value) => updateActivity(batch.batch_level, activity.id, 'assessment_type', value)}
+                                                                onValueChange={(value) => updateActivity(batch.id, activity.id, 'assessment_type', value)}
                                                                 style={styles.picker}
                                                             >
                                                                 {assessmentTypes.map(type => (
@@ -919,7 +911,7 @@ const TimeBasedActivityCreator = ({
                                                         <TextInput
                                                             style={styles.input}
                                                             value={activity.total_marks?.toString()}
-                                                            onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'total_marks', parseInt(value) || 100)}
+                                                            onChangeText={(value) => updateActivity(batch.id, activity.id, 'total_marks', parseInt(value) || 100)}
                                                             keyboardType="numeric"
                                                             placeholder="100"
                                                         />
@@ -932,7 +924,7 @@ const TimeBasedActivityCreator = ({
                                                 <TextInput
                                                     style={styles.textArea}
                                                     value={activity.activity_instructions}
-                                                    onChangeText={(value) => updateActivity(batch.batch_level, activity.id, 'activity_instructions', value)}
+                                                    onChangeText={(value) => updateActivity(batch.id, activity.id, 'activity_instructions', value)}
                                                     placeholder="Enter activity instructions..."
                                                     multiline
                                                 />
@@ -1208,4 +1200,4 @@ const styles = {
     },
 };
 
-export default TimeBasedActivityCreator; 
+export default TimeBasedActivityCreator;

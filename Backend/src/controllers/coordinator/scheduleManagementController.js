@@ -1,5 +1,6 @@
 const db = require('../../config/db');
 const ExcelJS = require('exceljs');
+const fs = require("fs");
 
 // Create daily schedule with multiple activities
 exports.createDailySchedule = (req, res) => {
@@ -704,30 +705,28 @@ exports.getMonthlySchedule = (req, res) => {
         // Format date as string in MySQL (IST assumed)
         const query = `
             SELECT 
-                dsn.id,
-                DATE_FORMAT(dsn.date, '%Y-%m-%d') as date,
-                DAYNAME(dsn.date) as day_name,
-                dsn.period_number,
-                dsn.start_time,
-                dsn.end_time,
-                s.subject_name,
-                s.id as subject_id,
-                v.name as venue_name,
-                sec.section_name,
-                sec.id as section_id,
-                COUNT(pa.id) as activity_count
-            FROM daily_schedule dsn
-            LEFT JOIN subjects s ON dsn.subject_id = s.id
-            LEFT JOIN venues v ON dsn.venue_id = v.id  
-            LEFT JOIN sections sec ON dsn.section_id = sec.id
-            LEFT JOIN period_activities pa ON dsn.id = pa.daily_schedule_id
-            WHERE MONTH(dsn.date) = ? AND YEAR(dsn.date) = ? AND dsn.grade_id = ? AND dsn.section_id = ?
-            GROUP BY dsn.id, dsn.date, dsn.period_number, dsn.start_time, dsn.end_time, 
-                     s.subject_name, v.name, sec.section_name, s.id, sec.id
-            ORDER BY dsn.date, dsn.period_number
+    dsn.id,
+    DATE_FORMAT(dsn.date, '%Y-%m-%d') AS date,
+    DAYNAME(dsn.date) AS day_name,
+    dsn.start_time,
+    dsn.end_time,
+    s.subject_name,
+    s.id AS subject_id,
+    v.name AS venue_name,
+    sec.section_name,
+    sec.id AS section_id
+FROM daily_schedule dsn
+LEFT JOIN subjects s ON dsn.subject_id = s.id
+LEFT JOIN venues v ON dsn.venue_id = v.id  
+LEFT JOIN sections sec ON dsn.section_id = sec.id
+WHERE MONTH(dsn.date) = ?
+  AND YEAR(dsn.date) = ?
+  AND dsn.section_id = ?
+ORDER BY dsn.date, dsn.start_time;
+
         `;
 
-        db.query(query, [month, year, gradeId, sectionId], (err, scheduleData) => {
+        db.query(query, [month, year, sectionId], (err, scheduleData) => {
             if (err) {
                 console.error('Monthly schedule query error:', err);
                 return res.status(500).json({
@@ -802,20 +801,23 @@ exports.getPeriodActivities = (req, res) => {
         const { periodId, date } = req.params;
 
         const query = `
-                SELECT 
+                SELECT DISTINCT
                     pa.*,
                     th.topic_name,
                     th.parent_id,
                     th.subject_id,
                     tm.activity_name as material_name,
                     m.roll as mentor_roll,
-                    u.name as mentor_name
+                    u.name as mentor_name,
+                    sb.batch_level,
+                    sb.id as batch_id
                 FROM period_activities pa
                 LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
                 LEFT JOIN topic_materials tm ON pa.material_id = tm.id
                 LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
                 LEFT JOIN users u ON m.phone = u.phone
-                WHERE pa.daily_schedule_id = ?
+                LEFT JOIN section_batches sb ON pa.batch_id = sb.id
+                WHERE pa.dsn_id = ?
                 ORDER BY pa.start_time
             `;
 
@@ -833,6 +835,9 @@ exports.getPeriodActivities = (req, res) => {
             const topicIds = activities.map(activity => activity.topic_id).filter(id => id);
             const subjectIds = [...new Set(activities.map(activity => activity.subject_id).filter(id => id))];
 
+            // console.log('Topic IDs:', topicIds);
+            // console.log('Subject IDs:', subjectIds);
+
             if (topicIds.length === 0) {
                 // Ensure uniqueness and proper formatting even without topics
                 const seenIds = new Set();
@@ -846,11 +851,12 @@ exports.getPeriodActivities = (req, res) => {
                     })
                     .map(activity => ({
                         id: activity.id,
-                        dailyScheduleId: activity.daily_schedule_id,
+                        dailyScheduleId: activity.dsn_id,
                         activity_type: activity.activity_type || '',
                         activity_name: activity.activity_name || '',
                         duration: activity.duration || activity.duration_minutes || 0,
-                        batch_number: activity.batch_number || 1,
+                        batch_number: activity.batch_level || '',
+                        batch_id: activity.batch_id,
                         mentor_id: activity.assigned_mentor_id,
                         mentor_name: activity.mentor_name || '',
                         mentor_roll: activity.mentor_roll || '',
@@ -925,11 +931,12 @@ exports.getPeriodActivities = (req, res) => {
 
                         return {
                             id: activity.id,
-                            dailyScheduleId: activity.daily_schedule_id,
+                            dailyScheduleId: activity.dsn_id,
                             activity_type: activity.activity_type || '',
                             activity_name: activity.activity_name || '',
                             duration: activity.duration || activity.duration_minutes || 0,
-                            batch_number: activity.batch_number || 1,
+                            batch_number: activity.batch_level || '',
+                            batch_id: activity.batch_id || null,
                             mentor_id: activity.assigned_mentor_id,
                             mentor_name: activity.mentor_name || '',
                             mentor_roll: activity.mentor_roll || '',
@@ -1319,7 +1326,7 @@ exports.createPeriodActivitySplit = (req, res) => {
 // Create multiple time-based period activities
 exports.createTimeBasedActivitiesBatch = (req, res) => {
     try {
-        const { period_id, date, activities } = req.body;
+        const { period_id, date, activities, sectionId } = req.body;
 
         // activities array should contain:
         // [{ batch_number, activity_type, start_time, end_time, topic_id, mentor_id, has_assessment, assessment_type, total_marks }]
@@ -1396,7 +1403,7 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
                     const activity = activities[currentIndex];
                     const {
                         batch_number, activity_type, activity_type_id, sub_activity_type_id, start_time, end_time, topic_id,
-                        mentor_id, has_assessment, assessment_type, total_marks, activity_instructions
+                        mentor_id, has_assessment, assessment_type, total_marks, activity_instructions, batch_id
                     } = activity;
 
                     // Calculate duration in minutes
@@ -1406,19 +1413,20 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
 
                     const insertQuery = `
                         INSERT INTO period_activities 
-                        (daily_schedule_id, activity_date, activity_name, activity_type, section_subject_activity_id, ssa_sub_activity_id, duration, 
-                         batch_number, assigned_mentor_id, topic_id, is_assessment, 
-                         total_marks, start_time, end_time, activity_instructions, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                        (dsn_id, activity_date, activity_name, activity_type, section_subject_activity_id, ssa_sub_activity_id, duration, 
+                         batch_id, assigned_mentor_id, topic_id, is_assessment, 
+                         total_marks, start_time, end_time, activity_instructions, created_at, section_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
                     `;
 
                     const activityName = `${activity_type} - Batch ${batch_number}`;
 
                     db.query(insertQuery, [
                         period_id, date, activityName, activity_type, activity_type_id, sub_activity_type_id,
-                        duration_minutes, batch_number, mentor_id, topic_id,
+                        duration_minutes, batch_id, mentor_id, topic_id,
                         has_assessment ? 1 : 0, total_marks,
-                        start_time, end_time, activity_instructions || ''
+                        start_time, end_time, activity_instructions || '',
+                        sectionId
                     ], (insertErr, result) => {
                         if (insertErr) {
                             console.error('Insert activity error:', insertErr);
@@ -1464,28 +1472,28 @@ exports.updatePeriodActivity = (req, res) => {
     try {
         const { activityId } = req.params;
         const {
-            activity_type, activity_type_id, sub_activity_id, sub_activity_type_id, duration, batch_number,
+            activity_type, activity_type_id, sub_activity_id, sub_activity_type_id, duration, batch_number, batch_id,
             mentor_id, topic_id, has_assessment, assessment_type, total_marks,
             activity_instructions, activity_name, end_time, start_time
         } = req.body;
 
         console.log('Updating activity:', {
             activityId,
-            activity_type, activity_type_id, sub_activity_id, sub_activity_type_id, duration, batch_number,
+            activity_type, activity_type_id, sub_activity_id, sub_activity_type_id, duration, batch_number, batch_id,
             mentor_id, topic_id, has_assessment, assessment_type, total_marks,
             activity_instructions, activity_name, end_time, start_time
         });
 
         const updateQuery = `
                 UPDATE period_activities 
-                SET activity_type = ?, duration = ?, batch_number = ?,
+                SET activity_type = ?, duration = ?, batch_id = ?,
                     assigned_mentor_id = ?, topic_id = ?, is_assessment = ?, section_subject_activity_id = ?, ssa_sub_activity_id = ?,
                     total_marks = ?, activity_instructions = ?, activity_name = ?, end_time = ?, start_time = ?, updated_at = NOW()
                 WHERE id = ?
             `;
 
         db.query(updateQuery, [
-            activity_type, duration, batch_number,
+            activity_type, duration, batch_id,
             mentor_id, topic_id, has_assessment, activity_type_id, sub_activity_type_id, total_marks,
             activity_instructions, activity_name, end_time, start_time, activityId
         ], (err, result) => {
@@ -1726,142 +1734,345 @@ exports.deleteStudentScheduleOverride = (req, res) => {
 };
 
 
+// Enhanced processScheduleSheet function with better error handling
 exports.processScheduleSheet = async (req, res) => {
     try {
+
         if (!req.file) {
             return res.status(400).json({
                 success: false,
-                message: 'No file uploaded'
+                message: "No file uploaded",
             });
         }
 
         const { sectionId } = req.body;
         const filePath = req.file.path;
 
-        // Use the promise wrapper
         const dbPromise = db.promise();
 
-        // Read Excel file using exceljs
+        // Read Excel
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(filePath);
-        const worksheet = workbook.getWorksheet('Schedule Data');
+        const worksheet = workbook.getWorksheet("Schedule Data");
+
+        if (!worksheet) {
+            fs.unlinkSync(filePath);
+            return res.status(400).json({
+                success: false,
+                message: "Invalid Excel format. Please use the provided template.",
+            });
+        }
 
         const rows = [];
         worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-            if (rowNumber > 1) { // Skip header row
-                rows.push(row.values);
+            if (rowNumber > 1) {
+                const values = row.values.slice(1);
+                if (values.some((val) => val !== null && val !== undefined && val !== "")) {
+                    rows.push(values);
+                }
             }
         });
 
-        // Start transaction using promise wrapper
+
+        if (rows.length === 0) {
+            fs.unlinkSync(filePath);
+            return res.status(400).json({
+                success: false,
+                message: "No data found in the Excel sheet",
+            });
+        }
+
+        // Start transaction
         const connection = await dbPromise.getConnection();
-        await connection.execute('START TRANSACTION');
+        await connection.query("START TRANSACTION");
 
         try {
-            const weeklyScheduleMap = new Map();
+            let processedCount = 0;
+            const errors = [];
+            const weeklyEntries = [];
 
-            for (const row of rows) {
-                const [
-                    , sno, date, fromTime, toTime, subjectName, venueName, batchLevel,
-                    activityType, subActivityName, topicPath, mentorInfo, isAssessment, instructions
-                ] = row;
+            for (let i = 0; i < rows.length; i++) {
+                try {
+                    const [
+                        sno,
+                        date,
+                        fromTime,
+                        toTime,
+                        subjectName,
+                        venueName,
+                        batchLevel,
+                        activityType,
+                        subActivityName,
+                        topicPath,
+                        mentorInfo,
+                        isAssessment,
+                        instructions,
+                    ] = rows[i];
 
-                // Lookup IDs using promise wrapper
-                const [subject] = await connection.execute('SELECT id FROM subjects WHERE subject_name = ?', [subjectName]);
-                const [venue] = await connection.execute('SELECT id FROM venues WHERE name = ?', [venueName]);
+                    if (!date || !fromTime || !toTime || !subjectName) continue;
 
-                // Extract mentor name and roll from format "NAME (ROLL)"
-                const mentorMatch = mentorInfo.match(/(.+?)\s*\(([^)]+)\)/);
-                const mentorName = mentorMatch ? mentorMatch[1].trim() : mentorInfo;
-                const mentorRoll = mentorMatch ? mentorMatch[2].trim() : '';
+                    // Lookups
 
-                const [mentor] = await connection.execute(`
-          SELECT m.id FROM mentors m 
-          JOIN users u ON m.phone = u.phone 
-          WHERE u.name = ? AND m.roll = ?
-        `, [mentorName, mentorRoll]);
-
-                const [activity] = await connection.execute('SELECT id FROM activity_types WHERE activity_type = ?', [activityType]);
-                const [subActivity] = await connection.execute('SELECT id FROM sub_activities WHERE sub_act_name = ?', [subActivityName]);
-
-                // Process topic hierarchy
-                const topicParts = topicPath.split(' > ');
-                let parentId = null;
-                let topicId = null;
-
-                for (const topicName of topicParts) {
-                    const [topic] = await connection.execute(
-                        'SELECT id FROM topic_hierarchy WHERE topic_name = ? AND parent_id = ? AND subject_id = ?',
-                        [topicName.trim(), parentId, subject[0]?.id]
+                    const [subject] = await connection.execute(
+                        "SELECT id FROM subjects WHERE subject_name = ?",
+                        [subjectName]
                     );
-                    if (topic.length > 0) {
-                        parentId = topic[0].id;
-                        topicId = topic[0].id;
+                    // console.log(subject.id);
+                    if (!subject) {
+                        errors.push(`Row ${i + 2}: Subject "${subjectName}" not found`);
+                        continue;
                     }
-                }
 
-                // Create weekly schedule entry
-                const dayOfWeek = new Date(date).toLocaleString('en-US', { weekday: 'long' });
-                const weeklyScheduleKey = `${dayOfWeek}-${subject[0]?.id}-${sectionId}`;
-
-                if (!weeklyScheduleMap.has(weeklyScheduleKey)) {
-                    const [weeklySchedule] = await connection.execute(
-                        `INSERT INTO weekly_schedule 
-             (day, subject_id, section_id, venue_id, start_time, end_time, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, NOW())
-             ON DUPLICATE KEY UPDATE venue_id = ?, start_time = ?, end_time = ?`,
-                        [dayOfWeek, subject[0]?.id, sectionId, venue[0]?.id, fromTime, toTime,
-                            venue[0]?.id, fromTime, toTime]
+                    const [venue] = await connection.execute(
+                        "SELECT id FROM venues WHERE name = ?",
+                        [venueName]
                     );
-                    weeklyScheduleMap.set(weeklyScheduleKey, weeklySchedule.insertId);
-                }
+                    //   console.log(venue);
+                    if (!venue) {
+                        errors.push(`Row ${i + 2}: Venue "${venueName}" not found`);
+                        continue;
+                    }
 
-                // Create period activity
-                await connection.execute(
-                    `INSERT INTO period_activities 
-           (activity_date, activity_name, activity_type, 
-            batch_number, topic_id, start_time, end_time, duration,
-            assigned_mentor_id, activity_instructions, is_assessment, 
-            section_subject_activity_id, ssa_sub_activity_id, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 
-                   TIMESTAMPDIFF(MINUTE, CONCAT(?, ' ', ?), CONCAT(?, ' ', ?)), 
-                   ?, ?, ?, ?, ?, NOW())`,
-                    [date, `${activityType} - Batch ${batchLevel}`, activityType,
-                        batchLevel, topicId, fromTime, toTime,
-                        date, fromTime, date, toTime,
-                        mentor[0]?.id, instructions, isAssessment,
-                        activity[0]?.id, subActivity[0]?.id]
-                );
+                    // Mentor parse
+                    const mentorMatch = mentorInfo?.toString().match(/(.+?)\s*\(([^)]+)\)/);
+                    const mentorName = mentorMatch ? mentorMatch[1].trim() : mentorInfo;
+                    const mentorRoll = mentorMatch ? mentorMatch[2].trim() : "";
+
+                    const [mentor] = await connection.execute(
+                        `SELECT m.id 
+                        FROM mentors m 
+                        JOIN users u ON m.phone = u.phone 
+                        WHERE u.name = ? AND m.roll = ?`,
+                        [mentorName, mentorRoll]
+                    );
+                    //   console.log(mentor);
+
+                    const [activity] = await connection.execute(
+                        `SELECT ssa.id 
+                        FROM section_subject_activities ssa
+                        JOIN activity_types at ON ssa.activity_type = at.id
+                        WHERE at.activity_type = ? AND ssa.subject_id = ? AND ssa.section_id = ?`,
+                        [activityType, subject.id, sectionId]
+                    );
+                    //   console.log(activity);
+                    const [subActivity] = await connection.execute(
+                        `SELECT sssa.id 
+                        FROM ssa_sub_activities sssa
+                        JOIN sub_activities sa ON sssa.sub_act_id = sa.id
+                        WHERE sa.sub_act_name = ? AND sssa.ssa_id = ?`,
+                        [subActivityName, activity.id]
+                    );
+                    //   console.log(subActivity);
+
+                    // Topic hierarchy
+
+                    let topicId = null;
+                    if (topicPath) {
+                        const match = topicPath.match(/^(\d+)-\[(.+?)\]\s*(.+)$/);
+                        console.log(match);
+
+                        if (!match) {
+                            return null;
+                        }
+
+                        const [, idStr, subjectName, topicHierarchy] = match;
+                        topicId = parseInt(idStr, 10);
+                    }
+
+                    //   console.log(topicId);
+
+                    // console.log("hi");
+                    const batchLevelMatch = batchLevel?.toString().match(/\[.*?\]\s*(.+)/);
+                    const cleanBatchLevel = batchLevelMatch ? batchLevelMatch[1] : batchLevel;
+
+                    const [batchId] = await connection.execute(
+                        `SELECT id FROM section_batches WHERE batch_level = ? AND section_id = ? AND subject_id = ?`,
+                        [cleanBatchLevel, sectionId, subject.id]
+                    );
+
+                    const startDateTime = new Date(`1970-01-01T${fromTime}:00`);
+                    const endDateTime = new Date(`1970-01-01T${toTime}:00`);
+                    const duration = Math.round((endDateTime - startDateTime) / 60000);
+                    console.log(date,
+                        `${activityType} - Batch ${cleanBatchLevel}`,
+                        activityType,
+                        duration,
+                        batchId?.id,
+                        mentor?.id || null,
+                        topicId,
+                        fromTime,
+                        toTime,
+                        isAssessment == 1 ? 1 : 0,
+                        instructions || "",
+                        activity?.id || null,
+                        subActivity?.id || null);
+
+                    // Insert into period_activities
+                    await connection.execute(
+                        `INSERT INTO period_activities 
+             (activity_date, activity_name, activity_type, section_id, duration, 
+              batch_id, assigned_mentor_id, topic_id, start_time, end_time,
+              is_assessment, activity_instructions, section_subject_activity_id, 
+              ssa_sub_activity_id, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                        [
+                            date,
+                            `${activityType} - Batch ${cleanBatchLevel}`,
+                            activityType,
+                            sectionId,
+                            duration,
+                            batchId?.id,
+                            mentor?.id || null,
+                            topicId,
+                            fromTime,
+                            toTime,
+                            isAssessment == 1 ? 1 : 0,
+                            instructions || "",
+                            activity?.id || null,
+                            subActivity?.id || null,
+                        ]
+                    );
+
+                    // Weekly schedule
+                    const dayOfWeek = new Date(date).toLocaleString("en-US", { weekday: "long" });
+
+                    // Collect weekly entry
+                    weeklyEntries.push({
+                        sectionId,
+                        subjectId: subject.id,
+                        venueId: venue.id,
+                        date,
+                        fromTime,
+                        toTime
+                    });
+
+                    processedCount++;
+                } catch (rowError) {
+                    console.error(`Error processing row ${i + 2}:`, rowError);
+                    errors.push(`Row ${i + 2}: ${rowError.message}`);
+                }
             }
 
-            await connection.execute('COMMIT');
+            function mergeSlots(entries) {
+                const merged = [];
+                const groups = {};
+
+                for (const e of entries) {
+                    const key = `${e.sectionId}-${e.subjectId}-${e.venueId}-${e.date}`;
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(e);
+                }
+
+                for (const key in groups) {
+                    const group = groups[key];
+                    const fromTimes = group.map(g => g.fromTime).sort();
+                    const toTimes = group.map(g => g.toTime).sort();
+                    merged.push({
+                        ...group[0], // copy sectionId, subjectId, venueId, date
+                        fromTime: fromTimes[0],                  // earliest
+                        toTime: toTimes[toTimes.length - 1]      // latest
+                    });
+                }
+
+                return merged;
+            }
+
+            const mergedEntries = mergeSlots(weeklyEntries);
+
+            for (const entry of mergedEntries) {
+                const dayOfWeek = new Date(entry.date).toLocaleString("en-US", { weekday: "long" });
+
+                // Insert into weekly_schedule
+                await connection.execute(
+                    `INSERT INTO weekly_schedule 
+            (day, subject_id, section_id, venue, start_time, end_time, session_no, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 1, NOW())
+            ON DUPLICATE KEY UPDATE 
+              start_time = VALUES(start_time),
+              end_time = VALUES(end_time),
+              venue = VALUES(venue)`,
+                    [dayOfWeek, entry.subjectId, entry.sectionId, entry.venueId, entry.fromTime, entry.toTime]
+                );
+
+                // Insert into daily_schedule
+                const insertDaily = await connection.execute(
+                    `INSERT INTO daily_schedule 
+      (date, subject_id, section_id, venue_id, start_time, end_time, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE 
+        venue_id = VALUES(venue_id),
+        start_time = VALUES(start_time),
+        end_time = VALUES(end_time)`,
+                    [
+                        entry.date,
+                        entry.subjectId,
+                        entry.sectionId,
+                        entry.venueId,
+                        entry.fromTime,
+                        entry.toTime
+                    ]
+                );
+
+                console.log("Inserted into daily_schedule:", insertDaily);
+
+                let dailyId = insertDaily.insertId;
+                if (!dailyId) {
+                    const [rows] = await connection.execute(
+                        `SELECT id FROM daily_schedule 
+       WHERE date = ? AND section_id = ? AND subject_id = ? AND venue_id = ? 
+         AND start_time = ? AND end_time = ? LIMIT 1`,
+                        [entry.date, entry.sectionId, entry.subjectId, entry.venueId, entry.fromTime, entry.toTime]
+                    );
+                    dailyId = rows[0]?.id;
+                }
+
+                // Update period_activities with correct daily_schedule id
+                console.log("Updating period_activities with dailyId:", dailyId, entry.date, entry.sectionId);
+                const sqlDate = new Date(entry.date).toISOString().split("T")[0]; 
+                if (dailyId) {
+                    await connection.execute(
+                        `UPDATE period_activities pa
+       SET pa.dsn_id = ?
+       WHERE pa.activity_date = ? AND pa.section_id = ?`,
+                        [dailyId, sqlDate, parseInt(entry.sectionId)]
+                    );
+                }
+            }
+            await connection.execute("COMMIT");
             connection.release();
 
-            // Clean up file
-            const fs = require('fs');
+            const fs = require("fs");
             fs.unlinkSync(filePath);
 
             res.json({
                 success: true,
-                message: 'Schedule uploaded successfully',
-                data: { processedRows: rows.length }
+                message: `Schedule uploaded successfully. Processed ${processedCount} rows.`,
+                data: {
+                    processedRows: processedCount,
+                    totalRows: rows.length,
+                    errors: errors.length > 0 ? errors : null
+                }
             });
 
         } catch (error) {
-            await connection.execute('ROLLBACK');
+            await connection.execute("ROLLBACK");
             connection.release();
             throw error;
         }
-
     } catch (error) {
-        console.error('Process schedule sheet error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to process schedule sheet',
-            error: error.message
-        });
+        console.error("Process schedule sheet error:", error);
+        try {
+            const fs = require("fs");
+            if (req.file && req.file.path) {
+                fs.unlinkSync(req.file.path);
+            }
+        } catch (cleanupError) {
+            console.error("File cleanup error:", cleanupError);
+        }
+        res.status(500).json({ success: false, message: "Failed to process schedule sheet", error: error.message });
     }
 };
+
 
 // exports.generateScheduleTemplate = async (req, res) => {
 //   try {
@@ -2172,388 +2383,423 @@ exports.processScheduleSheet = async (req, res) => {
 // };
 
 exports.generateScheduleTemplate = async (req, res) => {
-  try {
-    const { gradeId, sectionId } = req.params;
-    const dbPromise = db.promise();
+    try {
+        const { gradeId, sectionId } = req.params;
+        const dbPromise = db.promise();
 
-    // Fetch all data needed for filtering
-    const [subjects, venues, mentors, activities, subActivities, batches, topics, ssaMappings] =
-      await Promise.all([
-        dbPromise.query("SELECT id, subject_name FROM subjects"),
-        dbPromise.query(
-          `SELECT v.id, v.name 
+        // Fetch all data needed for filtering
+        const [subjects, venues, mentors, activities, subActivities, batches, topics, ssaMappings] =
+            await Promise.all([
+                dbPromise.query("SELECT id, subject_name FROM subjects"),
+                dbPromise.query(
+                    `SELECT v.id, v.name 
            FROM venues v
            WHERE v.grade_id = ?`,
-          [gradeId]
-        ),
-        dbPromise.query(
-          `SELECT m.id, u.name, m.roll, m.subject_id
+                    [gradeId]
+                ),
+                dbPromise.query(
+                    `SELECT m.id, u.name, m.roll, m.subject_id
            FROM mentors m 
            JOIN users u ON m.phone = u.phone
            WHERE m.grade_id = ?`,
-          [gradeId]
-        ),
-        dbPromise.query("SELECT id, activity_type FROM activity_types"),
-        dbPromise.query("SELECT id, sub_act_name FROM sub_activities"),
-        dbPromise.query(
-          `SELECT DISTINCT sb.batch_level, sb.subject_id, s.subject_name
+                    [gradeId]
+                ),
+                dbPromise.query("SELECT id, activity_type FROM activity_types"),
+                dbPromise.query("SELECT id, sub_act_name FROM sub_activities"),
+                dbPromise.query(
+                    `SELECT DISTINCT sb.id, sb.batch_level, sb.subject_id, s.subject_name
            FROM section_batches sb
            JOIN subjects s ON sb.subject_id = s.id
            WHERE sb.section_id = ?
            ORDER BY sb.batch_level`,
-          [sectionId]
-        ),
-        dbPromise.query(
-          `SELECT th.id, th.topic_name, th.parent_id, th.subject_id, s.subject_name,
+                    [sectionId]
+                ),
+                dbPromise.query(
+                    `SELECT th.id, th.topic_name, th.parent_id, th.subject_id, s.subject_name,
                   th.section_subject_activity_id, th.ssa_sub_activity_id
            FROM topic_hierarchy th
            JOIN subjects s ON th.subject_id = s.id
            ORDER BY th.subject_id, th.topic_name`,
-        ),
-        dbPromise.query(
-          `SELECT ssa.id, ssa.activity_type, ssa.section_id, ssa.subject_id, 
+                ),
+                dbPromise.query(
+                    `SELECT ssa.id, ssa.activity_type, ssa.section_id, ssa.subject_id, 
                   ssa_sub.sub_act_id
            FROM section_subject_activities ssa
            LEFT JOIN ssa_sub_activities ssa_sub ON ssa.id = ssa_sub.ssa_id
            WHERE ssa.section_id = ?`,
-          [sectionId]
-        )
-      ]);
+                    [sectionId]
+                )
+            ]);
 
-    // Extract results
-    const subjectsData = subjects[0];
-    const venuesData = venues[0];
-    const mentorsData = mentors[0];
-    const activitiesData = activities[0];
-    const subActivitiesData = subActivities[0];
-    const batchesData = batches[0];
-    const topicsData = topics[0];
-    const ssaMappingsData = ssaMappings[0];
+        // Extract results
+        const subjectsData = subjects[0];
+        const venuesData = venues[0];
+        const mentorsData = mentors[0];
+        const activitiesData = activities[0];
+        const subActivitiesData = subActivities[0];
+        const batchesData = batches[0];
+        const topicsData = topics[0];
+        const ssaMappingsData = ssaMappings[0];
 
-    // Create workbook + sheets
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Schedule Data");
-    const validationSheet = workbook.addWorksheet("Validation Data");
+        // Create workbook + sheets
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Schedule Data");
+        const validationSheet = workbook.addWorksheet("Validation Data");
 
-    // Define columns for Schedule Data
-    worksheet.columns = [
-      { header: "SNo", key: "sno", width: 5 },
-      { header: "Date (YYYY-MM-DD)", key: "date", width: 15 },
-      { header: "From Time (HH:MM)", key: "fromTime", width: 15 },
-      { header: "To Time (HH:MM)", key: "toTime", width: 15 },
-      { header: "Subject", key: "subject", width: 20 },
-      { header: "Venue", key: "venue", width: 15 },
-      { header: "Batch Level", key: "batchLevel", width: 12 },
-      { header: "Activity Type", key: "activityType", width: 20 },
-      { header: "Sub Activity", key: "subActivity", width: 20 },
-      { header: "Topic", key: "topic", width: 30 },
-      { header: "Mentor", key: "mentor", width: 25 },
-      { header: "Is Assessment (0/1)", key: "isAssessment", width: 15 },
-      { header: "Instructions", key: "instructions", width: 30 },
-    ];
+        // Define columns for Schedule Data
+        worksheet.columns = [
+            { header: "SNo", key: "sno", width: 5 },
+            { header: "Date (YYYY-MM-DD)", key: "date", width: 15 },
+            { header: "From Time (HH:MM)", key: "fromTime", width: 15 },
+            { header: "To Time (HH:MM)", key: "toTime", width: 15 },
+            { header: "Subject", key: "subject", width: 20 },
+            { header: "Venue", key: "venue", width: 15 },
+            { header: "Batch Level", key: "batchLevel", width: 12 },
+            { header: "Activity Type", key: "activityType", width: 20 },
+            { header: "Sub Activity", key: "subActivity", width: 20 },
+            { header: "Topic", key: "topic", width: 30 },
+            { header: "Mentor", key: "mentor", width: 25 },
+            { header: "Is Assessment (0/1)", key: "isAssessment", width: 15 },
+            { header: "Instructions", key: "instructions", width: 30 },
+        ];
 
-    // Sample row
-    worksheet.addRow({
-      sno: 1,
-      date: "2025-08-25",
-      fromTime: "09:30",
-      toTime: "10:00",
-      subject: "",
-      venue: "",
-      batchLevel: "",
-      activityType: "",
-      subActivity: "",
-      topic: "",
-      mentor: "",
-      isAssessment: 0,
-      instructions: "Nil",
-    });
+        // Sample row
+        worksheet.addRow({
+            sno: 1,
+            date: "2025-08-25",
+            fromTime: "09:30",   // keep as string
+            toTime: "10:00",     // keep as string
+            subject: "",
+            venue: "",
+            batchLevel: "",
+            activityType: "",
+            subActivity: "",
+            topic: "",
+            mentor: "",
+            isAssessment: 0,
+            instructions: "Nil",
+        });
 
-    // ===============================
-    // Prepare data for dynamic filtering
-    // ===============================
+        worksheet.getColumn("fromTime").numFmt = "@"; // "@" = text in Excel
+        worksheet.getColumn("toTime").numFmt = "@";
 
-    // Create subject mapping
-    const subjectMap = {};
-    subjectsData.forEach((subject, index) => {
-      subjectMap[subject.subject_name] = subject.id;
-    });
 
-    // Create activity mapping by subject
-    const subjectActivityMap = {};
-    ssaMappingsData.forEach(ssa => {
-      if (!subjectActivityMap[ssa.subject_id]) {
-        subjectActivityMap[ssa.subject_id] = new Set();
-      }
-      subjectActivityMap[ssa.subject_id].add(ssa.activity_type);
-    });
+        // ===============================
+        // Prepare data for dynamic filtering
+        // ===============================
 
-    // Create sub-activity mapping by activity and subject
-    const activitySubActivityMap = {};
-    ssaMappingsData.forEach(ssa => {
-      const key = `${ssa.subject_id}-${ssa.activity_type}`;
-      if (!activitySubActivityMap[key]) {
-        activitySubActivityMap[key] = new Set();
-      }
-      if (ssa.sub_act_id) {
-        activitySubActivityMap[key].add(ssa.sub_act_id);
-      }
-    });
+        // Create subject mapping
+        const subjectMap = {};
+        subjectsData.forEach((subject, index) => {
+            subjectMap[subject.subject_name] = subject.id;
+        });
 
-    // Create batch levels by subject
-    console.log(batchesData);
-    
-    const subjectBatchMap = {};
-    batchesData.forEach(batch => {
-      if (!subjectBatchMap[batch.subject_id]) {
-        subjectBatchMap[batch.subject_id] = new Set();
-      }
-      subjectBatchMap[batch.subject_id].add(`[${batch.subject_name}] ${batch.batch_level}`);
-    });
+        // Create activity mapping by subject
+        const subjectActivityMap = {};
+        ssaMappingsData.forEach(ssa => {
+            if (!subjectActivityMap[ssa.subject_id]) {
+                subjectActivityMap[ssa.subject_id] = new Set();
+            }
+            subjectActivityMap[ssa.subject_id].add(ssa.activity_type);
+        });
 
-    // Create topics by subject, activity, and sub-activity
-    const subjectTopicMap = {};
-    topicsData.forEach(topic => {
-      const key = `${topic.subject_id}-${topic.section_subject_activity_id || '0'}-${topic.ssa_sub_activity_id || '0'}`;
-      if (!subjectTopicMap[key]) {
-        subjectTopicMap[key] = [];
-      }
-      
-      // Build hierarchy path
-      const hierarchyPath = buildHierarchyPath(topic.id, topicsData);
-      subjectTopicMap[key].push({
-          id: topic.id,
-          display: hierarchyPath.join(' > '),
-          fullPath: hierarchyPath.join(' > ')
-      });
-    });
+        // Create sub-activity mapping by activity and subject
+        const activitySubActivityMap = {};
+        ssaMappingsData.forEach(ssa => {
+            const key = `${ssa.subject_id}-${ssa.activity_type}`;
+            if (!activitySubActivityMap[key]) {
+                activitySubActivityMap[key] = new Set();
+            }
+            if (ssa.sub_act_id) {
+                activitySubActivityMap[key].add(ssa.sub_act_id);
+            }
+        });
 
-    // Create mentors by subject
-    const subjectMentorMap = {};
-    mentorsData.forEach(mentor => {
-      if (!subjectMentorMap[mentor.subject_id]) {
-        subjectMentorMap[mentor.subject_id] = [];
-      }
-      subjectMentorMap[mentor.subject_id].push(`${mentor.name} (${mentor.roll})`);
-    });
+        // Create batch levels by subject
+        console.log(batchesData);
 
-    // Helper function to build topic hierarchy path
-    function buildHierarchyPath(topicId, topics, path = []) {
-      const topic = topics.find(t => t.id === topicId);
-      if (!topic) return path;
+        const subjectBatchMap = {};
+        batchesData.forEach(batch => {
+            if (!subjectBatchMap[batch.subject_id]) {
+                subjectBatchMap[batch.subject_id] = new Set();
+            }
+            subjectBatchMap[batch.subject_id].add(`${batch.id}-[${batch.subject_name}] ${batch.batch_level}`);
+        });
 
-      path.unshift(topic.topic_name);
+        // Create topics by subject, activity, and sub-activity
+        const subjectTopicMap = {};
+        topicsData.forEach(topic => {
+            const key = `${topic.subject_id}-${topic.section_subject_activity_id || '0'}-${topic.ssa_sub_activity_id || '0'}`;
+            if (!subjectTopicMap[key]) {
+                subjectTopicMap[key] = [];
+            }
 
-      if (topic.parent_id) {
-        return buildHierarchyPath(topic.parent_id, topics, path);
-      }
-    //   console.log(path);
-      
-      return path;
+            // Build hierarchy path
+            const hierarchyPath = buildHierarchyPath(topic.id, topicsData);
+            subjectTopicMap[key].push({
+                id: topic.id,
+                display: hierarchyPath.join(' > '),
+                fullPath: hierarchyPath.join(' > ')
+            });
+        });
+
+        // Create mentors by subject
+        const subjectMentorMap = {};
+        mentorsData.forEach(mentor => {
+            if (!subjectMentorMap[mentor.subject_id]) {
+                subjectMentorMap[mentor.subject_id] = [];
+            }
+            subjectMentorMap[mentor.subject_id].push(`${mentor.name} (${mentor.roll})`);
+        });
+
+        // Helper function to build topic hierarchy path
+        function buildHierarchyPath(topicId, topics, path = []) {
+            const topic = topics.find(t => t.id === topicId);
+            if (!topic) return path;
+
+            path.unshift(topic.topic_name);
+
+            if (topic.parent_id) {
+                return buildHierarchyPath(topic.parent_id, topics, path);
+            }
+            //   console.log(path);
+
+            return path;
+        }
+
+        // ===============================
+        // Fill Validation Data
+        // ===============================
+
+        // Helper function to add validation data and return the range
+        const addValidationData = (title, data, startCol = 1) => {
+            const titleRowNum = validationSheet.lastRow ? validationSheet.lastRow.number + 2 : 1;
+            validationSheet.getCell(titleRowNum, startCol).value = title;
+
+            const dataStartRow = titleRowNum + 1;
+            data.forEach((item, index) => {
+                validationSheet.getCell(dataStartRow + index, startCol).value = item;
+            });
+
+            const dataEndRow = dataStartRow + data.length - 1;
+            const colLetter = String.fromCharCode(64 + startCol);
+
+            return `'Validation Data'!$${colLetter}$${dataStartRow}:$${colLetter}$${dataEndRow}`;
+        };
+
+        // Create validation data arrays
+        const subjectNames = subjectsData.map(s => s.subject_name);
+        const venueNames = venuesData.map(v => v.name);
+        const batchLevels = batchesData.map(b => `[${b.subject_name}] ${b.batch_level}`);
+        const activityTypes = activitiesData.map(a => a.activity_type);
+        const subActivityNames = subActivitiesData.map(s => s.sub_act_name);
+        const mentorDisplayNames = mentorsData.map(m => `${m.name} (${m.roll})`);
+
+        // Create topic hierarchy display
+        const topicHierarchy = topicsData.map(topic => {
+            const hierarchyPath = buildHierarchyPath(topic.id, topicsData);
+            return `${topic.id}-[${topic.subject_name}] ${hierarchyPath.join(' > ')}`
+        });
+
+        // Add validation data to sheet and get ranges
+        const subjectRange = addValidationData("SUBJECTS", subjectNames, 1);
+        const venueRange = addValidationData("VENUES", venueNames, 2);
+        const batchRange = addValidationData("BATCH LEVELS", batchLevels, 3);
+        const activityRange = addValidationData("ACTIVITY TYPES", activityTypes, 4);
+        const subActivityRange = addValidationData("SUB ACTIVITIES", subActivityNames, 5);
+        const mentorRange = addValidationData("MENTORS", mentorDisplayNames, 6);
+        const topicRange = addValidationData("TOPICS", topicHierarchy, 7);
+
+        // ===============================
+        // Apply Data Validations
+        // ===============================
+
+        for (let i = 2; i <= 51; i++) {
+            // Subject validation (column E)
+            worksheet.getCell(`E${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: false,
+                formulae: [subjectRange],
+                showErrorMessage: true,
+                errorStyle: 'error',
+                errorTitle: 'Invalid Subject',
+                error: 'Please select a valid subject from the dropdown list.'
+            };
+
+            // Venue validation (column F)
+            worksheet.getCell(`F${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: [venueRange],
+                showErrorMessage: true,
+                errorStyle: 'error',
+                errorTitle: 'Invalid Venue',
+                error: 'Please select a valid venue from the dropdown list.'
+            };
+
+            // Batch Level validation (column G)
+            worksheet.getCell(`G${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: [batchRange],
+                showErrorMessage: true,
+                errorStyle: 'error',
+                errorTitle: 'Invalid Batch Level',
+                error: 'Please select a valid batch level from the dropdown list.'
+            };
+
+            // Activity Type validation (column H)
+            worksheet.getCell(`H${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: [activityRange],
+                showErrorMessage: true,
+                errorStyle: 'error',
+                errorTitle: 'Invalid Activity Type',
+                error: 'Please select a valid activity type from the dropdown list.'
+            };
+
+            // Sub Activity validation (column I)
+            worksheet.getCell(`I${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: [subActivityRange],
+                showErrorMessage: true,
+                errorStyle: 'error',
+                errorTitle: 'Invalid Sub Activity',
+                error: 'Please select a valid sub activity from the dropdown list.'
+            };
+
+            // Topic validation (column J)
+            worksheet.getCell(`J${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: [topicRange],
+                showErrorMessage: true,
+                errorStyle: 'error',
+                errorTitle: 'Invalid Topic',
+                error: 'Please select a valid topic from the dropdown list.'
+            };
+
+            // Mentor validation (column K)
+            worksheet.getCell(`K${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: [mentorRange],
+                showErrorMessage: true,
+                errorStyle: 'error',
+                errorTitle: 'Invalid Mentor',
+                error: 'Please select a valid mentor from the dropdown list.'
+            };
+
+            // Is Assessment validation (column L)
+            worksheet.getCell(`L${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ['"0,1"'],
+                showErrorMessage: true,
+                errorStyle: 'error',
+                errorTitle: 'Invalid Assessment Value',
+                error: 'Please enter 0 for No or 1 for Yes.'
+            };
+        }
+
+        // ===============================
+        // Instructions Sheet
+        // ===============================
+        const instructionsSheet = workbook.addWorksheet("Instructions");
+        instructionsSheet.addRows([
+            ["SCHEDULE TEMPLATE INSTRUCTIONS"],
+            [""],
+            ["1. Fill in the Schedule Data sheet with your schedule information"],
+            ["2. Use the dropdown menus in each column to select valid values"],
+            ["3. Date format: YYYY-MM-DD (e.g., 2025-08-25)"],
+            ["4. Time format: HH:MM (24-hour format, e.g., 09:30, 14:00)"],
+            ['5. For mentors, use the dropdown (format: "Name (Roll)")'],
+            ["6. Is Assessment: 0 for No, 1 for Yes"],
+            ["7. Refer to Validation Data sheet for available options"],
+            [""],
+            ["REQUIRED FIELDS:"],
+            ["- Date, From Time, To Time, Subject, Venue, Batch Level"],
+            ["- Activity Type, Sub Activity, Topic, Mentor"],
+            [""],
+            ["TOPIC FORMAT:"],
+            ["- Topics are displayed in hierarchy: Parent > Child > Topic"],
+            ["- Select the topic that matches your chosen subject"],
+            [""],
+            ["OPTIONAL FIELDS:"],
+            ["- Instructions"],
+            [""],
+            ["NOTE: Template includes 50 pre-configured rows with dropdown validations"]
+        ]);
+
+        // ===============================
+        // Styling and Protection
+        // ===============================
+
+        // Style the headers
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
+        };
+
+        // Hide the validation sheet from normal view (optional)
+        validationSheet.state = 'hidden';
+
+        // ===============================
+        // Send File
+        // ===============================
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=schedule_template_grade${gradeId}_section${sectionId}.xlsx`
+        );
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error) {
+        console.error("Generate template error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to generate template",
+            error: error.message,
+        });
     }
+};
 
-    // ===============================
-    // Fill Validation Data
-    // ===============================
 
-    // Helper function to add validation data and return the range
-    const addValidationData = (title, data, startCol = 1) => {
-      const titleRowNum = validationSheet.lastRow ? validationSheet.lastRow.number + 2 : 1;
-      validationSheet.getCell(titleRowNum, startCol).value = title;
+const generateStudentWiseSchedulesManual = async (req, res) => {
+    try {
+        const { gradeId, sectionId } = req.body;
 
-      const dataStartRow = titleRowNum + 1;
-      data.forEach((item, index) => {
-        validationSheet.getCell(dataStartRow + index, startCol).value = item;
-      });
+        // Validate input
+        if (!gradeId || !sectionId) {
+            return res.status(400).json({
+                success: false,
+                message: "Grade ID and Section ID are required",
+            });
+        }
 
-      const dataEndRow = dataStartRow + data.length - 1;
-      const colLetter = String.fromCharCode(64 + startCol);
+        // Generate the schedule
+        const scheduleData = await createStudentWiseSchedule(gradeId, sectionId);
 
-      return `'Validation Data'!$${colLetter}$${dataStartRow}:$${colLetter}$${dataEndRow}`;
-    };
-
-    // Create validation data arrays
-    const subjectNames = subjectsData.map(s => s.subject_name);
-    const venueNames = venuesData.map(v => v.name);
-    const batchLevels = batchesData.map(b => `[${b.subject_name}] ${b.batch_level}`);
-    const activityTypes = activitiesData.map(a => a.activity_type);
-    const subActivityNames = subActivitiesData.map(s => s.sub_act_name);
-    const mentorDisplayNames = mentorsData.map(m => `${m.name} (${m.roll})`);
-
-    // Create topic hierarchy display
-    const topicHierarchy = topicsData.map(topic => {
-      const hierarchyPath = buildHierarchyPath(topic.id, topicsData);
-      return `[${topic.subject_name}] ${hierarchyPath.join(' > ')}`
-    });
-
-    // Add validation data to sheet and get ranges
-    const subjectRange = addValidationData("SUBJECTS", subjectNames, 1);
-    const venueRange = addValidationData("VENUES", venueNames, 2);
-    const batchRange = addValidationData("BATCH LEVELS", batchLevels, 3);
-    const activityRange = addValidationData("ACTIVITY TYPES", activityTypes, 4);
-    const subActivityRange = addValidationData("SUB ACTIVITIES", subActivityNames, 5);
-    const mentorRange = addValidationData("MENTORS", mentorDisplayNames, 6);
-    const topicRange = addValidationData("TOPICS", topicHierarchy, 7);
-
-    // ===============================
-    // Apply Data Validations
-    // ===============================
-
-    for (let i = 2; i <= 51; i++) {
-      // Subject validation (column E)
-      worksheet.getCell(`E${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: false,
-        formulae: [subjectRange],
-        showErrorMessage: true,
-        errorStyle: 'error',
-        errorTitle: 'Invalid Subject',
-        error: 'Please select a valid subject from the dropdown list.'
-      };
-
-      // Venue validation (column F)
-      worksheet.getCell(`F${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [venueRange],
-        showErrorMessage: true,
-        errorStyle: 'error',
-        errorTitle: 'Invalid Venue',
-        error: 'Please select a valid venue from the dropdown list.'
-      };
-
-      // Batch Level validation (column G)
-      worksheet.getCell(`G${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [batchRange],
-        showErrorMessage: true,
-        errorStyle: 'error',
-        errorTitle: 'Invalid Batch Level',
-        error: 'Please select a valid batch level from the dropdown list.'
-      };
-
-      // Activity Type validation (column H)
-      worksheet.getCell(`H${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [activityRange],
-        showErrorMessage: true,
-        errorStyle: 'error',
-        errorTitle: 'Invalid Activity Type',
-        error: 'Please select a valid activity type from the dropdown list.'
-      };
-
-      // Sub Activity validation (column I)
-      worksheet.getCell(`I${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [subActivityRange],
-        showErrorMessage: true,
-        errorStyle: 'error',
-        errorTitle: 'Invalid Sub Activity',
-        error: 'Please select a valid sub activity from the dropdown list.'
-      };
-
-      // Topic validation (column J)
-      worksheet.getCell(`J${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [topicRange],
-        showErrorMessage: true,
-        errorStyle: 'error',
-        errorTitle: 'Invalid Topic',
-        error: 'Please select a valid topic from the dropdown list.'
-      };
-
-      // Mentor validation (column K)
-      worksheet.getCell(`K${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [mentorRange],
-        showErrorMessage: true,
-        errorStyle: 'error',
-        errorTitle: 'Invalid Mentor',
-        error: 'Please select a valid mentor from the dropdown list.'
-      };
-
-      // Is Assessment validation (column L)
-      worksheet.getCell(`L${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: ['"0,1"'],
-        showErrorMessage: true,
-        errorStyle: 'error',
-        errorTitle: 'Invalid Assessment Value',
-        error: 'Please enter 0 for No or 1 for Yes.'
-      };
+        // Send the generated schedule as a response
+        res.status(200).json({
+            success: true,
+            data: scheduleData,
+        });
+    } catch (error) {
+        console.error("Generate student-wise schedule error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to generate student-wise schedule",
+            error: error.message,
+        });
     }
-
-    // ===============================
-    // Instructions Sheet
-    // ===============================
-    const instructionsSheet = workbook.addWorksheet("Instructions");
-    instructionsSheet.addRows([
-      ["SCHEDULE TEMPLATE INSTRUCTIONS"],
-      [""],
-      ["1. Fill in the Schedule Data sheet with your schedule information"],
-      ["2. Use the dropdown menus in each column to select valid values"],
-      ["3. Date format: YYYY-MM-DD (e.g., 2025-08-25)"],
-      ["4. Time format: HH:MM (24-hour format, e.g., 09:30, 14:00)"],
-      ['5. For mentors, use the dropdown (format: "Name (Roll)")'],
-      ["6. Is Assessment: 0 for No, 1 for Yes"],
-      ["7. Refer to Validation Data sheet for available options"],
-      [""],
-      ["REQUIRED FIELDS:"],
-      ["- Date, From Time, To Time, Subject, Venue, Batch Level"],
-      ["- Activity Type, Sub Activity, Topic, Mentor"],
-      [""],
-      ["TOPIC FORMAT:"],
-      ["- Topics are displayed in hierarchy: Parent > Child > Topic"],
-      ["- Select the topic that matches your chosen subject"],
-      [""],
-      ["OPTIONAL FIELDS:"],
-      ["- Instructions"],
-      [""],
-      ["NOTE: Template includes 50 pre-configured rows with dropdown validations"]
-    ]);
-
-    // ===============================
-    // Styling and Protection
-    // ===============================
-
-    // Style the headers
-    const headerRow = worksheet.getRow(1);
-    headerRow.font = { bold: true };
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE0E0E0' }
-    };
-
-    // Hide the validation sheet from normal view (optional)
-    validationSheet.state = 'hidden';
-
-    // ===============================
-    // Send File
-    // ===============================
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=schedule_template_grade${gradeId}_section${sectionId}.xlsx`
-    );
-
-    await workbook.xlsx.write(res);
-    res.end();
-  } catch (error) {
-    console.error("Generate template error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate template",
-      error: error.message,
-    });
-  }
 };

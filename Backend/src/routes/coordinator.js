@@ -305,15 +305,40 @@ router.get('/coordinator/schedule/student/:date/:studentRoll', ScheduleManagemen
 router.post('/coordinator/schedule/student/override', ScheduleManagementController.createOrUpdateStudentScheduleOverride);
 router.delete('/coordinator/schedule/student/override/:id', ScheduleManagementController.deleteStudentScheduleOverride);
 
-router.post(
-  '/coordinator/upload-schedule-sheet',
-  upload.single('scheduleFile'),
-  ScheduleManagementController.processScheduleSheet
-);
 router.get('/coordinator/generate-schedule-template/:gradeId/:sectionId', ScheduleManagementController.generateScheduleTemplate);
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, './uploads/schedules/'); // Make sure this directory exists
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `schedule_${Date.now()}_${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
+
+const uploadScheduleSheet = multer({ 
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
+router.post('/coordinator/schedule/process-schedule-sheet', uploadScheduleSheet.single('scheduleSheet'), ScheduleManagementController.processScheduleSheet);
+
+
 // Manual schedule generation endpoints for testing
-router.post('/coordinator/generate-daily-schedules-manual', coordinatorController.generateDailySchedulesManual);
+router.post('/coordinator/generate-student-wise-schedules-manual', ScheduleManagementController.generateStudentWiseSchedulesManual);
 router.post('/coordinator/run-daily-schedule-update-manual', coordinatorController.runDailyScheduleUpdateManual);
 
 module.exports = router;
