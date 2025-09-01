@@ -28,6 +28,15 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginLeft: -24, // Compensate for back button
     },
+    backButtonContainer: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: 'transparent',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minWidth: 40,
+        minHeight: 40,
+    },
     backToListButton: {
         paddingHorizontal: 16,
         paddingVertical: 8,
@@ -368,6 +377,21 @@ const styles = StyleSheet.create({
     timeField: {
         flex: 1,
         marginHorizontal: 4,
+    },
+    timePickerButton: {
+        borderWidth: 2,
+        borderColor: '#E9ECEF',
+        padding: 16,
+        borderRadius: 12,
+        backgroundColor: '#F8F9FA',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: 50,
+    },
+    timePickerText: {
+        fontSize: 16,
+        color: '#495057',
+        fontWeight: '500',
     },
     pickerContainer: {
         borderWidth: 2,

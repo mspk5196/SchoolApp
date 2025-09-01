@@ -2022,23 +2022,40 @@ exports.getStudentSchedule = async (req, res) => {
 
 // Create or update a student-specific schedule override
 exports.createOrUpdateStudentScheduleOverride = async (req, res) => {
-    const { id, daily_schedule_id, student_roll, activity_type, start_time, end_time, topic_id, mentor_id, venue_id, notes } = req.body;
+    const { id, section_id,  mentor_id, ssa_sub_activity_id, topic_id, pa_id, activity_type, start_time, end_time, date, subject_id, venue_id, activity_instructions, is_assessment, total_marks, notes, student_roll} = req.body;
 
-    if (id) {
-        // Update
-        const query = `UPDATE student_schedule_overrides SET activity_type = ?, start_time = ?, end_time = ?, topic_id = ?, mentor_id = ?, venue_id = ?, notes = ? WHERE id = ?`;
-        db.query(query, [activity_type, start_time, end_time, topic_id, mentor_id, venue_id, notes, id], (err, result) => {
-            if (err) return res.status(500).json({ success: false, message: 'Database error' });
-            res.json({ success: true, message: 'Override updated' });
-        });
-    } else {
-        // Insert
-        const query = `INSERT INTO student_schedule_overrides (daily_schedule_id, student_roll, activity_type, start_time, end_time, topic_id, mentor_id, venue_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-        db.query(query, [daily_schedule_id, student_roll, activity_type, start_time, end_time, topic_id, mentor_id, venue_id, notes], (err, result) => {
-            if (err) return res.status(500).json({ success: false, message: 'Database error' });
-            res.json({ success: true, message: 'Override created', id: result.insertId });
-        });
+    const sql1 = `
+    SELECT pa.*, ds.id AS daily_schedule_id, ds.subject_id
+    FROM period_activities pa 
+    JOIN daily_schedule ds ON pa.dsn_id = ds.id
+    WHERE pa.id = ?
+    `
+    const [rows] = await db.promise().query(sql1, [pa_id]);
+    let previous_is_assessment = null;
+    if (rows.length > 0) {
+        previous_is_assessment = rows[0].is_assessment;
     }
+    else{
+        return res.status(400).json({ success: false, message: 'Invalid period activity ID' });
+    }
+    // console.log(pa_id, student_roll, section_id, rows.assigned_mentor_id, rows[0].subject_id, rows[0].ssa_sub_activity_id, rows[0].batch_id, rows[0].topic_id, rows[0].activity_date, rows[0].start_time, rows[0].end_time, rows[0].venue_id, notes);
+    
+
+    const sql2 = `
+    UPDATE period_activities pa
+    SET pa.activity_type = ?, pa.ssa_sub_activity_id = ?, pa.start_time = ?, pa.end_time = ?, pa.topic_id = ?, pa.assigned_mentor_id = ?, pa.venue_id = ?, pa.activity_instructions = ?, pa.is_assessment = ?, pa.total_marks = ?
+    WHERE pa.id = ?
+    `;
+    db.promise().query(sql2, [activity_type, ssa_sub_activity_id, start_time, end_time, topic_id, mentor_id, venue_id, activity_instructions, is_assessment, total_marks, pa_id], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: 'Database error 1' });
+
+        const query = `INSERT INTO student_schedule_edit_history (edited_period_activity_id, student_roll, section_id, mentor_id, subject_id, ssa_sub_activity_id, batch_id, topic_id, date, start_time, end_time, venue_id, remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        db.promise().query(query, [pa_id, student_roll, section_id, rows[0].assigned_mentor_id, rows[0].subject_id, rows[0].ssa_sub_activity_id, rows[0].batch_id, rows[0].topic_id, rows[0].activity_date, rows[0].start_time, rows[0].end_time, rows[0].venue_id, notes], (err, result) => {
+            if (err) return res.status(500).json({ success: false, message: 'Database error 2' });
+
+            res.json({ success: true, message: 'Schedule changed successfully', id: result.insertId });
+        });
+    });
 };
 
 // Delete a student-specific schedule override
@@ -2231,8 +2248,8 @@ exports.processScheduleSheet = async (req, res) => {
              (activity_date, activity_name, activity_type, section_id, duration, 
               batch_id, assigned_mentor_id, topic_id, start_time, end_time,
               is_assessment, activity_instructions, section_subject_activity_id, 
-              ssa_sub_activity_id, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+              ssa_sub_activity_id, created_at, venue_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
                         [
                             date,
                             `${activityType} - Batch ${cleanBatchLevel}`,
@@ -2248,6 +2265,7 @@ exports.processScheduleSheet = async (req, res) => {
                             instructions || "",
                             activity?.id || null,
                             subActivity?.id || null,
+                            venue?.id || null
                         ]
                     );
 
@@ -3200,7 +3218,8 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
                 end_time: activity.end_time ?
                     `${activity.end_time}` :
                     `${activity.start_time}`,
-                remarks: `Class scheduled for ${activity.activity_name}`
+                remarks: `Class scheduled for ${activity.activity_name}`,
+                venue_id: activity.venue_id || null
             };
 
             // Determine if this is an assessment or academic activity
@@ -3226,14 +3245,15 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
                         INSERT INTO academic_sessions (
                             pa_id, student_roll, section_id, mentor_id, subject_id, 
                             ssa_sub_activity_id, batch_id, topic_id, eligibility_status,
-                            status, date, start_time, end_time, attentiveness, remarks
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            status, date, start_time, end_time, attentiveness, remarks, venue_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `, [
                         session.pa_id, session.student_roll, session.section_id,
                         session.mentor_id, session.subject_id, session.ssa_sub_activity_id,
                         session.batch_id, session.topic_id, session.eligibility_status,
                         session.status, session.date, session.start_time,
-                        session.end_time, session.attentiveness, session.remarks
+                        session.end_time, session.attentiveness, session.remarks,
+                        session.venue_id
                     ]);
 
                     schedulesCreated++;
@@ -3258,14 +3278,14 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
                         INSERT INTO assessment_sessions (
                             pa_id, student_roll, section_id, mentor_id, subject_id,
                             ssa_sub_activity_id, batch_id, topic_id, eligibility_status,
-                            status, date, start_time, end_time, total_marks, remarks, malpractice
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            status, date, start_time, end_time, total_marks, remarks, malpractice, venue_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `, [
                         session.pa_id, session.student_roll, session.section_id,
                         session.mentor_id, session.subject_id, session.ssa_sub_activity_id,
                         session.batch_id, session.topic_id, session.eligibility_status,
                         session.status, session.date, session.start_time,
-                        session.end_time, session.total_marks, session.remarks, session.malpractice
+                        session.end_time, session.total_marks, session.remarks, session.malpractice, session.venue_id
                     ]);
 
                     schedulesCreated++;
@@ -3400,5 +3420,153 @@ exports.getSectionStudents = (req, res) => {
         console.log(results);
 
         res.json({ success: true, message: "Student data fetched successfully", sectionStudent: results });
+    });
+};
+
+exports.getSubjectActivity = async (req, res) => {
+    const { subjectId } = req.body;
+
+    if (!subjectId) {
+        return res.status(400).json({ success: false, message: "Subject ID is required" });
+    }
+
+    try {
+        const sql = `
+            SELECT ssa.id, ssa.activity_type, at.activity_type
+            FROM section_subject_activities ssa
+            JOIN activity_types at ON ssa.activity_type = at.id
+            WHERE ssa.subject_id = ?
+        `;
+        db.query(sql, [subjectId], (err, results) => {
+            if (err) {
+                console.error("Error fetching subject activities:", err);
+                return res.status(500).json({ success: false, message: 'Database error' });
+            }
+            console.log("Fetched subject activities:", results);
+
+            res.json({ success: true, message: "Subject activities fetched successfully", subjectActivities: results });
+        });
+    } catch (error) {
+        console.error("Error fetching subject activities:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch subject activities", error: error.message });
+    }
+};
+
+exports.getSectionSubjectSubActivities = (req, res) => {
+  const { activityId, subjectId } = req.body;
+
+  console.log('Getting section subject activities for:', { activityId, subjectId });
+
+  const sql = `
+    SELECT sssa.id, at.sub_act_name
+    FROM ssa_sub_activities sssa
+    JOIN sub_activities at ON sssa.sub_act_id = at.id
+    WHERE sssa.ssa_id = ?
+  `;
+  
+  db.query(sql, [activityId], (err, results) => {
+    if (err) {
+      console.error("Error fetching section subject sub activities:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    console.log('Section subject sub activities results:', results);
+    res.json({ success: true, message: "Section subject sub activities fetched successfully", sectionSubjectSubActivity: results });
+  });
+};
+
+exports.getTopicHierarchyBySubActivity = async (req, res) => {
+    const { subActivityId, subjectId } = req.body;
+
+    try {
+        const query = `
+            SELECT t.id, t.topic_name, t.parent_id
+            FROM topic_hierarchy t
+            WHERE t.ssa_sub_activity_id = ?
+        `;
+
+        const [rows] = await db.promise().query(query, [subActivityId]);
+        // console.log(rows);
+        
+        // Get all topics for hierarchy building if we have topics
+        const topicIds = rows.map(topic => topic.id).filter(id => id);
+        let allTopics = [];
+        
+        if (topicIds.length > 0) {
+            const topicsQuery = `
+                SELECT id, parent_id, topic_name, subject_id
+                FROM topic_hierarchy 
+                WHERE subject_id = ?
+            `;
+            const [topicsResult] = await db.promise().query(topicsQuery, [subjectId]);
+            allTopics = topicsResult;
+        }
+        // console.log("All Topics:", allTopics);
+
+        // Build hierarchy path function
+        const buildHierarchyPath = (topicId, topics, path = []) => {
+            const topic = topics.find(t => t.id === topicId);
+            if (!topic) return path;
+
+            path.unshift(topic.topic_name);
+
+            if (topic.parent_id) {
+                return buildHierarchyPath(topic.parent_id, topics, path);
+            }
+
+            return path;
+        };
+
+        // Build topics with hierarchy paths
+        const topicsWithHierarchy = rows.map(topic => ({
+            id: topic.id,
+            topic_name: topic.topic_name,
+            parent_id: topic.parent_id,
+            hierarchy_path: buildHierarchyPath(topic.id, allTopics).join(' > ')
+        }));
+        // console.log("Topics with Hierarchy:", topicsWithHierarchy);
+
+        res.json({
+            success: true,
+            topics: topicsWithHierarchy,
+            message: "Topic hierarchy fetched successfully" 
+        });
+    } catch (error) {
+        console.error("Error fetching topic hierarchy:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+exports.getAllVenuesByTime = (req, res) => {
+    const { startTime, endTime, date } = req.body;
+
+    // SELECT v.id, v.name
+    //     FROM venues v
+    //     WHERE v.venue_status = 'Approved' 
+    //     AND NOT EXISTS (
+    //         SELECT 1 
+    //         FROM daily_schedule ds 
+    //         WHERE ds.venue_id = v.id 
+    //         AND ds.date = ? 
+    //         AND (
+    //             (ds.start_time < ? AND ds.end_time > ?) OR
+    //             (ds.start_time < ? AND ds.end_time > ?) OR
+    //             (ds.start_time >= ? AND ds.end_time <= ?)
+    //         )
+    //     )
+
+    const sql = `
+        SELECT v.id, v.name
+        FROM venues v
+        WHERE v.venue_status = 'Approved'
+    `;
+    db.query(sql, [date, endTime, startTime, startTime, endTime, startTime, endTime], (err, results) => {
+        if (err) {
+            console.error("Error fetching venues:", err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+
+        console.log("Fetched available venues:", results);
+        res.json({ success: true, message: "Available venues fetched successfully", venues: results });
     });
 };

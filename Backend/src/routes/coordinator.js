@@ -309,6 +309,10 @@ router.post('/coordinator/schedule/getSectionStudents', ScheduleManagementContro
 router.get('/coordinator/schedule/student/:date/:studentRoll', ScheduleManagementController.getStudentSchedule);
 router.post('/coordinator/schedule/student/override', ScheduleManagementController.createOrUpdateStudentScheduleOverride);
 router.delete('/coordinator/schedule/student/override/:id', ScheduleManagementController.deleteStudentScheduleOverride);
+router.post('/coordinator/schedule/student/getSubjectActivity', ScheduleManagementController.getSubjectActivity);
+router.post('/coordinator/schedule/student/getSectionSubjectSubActivities', ScheduleManagementController.getSectionSubjectSubActivities);
+router.post('/coordinator/schedule/student/getTopicHierarchyBySubActivity', ScheduleManagementController.getTopicHierarchyBySubActivity);
+router.post('/coordinator/schedule/student/getAllVenuesByTime', ScheduleManagementController.getAllVenuesByTime);
 
 router.get('/coordinator/generate-schedule-template/:gradeId/:sectionId', ScheduleManagementController.generateScheduleTemplate);
 

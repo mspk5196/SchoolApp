@@ -5,7 +5,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import styles from './StudentScheduleStyle.jsx';
 import { API_URL } from '../../../../utils/env';
 import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
-import { useNavigation } from '@react-navigation/native';
 
 const CoordinatorStudentSchedule = ({ navigation, route }) => {
     const { activeGrade } = route.params;
@@ -17,6 +16,8 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+    const [isStartTimePickerVisible, setStartTimePickerVisibility] = useState(false);
+    const [isEndTimePickerVisible, setEndTimePickerVisibility] = useState(false);
     const [sections, setSections] = useState([]);
     const [activeSection, setActiveSection] = useState(null);
     const [showStudentList, setShowStudentList] = useState(true);
@@ -120,6 +121,18 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
         fetchStudentSchedule();
     }, [selectedStudent, selectedDate]);
 
+    // Helper functions for time conversion
+    const timeStringToDate = (timeString) => {
+        const today = new Date();
+        const [hours, minutes] = timeString.split(':');
+        today.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        return today;
+    };
+
+    const dateToTimeString = (date) => {
+        return date.toTimeString().slice(0, 5); // HH:MM format
+    };
+
     // Fetch dropdown data functions
     const fetchSubjects = async () => {
         try {
@@ -139,7 +152,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/getSubjectActivities`, {
+            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getSubjectActivity`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ subjectId })
@@ -147,6 +160,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             const data = await response.json();
             if (data.success) {
                 setActivities(data.subjectActivities || []);
+                // console.log("Fetched subject activities:", data.subjectActivities);
             }
         } catch (error) {
             console.error("Error fetching activities:", error);
@@ -160,10 +174,14 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectSubActivities/${activityId}/${subjectId}`);
+            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getSectionSubjectSubActivities`,{
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activityId, subjectId })
+            });
             const data = await response.json();
             if (data.success) {
-                setSubActivities(data.subActivities || []);
+                setSubActivities(data.sectionSubjectSubActivity || []);
             }
         } catch (error) {
             console.error("Error fetching sub activities:", error);
@@ -177,18 +195,21 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/topics/hierarchy/activity`, {
+            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getTopicHierarchyBySubActivity`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     subActivityId, 
                     subjectId,
-                    gradeId: activeGrade 
+                    gradeId: activeGrade,
+                    activityId: overrideData.activity_type
                 })
             });
             const data = await response.json();
             if (data.success) {
                 setTopics(data.topics || []);
+                // console.log("Fetched topics:", data.topics);
+                fetchVenues();
             }
         } catch (error) {
             console.error("Error fetching topics:", error);
@@ -201,11 +222,12 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeMentors`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ gradeId: activeGrade })
+                body: JSON.stringify({ gradeID: activeGrade })
             });
             const data = await response.json();
             if (data.success) {
-                setMentors(data.mentors || []);
+                setMentors(data.gradeMentors || []);
+                // console.log("Fetched mentors:", data.gradeMentors);
             }
         } catch (error) {
             console.error("Error fetching mentors:", error);
@@ -214,13 +236,26 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
 
     const fetchVenues = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/enrollment/getAllVenues`);
+            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getAllVenuesByTime`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    startTime: overrideData.start_time, 
+                    endTime: overrideData.end_time, 
+                    date: selectedDate.toISOString().split('T')[0] 
+                })
+            });
             const data = await response.json();
             if (data.success) {
                 setVenues(data.venues || []);
+                console.log("Fetched venues:", data.venues);
+            } else {
+                console.error("Failed to fetch venues:", data.message);
+                setVenues([]);
             }
         } catch (error) {
             console.error("Error fetching venues:", error);
+            setVenues([]);
         }
     };
 
@@ -295,7 +330,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
     };
 
     const handleEditPress = async (period) => {
-        console.log("Editing period:", period);
+        // console.log("Editing period:", selectedStudent);
         
         setLoadingDropdown(true);
         
@@ -320,15 +355,16 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             activity_instructions: period.activity_instructions || '',
             is_assessment: period.is_assessment || false,
             total_marks: period.total_marks || '',
-            notes: ''
+            notes: '',
+            student_roll: selectedStudent,
+            section_id: activeSection,
         });
 
         // Fetch all dropdown data
         try {
             await Promise.all([
                 fetchSubjects(),
-                fetchMentors(),
-                fetchVenues()
+                fetchMentors()
             ]);
             
             // Fetch dependent data if subject is already selected
@@ -414,9 +450,12 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
         </View>
     );
 
-    const renderPeriod = (period) => {
+    const renderPeriod = (period, index) => {
+        // Create a unique key combining multiple identifiers
+        const uniqueKey = `${period.daily_schedule_id}_${period.period_activity_id || 'no_pa'}_${period.start_time}_${index}`;
+        
         return (
-            <View key={period.daily_schedule_id} style={styles.periodContainer}>
+            <View key={uniqueKey} style={styles.periodContainer}>
                 <View style={styles.periodHeader}>
                     <Text style={styles.periodTime}>{period.start_time} - {period.period_end_time}</Text>
                     <Text style={styles.periodSubject}>{period.subject_name} - (Batch {period.batch_number})</Text>
@@ -457,7 +496,17 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
+                <TouchableOpacity 
+                    onPress={() => {
+                        if(selectedStudent){
+                            handleBackToStudentList()
+                        }
+                        else{
+                            navigation.goBack();
+                        }
+                    }}
+                    style={styles.backButtonContainer}
+                >
                     <BackIcon width={24} height={24} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>
@@ -547,7 +596,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                         ) : (
                             <ScrollView style={styles.scheduleScrollView}>
                                 {schedule.length > 0 ? (
-                                    schedule.map(renderPeriod)
+                                    schedule.map((period, index) => renderPeriod(period, index))
                                 ) : (
                                     <View style={styles.noDataContainer}>
                                         <Text style={styles.noScheduleText}>
@@ -579,23 +628,63 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                             <View style={styles.timeContainer}>
                                 <View style={styles.timeField}>
                                     <Text style={styles.fieldLabel}>Start Time</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        value={overrideData.start_time}
-                                        onChangeText={text => setOverrideData({ ...overrideData, start_time: text })}
-                                        placeholder="HH:MM"
-                                    />
+                                    <TouchableOpacity
+                                        style={styles.timePickerButton}
+                                        onPress={() => setStartTimePickerVisibility(true)}
+                                        activeOpacity={0.7}
+                                        disabled
+                                    >
+                                        <Text style={styles.timePickerText}>{overrideData.start_time}</Text>
+                                    </TouchableOpacity>
                                 </View>
                                 <View style={styles.timeField}>
                                     <Text style={styles.fieldLabel}>End Time</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        value={overrideData.end_time}
-                                        onChangeText={text => setOverrideData({ ...overrideData, end_time: text })}
-                                        placeholder="HH:MM"
-                                    />
+                                    <TouchableOpacity
+                                        style={styles.timePickerButton}
+                                        onPress={() => setEndTimePickerVisibility(true)}
+                                        activeOpacity={0.7}
+                                        disabled
+                                    >
+                                        <Text style={styles.timePickerText}>{overrideData.end_time}</Text>
+                                    </TouchableOpacity>
                                 </View>
                             </View>
+
+                            {/* Start Time Picker */}
+                            {isStartTimePickerVisible && (
+                                <DateTimePicker
+                                    value={timeStringToDate(overrideData.start_time)}
+                                    mode="time"
+                                    display="spinner"
+                                    onChange={(event, selectedTime) => {
+                                        setStartTimePickerVisibility(false);
+                                        if (selectedTime) {
+                                            setOverrideData({ 
+                                                ...overrideData, 
+                                                start_time: dateToTimeString(selectedTime) 
+                                            });
+                                        }
+                                    }}
+                                />
+                            )}
+
+                            {/* End Time Picker */}
+                            {isEndTimePickerVisible && (
+                                <DateTimePicker
+                                    value={timeStringToDate(overrideData.end_time)}
+                                    mode="time"
+                                    display="spinner"
+                                    onChange={(event, selectedTime) => {
+                                        setEndTimePickerVisibility(false);
+                                        if (selectedTime) {
+                                            setOverrideData({ 
+                                                ...overrideData, 
+                                                end_time: dateToTimeString(selectedTime) 
+                                            });
+                                        }
+                                    }}
+                                />
+                            )}
 
                             {/* Subject Dropdown */}
                             <View style={styles.fieldContainer}>
@@ -648,7 +737,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                             <Picker.Item 
                                                 key={activity.id} 
                                                 label={activity.activity_type} 
-                                                value={activity.activity_type} 
+                                                value={activity.id} 
                                             />
                                         ))}
                                     </Picker>
@@ -699,7 +788,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                         {topics.map(topic => (
                                             <Picker.Item 
                                                 key={topic.id} 
-                                                label={topic.topic_name} 
+                                                label={topic.hierarchy_path} 
                                                 value={topic.id} 
                                             />
                                         ))}
@@ -724,6 +813,28 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                                 key={mentor.id} 
                                                 label={`${mentor.name} (${mentor.roll})`} 
                                                 value={mentor.id} 
+                                            />
+                                        ))}
+                                    </Picker>
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Venue</Text>
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={overrideData.venue_id}
+                                        onValueChange={(value) => {
+                                            setOverrideData({ ...overrideData, venue_id: value });
+                                        }}
+                                        style={styles.picker}
+                                    >
+                                        <Picker.Item label="Select Venue" value={null} />
+                                        {venues.map(venue => (
+                                            <Picker.Item 
+                                                key={venue.id} 
+                                                label={`${venue.name}`} 
+                                                value={venue.id} 
                                             />
                                         ))}
                                     </Picker>
