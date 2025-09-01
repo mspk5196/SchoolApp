@@ -80,46 +80,64 @@ const generateDailyPeriodActivities = async () => {
 
 // Update venue status based on current schedule
 const updateVenueStatusBasedOnSchedule = () => {
-  const now = new Date();
-  const currentDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
-  const currentTime = now.toTimeString().substring(0, 8);
-  const currentDate = now.toISOString().split('T')[0];
+  return new Promise((resolve, reject) => {
+    try {
+      const now = new Date();
+      const currentTime = now.toTimeString().substring(0, 8);
+      const currentDate = now.toISOString().split('T')[0];
 
-  const query = `
-    SELECT ds.venue_id
-    FROM daily_schedule ds 
-    JOIN period_activities pa ON ds.id = pa.dsn_id
-    WHERE pa.activity_date = ? 
-    AND pa.start_time <= ? 
-    AND pa.end_time >= ?
-    AND pa.status != 'Finished(need to update performance)'
-    AND pa.status != 'Completed'
-    AND pa.status != 'Cancelled'
-    AND ds.venue_id IS NOT NULL`;
+      const query = `
+        SELECT DISTINCT ds.venue_id
+        FROM daily_schedule ds 
+        JOIN period_activities pa ON ds.id = pa.dsn_id
+        WHERE pa.activity_date = ? 
+        AND pa.start_time <= ? 
+        AND pa.end_time >= ?
+        AND pa.status IN ('Not Started', 'In Progress')
+        AND ds.venue_id IS NOT NULL`;
 
-  db.query(query, [currentDate, currentTime, currentTime], (err, results) => {
-    if (err) {
-      console.error('Error checking active sessions:', err);
-      return;
+      db.query(query, [currentDate, currentTime, currentTime], (err, results) => {
+        if (err) {
+          console.error('Error checking active sessions:', err);
+          return reject(err);
+        }
+
+        const activeVenueIds = results.map(r => r.venue_id);
+        
+        let updateQuery;
+        let queryParams = [];
+
+        if (activeVenueIds.length > 0) {
+          const placeholders = activeVenueIds.map(() => '?').join(',');
+          updateQuery = `
+            UPDATE venues 
+            SET status = CASE 
+              WHEN id IN (${placeholders}) THEN 'Active' 
+              ELSE 'InActive' 
+            END`;
+          queryParams = activeVenueIds;
+        } else {
+          // If no active venues, set all to InActive
+          updateQuery = `UPDATE venues SET status = 'InActive'`;
+        }
+
+        db.query(updateQuery, queryParams, (err, updateResult) => {
+          if (err) {
+            console.error('Error updating venue statuses:', err);
+            return reject(err);
+          }
+          
+          resolve({
+            message: `Venue statuses updated successfully. ${activeVenueIds.length} venues are currently active.`,
+            activeVenues: activeVenueIds.length,
+            affectedRows: updateResult.affectedRows
+          });
+        });
+      });
+    } catch (error) {
+      console.error('Error in updateVenueStatusBasedOnSchedule:', error);
+      reject(error);
     }
-
-    const activeVenueIds = results.map(r => r.venue_id);
-    const placeholders = activeVenueIds.length > 0
-      ? activeVenueIds.map(() => '?').join(',')
-      : 'NULL';
-
-    const updateQuery = `
-      UPDATE venues 
-      SET status = CASE 
-        WHEN id IN (${placeholders}) THEN 'Active' 
-        ELSE 'InActive' 
-      END`;
-
-    db.query(updateQuery, activeVenueIds, (err) => {
-      if (err) {
-        console.error('Error updating venue statuses:', err);
-      }
-    });
   });
 };
 

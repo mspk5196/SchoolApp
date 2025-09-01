@@ -2041,7 +2041,7 @@ exports.getSectionStudents = (req, res) => {
   const sql = `
     SELECT st.id, st.name, st.roll, st.profile_photo
     FROM Students st
-    WHERE st.section_id = ?
+    WHERE st.section_id = ? 
   `;
   db.query(sql, [sectionID], (err, results) => {
     if (err) {

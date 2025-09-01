@@ -305,6 +305,7 @@ router.get('/coordinator/academic-schedule/batch-activities/:batchId/:date', Sch
 router.get('/coordinator/academic-schedule/batches/:sectionId/:subjectId', ScheduleManagementController.getSectionBatches);
 
 // Student-Specific Schedule Management
+router.post('/coordinator/schedule/getSectionStudents', ScheduleManagementController.getSectionStudents);
 router.get('/coordinator/schedule/student/:date/:studentRoll', ScheduleManagementController.getStudentSchedule);
 router.post('/coordinator/schedule/student/override', ScheduleManagementController.createOrUpdateStudentScheduleOverride);
 router.delete('/coordinator/schedule/student/override/:id', ScheduleManagementController.deleteStudentScheduleOverride);

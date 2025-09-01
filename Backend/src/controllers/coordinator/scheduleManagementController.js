@@ -4,49 +4,49 @@ const fs = require("fs");
 
 // Get all sections for a grade
 exports.getSectionsByGrade = async (req, res) => {
-  const { activeGrade } = req.body;
+    const { activeGrade } = req.body;
 
-  const sql = `
+    const sql = `
     SELECT sec.id, sec.section_name, sec.grade_id
     FROM Sections sec
     WHERE grade_id = ?
   `;
-  db.query(sql, [activeGrade], (err, results) => {
-    if (err) {
-      console.error("Error fetching sections data:", err);
-      return res.status(500).json({ success: false, message: 'Database error' });
-    }
+    db.query(sql, [activeGrade], (err, results) => {
+        if (err) {
+            console.error("Error fetching sections data:", err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
 
-    res.json({ success: true, message: "Sections data fetched successfully", gradeSections: results });
-  });
+        res.json({ success: true, message: "Sections data fetched successfully", gradeSections: results });
+    });
 };
 
 // Get all subjects
 exports.getAllSubjects = (req, res) => {
 
-  const { activeSection } = req.body;
+    const { activeSection } = req.body;
 
-  const sql = `
+    const sql = `
     SELECT DISTINCT ssa.subject_id as id, sub.subject_name
     FROM section_subject_activities ssa
     JOIN Subjects sub ON ssa.subject_id = sub.id
     WHERE section_id = ?;
   `;
-  db.query(sql, [activeSection], (err, results) => {
-    if (err) {
-      console.error("Error fetching subjects data:", err);
-      return res.status(500).json({ success: false, message: 'Database error' });
-    }
+    db.query(sql, [activeSection], (err, results) => {
+        if (err) {
+            console.error("Error fetching subjects data:", err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
 
-    res.json({ success: true, message: "Subjects data fetched successfully", subjects: results });
-  });
+        res.json({ success: true, message: "Subjects data fetched successfully", subjects: results });
+    });
 };
 
 //get WeeklySchedule
 exports.getWeeklySchedule = (req, res) => {
-  const { sectionId, day } = req.query;
+    const { sectionId, day } = req.query;
 
-  const query = `
+    const query = `
     SELECT ws.*, s.subject_name, ven.id as venue_id, ven.name as venue_name
     FROM weekly_schedule ws
     JOIN subjects s ON ws.subject_id = s.id
@@ -54,38 +54,38 @@ exports.getWeeklySchedule = (req, res) => {
     WHERE ws.section_id = ? AND ws.day = ?
     ORDER BY ws.start_time`;
 
-  db.query(query, [sectionId, day], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ success: false, message: 'Database error' });
-    }
+    db.query(query, [sectionId, day], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
 
-    console.log(results);
-    res.json({ success: true, scheduleItems: results });
+        console.log(results);
+        res.json({ success: true, scheduleItems: results });
 
-  });
+    });
 };
 
 exports.addOrUpdateWeeklySchedule = async (req, res) => {
-  const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
+    const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
 
-  if (!sectionId || !day || !startTime || !endTime || !subjectId) {
-    return res.status(400).json({ success: false, message: 'Missing required fields' });
-  }
+    if (!sectionId || !day || !startTime || !endTime || !subjectId) {
+        return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
 
-  try {
-    // Step 1: Calculate session_no
-    const [existingSessions] = await db.promise().query(
-      `SELECT COUNT(*) AS count FROM weekly_schedule 
+    try {
+        // Step 1: Calculate session_no
+        const [existingSessions] = await db.promise().query(
+            `SELECT COUNT(*) AS count FROM weekly_schedule 
        WHERE section_id = ? AND day = ? AND start_time < ?`,
-      [sectionId, day, startTime]
-    );
-    const sessionNo = existingSessions[0].count + 1;
-    // console.log("weekly",id);
+            [sectionId, day, startTime]
+        );
+        const sessionNo = existingSessions[0].count + 1;
+        // console.log("weekly",id);
 
-    // Step 2: Update existing schedule
-    if (id) {
-      const updateQuery = `
+        // Step 2: Update existing schedule
+        if (id) {
+            const updateQuery = `
         UPDATE weekly_schedule 
         SET 
           section_id = ?,
@@ -99,126 +99,126 @@ exports.addOrUpdateWeeklySchedule = async (req, res) => {
         WHERE id = ?`;
 
 
-      await db.promise().query(updateQuery,
-        [sectionId, day, startTime, endTime, subjectId, activity || null, venue || null, sessionNo, id]);
+            await db.promise().query(updateQuery,
+                [sectionId, day, startTime, endTime, subjectId, activity || null, venue || null, sessionNo, id]);
 
-      return res.json({
-        success: true,
-        message: 'Schedule item updated successfully',
-        id: id
-      });
-    }
-    // Step 3: Insert new schedule
-    else {
-      const insertQuery = `
+            return res.json({
+                success: true,
+                message: 'Schedule item updated successfully',
+                id: id
+            });
+        }
+        // Step 3: Insert new schedule
+        else {
+            const insertQuery = `
         INSERT INTO weekly_schedule 
         (section_id, day, start_time, end_time, subject_id, activity, venue, session_no)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
 
-      const [results] = await db.promise().query(insertQuery,
-        [sectionId, day, startTime, endTime, subjectId, activity || null, venue || null, sessionNo]);
+            const [results] = await db.promise().query(insertQuery,
+                [sectionId, day, startTime, endTime, subjectId, activity || null, venue || null, sessionNo]);
 
-      return res.json({
-        success: true,
-        message: 'Schedule item created successfully',
-        id: results.insertId
-      });
+            return res.json({
+                success: true,
+                message: 'Schedule item created successfully',
+                id: results.insertId
+            });
+        }
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ success: false, message: 'Database error' });
     }
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ success: false, message: 'Database error' });
-  }
 };
 
 // Delete a schedule item
 exports.deleteWeeklySchedule = (req, res) => {
-  const { id } = req.params;
+    const { id } = req.params;
 
-  const query = 'DELETE FROM weekly_schedule WHERE id = ?';
+    const query = 'DELETE FROM weekly_schedule WHERE id = ?';
 
-//   const query1 = 'SELECT id FROM daily_schedule WHERE original_schedule_id = ?';
+    //   const query1 = 'SELECT id FROM daily_schedule WHERE original_schedule_id = ?';
 
-  db.query(query, [id], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ success: false, message: 'Database error' });
-    }
+    db.query(query, [id], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
 
-    if (results.affectedRows === 0) {
-      return res.status(404).json({ success: false, message: 'Schedule item not found' });
-    }
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Schedule item not found' });
+        }
 
-    res.json({ success: true, message: 'Schedule item deleted successfully' });
+        res.json({ success: true, message: 'Schedule item deleted successfully' });
 
-    // db.query(query1, [id], (err, results) => {
-    //   if (err) {
-    //     console.error(err);
-    //     return res.status(500).json({ success: false, message: 'Database error' });
-    //   }
-    //   if (results.length > 0) {
-    //     const dailyScheduleIds = results.map(row => row.id);
+        // db.query(query1, [id], (err, results) => {
+        //   if (err) {
+        //     console.error(err);
+        //     return res.status(500).json({ success: false, message: 'Database error' });
+        //   }
+        //   if (results.length > 0) {
+        //     const dailyScheduleIds = results.map(row => row.id);
 
-    //     // First check if there are any non-completed assessment sessions
-    //     const checkQuery = 'SELECT COUNT(*) as count FROM assessment_sessions WHERE dsa_id IN (?) AND status != "completed"';
+        //     // First check if there are any non-completed assessment sessions
+        //     const checkQuery = 'SELECT COUNT(*) as count FROM assessment_sessions WHERE dsa_id IN (?) AND status != "completed"';
 
-    //     db.query(checkQuery, [dailyScheduleIds], (err, checkResults) => {
-    //       if (err) {
-    //         console.error(err);
-    //         return res.status(500).json({ success: false, message: 'Database error checking assessment sessions' });
-    //       }
+        //     db.query(checkQuery, [dailyScheduleIds], (err, checkResults) => {
+        //       if (err) {
+        //         console.error(err);
+        //         return res.status(500).json({ success: false, message: 'Database error checking assessment sessions' });
+        //       }
 
-    //       const nonCompletedCount = checkResults[0].count;
+        //       const nonCompletedCount = checkResults[0].count;
 
-    //       if (nonCompletedCount > 0) {
-    //         return res.status(400).json({
-    //           success: false,
-    //           message: 'Cannot delete schedule: There are assessment sessions in progress or pending completion'
-    //         });
-    //       }
+        //       if (nonCompletedCount > 0) {
+        //         return res.status(400).json({
+        //           success: false,
+        //           message: 'Cannot delete schedule: There are assessment sessions in progress or pending completion'
+        //         });
+        //       }
 
-    //       // Proceed with deletion if all assessment sessions are completed
-    //       const query2 = 'DELETE FROM academic_sessions WHERE dsa_id IN (?)';
-    //       const query3 = 'DELETE FROM assessment_sessions WHERE dsa_id IN (?) AND status = "completed"';
-    //       const deleteQuery = 'DELETE FROM daily_schedule WHERE id IN (?)';
+        //       // Proceed with deletion if all assessment sessions are completed
+        //       const query2 = 'DELETE FROM academic_sessions WHERE dsa_id IN (?)';
+        //       const query3 = 'DELETE FROM assessment_sessions WHERE dsa_id IN (?) AND status = "completed"';
+        //       const deleteQuery = 'DELETE FROM daily_schedule WHERE id IN (?)';
 
-    //       // First delete completed assessment_sessions
-    //       db.query(query3, [dailyScheduleIds], (err) => {
-    //         if (err) {
-    //           console.error(err);
-    //           return res.status(500).json({ success: false, message: 'Database error deleting assessment sessions' });
-    //         }
+        //       // First delete completed assessment_sessions
+        //       db.query(query3, [dailyScheduleIds], (err) => {
+        //         if (err) {
+        //           console.error(err);
+        //           return res.status(500).json({ success: false, message: 'Database error deleting assessment sessions' });
+        //         }
 
-    //         // Then delete acadamic_sessions
-    //         db.query(query2, [dailyScheduleIds], (err) => {
-    //           if (err) {
-    //             console.error(err);
-    //             return res.status(500).json({ success: false, message: 'Database error deleting academic sessions' });
-    //           }
+        //         // Then delete acadamic_sessions
+        //         db.query(query2, [dailyScheduleIds], (err) => {
+        //           if (err) {
+        //             console.error(err);
+        //             return res.status(500).json({ success: false, message: 'Database error deleting academic sessions' });
+        //           }
 
-    //           // Finally delete daily_schedule
-    //           db.query(deleteQuery, [dailyScheduleIds], (err) => {
-    //             if (err) {
-    //               console.error(err);
-    //               return res.status(500).json({ success: false, message: 'Database error deleting daily schedule' });
-    //             }
-    //             res.json({ success: true, message: 'Schedule item deleted successfully' });
-    //           });
-    //         });
-    //       });
-    //     });
-    //   } else {
-    //     res.json({ success: true, message: 'Schedule item deleted successfully' });
-    //   }
-    // })
-  });
+        //           // Finally delete daily_schedule
+        //           db.query(deleteQuery, [dailyScheduleIds], (err) => {
+        //             if (err) {
+        //               console.error(err);
+        //               return res.status(500).json({ success: false, message: 'Database error deleting daily schedule' });
+        //             }
+        //             res.json({ success: true, message: 'Schedule item deleted successfully' });
+        //           });
+        //         });
+        //       });
+        //     });
+        //   } else {
+        //     res.json({ success: true, message: 'Schedule item deleted successfully' });
+        //   }
+        // })
+    });
 }
 
 
 // Check for time conflicts in schedule
 exports.checkTimeConflict = (req, res) => {
-  const { sectionId, day, startTime, endTime, excludeId } = req.query;
+    const { sectionId, day, startTime, endTime, excludeId } = req.query;
 
-  const query = `
+    const query = `
     SELECT COUNT(*) as conflictCount
     FROM weekly_schedule
     WHERE section_id = ? 
@@ -230,20 +230,20 @@ exports.checkTimeConflict = (req, res) => {
     )
     ${excludeId ? 'AND id != ?' : ''}`;
 
-  const params = [sectionId, day, endTime, startTime, endTime, startTime, startTime, endTime];
-  if (excludeId) params.push(excludeId);
+    const params = [sectionId, day, endTime, startTime, endTime, startTime, startTime, endTime];
+    if (excludeId) params.push(excludeId);
 
-  db.query(query, params, (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ success: false, message: 'Database error' });
-    }
+    db.query(query, params, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
 
-    res.json({
-      success: true,
-      hasConflict: results[0].conflictCount > 0
+        res.json({
+            success: true,
+            hasConflict: results[0].conflictCount > 0
+        });
     });
-  });
 };
 
 // Create daily schedule with multiple activities
@@ -1895,6 +1895,7 @@ exports.getSectionBatches = (req, res) => {
 
 
 // Get daily schedule for a specific student with overrides
+// Get daily schedule for a specific student with overrides
 exports.getStudentSchedule = async (req, res) => {
     const { date, studentRoll } = req.params;
 
@@ -1905,40 +1906,113 @@ exports.getStudentSchedule = async (req, res) => {
         }
         const sectionId = student[0].section_id;
 
-        const baseScheduleQuery = `
-            SELECT 
+        // First get the basic daily schedule
+        const dailyScheduleQuery = `
+            SELECT DISTINCT
                 ds.id as daily_schedule_id, ds.date, ds.start_time as period_start_time, ds.end_time as period_end_time,
-                s.subject_name, v.name as venue_name,
-                pa.id as period_activity_id, pa.activity_type, pa.start_time, pa.end_time,
-                pa.batch_number, u.name as mentor_name, th.topic_name
+                s.subject_name, v.name as venue_name, s.id as subject_id
             FROM daily_schedule ds
             JOIN subjects s ON ds.subject_id = s.id
             JOIN venues v ON ds.venue_id = v.id
-            LEFT JOIN period_activities pa ON ds.id = pa.daily_schedule_id
-            LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
-            LEFT JOIN users u ON m.phone = u.phone
-            LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
             WHERE ds.date = ? AND ds.section_id = ?
-            ORDER BY ds.start_time, pa.start_time;
+            ORDER BY ds.start_time;
         `;
-        const [baseSchedule] = await db.promise().query(baseScheduleQuery, [date, sectionId]);
+        const [dailyScheduleResult] = await db.promise().query(dailyScheduleQuery, [date, sectionId]);
 
-        const overrideQuery = `
-            SELECT 
-                sso.id, sso.daily_schedule_id, sso.start_time, sso.end_time, 
-                sso.activity_type, u.name as mentor_name, th.topic_name, v.name as venue_name, sso.notes
-            FROM student_schedule_overrides sso
-            LEFT JOIN mentors m ON sso.mentor_id = m.id
-            LEFT JOIN users u ON m.phone = u.phone
-            LEFT JOIN topic_hierarchy th ON sso.topic_id = th.id
-            LEFT JOIN venues v ON sso.venue_id = v.id
-            JOIN daily_schedule ds ON sso.daily_schedule_id = ds.id
-            WHERE ds.date = ? AND sso.student_roll = ?;
-        `;
-        const [overrides] = await db.promise().query(overrideQuery, [date, studentRoll]);
-        console.log("Student Schedule Overrides:", overrides);
+        // For each daily schedule, get the student's specific period activities (based on their batch assignments)
+        const baseSchedule = [];
+        
+        for (const schedule of dailyScheduleResult) {
+            // Check if this student has a period activity for this time slot
+            const activityQuery = `
+                SELECT 
+                    pa.id as period_activity_id, pa.start_time, pa.end_time, ds.subject_id, ds.venue_id, m.roll as mentor_roll,
+                    pa.batch_id, u.name as mentor_name, sb.batch_name, sb.batch_level,
+                    pa.ssa_sub_activity_id, pa.topic_id, pa.section_id, pa.assigned_mentor_id, 
+                    sa.sub_act_name, at.activity_type, th.topic_name, th.parent_id,
+                    pa.activity_name, pa.activity_type as period_activity_type
+                FROM period_activities pa
+                JOIN daily_schedule ds ON ds.id = pa.dsn_id
+                JOIN student_batch_assignments sba ON sba.batch_id = pa.batch_id AND sba.student_roll = ? AND sba.is_current = '1'
+                JOIN section_batches sb ON sb.id = sba.batch_id
+                LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
+                LEFT JOIN users u ON m.phone = u.phone
+                LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
+                LEFT JOIN ssa_sub_activities sssa ON pa.ssa_sub_activity_id = sssa.id
+                LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
+                LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
+                LEFT JOIN activity_types at ON ssa.activity_type = at.id
+                WHERE pa.dsn_id = ?;
+            `;
+            const [activityResult] = await db.promise().query(activityQuery, [studentRoll, schedule.daily_schedule_id]);
 
-        res.json({ success: true, schedule: baseSchedule, overrides });
+            // Get all topics for hierarchy building if we have topics
+            const topicIds = activityResult.map(activity => activity.topic_id).filter(id => id);
+            let allTopics = [];
+            
+            if (topicIds.length > 0) {
+                const topicsQuery = `
+                    SELECT id, parent_id, topic_name, subject_id
+                    FROM topic_hierarchy 
+                    WHERE subject_id = ?
+                `;
+                const [topicsResult] = await db.promise().query(topicsQuery, [schedule.subject_id]);
+                allTopics = topicsResult;
+            }
+
+            // Build hierarchy path function
+            const buildHierarchyPath = (topicId, topics, path = []) => {
+                const topic = topics.find(t => t.id === topicId);
+                if (!topic) return path;
+
+                path.unshift(topic.topic_name);
+
+                if (topic.parent_id) {
+                    return buildHierarchyPath(topic.parent_id, topics, path);
+                }
+
+                return path;
+            };
+
+            // Combine daily schedule with student's specific activity (if any)
+            for (const activity of activityResult) {
+                let topicHierarchyPath = null;
+                
+                if (activity.topic_id && allTopics.length > 0) {
+                    const hierarchyPath = buildHierarchyPath(activity.topic_id, allTopics);
+                    topicHierarchyPath = hierarchyPath.length > 0 ? hierarchyPath.join(' > ') : activity.topic_name;
+                }
+
+                const scheduleItem = {
+                    ...schedule,
+                    period_activity_id: activity.period_activity_id,
+                    start_time: activity.start_time,
+                    end_time: activity.end_time,
+                    batch_id: activity.batch_id,
+                    mentor_name: activity.mentor_name,
+                    topic_name: activity.topic_name,
+                    topic_hierarchy_path: topicHierarchyPath,
+                    batch_name: activity.batch_name,
+                    batch_number: activity.batch_level,
+                    ssa_sub_activity_id: activity.ssa_sub_activity_id,
+                    topic_id: activity.topic_id,
+                    section_id: activity.section_id,
+                    assigned_mentor_id: activity.assigned_mentor_id,
+                    sub_activity_name: activity.sub_act_name,
+                    activity_type: activity.activity_type,
+                    subject_id: activity.subject_id,
+                    subject_name: schedule.subject_name,
+                    venue_id: activity.venue_id,
+                    activity_name: activity.activity_name,
+                    period_activity_type: activity.period_activity_type,
+                    mentor_roll: activity.mentor_roll
+                };
+
+                baseSchedule.push(scheduleItem);
+            }
+        }
+        
+        res.json({ success: true, schedule: baseSchedule });
 
     } catch (error) {
         console.error("Error fetching student schedule:", error);
@@ -2272,7 +2346,7 @@ exports.processScheduleSheet = async (req, res) => {
 
                 // Update period_activities with correct daily_schedule id
                 console.log("Updating period_activities with dailyId:", dailyId, entry.date, entry.sectionId);
-                const sqlDate = new Date(entry.date).toISOString().split("T")[0]; 
+                const sqlDate = new Date(entry.date).toISOString().split("T")[0];
                 if (dailyId) {
                     await connection.execute(
                         `UPDATE period_activities pa
@@ -3035,15 +3109,15 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
         const periodActivities = await connection.query(`
             SELECT 
                 pa.*,
-                sb.id as batch_id,
+                pa.batch_id,
                 sba.student_roll,
                 s.id as student_id,
                 ssa.subject_id,
                 m.id as mentor_id
             FROM period_activities pa
             JOIN section_subject_activities ssa ON pa.section_subject_activity_id = ssa.id
-            JOIN section_batches sb ON sb.section_id = ssa.section_id AND sb.subject_id = ssa.subject_id
-            JOIN student_batch_assignments sba ON sba.batch_id = sb.id AND sba.is_current = 1
+            JOIN section_batches sb ON sb.id = pa.batch_id AND sb.section_id = ssa.section_id AND sb.subject_id = ssa.subject_id
+            JOIN student_batch_assignments sba ON sba.batch_id = pa.batch_id AND sba.is_current = 1
             JOIN students s ON s.roll = sba.student_roll
             LEFT JOIN mentors m ON m.id = pa.assigned_mentor_id
             WHERE ssa.section_id = ? 
@@ -3051,10 +3125,18 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
             AND pa.status = 'Schedule Created'
             AND ssa.is_active = 1
             AND sb.is_active = 1
+            AND pa.batch_id IS NOT NULL
             ORDER BY pa.activity_date, pa.start_time
         `, [sectionId, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]);
 
-        console.log('Fetched period activities:', periodActivities);
+        console.log(`Fetched ${periodActivities.length} period activities for section ${sectionId}`);
+        console.log('Period activities with student assignments:', periodActivities.map(pa => ({
+            activity_id: pa.id,
+            activity_name: pa.activity_name,
+            batch_id: pa.batch_id,
+            student_roll: pa.student_roll,
+            subject_id: pa.subject_id
+        })));
 
         if (periodActivities.length === 0) {
             await connection.query('ROLLBACK');
@@ -3115,8 +3197,8 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
                 status: 'Schedule Created',
                 date: activityDate,
                 start_time: `${activity.start_time}`,
-                end_time: activity.end_time ? 
-                    `${activity.end_time}` : 
+                end_time: activity.end_time ?
+                    `${activity.end_time}` :
                     `${activity.start_time}`,
                 remarks: `Class scheduled for ${activity.activity_name}`
             };
@@ -3262,7 +3344,7 @@ exports.generateStudentWiseSchedulesManual = async (req, res) => {
 exports.generateStudentWiseSchedulesCron = async (req, res) => {
     try {
 
-        const days =7;
+        const days = 7;
         const includeToday = true;
 
         const getSectionIdSql = `
@@ -3299,4 +3381,24 @@ exports.generateStudentWiseSchedulesCron = async (req, res) => {
             error: error.message,
         });
     }
+};
+
+exports.getSectionStudents = (req, res) => {
+    const { sectionId } = req.body;
+    console.log(sectionId);
+
+    const sql = `
+    SELECT st.id, st.name, st.roll, st.profile_photo
+    FROM Students st
+    WHERE st.section_id = ?
+  `;
+    db.query(sql, [sectionId], (err, results) => {
+        if (err) {
+            console.error("Error fetching student data:", err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        console.log(results);
+
+        res.json({ success: true, message: "Student data fetched successfully", sectionStudent: results });
+    });
 };
