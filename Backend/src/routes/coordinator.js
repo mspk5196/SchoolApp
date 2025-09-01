@@ -168,17 +168,11 @@ router.post('/coordinator/createExamSchedule', coordinatorController.createExamS
 router.post('/coordinator/updateExamSchedule', coordinatorController.updateExamSchedule);
 router.post('/coordinator/deleteExamSchedule', coordinatorController.deleteExamSchedule);
 router.post('/coordinator/deleteConflictingSchedules', coordinatorController.deleteConflictingSchedules);
-//WeeklySchedule
-router.get('/coordinator/weekly-schedule/getWeeklySchedule', coordinatorController.getWeeklySchedule);
-router.post('/coordinator/weekly-schedule/addOrUpdateWeeklySchedule', coordinatorController.addOrUpdateWeeklySchedule);
-router.delete('/coordinator/weekly-schedule/deleteWeeklySchedule/:id', coordinatorController.deleteWeeklySchedule);
-router.get('/coordinator/weekly-schedule/getAvailableMentors', coordinatorController.getAvailableMentors);
-router.post('/coordinator/weekly-schedule/subjects', coordinatorController.getAllSubjects);
-router.post('/coordinator/weekly-schedule/sections', coordinatorController.getSectionsByGrade);
-router.get('/coordinator/weekly-schedule/getSectionSubjectActivities', coordinatorController.getSectionSubjectActivities);
-router.get('/coordinator/weekly-schedule/checkTimeConflict', coordinatorController.checkTimeConflict);
+
+// router.get('/coordinator/weekly-schedule/getSectionSubjectActivities', coordinatorController.getSectionSubjectActivities);
 // router.post('/coordinator/weekly-schedule/generateTemplate', coordinatorController.generateWeeklyTemplate);
-router.get('/coordinator/enrollment/getVenuesByGrade', infraEnrollment.getVenuesByGrade);
+// router.get('/coordinator/weekly-schedule/getAvailableMentors', coordinatorController.getAvailableMentors);
+
 // Invigilation duties
 router.get('/coordinator/getExamScheduleWithInvigilators', coordinatorController.getExamScheduleWithInvigilators);
 router.post('/coordinator/assignInvigilators', coordinatorController.assignInvigilators);
@@ -276,6 +270,16 @@ router.post('/coordinator/batches/update-size', BatchManagementController.update
 router.post('/coordinator/batches/getSectionSubjects', BatchManagementController.getSectionSubjects);
 
 // Enhanced Schedule Management Routes
+
+//WeeklySchedule
+router.get('/coordinator/weekly-schedule/getWeeklySchedule', ScheduleManagementController.getWeeklySchedule);
+router.post('/coordinator/weekly-schedule/addOrUpdateWeeklySchedule', ScheduleManagementController.addOrUpdateWeeklySchedule);
+router.delete('/coordinator/weekly-schedule/deleteWeeklySchedule/:id', ScheduleManagementController.deleteWeeklySchedule);
+router.post('/coordinator/weekly-schedule/subjects', ScheduleManagementController.getAllSubjects);
+router.post('/coordinator/weekly-schedule/sections', ScheduleManagementController.getSectionsByGrade);
+router.get('/coordinator/weekly-schedule/checkTimeConflict', ScheduleManagementController.checkTimeConflict);
+router.get('/coordinator/enrollment/getVenuesByGrade', infraEnrollment.getVenuesByGrade);
+
 router.post('/coordinator/schedule/create', ScheduleManagementController.createDailySchedule);
 router.get('/coordinator/schedule/:date/:sectionId', ScheduleManagementController.getDailySchedule);
 router.get('/coordinator/schedule/weekly/:sectionId/:weekStart', ScheduleManagementController.getWeeklySchedule);
@@ -339,6 +343,6 @@ router.post('/coordinator/schedule/process-schedule-sheet', uploadScheduleSheet.
 
 // Manual schedule generation endpoints for testing
 router.post('/coordinator/generate-student-wise-schedules-manual', ScheduleManagementController.generateStudentWiseSchedulesManual);
-router.post('/coordinator/run-daily-schedule-update-manual', coordinatorController.runDailyScheduleUpdateManual);
+// router.post('/coordinator/run-daily-schedule-update-manual', coordinatorController.runDailyScheduleUpdateManual);
 
 module.exports = router;

@@ -2,9 +2,10 @@ const cron = require('node-cron');
 // const { runAttendanceUpdater } = require('./controllers/student/attendanceCron');
 // const { runDailyScheduleUpdate } = require('./controllers/mentor/dailyScheduleUpdate');
 // const { createAssessmentSessionsByDate } = require('./controllers/mentor/assesmentCronJob');
-const { updateActivityStatuses, generateDailyPeriodActivities, updateActivityStatuses1, updateActivityStatuses2 } = require('./controllers/mentor/activityLifecycleController');
+const { updateActivityStatuses, generateDailyPeriodActivities, updateActivityStatuses1, updateVenueStatusBasedOnSchedule } = require('./controllers/mentor/activityLifecycleController');
 const { runAttendanceUpdater } = require('./controllers/student/attendanceCron');
 const { runOverdueCheck } = require('./controllers/mentor/studentBacklogsCron');
+const { generateStudentWiseSchedulesCron } = require('./controllers/coordinator/scheduleManagementController');
 
 // Only start cron jobs if this is the designated worker process or in Railway production
 const shouldRunCrons = process.env.CRON_WORKER === 'true' ||
@@ -217,84 +218,28 @@ if (shouldRunCrons) {
         }
     }, getCronOptions(), 'Run Overdue Check Cron Job');
 
-    // createSafeCronJob(attendanceCronExpression, async () => {
-    //     console.log('🔄 Running daily attendance updater...');
-    //     try {
-    //         const result = await runAttendanceUpdater();
-    //         console.log('✅ Attendance updater completed:', result.message);
-    //     } catch (error) {
-    //         console.error('❌ Attendance updater failed:', error);
-    //     }
-    // }, getCronOptions(), 'Attendance Cron Job');
-    
-    // createSafeCronJob(attendanceCronExpression, async () => {
-    //     console.log('🔄 Running daily attendance updater...');
-    //     try {
-    //         const result = await runAttendanceUpdater();
-    //         console.log('✅ Attendance updater completed:', result.message);
-    //     } catch (error) {
-    //         console.error('❌ Attendance updater failed:', error);
-    //     }
-    // }, getCronOptions(), 'Attendance Cron Job');
+   const venueStatusCron = `* * * * *`;
+    createSafeCronJob(venueStatusCron, async () => {
+        console.log('🔄 Running update venue status...');
+        try {
+            const result = await updateVenueStatusBasedOnSchedule();
+            console.log('✅ Update venue status completed:', result.message);
+        } catch (error) {
+            console.error('❌ Update venue status failed:', error);
+        }
+    }, getCronOptions(), 'Update Venue Status Cron Job');
 
-    // // Assessment sessions creator - runs at 11:59 PM IST daily
-    // const assessmentTime = adjustTimeForUTC(23, 59);
-    // const assessmentCronExpression = `${assessmentTime.minute} ${assessmentTime.hour} * * *`;
-    // console.log('🕐 Assessment cron - IST: 23:59, UTC equivalent:', assessmentTime);
-    
-    // createSafeCronJob(assessmentCronExpression, async () => {
-    //     console.log('🔄 Creating assessment sessions for tomorrow...');
-    //     try {
-    //         const result = await createAssessmentSessionsByDate();
-    //         console.log('✅ Assessment sessions created:', result);
-    //     } catch (error) {
-    //         console.error('❌ Assessment sessions creation failed:', error);
-    //     }
-    // }, getCronOptions(), 'Assessment Cron Job');
-    
-    // // Academic sessions creator - runs at 12:30 AM IST daily
-    // // Convert 00:30 IST to UTC
-    // const academicTime = adjustTimeForUTC(0, 30);
-    // const academicCronExpression = `${academicTime.minute} ${academicTime.hour} * * *`;
-    
-    // console.log('🕐 Academic cron - IST: 00:30, UTC equivalent:', academicTime);
-    // console.log('🕐 Academic cron expression:', academicCronExpression);
-    
-    // createSafeCronJob(academicCronExpression, async () => {
-    //     console.log('🔄 Creating today academic sessions...');
-    //     try {
-    //         const result = await runDailyScheduleUpdate();
-    //         console.log('✅ Academic/Assessment sessions created:', result);
-    //     } catch (error) {
-    //         console.error('❌ Academic sessions creation failed:', error);
-    //     }
-    // }, getCronOptions(), 'Academic Cron Job', [35, 40, 45]); // Fallback to 00:35, 00:40, or 00:45 if needed
-
-    // // Student backlogs checker - runs at 1:00 AM IST daily
-    // const backlogTime = adjustTimeForUTC(1, 0);
-    // const backlogCronExpression = `${backlogTime.minute} ${backlogTime.hour} * * *`;
-    // console.log('🕐 Backlog cron - IST: 01:00, UTC equivalent:', backlogTime);
-    
-    // createSafeCronJob(backlogCronExpression, async () => {
-    //     console.log('🔄 Running overdue levels check...');
-    //     try {
-    //         const result = await runOverdueCheck();
-    //         console.log('✅ Overdue levels check completed:', result);
-    //     } catch (error) {
-    //         console.error('❌ Overdue levels check failed:', error);
-    //     }
-    // }, getCronOptions(), 'Backlog Cron Job');
-
-    // // Exam conflict deletion - runs every 5 minutes to handle recurring exams
-    // createSafeCronJob('*/5 * * * *', async () => {
-    //     console.log('🔄 Running exam conflict deletion check...');
-    //     try {
-    //         await runExamConflictDeletion();
-    //         console.log('✅ Exam conflict deletion check completed');
-    //     } catch (error) {
-    //         console.error('❌ Exam conflict deletion check failed:', error);
-    //     }
-    // }, getCronOptions(), 'Exam Conflict Deletion Cron Job');
+    const scheduleTime = adjustTimeForUTC(18, 0);
+    const scheduleCronExpression = `${scheduleTime.minute} ${scheduleTime.hour} * * *`;
+    createSafeCronJob(scheduleCronExpression, async () => {
+        console.log('🔄 Running studentWiseSchedule creation...');
+        try {
+            const result = await generateStudentWiseSchedulesCron();
+            console.log('✅ StudentWiseSchedule creation completed:', result.message);
+        } catch (error) {
+            console.error('❌ StudentWiseSchedule creation failed:', error);
+        }
+    }, getCronOptions(), 'StudentWiseSchedule Cron Job');
 
     console.log('✅ All cron jobs initialized');
 } else {
@@ -308,56 +253,11 @@ module.exports = {
     generateDailyPeriodActivities,
     runOverdueCheck,
     updateActivityStatuses1,
-    updateActivityStatuses2
-    // runDailyScheduleUpdate,
+    updateVenueStatusBasedOnSchedule,
+    generateStudentWiseSchedulesCron,
     // createAssessmentSessionsByDate,
 };
 
 cron.schedule('0 18 * * *', () => {
     console.log('Cron running!');
 }, { timezone: "Asia/Kolkata" });
-
-
-
-// const cron = require('node-cron');
-// const { updateActivityStatuses, generateDailyPeriodActivities } = require('./controllers/mentor/activityLifecycleController');
-// const { runAttendanceUpdater } = require('./controllers/student/attendanceCron');
-// const { runOverdueCheck } = require('./controllers/mentor/studentBacklogsCron');
-
-// // Run cron jobs based on environment
-// const shouldRunCrons = process.env.CRON_WORKER === 'true' || process.env.NODE_ENV == 'production';
-
-// if (shouldRunCrons) {
-//     console.log('🕐 Starting cron jobs...');
-
-//     // NEW: Runs every minute to update scheduled activities to 'Not Started'
-//     cron.schedule('* * * * *', async () => {
-//         console.log('🔄 Cron: Updating activity statuses...');
-//         await updateActivityStatuses();
-//     });
-
-//     // NEW: Runs once daily at midnight IST to generate period_activities for the day.
-//     // 00:01 IST is 18:31 UTC the previous day.
-//     cron.schedule('31 18 * * *', async () => {
-//         console.log('🔄 Cron: Generating daily period activities for today...');
-//         await generateDailyPeriodActivities();
-//     }, { scheduled: true, timezone: "UTC" });
-    
-//     // Example of keeping an existing job (runs at 6:00 PM IST)
-//     // 18:00 IST is 12:30 UTC
-//     cron.schedule('30 12 * * *', async () => {
-//         console.log('🔄 Cron: Running daily attendance updater...');
-//         await runAttendanceUpdater();
-//     }, { scheduled: true, timezone: "UTC" });
-
-//     // Example of keeping another existing job (runs at 1:00 AM IST)
-//     // 01:00 IST is 19:30 UTC the previous day.
-//     cron.schedule('30 19 * * *', async () => {
-//         console.log('🔄 Cron: Running overdue levels check...');
-//         await runOverdueCheck();
-//     }, { scheduled: true, timezone: "UTC" });
-
-//     console.log('✅ All cron jobs initialized.');
-// } else {
-//     console.log('⏸️ Cron jobs are disabled for this process.');
-// }

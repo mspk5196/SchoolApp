@@ -26,7 +26,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
   const [scheduleItems, setScheduleItems] = useState([]);
   const [sections, setSections] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [mentors, setMentors] = useState([]);
+  // const [mentors, setMentors] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [venues, setVenues] = useState([])
 
@@ -141,16 +141,6 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     }
   };
 
-  const fetchMentors = async (subjectId) => {
-    if (!subjectId) return;
-    try {
-      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/getAvailableMentors?subjectId=${subjectId}&activeSection=${activeSection}`);
-      const data = await response.json();
-      if (data.success) setMentors(data.mentors);
-    } catch (error) {
-      console.error('Error fetching mentors:', error);
-    }
-  };
   // --- END DATA FETCHING ---
 
 

@@ -148,7 +148,8 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   body: JSON.stringify({
                     gradeId: activeGrade,
                     days: 7,
-                    includeToday: true
+                    includeToday: true,
+                    sectionId: activeSection
                   })
                 });
 

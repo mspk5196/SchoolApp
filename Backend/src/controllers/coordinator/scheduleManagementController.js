@@ -2,6 +2,250 @@ const db = require('../../config/db');
 const ExcelJS = require('exceljs');
 const fs = require("fs");
 
+// Get all sections for a grade
+exports.getSectionsByGrade = async (req, res) => {
+  const { activeGrade } = req.body;
+
+  const sql = `
+    SELECT sec.id, sec.section_name, sec.grade_id
+    FROM Sections sec
+    WHERE grade_id = ?
+  `;
+  db.query(sql, [activeGrade], (err, results) => {
+    if (err) {
+      console.error("Error fetching sections data:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ success: true, message: "Sections data fetched successfully", gradeSections: results });
+  });
+};
+
+// Get all subjects
+exports.getAllSubjects = (req, res) => {
+
+  const { activeSection } = req.body;
+
+  const sql = `
+    SELECT DISTINCT ssa.subject_id as id, sub.subject_name
+    FROM section_subject_activities ssa
+    JOIN Subjects sub ON ssa.subject_id = sub.id
+    WHERE section_id = ?;
+  `;
+  db.query(sql, [activeSection], (err, results) => {
+    if (err) {
+      console.error("Error fetching subjects data:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({ success: true, message: "Subjects data fetched successfully", subjects: results });
+  });
+};
+
+//get WeeklySchedule
+exports.getWeeklySchedule = (req, res) => {
+  const { sectionId, day } = req.query;
+
+  const query = `
+    SELECT ws.*, s.subject_name, ven.id as venue_id, ven.name as venue_name
+    FROM weekly_schedule ws
+    JOIN subjects s ON ws.subject_id = s.id
+    JOIN Venues ven ON ws.venue = ven.id
+    WHERE ws.section_id = ? AND ws.day = ?
+    ORDER BY ws.start_time`;
+
+  db.query(query, [sectionId, day], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    console.log(results);
+    res.json({ success: true, scheduleItems: results });
+
+  });
+};
+
+exports.addOrUpdateWeeklySchedule = async (req, res) => {
+  const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
+
+  if (!sectionId || !day || !startTime || !endTime || !subjectId) {
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
+  }
+
+  try {
+    // Step 1: Calculate session_no
+    const [existingSessions] = await db.promise().query(
+      `SELECT COUNT(*) AS count FROM weekly_schedule 
+       WHERE section_id = ? AND day = ? AND start_time < ?`,
+      [sectionId, day, startTime]
+    );
+    const sessionNo = existingSessions[0].count + 1;
+    // console.log("weekly",id);
+
+    // Step 2: Update existing schedule
+    if (id) {
+      const updateQuery = `
+        UPDATE weekly_schedule 
+        SET 
+          section_id = ?,
+          day = ?,
+          start_time = ?,
+          end_time = ?,
+          subject_id = ?,
+          activity = ?,
+          venue = ?,
+          session_no = ?
+        WHERE id = ?`;
+
+
+      await db.promise().query(updateQuery,
+        [sectionId, day, startTime, endTime, subjectId, activity || null, venue || null, sessionNo, id]);
+
+      return res.json({
+        success: true,
+        message: 'Schedule item updated successfully',
+        id: id
+      });
+    }
+    // Step 3: Insert new schedule
+    else {
+      const insertQuery = `
+        INSERT INTO weekly_schedule 
+        (section_id, day, start_time, end_time, subject_id, activity, venue, session_no)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+      const [results] = await db.promise().query(insertQuery,
+        [sectionId, day, startTime, endTime, subjectId, activity || null, venue || null, sessionNo]);
+
+      return res.json({
+        success: true,
+        message: 'Schedule item created successfully',
+        id: results.insertId
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Database error' });
+  }
+};
+
+// Delete a schedule item
+exports.deleteWeeklySchedule = (req, res) => {
+  const { id } = req.params;
+
+  const query = 'DELETE FROM weekly_schedule WHERE id = ?';
+
+//   const query1 = 'SELECT id FROM daily_schedule WHERE original_schedule_id = ?';
+
+  db.query(query, [id], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Schedule item not found' });
+    }
+
+    res.json({ success: true, message: 'Schedule item deleted successfully' });
+
+    // db.query(query1, [id], (err, results) => {
+    //   if (err) {
+    //     console.error(err);
+    //     return res.status(500).json({ success: false, message: 'Database error' });
+    //   }
+    //   if (results.length > 0) {
+    //     const dailyScheduleIds = results.map(row => row.id);
+
+    //     // First check if there are any non-completed assessment sessions
+    //     const checkQuery = 'SELECT COUNT(*) as count FROM assessment_sessions WHERE dsa_id IN (?) AND status != "completed"';
+
+    //     db.query(checkQuery, [dailyScheduleIds], (err, checkResults) => {
+    //       if (err) {
+    //         console.error(err);
+    //         return res.status(500).json({ success: false, message: 'Database error checking assessment sessions' });
+    //       }
+
+    //       const nonCompletedCount = checkResults[0].count;
+
+    //       if (nonCompletedCount > 0) {
+    //         return res.status(400).json({
+    //           success: false,
+    //           message: 'Cannot delete schedule: There are assessment sessions in progress or pending completion'
+    //         });
+    //       }
+
+    //       // Proceed with deletion if all assessment sessions are completed
+    //       const query2 = 'DELETE FROM academic_sessions WHERE dsa_id IN (?)';
+    //       const query3 = 'DELETE FROM assessment_sessions WHERE dsa_id IN (?) AND status = "completed"';
+    //       const deleteQuery = 'DELETE FROM daily_schedule WHERE id IN (?)';
+
+    //       // First delete completed assessment_sessions
+    //       db.query(query3, [dailyScheduleIds], (err) => {
+    //         if (err) {
+    //           console.error(err);
+    //           return res.status(500).json({ success: false, message: 'Database error deleting assessment sessions' });
+    //         }
+
+    //         // Then delete acadamic_sessions
+    //         db.query(query2, [dailyScheduleIds], (err) => {
+    //           if (err) {
+    //             console.error(err);
+    //             return res.status(500).json({ success: false, message: 'Database error deleting academic sessions' });
+    //           }
+
+    //           // Finally delete daily_schedule
+    //           db.query(deleteQuery, [dailyScheduleIds], (err) => {
+    //             if (err) {
+    //               console.error(err);
+    //               return res.status(500).json({ success: false, message: 'Database error deleting daily schedule' });
+    //             }
+    //             res.json({ success: true, message: 'Schedule item deleted successfully' });
+    //           });
+    //         });
+    //       });
+    //     });
+    //   } else {
+    //     res.json({ success: true, message: 'Schedule item deleted successfully' });
+    //   }
+    // })
+  });
+}
+
+
+// Check for time conflicts in schedule
+exports.checkTimeConflict = (req, res) => {
+  const { sectionId, day, startTime, endTime, excludeId } = req.query;
+
+  const query = `
+    SELECT COUNT(*) as conflictCount
+    FROM weekly_schedule
+    WHERE section_id = ? 
+    AND day = ?
+    AND (
+      (start_time < ? AND end_time > ?) OR
+      (start_time < ? AND end_time > ?) OR
+      (start_time >= ? AND end_time <= ?)
+    )
+    ${excludeId ? 'AND id != ?' : ''}`;
+
+  const params = [sectionId, day, endTime, startTime, endTime, startTime, startTime, endTime];
+  if (excludeId) params.push(excludeId);
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    res.json({
+      success: true,
+      hasConflict: results[0].conflictCount > 0
+    });
+  });
+};
+
 // Create daily schedule with multiple activities
 exports.createDailySchedule = (req, res) => {
     const {
@@ -2773,10 +3017,222 @@ exports.generateScheduleTemplate = async (req, res) => {
     }
 };
 
-
-const generateStudentWiseSchedulesManual = async (req, res) => {
+const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
+    let connection;
     try {
-        const { gradeId, sectionId } = req.body;
+        // Calculate date range
+        const today = new Date();
+        const startDate = includeToday ? today : new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        const endDate = new Date(startDate.getTime() + (days - 1) * 24 * 60 * 60 * 1000);
+
+        // Get connection from pool
+        connection = await db.promise().getConnection();
+
+        // Start transaction
+        await connection.query('START TRANSACTION');
+
+        // Get period activities for the specified section and date range
+        const periodActivities = await connection.query(`
+            SELECT 
+                pa.*,
+                sb.id as batch_id,
+                sba.student_roll,
+                s.id as student_id,
+                ssa.subject_id,
+                m.id as mentor_id
+            FROM period_activities pa
+            JOIN section_subject_activities ssa ON pa.section_subject_activity_id = ssa.id
+            JOIN section_batches sb ON sb.section_id = ssa.section_id AND sb.subject_id = ssa.subject_id
+            JOIN student_batch_assignments sba ON sba.batch_id = sb.id AND sba.is_current = 1
+            JOIN students s ON s.roll = sba.student_roll
+            LEFT JOIN mentors m ON m.id = pa.assigned_mentor_id
+            WHERE ssa.section_id = ? 
+            AND pa.activity_date BETWEEN ? AND ?
+            AND pa.status = 'Schedule Created'
+            AND ssa.is_active = 1
+            AND sb.is_active = 1
+            ORDER BY pa.activity_date, pa.start_time
+        `, [sectionId, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]);
+
+        console.log('Fetched period activities:', periodActivities);
+
+        if (periodActivities.length === 0) {
+            await connection.query('ROLLBACK');
+            await connection.release();
+            return {
+                message: 'No period activities found for the specified criteria',
+                schedulesCreated: 0
+            };
+        }
+
+        let schedulesCreated = 0;
+        const createdSchedules = [];
+
+        // Group activities by type for batch processing
+        const academicActivities = [];
+        const assessmentActivities = [];
+
+        for (const activity of periodActivities) {
+            // Format date properly for MySQL datetime
+            const formatDate = (date) => {
+                if (typeof date === 'string') {
+                    return date.split('T')[0]; // Extract date part if it's ISO string
+                }
+                if (date instanceof Date) {
+                    return date.toISOString().split('T')[0];
+                }
+                return date;
+            };
+
+            const activityDate = formatDate(activity.activity_date);
+
+            // Check if schedule already exists to avoid duplicates
+            const existingAcademic = await connection.query(`
+                SELECT id FROM academic_sessions 
+                WHERE pa_id = ? AND student_roll = ? AND date = ?
+            `, [activity.id, activity.student_roll, activityDate]);
+
+            const existingAssessment = await connection.query(`
+                SELECT id FROM assessment_sessions 
+                WHERE pa_id = ? AND student_roll = ? AND date = ?
+            `, [activity.id, activity.student_roll, activityDate]);
+
+            if (existingAcademic.length > 0 || existingAssessment.length > 0) {
+                console.log(`Schedule already exists for activity ${activity.id}, student ${activity.student_roll}`);
+                continue;
+            }
+
+            const activityData = {
+                pa_id: activity.id,
+                student_roll: activity.student_roll,
+                section_id: sectionId,
+                mentor_id: activity.mentor_id || activity.assigned_mentor_id,
+                subject_id: activity.subject_id,
+                ssa_sub_activity_id: activity.ssa_sub_activity_id,
+                batch_id: activity.batch_id,
+                topic_id: activity.topic_id,
+                eligibility_status: 'Eligible',
+                status: 'Schedule Created',
+                date: activityDate,
+                start_time: `${activity.start_time}`,
+                end_time: activity.end_time ? 
+                    `${activity.end_time}` : 
+                    `${activity.start_time}`,
+                remarks: `Class scheduled for ${activity.activity_name}`
+            };
+
+            // Determine if this is an assessment or academic activity
+            if (activity.is_assessment === 1) {
+                assessmentActivities.push({
+                    ...activityData,
+                    total_marks: activity.total_marks || 100,
+                    malpractice: 0
+                });
+            } else {
+                academicActivities.push({
+                    ...activityData,
+                    attentiveness: null
+                });
+            }
+        }
+
+        // Insert academic sessions
+        if (academicActivities.length > 0) {
+            for (const session of academicActivities) {
+                try {
+                    const result = await connection.query(`
+                        INSERT INTO academic_sessions (
+                            pa_id, student_roll, section_id, mentor_id, subject_id, 
+                            ssa_sub_activity_id, batch_id, topic_id, eligibility_status,
+                            status, date, start_time, end_time, attentiveness, remarks
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `, [
+                        session.pa_id, session.student_roll, session.section_id,
+                        session.mentor_id, session.subject_id, session.ssa_sub_activity_id,
+                        session.batch_id, session.topic_id, session.eligibility_status,
+                        session.status, session.date, session.start_time,
+                        session.end_time, session.attentiveness, session.remarks
+                    ]);
+
+                    schedulesCreated++;
+                    createdSchedules.push({
+                        type: 'academic',
+                        id: result.insertId,
+                        student_roll: session.student_roll,
+                        activity_name: periodActivities.find(pa => pa.id === session.pa_id)?.activity_name
+                    });
+                } catch (error) {
+                    console.error(`Error creating academic session for student ${session.student_roll}:`, error);
+                    throw error; // Re-throw to trigger rollback
+                }
+            }
+        }
+
+        // Insert assessment sessions
+        if (assessmentActivities.length > 0) {
+            for (const session of assessmentActivities) {
+                try {
+                    const result = await connection.query(`
+                        INSERT INTO assessment_sessions (
+                            pa_id, student_roll, section_id, mentor_id, subject_id,
+                            ssa_sub_activity_id, batch_id, topic_id, eligibility_status,
+                            status, date, start_time, end_time, total_marks, remarks, malpractice
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `, [
+                        session.pa_id, session.student_roll, session.section_id,
+                        session.mentor_id, session.subject_id, session.ssa_sub_activity_id,
+                        session.batch_id, session.topic_id, session.eligibility_status,
+                        session.status, session.date, session.start_time,
+                        session.end_time, session.total_marks, session.remarks, session.malpractice
+                    ]);
+
+                    schedulesCreated++;
+                    createdSchedules.push({
+                        type: 'assessment',
+                        id: result.insertId,
+                        student_roll: session.student_roll,
+                        activity_name: periodActivities.find(pa => pa.id === session.pa_id)?.activity_name
+                    });
+                } catch (error) {
+                    console.error(`Error creating assessment session for student ${session.student_roll}:`, error);
+                    throw error; // Re-throw to trigger rollback
+                }
+            }
+        }
+
+        // Commit transaction
+        await connection.query('COMMIT');
+        await connection.release();
+
+        return {
+            message: `Successfully created ${schedulesCreated} student-wise schedules`,
+            schedulesCreated,
+            academicSessions: academicActivities.length,
+            assessmentSessions: assessmentActivities.length,
+            createdSchedules,
+            dateRange: {
+                startDate: startDate.toISOString().split('T')[0],
+                endDate: endDate.toISOString().split('T')[0]
+            }
+        };
+
+    } catch (error) {
+        console.error('Error in createStudentWiseSchedule:', error);
+        if (connection) {
+            try {
+                await connection.query('ROLLBACK');
+                await connection.release();
+            } catch (rollbackError) {
+                console.error('Error rolling back transaction:', rollbackError);
+            }
+        }
+        throw error;
+    }
+};
+
+exports.generateStudentWiseSchedulesManual = async (req, res) => {
+    try {
+        const { gradeId, sectionId, days, includeToday } = req.body;
 
         // Validate input
         if (!gradeId || !sectionId) {
@@ -2787,7 +3243,48 @@ const generateStudentWiseSchedulesManual = async (req, res) => {
         }
 
         // Generate the schedule
-        const scheduleData = await createStudentWiseSchedule(gradeId, sectionId);
+        const scheduleData = await createStudentWiseSchedule(sectionId, days, includeToday);
+
+        // Send the generated schedule as a response
+        res.status(200).json({
+            success: true,
+            data: scheduleData,
+        });
+    } catch (error) {
+        console.error("Generate student-wise schedule error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to generate student-wise schedule",
+            error: error.message,
+        });
+    }
+};
+exports.generateStudentWiseSchedulesCron = async (req, res) => {
+    try {
+
+        const days =7;
+        const includeToday = true;
+
+        const getSectionIdSql = `
+        SELECT id FROM sections;
+        `;
+
+        db.query(getSectionIdSql, async (err, results) => {
+            if (err) {
+                console.error('Error fetching section IDs:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: "Failed to fetch section IDs",
+                    error: err.message,
+                });
+            }
+            const scheduleData = [];
+            for (const sectionId of results.map(r => r.id)) {
+                // Generate the schedule
+                const data = await createStudentWiseSchedule(sectionId, days, includeToday);
+                scheduleData.push(data);
+            }
+        });
 
         // Send the generated schedule as a response
         res.status(200).json({
