@@ -420,7 +420,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                 <Text style={styles.studentName}>{item.name}</Text>
                 <Text style={styles.studentRoll}>Roll: {item.roll}</Text>
                 <Text style={styles.studentDetails}>
-                    Grade: {item.grade_name} | Section: {item.section_name}
+                    Grade: {activeGrade} | Section: {activeSection && sections.find(s => s.id === activeSection)?.section_name}
                 </Text>
             </View>
             <Text style={styles.selectText}>View Schedule →</Text>

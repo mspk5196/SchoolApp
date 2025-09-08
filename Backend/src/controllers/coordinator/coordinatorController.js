@@ -266,58 +266,109 @@ exports.getMentorIssues = (req, res) => {
 exports.getMentorSchedule = (req, res) => {
   const { mentorId, date } = req.body;
 
-  // SELECT 
-  //     ds.id,
-  //     ds.date,
-  //     ds.start_time,
-  //     ds.end_time,
-  //     s.subject_name,
-  //     ds.subject_id,
-  //     sec.section_name ,
-  //     ds.section_id,
-  //     sec.grade_id,
-  //     avt.activity_type AS activity_name,
-  //     v.name AS venue
-  //   FROM daily_schedule ds
-  //   JOIN subjects s ON ds.subject_id = s.id
-  //   JOIN sections sec ON ds.section_id = sec.id
-  //   LEFT JOIN activity_types avt ON ds.activity = avt.id
-  //   LEFT JOIN venues v ON ds.venue = v.id
-  //   WHERE ds.mentors_id = ? AND ds.date = ?
-  //   ORDER BY ds.start_time
-
-
   const query = `
-      SELECT
-      pa.id,
-      ds.date,
-      pa.activity_name,
-      pa.start_time,
-      pa.end_time,
-      ds.grade_id,
-      sub.subject_name,
-      s.section_name,
-      ds.section_id,
-      v.name AS venue
-    FROM period_activities pa
-    JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
-    JOIN sections s ON ds.section_id = s.id
-    JOIN subjects sub ON ds.subject_id = sub.id
-    LEFT JOIN venues v ON ds.venue_id = v.id
-    WHERE pa.assigned_mentor_id = ?
-    AND ds.date = ?
-    ORDER BY pa.start_time ASC;
+    SELECT 
+        'Academic' AS session_type,
+        a.id,
+        a.pa_id,
+        a.student_roll,
+        a.section_id,
+        a.mentor_id,
+        a.subject_id,
+        a.date,
+        a.start_time,
+        a.end_time,
+        a.venue_id,
+        a.status,
+        a.remarks,
+        sub.subject_name,
+        sec.section_name,
+        sec.grade_id,
+        v.name AS venue_name
+    FROM academic_sessions a
+    LEFT JOIN subjects sub ON a.subject_id = sub.id
+    LEFT JOIN sections sec ON a.section_id = sec.id
+    LEFT JOIN venues v ON a.venue_id = v.id
+    WHERE a.mentor_id = ? AND a.date = ?
+
+    UNION ALL
+
+    SELECT 
+        'Assessment' AS session_type,
+        asess.id,
+        asess.pa_id,
+        asess.student_roll,
+        asess.section_id,
+        asess.mentor_id,
+        asess.subject_id,
+        asess.date,
+        asess.start_time,
+        asess.end_time,
+        asess.venue_id,
+        asess.status,
+        asess.remarks,
+        sub.subject_name,
+        sec.section_name,
+        sec.grade_id,
+        v.name AS venue_name
+    FROM assessment_sessions asess
+    LEFT JOIN subjects sub ON asess.subject_id = sub.id
+    LEFT JOIN sections sec ON asess.section_id = sec.id
+    LEFT JOIN venues v ON asess.venue_id = v.id
+    WHERE asess.mentor_id = ? AND asess.date = ?
+
+    ORDER BY date, start_time;
   `;
 
-  db.query(query, [mentorId, date], (err, results) => {
+  db.query(query, [mentorId, date, mentorId, date], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
+
+    // Group schedules by time, section_id, date, subject, and venue
+    const groupedSchedules = {};
+    
+    results.forEach(schedule => {
+      // Create a unique key for grouping
+      const groupKey = `${schedule.date}_${schedule.start_time}_${schedule.end_time}_${schedule.section_id}_${schedule.subject_id}_${schedule.venue_id}`;
+      
+      if (!groupedSchedules[groupKey]) {
+        groupedSchedules[groupKey] = {
+          session_type: schedule.session_type,
+          id: schedule.id, // Use first schedule's ID as group ID
+          pa_id: schedule.pa_id,
+          section_id: schedule.section_id,
+          mentor_id: schedule.mentor_id,
+          subject_id: schedule.subject_id,
+          subject_name: schedule.subject_name,
+          section_name: schedule.section_name,
+          grade_id: schedule.grade_id,
+          venue_name: schedule.venue_name,
+          date: schedule.date,
+          start_time: schedule.start_time,
+          end_time: schedule.end_time,
+          venue_id: schedule.venue_id,
+          status: schedule.status,
+          remarks: schedule.remarks,
+          student_count: 0,
+          students: []
+        };
+      }
+      
+      // Add student to the group
+      groupedSchedules[groupKey].student_count++;
+      groupedSchedules[groupKey].students.push({
+        student_roll: schedule.student_roll,
+        schedule_id: schedule.id
+      });
+    });
+
+    // Convert grouped object back to array
+    const consolidatedSchedule = Object.values(groupedSchedules);
 
     res.json({
       success: true,
-      schedule: results
+      schedule: consolidatedSchedule
     });
-    console.log(results);
-
+    console.log('Consolidated schedule:', consolidatedSchedule);
   });
 };
 

@@ -282,7 +282,7 @@ router.get('/coordinator/enrollment/getVenuesByGrade', infraEnrollment.getVenues
 
 router.post('/coordinator/schedule/create', ScheduleManagementController.createDailySchedule);
 router.get('/coordinator/schedule/:date/:sectionId', ScheduleManagementController.getDailySchedule);
-router.get('/coordinator/schedule/weekly/:sectionId/:weekStart', ScheduleManagementController.getWeeklySchedule);
+// router.get('/coordinator/schedule/weekly/:sectionId/:weekStart', ScheduleManagementController.getWeeklySchedule);
 router.put('/coordinator/schedule/activity/:activityId', ScheduleManagementController.updateScheduleActivity);
 router.patch('/coordinator/schedule/activity/:activityId/complete', ScheduleManagementController.markActivityCompleted);
 router.get('/coordinator/schedule/mentors/available/:date/:startTime/:endTime/:subjectId/:gradeId', ScheduleManagementController.getAvailableMentors);

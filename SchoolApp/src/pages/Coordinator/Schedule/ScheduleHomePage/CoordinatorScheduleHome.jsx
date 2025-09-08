@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity, Alert, Linking } from 'react-native';
+import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity, Alert, Linking, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DocumentPicker from 'react-native-document-picker';
 import HomeIcon from '../../../../assets/CoordinatorPage/ScheduleHome/Home.svg';
 import CollegeIcon from '../../../../assets/CoordinatorPage/ScheduleHome/College.svg';
 import CollegeIcon2 from '../../../../assets/CoordinatorPage/ScheduleHome/College2.svg';
+import StudentSchedule from '../../../../assets/CoordinatorPage/ScheduleHome/student_schedule.png';
 import ExamIcon from '../../../../assets/CoordinatorPage/ScheduleHome/Exam.svg';
 import InvigilatorIcon from '../../../../assets/CoordinatorPage/ScheduleHome/Invigilator.svg';
 import styles from './ScheduleHomeStyle';
@@ -187,7 +188,7 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
         { id: '2', title: 'Exam Schedule', bgColor: '#65558F12', iconColor: '#EEAA16', Icon: <ExamIcon width={50} height={50} />, color: '#65558F' },
         { id: '3', title: 'Invigilation Duties', bgColor: '#FFF3DC', iconColor: '#D81B60', Icon: <InvigilatorIcon width={50} height={50} />, color: '#EEAA16' },
         { id: '4', title: 'Weekly Schedules', bgColor: '#EBEEFF', iconColor: '#3557FF', Icon: <CollegeIcon2 width={50} height={50} />, color: '#3557FF' },
-        { id: '5', title: 'Student Schedule', bgColor: '#EBEEFF', iconColor: '#3557FF', Icon: <CollegeIcon2 width={50} height={50} />, color: '#3557FF' },
+        { id: '5', title: 'Student Schedule', bgColor: '#ec3352', Icon: <Image source={StudentSchedule} style={{ width: 50, height: 50 }} />, color: '#ffffffff' },
       ],
     },
   ];

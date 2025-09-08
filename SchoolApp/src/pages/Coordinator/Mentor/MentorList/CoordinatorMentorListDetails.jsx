@@ -55,6 +55,36 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
     return `${year}-${month}-${day}`;
   };
 
+  // Function to check if selected date is today
+  const isToday = () => {
+    const today = new Date();
+    const todayISO = formatISODate(today);
+    return formattedDate === todayISO;
+  };
+
+  // Function to get day label
+  const getDayLabel = () => {
+    if (isToday()) {
+      return 'Today';
+    }
+    
+    const selectedDateObj = new Date(formattedDate);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    
+    if (formatISODate(selectedDateObj) === formatISODate(yesterday)) {
+      return 'Yesterday';
+    } else if (formatISODate(selectedDateObj) === formatISODate(tomorrow)) {
+      return 'Tomorrow';
+    } else {
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      return dayNames[selectedDateObj.getDay()];
+    }
+  };
+
   const today = new Date();
   const defaultDisplayDate = formatDisplayDate(today); // dd/mm/yy
   const defaultISODate = formatISODate(today);         // yyyy-mm-dd
@@ -110,7 +140,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
 
   // Fetch mentor schedule
   const fetchScheduleForDate = async (date) => {
-    console.log(date,mentor.id);
+    console.log('Fetching schedule for date:', date, 'mentor ID:', mentor.id);
     
     try {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getMentorSchedule`, {
@@ -122,12 +152,17 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
         }),
       });
       const data = await response.json();
+      console.log('Schedule API response:', data);
       if (data.success) {
         setMentorSchedule(data.schedule);
-        console.log(data.schedule);
+        console.log('Updated mentorSchedule state:', data.schedule);
+      } else {
+        console.log('API returned success: false', data.message || 'No message');
+        setMentorSchedule([]);
       }
     } catch (error) {
       console.error('Error fetching schedule:', error);
+      setMentorSchedule([]);
     }
   };
 
@@ -300,13 +335,13 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
   // Handle date selection
   const handleDateSelect = (date) => {
     const dateParts = date.dateString.split('-');
-    const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0].slice(2)}`;
+    const displayDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0].slice(2)}`;
 
-    setSelectedDate(formattedDate);
+    setSelectedDate(displayDate);
     setFormattedDate(date.dateString);
     setShowCalendarModal(false);
 
-    // Fetch schedule for the selected date
+    // Fetch schedule for the selected date (use date.dateString directly)
     fetchScheduleForDate(date.dateString);
   };
 
@@ -417,7 +452,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
           <Text style={styles.sectionTitle}>Schedules</Text>
           <View style={styles.dateNavigation}>
             <View style={styles.todayIndicator} />
-            <Text style={styles.todayText}>Today</Text>
+            <Text style={styles.todayText}>{getDayLabel()}</Text>
             <View style={styles.dateNavigationControls}>
               <TouchableOpacity onPress={goToPreviousDay}>
                 <Text style={styles.dateNavArrow}>{"<"}</Text>
@@ -449,7 +484,10 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
                 <View>
                   <Text style={styles.subjectText}>{cls.subject_name}</Text>
                   <Text style={styles.gradeText}>Grade {cls.grade_id} - Section {cls.section_name}</Text>
-                  <Text style={styles.typeText}>{cls.activity_name}</Text>
+                  <Text style={styles.typeText}>{cls.session_type} - {cls.student_count} Student{cls.student_count !== 1 ? 's' : ''}</Text>
+                  {cls.venue_name && (
+                    <Text style={styles.venueText}>Venue: {cls.venue_name}</Text>
+                  )}
                 </View>
                 <Text style={styles.timeText}>
                   {formatTime(cls.start_time)} - {formatTime(cls.end_time)}
@@ -521,7 +559,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
                     )}
                   </View>
                   <Text style={styles.sessionText}>
-                    {session.subject_name} ({formatTime(session.start_time)} - {formatTime(session.end_time)})
+                    {session.subject_name} ({formatTime(session.start_time)} - {formatTime(session.end_time)}) - {session.student_count} Student{session.student_count !== 1 ? 's' : ''}
                   </Text>
                 </TouchableOpacity>
               ))}

@@ -69,6 +69,8 @@ exports.getWeeklySchedule = (req, res) => {
 exports.addOrUpdateWeeklySchedule = async (req, res) => {
     const { id, sectionId, day, startTime, endTime, subjectId, mentorsId, activity, venue } = req.body;
 
+    console.log(req.body);
+    
     if (!sectionId || !day || !startTime || !endTime || !subjectId) {
         return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
@@ -112,11 +114,11 @@ exports.addOrUpdateWeeklySchedule = async (req, res) => {
         else {
             const insertQuery = `
         INSERT INTO weekly_schedule 
-        (section_id, day, start_time, end_time, subject_id, activity, venue, session_no)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        (section_id, day, start_time, end_time, subject_id, venue, session_no)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
             const [results] = await db.promise().query(insertQuery,
-                [sectionId, day, startTime, endTime, subjectId, activity || null, venue || null, sessionNo]);
+                [sectionId, day, startTime, endTime, subjectId, venue || null, sessionNo]);
 
             return res.json({
                 success: true,
@@ -149,67 +151,6 @@ exports.deleteWeeklySchedule = (req, res) => {
         }
 
         res.json({ success: true, message: 'Schedule item deleted successfully' });
-
-        // db.query(query1, [id], (err, results) => {
-        //   if (err) {
-        //     console.error(err);
-        //     return res.status(500).json({ success: false, message: 'Database error' });
-        //   }
-        //   if (results.length > 0) {
-        //     const dailyScheduleIds = results.map(row => row.id);
-
-        //     // First check if there are any non-completed assessment sessions
-        //     const checkQuery = 'SELECT COUNT(*) as count FROM assessment_sessions WHERE dsa_id IN (?) AND status != "completed"';
-
-        //     db.query(checkQuery, [dailyScheduleIds], (err, checkResults) => {
-        //       if (err) {
-        //         console.error(err);
-        //         return res.status(500).json({ success: false, message: 'Database error checking assessment sessions' });
-        //       }
-
-        //       const nonCompletedCount = checkResults[0].count;
-
-        //       if (nonCompletedCount > 0) {
-        //         return res.status(400).json({
-        //           success: false,
-        //           message: 'Cannot delete schedule: There are assessment sessions in progress or pending completion'
-        //         });
-        //       }
-
-        //       // Proceed with deletion if all assessment sessions are completed
-        //       const query2 = 'DELETE FROM academic_sessions WHERE dsa_id IN (?)';
-        //       const query3 = 'DELETE FROM assessment_sessions WHERE dsa_id IN (?) AND status = "completed"';
-        //       const deleteQuery = 'DELETE FROM daily_schedule WHERE id IN (?)';
-
-        //       // First delete completed assessment_sessions
-        //       db.query(query3, [dailyScheduleIds], (err) => {
-        //         if (err) {
-        //           console.error(err);
-        //           return res.status(500).json({ success: false, message: 'Database error deleting assessment sessions' });
-        //         }
-
-        //         // Then delete acadamic_sessions
-        //         db.query(query2, [dailyScheduleIds], (err) => {
-        //           if (err) {
-        //             console.error(err);
-        //             return res.status(500).json({ success: false, message: 'Database error deleting academic sessions' });
-        //           }
-
-        //           // Finally delete daily_schedule
-        //           db.query(deleteQuery, [dailyScheduleIds], (err) => {
-        //             if (err) {
-        //               console.error(err);
-        //               return res.status(500).json({ success: false, message: 'Database error deleting daily schedule' });
-        //             }
-        //             res.json({ success: true, message: 'Schedule item deleted successfully' });
-        //           });
-        //         });
-        //       });
-        //     });
-        //   } else {
-        //     res.json({ success: true, message: 'Schedule item deleted successfully' });
-        //   }
-        // })
     });
 }
 
@@ -543,47 +484,6 @@ exports.getDailySchedule = (req, res) => {
     });
 };
 
-// Get weekly schedule template
-exports.getWeeklySchedule = (req, res) => {
-    const { sectionId, weekStart } = req.params;
-
-    const query = `
-            SELECT 
-                ds.date, 
-                DAYNAME(ds.date) as day_name,
-                ds.period_number,
-                ds.start_time,
-                ds.end_time,
-                sub.subject_name,
-                v.name as venue_name,
-                COUNT(pa.id) as activity_count,
-                ds.is_eca
-            FROM daily_schedule ds
-            JOIN subjects sub ON ds.subject_id = sub.id
-            JOIN venues v ON ds.venue_id = v.id
-            LEFT JOIN period_activities pa ON ds.id = pa.daily_schedule_id
-            WHERE ds.section_id = ? 
-            AND ds.date BETWEEN ? AND DATE_ADD(?, INTERVAL 6 DAY)
-            GROUP BY ds.id, ds.date, ds.period_number, ds.start_time, ds.end_time, sub.subject_name, v.name, ds.is_eca
-            ORDER BY ds.date, ds.period_number
-        `;
-
-    db.query(query, [sectionId, weekStart, weekStart], (error, schedule) => {
-        if (error) {
-            console.error('Get weekly schedule error:', error);
-            return res.status(500).json({
-                success: false,
-                message: 'Failed to fetch weekly schedule',
-                error: error.message
-            });
-        }
-
-        res.json({
-            success: true,
-            data: schedule
-        });
-    });
-};
 
 // Update activity in schedule
 exports.updateScheduleActivity = (req, res) => {
@@ -3114,8 +3014,20 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
     try {
         // Calculate date range
         const today = new Date();
-        const startDate = includeToday ? today : new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        
+        // Set time to midnight to avoid timezone issues
+        today.setHours(0, 0, 0, 0);
+        
+        const startDate = includeToday ? new Date(today) : new Date(today.getTime() + 24 * 60 * 60 * 1000);
         const endDate = new Date(startDate.getTime() + (days - 1) * 24 * 60 * 60 * 1000);
+        
+        console.log('Date range calculation:', {
+            today: today.toISOString().split('T')[0],
+            includeToday,
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            days
+        });
 
         // Get connection from pool
         connection = await db.promise().getConnection();
@@ -3124,6 +3036,11 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
         await connection.query('START TRANSACTION');
 
         // Get period activities for the specified section and date range
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        console.log('Query date parameters:', { startDateStr, endDateStr });
+        
         const periodActivities = await connection.query(`
             SELECT 
                 pa.*,
@@ -3145,7 +3062,7 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
             AND sb.is_active = 1
             AND pa.batch_id IS NOT NULL
             ORDER BY pa.activity_date, pa.start_time
-        `, [sectionId, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]);
+        `, [sectionId, startDateStr, endDateStr]);
 
         console.log(`Fetched ${periodActivities.length} period activities for section ${sectionId}`);
         console.log('Period activities with student assignments:', periodActivities.map(pa => ({
@@ -3176,15 +3093,29 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
             // Format date properly for MySQL datetime
             const formatDate = (date) => {
                 if (typeof date === 'string') {
-                    return date.split('T')[0]; // Extract date part if it's ISO string
+                    // If it's already a string, check if it's ISO format
+                    if (date.includes('T')) {
+                        return date.split('T')[0]; // Extract date part if it's ISO string
+                    }
+                    return date; // Return as is if it's already in YYYY-MM-DD format
                 }
                 if (date instanceof Date) {
-                    return date.toISOString().split('T')[0];
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
                 }
                 return date;
             };
 
             const activityDate = formatDate(activity.activity_date);
+            
+            console.log('Processing activity:', {
+                activity_id: activity.id,
+                raw_activity_date: activity.activity_date,
+                formatted_activity_date: activityDate,
+                student_roll: activity.student_roll
+            });
 
             // Check if schedule already exists to avoid duplicates
             const existingAcademic = await connection.query(`
@@ -3221,6 +3152,14 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
                 remarks: `Class scheduled for ${activity.activity_name}`,
                 venue_id: activity.venue_id || null
             };
+            
+            console.log('Activity data to be inserted:', {
+                pa_id: activityData.pa_id,
+                student_roll: activityData.student_roll,
+                date: activityData.date,
+                start_time: activityData.start_time,
+                end_time: activityData.end_time
+            });
 
             // Determine if this is an assessment or academic activity
             if (activity.is_assessment === 1) {
@@ -3313,8 +3252,8 @@ const createStudentWiseSchedule = async (sectionId, days, includeToday) => {
             assessmentSessions: assessmentActivities.length,
             createdSchedules,
             dateRange: {
-                startDate: startDate.toISOString().split('T')[0],
-                endDate: endDate.toISOString().split('T')[0]
+                startDate: startDateStr,
+                endDate: endDateStr
             }
         };
 

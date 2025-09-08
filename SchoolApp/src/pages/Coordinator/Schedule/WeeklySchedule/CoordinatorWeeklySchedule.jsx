@@ -215,7 +215,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
       faculty: item.faculty, faculty_id: item.faculty_id,
       venue: item.venue || 'Select Venue', venue_id: item.venue_id
     });
-    fetchMentors(item.subject_id);
+    // fetchMentors(item.subject_id);
     setShowAddModal(true);
   };
 
@@ -278,7 +278,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
 
   const selectSubject = (subject) => {
     setNewActivity(prev => ({ ...prev, subject: subject.subject_name, subject_id: subject.id, faculty: 'Select Faculty', faculty_id: null }));
-    fetchMentors(subject.id);
+    // fetchMentors(subject.id);
     setShowSubjectModal(false);
   };
 
@@ -383,7 +383,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
               )}
             </View>
           </ScrollView>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddActivity}><Add2Icon width={24} height={24} color="#FFFFFF" /></TouchableOpacity>
+          {/* <TouchableOpacity style={styles.addButton} onPress={handleAddActivity}><Add2Icon width={24} height={24} color="#FFFFFF" /></TouchableOpacity> */}
         </>
       )}
 
