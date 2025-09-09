@@ -40,7 +40,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   };
 
   const [timeLeftString, setTimeLeftString] = useState('');
-  const { activityId, subject, grade, section_name, startTime, endTime, duration } = route.params;
+  const { activityId, subject, grade, section_name, startTime, endTime, duration, scheduleData } = route.params;
 
   // State management
   const [activity, setActivity] = useState(null);
@@ -54,6 +54,11 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   const [sessionProgress, setSessionProgress] = useState(0);
   const [sessionStartTimestamp, setSessionStartTimestamp] = useState(null);
   const [sessionEndTimestamp, setSessionEndTimestamp] = useState(null);
+  const [materials, setMaterials] = useState([]);
+  const [showMaterials, setShowMaterials] = useState(false);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
+  const [batches, setBatches] = useState({});
+  const [expandedBatches, setExpandedBatches] = useState({});
 
   // Animation values
   const [slideAnim] = useState(new Animated.Value(hp('100%')));
@@ -66,10 +71,6 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
     { key: 'Not Attentive', color: '#D97706', short: 'Low' },
     { key: 'Absent', color: '#DC2626', short: 'Abs' },
   ];
-
-  // Mock levels for demonstration
-  // const levels = ['Level 1', 'Level 2', 'Level 3'];
-
 
   // Helper to set session timestamps
   // Helper to parse 'h:mm AM/PM' format to hour and minute
@@ -86,8 +87,11 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
 
   const setSessionTimestamps = () => {
     const today = new Date();
-    const { hour: startHour, minute: startMinute } = parseTimeString(startTime);
-    const { hour: endHour, minute: endMinute } = parseTimeString(endTime);
+    const sessionStartTime = activity?.starttime || startTime;
+    const sessionEndTime = activity?.endtime || endTime;
+    
+    const { hour: startHour, minute: startMinute } = parseTimeString(sessionStartTime);
+    const { hour: endHour, minute: endMinute } = parseTimeString(sessionEndTime);
     const startTimestamp = new Date(today.getFullYear(), today.getMonth(), today.getDate(), startHour, startMinute).getTime();
     const endTimestamp = new Date(today.getFullYear(), today.getMonth(), today.getDate(), endHour, endMinute).getTime();
     setSessionStartTimestamp(startTimestamp);
@@ -101,7 +105,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   useEffect(() => {
     if (students.length > 0) {
       const initialPerformances = students.reduce((acc, student) => {
-        acc[student.roll] = student.has_approved_leave ? 'Absent' : null;
+        acc[student.student_roll] = student.has_approved_leave ? 'Absent' : null;
         return acc;
       }, {});
       setPerformances(initialPerformances);
@@ -147,14 +151,42 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   const fetchActivityDetails = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/mentor/activity/${activityId}/academic`);
-      const data = await response.json();
-      if (data.success) {
-        setActivity(data.activity);
-        setStudents(data.students);
+      if (scheduleData && scheduleData.length > 0) {
+        // Extract the first activity from the scheduleData array
+        const activityData = scheduleData[0];
+        setActivity(activityData);
+        
+        // Set batches data
+        if (activityData.batches) {
+          setBatches(activityData.batches);
+          // Initialize all batches as expanded
+          const initialExpanded = {};
+          Object.keys(activityData.batches).forEach(batchKey => {
+            initialExpanded[batchKey] = true;
+          });
+          setExpandedBatches(initialExpanded);
+          
+          // Flatten students from all batches
+          const allStudents = Object.values(activityData.batches).flatMap(batch => 
+            batch.students.map(student => ({
+              ...student,
+              batch_name: batch.batch_name,
+              batch_level: batch.batch_level
+            }))
+          );
+          setStudents(allStudents);
+        } else {
+          // Fallback to existing students array
+          const allStudents = scheduleData.flatMap(schedule => schedule.students || []);
+          setStudents(allStudents);
+        }
+        
+        setIsLoading(false);
+        console.log('Activity Data:', activityData);
+        console.log('Batches:', activityData.batches);
         // Timestamps will be set by useEffect when status is 'In Progress'
       } else {
-        Alert.alert('Error', data.message || 'Failed to fetch activity details.');
+        Alert.alert('Error','Failed to fetch activity details.');
       }
     } catch (error) {
       Alert.alert('Error', 'An error occurred while fetching data.');
@@ -163,9 +195,54 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
     }
   };
 
-  const handleStartSession = async () => {
+  const fetchMaterials = async () => {
+    if (!activity?.section_subject_activity_id) {
+      Alert.alert('Error', 'Cannot fetch materials: missing activity information');
+      return;
+    }
+
+    setLoadingMaterials(true);
     try {
-      const response = await fetch(`${API_URL}/api/mentor/activity/${activityId}/start`, {
+      const url = `${API_URL}/api/mentor/getTopicMaterials?section_subject_activity_id=${activity.section_subject_activity_id}${activity.topic_id ? `&topic_id=${activity.topic_id}` : ''}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.success) {
+        setMaterials(data.materials || []);
+        setShowMaterials(true);
+      } else {
+        Alert.alert('Error', data.message || 'Failed to fetch materials');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to fetch materials');
+      console.error('Materials fetch error:', error);
+    } finally {
+      setLoadingMaterials(false);
+    }
+  };
+
+  const downloadMaterial = async (materialUrl, fileName) => {
+    try {
+      // For now, just show the URL - you can implement actual download logic
+      Alert.alert('Download', `Material: ${fileName}\nURL: ${materialUrl}`);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to download material');
+    }
+  };
+
+  const toggleBatch = (batchKey) => {
+    setExpandedBatches(prev => ({
+      ...prev,
+      [batchKey]: !prev[batchKey]
+    }));
+  };
+
+  const handleStartSession = async () => {
+    // console.log(activity);
+    
+    try {
+      const sessionId = activity?.id || activityId;
+      const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/${activity.activity}/start`, {
         method: 'POST'
       });
       const data = await response.json();
@@ -183,7 +260,8 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
 
   const handleFinishSession = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/activity/${activityId}/academic/finish`, {
+      const sessionId = activity?.id || activityId;
+      const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/academic/finish`, {
         method: 'POST'
       });
       const data = await response.json();
@@ -200,7 +278,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
 
   const handleCompleteSession = async (feedback) => {
     const pendingStudents = students.filter(s =>
-      !s.has_approved_leave && !performances[s.roll]
+      !s.has_approved_leave && !performances[s.student_roll]
     );
 
     if (pendingStudents.length > 0) {
@@ -215,10 +293,11 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       student_roll: roll,
       performance: performances[roll],
     }));
-    console.log(studentPerformances, feedback);
+    console.log(studentPerformances, feedback, activityId);
 
     try {
-      const response = await fetch(`${API_URL}/api/mentor/activity/${activityId}/academic/complete`, {
+      const sessionId = activity?.id || activityId;
+      const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/academic/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentPerformances, feedback}),
@@ -239,7 +318,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
 
   const openFeedbackModal = (student = null) => {
     setEditingStudent(student);
-    setSelectedFeedback(student ? performances[student.roll] || '' : '');
+    setSelectedFeedback(student ? performances[student.student_roll] || '' : '');
     setShowFeedbackModal(true);
 
     // Animate modal in
@@ -281,7 +360,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
     if (editingStudent && selectedFeedback) {
       setPerformances(prev => ({
         ...prev,
-        [editingStudent.roll]: selectedFeedback
+        [editingStudent.student_roll]: selectedFeedback
       }));
     }
     closeFeedbackModal();
@@ -302,12 +381,12 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   };
 
   const renderStudentCard = (student, index) => {
-    const performance = performances[student.roll];
+    const performance = performances[student.student_roll];
     const hasLeave = student.has_approved_leave;
-
+    
     return (
       <View
-        key={student.roll}
+        key={`student-${student.student_roll}-${index}`}
         style={[
           styles.profileCard,
           hasLeave && styles.profileCardOnLeave
@@ -323,8 +402,9 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         />
 
         <View style={styles.studentInfo}>
-          <Text style={styles.profileName}>{student.name}</Text>
-          <Text style={styles.profileId}>{student.roll}</Text>
+          <Text style={styles.profileName}>{student.student_name}</Text>
+          <Text style={styles.profileId}>{student.student_roll}</Text>
+          <Text style={styles.profileId}>{student.batch_name}</Text>
           {hasLeave && (
             <Text style={styles.leaveIndicator}>On Approved Leave</Text>
           )}
@@ -365,7 +445,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
                   ]}
                   onPress={() => setPerformances(prev => ({
                     ...prev,
-                    [student.roll]: option.key
+                    [student.student_roll]: option.key
                   }))}
                 >
                   <Text
@@ -585,26 +665,49 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       <View style={styles.sessionCard}>
         <View style={styles.sessionHeader}>
           <View style={styles.subjectContainer}>
-            <Text style={styles.subject}>{subject}</Text>
+            <Text style={styles.subject}>{activity?.subject || subject}</Text>
             <View style={styles.sessionMeta}>
               <Text style={styles.gradeText}>
-                Grade {grade} - {section_name}
+                Grade {activity?.grade || grade} - {activity?.section_name || section_name}
               </Text>
               <View style={styles.academicBadge}>
-                <Text style={styles.academicText}>Academic</Text>
+                <Text style={styles.academicText}>{activity?.session_type || 'Academic'}</Text>
               </View>
             </View>
           </View>
 
           <View style={styles.timeContainer}>
             <Text style={styles.timeText}>
-              {startTime} - {endTime}
+              {activity?.starttime || startTime} - {activity?.endtime || endTime}
             </Text>
-            {duration && (
-              <Text style={styles.durationText}>{duration}</Text>
+            {(activity?.duration || duration) && (
+              <Text style={styles.durationText}>{activity?.duration || duration}</Text>
             )}
           </View>
         </View>
+
+        {/* Topic Hierarchy */}
+        {activity?.topic_hierarchy && (
+          <View style={styles.topicContainer}>
+            <Text style={styles.topicLabel}>Topic:</Text>
+            <Text style={styles.topicHierarchy}>{activity.topic_hierarchy}</Text>
+          </View>
+        )}
+
+        {/* Materials Button */}
+        {activity?.section_subject_activity_id && (
+          <View style={styles.materialsContainer}>
+            <TouchableOpacity
+              style={styles.materialsButton}
+              onPress={fetchMaterials}
+              disabled={loadingMaterials}
+            >
+              <Text style={styles.materialsButtonText}>
+                {loadingMaterials ? 'Loading...' : 'View Materials'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Progress Bar for In Progress Sessions */}
         {activity?.status === 'In Progress' && (
@@ -624,32 +727,6 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
             </View>
           </View>
         )}
-
-        {/* Level Selection */}
-        {/* <View style={styles.levelContainer}>
-          <Text style={styles.levelLabel}>Select Level:</Text>
-          <View style={styles.levelRow}>
-            {levels.map(level => (
-              <TouchableOpacity
-                key={level}
-                style={[
-                  styles.levelBtn,
-                  selectedLevel === level && styles.levelBtnActive
-                ]}
-                onPress={() => setSelectedLevel(level)}
-              >
-                <Text 
-                  style={[
-                    styles.levelText,
-                    selectedLevel === level && styles.levelTextActive
-                  ]}
-                >
-                  {level}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View> */}
       </View>
 
       {/* Students List */}
@@ -672,7 +749,35 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
                 No students found for this session.
               </Text>
             </View>
+          ) : Object.keys(batches).length > 0 ? (
+            // Render batch-wise if batches data is available
+            Object.entries(batches).map(([batchKey, batch]) => (
+              <View key={batchKey} style={styles.batchContainer}>
+                <TouchableOpacity 
+                  style={styles.batchHeader}
+                  onPress={() => toggleBatch(batchKey)}
+                >
+                  <Text style={styles.batchTitle}>
+                    {batch.batch_name || 'No Batch'} 
+                    {batch.batch_level && ` (Level ${batch.batch_level})`}
+                  </Text>
+                  <Text style={styles.batchCount}>
+                    {batch.students.length} student{batch.students.length !== 1 ? 's' : ''}
+                  </Text>
+                  <Text style={styles.expandIcon}>
+                    {expandedBatches[batchKey] ? '▼' : '▶'}
+                  </Text>
+                </TouchableOpacity>
+                
+                {expandedBatches[batchKey] && (
+                  <View style={styles.batchStudents}>
+                    {batch.students.map((student, index) => renderStudentCard(student, `${batchKey}-${index}`))}
+                  </View>
+                )}
+              </View>
+            ))
           ) : (
+            // Fallback to flat list if no batch data
             students.map((student, index) => renderStudentCard(student, index))
           )}
         </ScrollView>
@@ -715,7 +820,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
                 </Text>
                 <Text style={styles.modalQuestion}>
                   {editingStudent
-                    ? `How was ${editingStudent.name}'s performance?`
+                    ? `How was ${editingStudent.student_name}'s performance?`
                     : 'How was the student\'s performance?'
                   }
                 </Text>
@@ -771,6 +876,68 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
             </Animated.View>
           </Animated.View>
         </Pressable>
+      </Modal>
+
+      {/* Materials Modal */}
+      <Modal
+        visible={showMaterials}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowMaterials(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.materialsModal}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitle}>Topic Materials</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowMaterials(false)}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {activity?.topic_hierarchy && (
+              <View style={styles.topicInfo}>
+                <Text style={styles.topicInfoText}>{activity.topic_hierarchy}</Text>
+              </View>
+            )}
+
+            <ScrollView style={styles.materialsContent}>
+              {materials.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No materials found for this topic.</Text>
+                </View>
+              ) : (
+                materials.map((levelGroup, levelIndex) => (
+                  <View key={levelIndex} style={styles.materialLevelGroup}>
+                    <Text style={styles.materialLevelTitle}>Level {levelGroup.level}</Text>
+                    {levelGroup.materials.map((material, materialIndex) => (
+                      <View key={materialIndex} style={styles.materialItem}>
+                        <View style={styles.materialInfo}>
+                          <Text style={styles.materialTitle}>{material.title}</Text>
+                          <Text style={styles.materialType}>{material.material_type}</Text>
+                          {material.expected_date && (
+                            <Text style={styles.materialDate}>
+                              Expected: {new Date(material.expected_date).toLocaleDateString()}
+                            </Text>
+                          )}
+                        </View>
+                        <TouchableOpacity
+                          style={styles.downloadButton}
+                          onPress={() => downloadMaterial(material.file_url, material.file_name)}
+                        >
+                          <Text style={styles.downloadButtonText}>📥</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );

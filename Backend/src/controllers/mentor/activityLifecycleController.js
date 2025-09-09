@@ -13,10 +13,28 @@ const updateActivityStatuses = async () => {
               AND activity_date = CURDATE()
               AND start_time <= CURTIME()
         `;
+        const query2 = `
+            UPDATE academic_sessions
+            SET status = 'Not Started'
+            WHERE status = 'Schedule Created'
+              AND date = CURDATE()
+              AND start_time <= CURTIME()
+        `;
+        const query3 = `
+            UPDATE assessment_sessions
+            SET status = 'Not Started'
+            WHERE status = 'Schedule Created'
+              AND date = CURDATE()
+              AND start_time <= CURTIME()
+        `;
         // Use promise-based query for async/await
         const [result] = await db.promise().query(query);
+        const [result2] = await db.promise().query(query2);
+        const [result3] = await db.promise().query(query3);
         const message = `Updated ${result.affectedRows} activities to 'Not Started'.`;
-        return { success: true, message };
+        const message2 = `Updated ${result2.affectedRows} academic sessions to 'Not Started'.`;
+        const message3 = `Updated ${result3.affectedRows} assessment sessions to 'Not Started'.`;
+        return { success: true, message: message + ' ' + message2 + ' ' + message3 };
     } catch (error) {
         console.error('CRON ERROR: Failed to update activity statuses:', error);
         return { success: false, message: error.message };
@@ -31,10 +49,64 @@ const updateActivityStatuses1 = async () => {
               AND activity_date = CURDATE()
               AND end_time <= CURTIME()
         `;
+        const query2 = `
+            UPDATE academic_sessions
+            SET status = 'Time Over'
+            WHERE status = 'Not Started'
+              AND date = CURDATE()
+              AND end_time <= CURTIME()
+        `;
+        const query3 = `
+            UPDATE assessment_sessions
+            SET status = 'Time Over'
+            WHERE status = 'Not Started'
+              AND date = CURDATE()
+              AND end_time <= CURTIME()
+        `;
         // Use promise-based query for async/await
         const [result] = await db.promise().query(query);
+        const [result2] = await db.promise().query(query2);
+        const [result3] = await db.promise().query(query3);
         const message = `Updated ${result.affectedRows} activities to 'Time Over'.`;
-        return { success: true, message };
+        const message2 = `Updated ${result2.affectedRows} academic sessions to 'Time Over'.`;
+        const message3 = `Updated ${result3.affectedRows} assessment sessions to 'Time Over'.`;
+        return { success: true, message: message + ' ' + message2 + ' ' + message3 };
+    } catch (error) {
+        console.error('CRON ERROR: Failed to update activity statuses:', error);
+        return { success: false, message: error.message };
+    }
+};
+const updateActivityStatuses2 = async () => {
+    try {
+        // const query = `
+        //     UPDATE period_activities
+        //     SET status = 'Time Over'
+        //     WHERE status = 'Not Started'
+        //       AND activity_date = CURDATE()
+        //       AND end_time <= CURTIME()
+        // `;
+        const query2 = `
+            UPDATE academic_sessions
+            SET status = 'Finished(need to update performance)'
+            WHERE status = 'In Progress'
+              AND date = CURDATE()
+              AND end_time <= CURTIME()
+        `;
+        const query3 = `
+            UPDATE assessment_sessions
+            SET status = 'Finished(need to update performance)'
+            WHERE status = 'In Progress'
+              AND date = CURDATE()
+              AND end_time <= CURTIME()
+        `;
+        // Use promise-based query for async/await
+        // const [result] = await db.promise().query(query);
+        const [result2] = await db.promise().query(query2);
+        const [result3] = await db.promise().query(query3);
+        // const message = `Updated ${result.affectedRows} activities to 'Time Over'.`;
+        const message2 = `Updated ${result2.affectedRows} academic sessions to 'Finished(need to update performance)'.`;
+        const message3 = `Updated ${result3.affectedRows} assessment sessions to 'Finished(need to update performance)'.`;
+        return { success: true, message: message2 + ' ' + message3 };
     } catch (error) {
         console.error('CRON ERROR: Failed to update activity statuses:', error);
         return { success: false, message: error.message };
@@ -146,5 +218,6 @@ module.exports = {
     updateActivityStatuses,
     generateDailyPeriodActivities,
     updateActivityStatuses1,
+    updateActivityStatuses2,
     updateVenueStatusBasedOnSchedule
 };

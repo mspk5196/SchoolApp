@@ -2,7 +2,7 @@ const cron = require('node-cron');
 // const { runAttendanceUpdater } = require('./controllers/student/attendanceCron');
 // const { runDailyScheduleUpdate } = require('./controllers/mentor/dailyScheduleUpdate');
 // const { createAssessmentSessionsByDate } = require('./controllers/mentor/assesmentCronJob');
-const { updateActivityStatuses, generateDailyPeriodActivities, updateActivityStatuses1, updateVenueStatusBasedOnSchedule } = require('./controllers/mentor/activityLifecycleController');
+const { updateActivityStatuses, generateDailyPeriodActivities, updateActivityStatuses1, updateActivityStatuses2, updateVenueStatusBasedOnSchedule } = require('./controllers/mentor/activityLifecycleController');
 const { runAttendanceUpdater } = require('./controllers/student/attendanceCron');
 const { runOverdueCheck } = require('./controllers/mentor/studentBacklogsCron');
 const { generateStudentWiseSchedulesCron } = require('./controllers/coordinator/scheduleManagementController');
@@ -189,10 +189,10 @@ if (shouldRunCrons) {
         try {
             const result = await updateActivityStatuses();
             const result1 = await updateActivityStatuses1();
-            // const result2 = await updateActivityStatuses2();
+            const result2 = await updateActivityStatuses2();
             console.log('✅ Update activity status completed:', result.message);
             console.log('✅ Update activity status completed:', result1.message);
-            // console.log('✅ Update activity status completed:', result2.message);
+            console.log('✅ Update activity status completed:', result2.message);
         } catch (error) {
             console.error('❌ Update activity status failed:', error);
         }
@@ -253,6 +253,7 @@ module.exports = {
     generateDailyPeriodActivities,
     runOverdueCheck,
     updateActivityStatuses1,
+    updateActivityStatuses2,
     updateVenueStatusBasedOnSchedule,
     generateStudentWiseSchedulesCron,
     // createAssessmentSessionsByDate,

@@ -511,6 +511,164 @@ const styles = StyleSheet.create({
   performanceModeratelyAttentive: { color: '#0369A1' },
   performanceNotAttentive: { color: '#D97706' },
   performanceAbsent: { color: '#DC2626' },
+
+  // Topic Hierarchy Styles
+  topicContainer: {
+    backgroundColor: '#F8FAFC',
+    padding: wp('3%'),
+    borderRadius: 8,
+    marginTop: hp('1%'),
+  },
+  topicLabel: {
+    fontSize: wp('3.5%'),
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: hp('0.5%'),
+  },
+  topicHierarchy: {
+    fontSize: wp('3.8%'),
+    color: '#1E293B',
+    fontWeight: '500',
+  },
+
+  // Materials Button Styles
+  materialsContainer: {
+    marginTop: hp('1.5%'),
+  },
+  materialsButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: hp('1.2%'),
+    paddingHorizontal: wp('4%'),
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  materialsButtonText: {
+    color: '#FFFFFF',
+    fontSize: wp('3.8%'),
+    fontWeight: '600',
+  },
+
+  // Batch Organization Styles
+  batchContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: hp('1%'),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  batchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: wp('4%'),
+    backgroundColor: '#F1F5F9',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  batchTitle: {
+    flex: 1,
+    fontSize: wp('4.2%'),
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  batchCount: {
+    fontSize: wp('3.5%'),
+    color: '#64748B',
+    marginRight: wp('2%'),
+  },
+  expandIcon: {
+    fontSize: wp('4%'),
+    color: '#64748B',
+  },
+  batchStudents: {
+    padding: wp('2%'),
+  },
+
+  // Materials Modal Styles
+  materialsModal: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: hp('80%'),
+    marginTop: hp('20%'),
+    flex: 1,
+  },
+  closeButton: {
+    position: 'absolute',
+    right: wp('4%'),
+    top: hp('1%'),
+    padding: wp('2%'),
+  },
+  closeButtonText: {
+    fontSize: wp('5%'),
+    color: '#64748B',
+    fontWeight: 'bold',
+  },
+  topicInfo: {
+    backgroundColor: '#F8FAFC',
+    padding: wp('4%'),
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  topicInfoText: {
+    fontSize: wp('3.8%'),
+    color: '#475569',
+    fontWeight: '500',
+  },
+  materialsContent: {
+    flex: 1,
+    padding: wp('4%'),
+  },
+  materialLevelGroup: {
+    marginBottom: hp('2%'),
+  },
+  materialLevelTitle: {
+    fontSize: wp('4.5%'),
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: hp('1%'),
+    borderBottomWidth: 2,
+    borderBottomColor: '#3B82F6',
+    paddingBottom: hp('0.5%'),
+  },
+  materialItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    padding: wp('3%'),
+    borderRadius: 8,
+    marginBottom: hp('1%'),
+  },
+  materialInfo: {
+    flex: 1,
+  },
+  materialTitle: {
+    fontSize: wp('4%'),
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: hp('0.3%'),
+  },
+  materialType: {
+    fontSize: wp('3.2%'),
+    color: '#64748B',
+    marginBottom: hp('0.2%'),
+  },
+  materialDate: {
+    fontSize: wp('3%'),
+    color: '#9CA3AF',
+  },
+  downloadButton: {
+    backgroundColor: '#10B981',
+    padding: wp('2.5%'),
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  downloadButtonText: {
+    fontSize: wp('4%'),
+  },
 });
 
 export default styles;

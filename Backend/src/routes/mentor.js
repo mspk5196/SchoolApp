@@ -20,6 +20,7 @@ router.post('/mentor/getMentorIssues', mentorController.getMentorIssues);
 //Materials
 router.post('/mentor/getGradeSubject', mentorController.getGradeSubject);
 router.get('/mentor/getMaterials', mentorController.getMaterials);
+router.get('/mentor/getTopicMaterials', mentorController.getTopicMaterials);
 router.put('/mentor/updateExpectedDate', mentorController.updateExpectedDate);
 
 //Leave Approval
@@ -94,7 +95,7 @@ router.post('/mentor/getSectionSubjects', mentorController.getSectionSubjects);
 router.post('/mentor/daily-schedule', mentorController.getMentorDailySchedule);
 
 // Universal endpoint to start any activity
-router.post('/mentor/activity/:activityId/start', mentorController.startActivity);
+router.post('/mentor/activity/:activityId/:activityType/start', mentorController.startActivity);
 
 // Academic Session Endpoints
 router.get('/mentor/activity/:activityId/academic', mentorController.getAcademicActivityDetails);

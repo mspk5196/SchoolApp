@@ -1524,71 +1524,318 @@ exports.getMentorDailySchedule = (req, res) => {
     return res.status(400).json({ error: 'Missing mentorId or date' });
   }
 
+  // Simplified query that focuses on core tables that are likely to exist
   const query = `
-      
-    SELECT
-      pa.id,
-      ds.date,
-      pa.start_time,
-      pa.end_time,
-      sub.subject_name AS subject,
-      ds.subject_id,
-      sec.section_name,
-      ds.section_id,
-      sec.grade_id,
-      pa.activity_name AS activity,
-      pa.activity_type,
-      pa.is_assessment,
-      v.name AS venue,
-      TIMEDIFF(pa.end_time, pa.start_time) AS duration,
-      CASE
-          WHEN pa.is_assessment LIKE '%0%' THEN '#F8ECD2A8'
-          WHEN pa.is_assessment LIKE '%1%' THEN '#9BD6EE3B'
-          ELSE '#F8ECD2A8'
-      END AS bgColor,
-      CASE
-          WHEN pa.is_assessment LIKE '%0%' THEN '#EF7B0E'
-          WHEN pa.is_assessment LIKE '%1%' THEN '#1857C0'
-          ELSE '#EF7B0E'
-      END AS sideColor,
-      CASE
-          WHEN pa.is_assessment LIKE '%0%' THEN '#EF7B0E'
-          WHEN pa.is_assessment LIKE '%1%' THEN '#1857C0'
-          ELSE '#EF7B0E'
-      END AS fontColor
-    FROM period_activities pa
-    JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
-    JOIN subjects sub ON ds.subject_id = sub.id
-    JOIN sections sec ON ds.section_id = sec.id
-    LEFT JOIN venues v ON ds.venue_id = v.id
-    WHERE pa.assigned_mentor_id = ? AND ds.date = ?
-    ORDER BY pa.start_time;
+    SELECT 
+        'Academic' AS session_type,
+        a.id,
+        COALESCE(a.pa_id, a.id) AS pa_id,
+        a.student_roll,
+        COALESCE(s.profile_photo, '') AS profile_photo,
+        COALESCE(s.name, '') AS student_name,
+        COALESCE(sb.batch_name, 'Default Batch') AS batch_name,
+        COALESCE(sb.batch_level, 1) AS batch_level,
+        a.section_id,
+        a.mentor_id,
+        a.subject_id,
+        COALESCE(a.topic_id, 0) AS topic_id,
+        a.date,
+        a.start_time,
+        a.end_time,
+        COALESCE(a.venue_id, 0) AS venue_id,
+        COALESCE(a.status, 'Schedule Created') AS status,
+        COALESCE(a.remarks, '') AS remarks,
+        COALESCE(sub.subject_name, 'Unknown Subject') AS subject_name,
+        COALESCE(sec.section_name, 'Unknown Section') AS section_name,
+        COALESCE(sec.grade_id, 0) AS grade_id,
+        COALESCE(v.name) AS venue_name,
+        COALESCE(act.activity_type, 'Academic') AS activity_name,
+        COALESCE(sa.sub_act_name, '') AS sub_activity_name,
+        COALESCE(t.topic_name, '') AS topic_name,
+        COALESCE(ssa.id, 0) AS section_subject_activity_id
+    FROM academic_sessions a
+    LEFT JOIN subjects sub ON a.subject_id = sub.id
+    LEFT JOIN sections sec ON a.section_id = sec.id
+    LEFT JOIN students s ON a.student_roll = s.roll
+    LEFT JOIN section_batches sb ON a.batch_id = sb.id
+    LEFT JOIN venues v ON a.venue_id = v.id
+    LEFT JOIN topic_hierarchy t ON a.topic_id = t.id
+    LEFT JOIN ssa_sub_activities sssa ON t.ssa_sub_activity_id = sssa.id
+    LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
+    LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
+    LEFT JOIN activity_types act ON ssa.activity_type = act.id
+    WHERE a.mentor_id = ? AND DATE(a.date) = DATE(?)
+
+    UNION ALL
+
+    SELECT 
+        'Assessment' AS session_type,
+        asess.id,
+        COALESCE(asess.pa_id, asess.id) AS pa_id,
+        asess.student_roll,
+        COALESCE(s.profile_photo, '') AS profile_photo,
+        COALESCE(s.name, '') AS student_name,
+        COALESCE(sb.batch_name, 'Default Batch') AS batch_name,
+        COALESCE(sb.batch_level, 1) AS batch_level,
+        asess.section_id,
+        asess.mentor_id,
+        asess.subject_id,
+        COALESCE(asess.topic_id, 0) AS topic_id,
+        asess.date,
+        asess.start_time,
+        asess.end_time,
+        COALESCE(asess.venue_id, 0) AS venue_id,
+        COALESCE(asess.status, 'Schedule Created') AS status,
+        COALESCE(asess.remarks, '') AS remarks,
+        COALESCE(sub.subject_name, 'Unknown Subject') AS subject_name,
+        COALESCE(sec.section_name, 'Unknown Section') AS section_name,
+        COALESCE(sec.grade_id, 0) AS grade_id,
+        COALESCE(v.name) AS venue_name,
+        COALESCE(act.activity_type, 'Academic') AS activity_name,
+        COALESCE(sa.sub_act_name, '') AS sub_activity_name,
+        COALESCE(t.topic_name, '') AS topic_name,
+        COALESCE(ssa.id, 0) AS section_subject_activity_id
+    FROM assessment_sessions asess
+    LEFT JOIN subjects sub ON asess.subject_id = sub.id
+    LEFT JOIN sections sec ON asess.section_id = sec.id
+    LEFT JOIN students s ON asess.student_roll = s.roll
+    LEFT JOIN section_batches sb ON asess.batch_id = sb.id
+    LEFT JOIN venues v ON asess.venue_id = v.id
+    LEFT JOIN topic_hierarchy t ON asess.topic_id = t.id
+    LEFT JOIN ssa_sub_activities sssa ON t.ssa_sub_activity_id = sssa.id
+    LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
+    LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
+    LEFT JOIN activity_types act ON ssa.activity_type = act.id
+    WHERE asess.mentor_id = ? AND DATE(asess.date) = DATE(?)
+
+    ORDER BY date, start_time;
   `;
 
-  db.query(query, [mentorId, date], (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+  console.log('Executing query with params:', { mentorId, date });
 
-    // Format the results to match the expected frontend structure
-    const formattedResults = results.map(item => ({
-      id: item.id.toString(),
-      subject: item.subject,
-      grade: `${item.grade_id}`,
-      section: `${item.section_name}`,
-      section_id: item.section_id,
-      subject_id: item.subject_id,
-      dsa_id: item.id,
-      activity: item.activity || '',
-      starttime: formatTime(item.start_time),
-      endtime: formatTime(item.end_time),
-      duration: formatDuration(item.duration),
-      bgColor: item.bgColor,
-      sideColor: item.sideColor,
-      fontColor: item.fontColor,
-      is_assessment: item.is_assessment,
-      activity_type: item.activity_type
-    }));
-    // console.log('formattedResults', formattedResults);
-    res.json({ success: true, scheduleData: formattedResults });
+  db.query(query, [mentorId, date, mentorId, date], (err, results) => {
+    if (err) {
+      console.error('Database error in getMentorDailySchedule:', err);
+      return res.status(500).json({
+        error: 'Database error',
+        details: err.message,
+        success: false
+      });
+    }
+
+    console.log('Query results count:', results.length);
+    if (results.length > 0) {
+      console.log('Sample result:', results[0]);
+    }
+
+    // If no results found, try a simpler fallback query
+    if (results.length === 0) {
+      console.log('No results from main query, trying fallback...');
+      const fallbackQuery = `
+        SELECT 
+          'Academic' AS session_type,
+          pa.id,
+          pa.id AS pa_id,
+          '' AS student_roll,
+          '' AS profile_photo,
+          'Student' AS student_name,
+          'Default Batch' AS batch_name,
+          1 AS batch_level,
+          ds.section_id,
+          ds.mentors_id AS mentor_id,
+          ds.subject_id,
+          0 AS topic_id,
+          ds.date,
+          ds.start_time,
+          ds.end_time,
+          0 AS venue_id,
+          'Schedule Created' AS status,
+          'Generated from daily schedule' AS remarks,
+          COALESCE(sub.subject_name, 'Unknown Subject') AS subject_name,
+          COALESCE(sec.section_name, 'Unknown Section') AS section_name,
+          COALESCE(sec.grade_id, 0) AS grade_id,
+          'Unknown Venue' AS venue_name,
+          'Academic' AS activity_name,
+          '' AS sub_activity_name,
+          '' AS topic_name,
+          0 AS section_subject_activity_id
+        FROM period_activities pa
+        LEFT JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
+        LEFT JOIN subjects sub ON ds.subject_id = sub.id
+        LEFT JOIN sections sec ON ds.section_id = sec.id
+        WHERE ds.mentors_id = ? AND DATE(ds.date) = DATE(?)
+        ORDER BY ds.start_time
+      `;
+
+      db.query(fallbackQuery, [mentorId, date], (fallbackErr, fallbackResults) => {
+        if (fallbackErr) {
+          console.error('Fallback query error:', fallbackErr);
+          // Return empty result but with success true
+          return res.json({ success: true, scheduleData: [] });
+        }
+
+        console.log('Fallback results count:', fallbackResults.length);
+
+        if (fallbackResults.length === 0) {
+          return res.json({ success: true, scheduleData: [] });
+        }
+
+        // Process fallback results with simplified grouping
+        const consolidatedSchedule = fallbackResults.map(schedule => ({
+          id: schedule.id.toString(),
+          session_type: schedule.session_type,
+          pa_id: schedule.pa_id,
+          section_id: schedule.section_id,
+          mentor_id: schedule.mentor_id,
+          subject_id: schedule.subject_id,
+          topic_id: schedule.topic_id,
+          subject: schedule.subject_name,
+          section: schedule.section_name,
+          section_name: schedule.section_name,
+          grade: schedule.grade_id ? schedule.grade_id.toString() : '',
+          venue_name: schedule.venue_name,
+          date: schedule.date,
+          starttime: formatTime(schedule.start_time),
+          endtime: formatTime(schedule.end_time),
+          start_time: schedule.start_time,
+          end_time: schedule.end_time,
+          venue_id: schedule.venue_id,
+          status: schedule.status,
+          remarks: schedule.remarks,
+          student_count: 1,
+          students: [{
+            student_roll: 'UNKNOWN',
+            schedule_id: schedule.id,
+            profile_photo: '',
+            student_name: 'No Students Found',
+            batch_name: 'Default Batch',
+            batch_level: 1
+          }],
+          batches: {
+            'Default Batch': {
+              batch_name: 'Default Batch',
+              batch_level: 1,
+              students: [{
+                student_roll: 'UNKNOWN',
+                schedule_id: schedule.id,
+                profile_photo: '',
+                student_name: 'No Students Found',
+                batch_name: 'Default Batch',
+                batch_level: 1
+              }]
+            }
+          },
+          duration: calculateDuration(schedule.start_time, schedule.end_time),
+          activity: schedule.session_type,
+          bgColor: '#F8ECD2A8',
+          sideColor: '#EF7B0E',
+          fontColor: '#EF7B0E',
+          is_assessment: 0,
+          activity_name: schedule.activity_name,
+          sub_activity_name: schedule.sub_activity_name,
+          topic_name: schedule.topic_name,
+          topic_hierarchy: buildTopicHierarchy(
+            schedule.activity_name,
+            schedule.sub_activity_name,
+            schedule.topic_name
+          ),
+          section_subject_activity_id: schedule.section_subject_activity_id
+        }));
+
+        res.json({ success: true, scheduleData: consolidatedSchedule });
+      });
+      return;
+    }
+
+    // Group schedules by time, section_id, date, subject, and venue
+    const groupedSchedules = {};
+
+    results.forEach(schedule => {
+      // Create a unique key for grouping
+      const groupKey = `${schedule.date}_${schedule.start_time}_${schedule.end_time}_${schedule.section_id}_${schedule.subject_id}_${schedule.venue_id}_${schedule.topic_id}`;
+
+      if (!groupedSchedules[groupKey]) {
+        groupedSchedules[groupKey] = {
+          id: schedule.id.toString(),
+          session_type: schedule.session_type,
+          pa_id: schedule.pa_id,
+          section_id: schedule.section_id,
+          mentor_id: schedule.mentor_id,
+          subject_id: schedule.subject_id,
+          topic_id: schedule.topic_id,
+          subject: schedule.subject_name || '',
+          section: schedule.section_name || '',
+          section_name: schedule.section_name || '',
+          grade: schedule.grade_id ? schedule.grade_id.toString() : '',
+          venue_name: schedule.venue_name || '',
+          date: schedule.date,
+          starttime: formatTime(schedule.start_time),
+          endtime: formatTime(schedule.end_time),
+          start_time: schedule.start_time,
+          end_time: schedule.end_time,
+          venue_id: schedule.venue_id,
+          status: schedule.status,
+          remarks: schedule.remarks,
+          student_count: 0,
+          students: [],
+          batches: {},
+          duration: calculateDuration(schedule.start_time, schedule.end_time),
+          activity: schedule.session_type,
+          bgColor: schedule.session_type === 'Assessment' ? '#9BD6EE3B' : '#F8ECD2A8',
+          sideColor: schedule.session_type === 'Assessment' ? '#1857C0' : '#EF7B0E',
+          fontColor: schedule.session_type === 'Assessment' ? '#1857C0' : '#EF7B0E',
+          is_assessment: schedule.session_type === 'Assessment' ? 1 : 0,
+          // Topic hierarchy
+          activity_name: schedule.activity_name || '',
+          sub_activity_name: schedule.sub_activity_name || '',
+          topic_name: schedule.topic_name || '',
+          topic_hierarchy: buildTopicHierarchy(
+            schedule.activity_name,
+            schedule.sub_activity_name,
+            schedule.topic_name
+          ),
+          section_subject_activity_id: schedule.section_subject_activity_id || 0
+        };
+      }
+
+      // Add student to the group and organize by batches
+      groupedSchedules[groupKey].student_count++;
+
+      // Group students by batch
+      const batchKey = schedule.batch_name || 'No Batch';
+      if (!groupedSchedules[groupKey].batches[batchKey]) {
+        groupedSchedules[groupKey].batches[batchKey] = {
+          batch_name: schedule.batch_name,
+          batch_level: schedule.batch_level,
+          students: []
+        };
+      }
+
+      groupedSchedules[groupKey].batches[batchKey].students.push({
+        student_roll: schedule.student_roll,
+        schedule_id: schedule.id,
+        profile_photo: schedule.profile_photo,
+        student_name: schedule.student_name,
+        batch_name: schedule.batch_name,
+        batch_level: schedule.batch_level
+      });
+
+      // Also maintain the flat students array for compatibility
+      groupedSchedules[groupKey].students.push({
+        student_roll: schedule.student_roll,
+        schedule_id: schedule.id,
+        profile_photo: schedule.profile_photo,
+        student_name: schedule.student_name,
+        batch_name: schedule.batch_name,
+        batch_level: schedule.batch_level
+      });
+    });
+
+    // Convert grouped object back to array
+    const consolidatedSchedule = Object.values(groupedSchedules);
+
+    console.log('Consolidated mentor schedule:', consolidatedSchedule);
+    res.json({ success: true, scheduleData: consolidatedSchedule });
   });
 };
 
@@ -1612,86 +1859,40 @@ function formatDuration(duration) {
   return `${minutes} min`;
 }
 
-//Dashboard Acadamics
+function calculateDuration(startTime, endTime) {
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
 
-async function createAcademicSessionsByDate(date) {
+  const startTotalMin = startHour * 60 + startMin;
+  const endTotalMin = endHour * 60 + endMin;
+  const diffMin = endTotalMin - startTotalMin;
 
-  const [schedules] = await db.promise().query(`
-    SELECT ds.* FROM daily_schedule ds
-    JOIN activity_types at ON ds.activity = at.id
-    WHERE ds.date >= ? AND ds.date < DATE_ADD(?, INTERVAL 1 DAY)
-  `, [date, date]);
+  const hours = Math.floor(diffMin / 60);
+  const minutes = diffMin % 60;
 
-  // console.log('Schedules:', schedules, Array.isArray(schedules), schedules.length);
-  let created = 0;
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes} min`;
+}
 
-  for (const s of schedules) {
-    console.log(s.id);
-    console.log(s.section_id, s.subject_id, `${date} ${s.start_time}`, s.mentors_id);
-    const [exists] = await db.promise().query(`
-      SELECT id FROM academic_sessions 
-      WHERE dsa_id = ?
-    `, [s.id]);
-    // section_id = ? AND subject_id = ? AND start_time = ? AND mentor_id = ? s.section_id, s.subject_id, `${date} ${s.start_time}`, s.mentors_id
-    if (exists.length === 0) {
-      // Get previous completed session for same section and subject
-      const [previousSessions] = await db.promise().query(`
-    SELECT next_level FROM academic_sessions
-    WHERE section_id = ? AND subject_id = ? AND dsa_id != ? AND status = 'Completed'
-    ORDER BY end_time DESC LIMIT 1
-  `, [s.section_id, s.subject_id, s.id]);
+function buildTopicHierarchy(activity, subActivity, topic) {
+  const parts = [];
 
-      const prevLevel = previousSessions.length > 0 ? previousSessions[0].next_level : 1;
-      const currentLevel = prevLevel;
-      const nextLevel = currentLevel + 1;
-
-      await db.promise().query(`
-    INSERT INTO academic_sessions 
-    (mentor_id, section_id, subject_id, start_time, end_time, status, current_level, next_level, dsa_id)
-    VALUES (?, ?, ?, ?, ?, 'Scheduled', ?, ?, ?)
-  `, [
-        s.mentors_id,
-        s.section_id,
-        s.subject_id,
-        `${date} ${s.start_time}`,
-        `${date} ${s.end_time}`,
-        currentLevel,
-        nextLevel,
-        s.id
-      ]);
-      created++;
-    }
-
-    else {
-      console.log('Session already exists:', exists[0].id);
-      //  const [nextLevel] = await db.promise().query(`
-      //   SELECT next_level FROM academic_sessions
-      //   WHERE section_id = ? AND subject_id = ? AND dsa_id != ? AND status = 'Completed'
-      //   ORDER BY end_time DESC LIMIT 1
-      // `, [s.section_id, s.subject_id, s.id]);
-
-      const prevLevel = exists.length > 0 ? exists[0].next_level : 1;
-      const currentLevel = prevLevel;
-      await db.promise().query(`
-        UPDATE academic_sessions 
-        SET mentor_id = ?, subject_id = ?, start_time = ?, end_time = ?
-        WHERE id=?
-      `, [
-        s.mentors_id,
-        s.subject_id,
-        `${date} ${s.start_time}`,
-        `${date} ${s.end_time}`,
-        exists[0].id
-      ]);
-      created++;
-    }
+  if (activity && activity.trim() && activity !== 'Unknown') {
+    parts.push(activity.trim());
   }
 
-  return created;
+  if (subActivity && subActivity.trim()) {
+    parts.push(subActivity.trim());
+  }
 
+  if (topic && topic.trim()) {
+    parts.push(topic.trim());
+  }
 
+  return parts.length > 0 ? parts.join(' > ') : '';
 }
-exports.createAcademicSessionsByDate = createAcademicSessionsByDate;
 
 /**
  * HELPER: Get students for a given activity based on batch number.
@@ -1739,15 +1940,27 @@ async function getStudentsForActivity(activityId) {
  * API: Start an activity session
  */
 exports.startActivity = async (req, res) => {
-  const { activityId } = req.params;
-  const [result] = await db.promise().query(
-    "UPDATE period_activities SET status = 'In Progress', actual_start_time = NOW() WHERE id = ? AND status = 'Not Started'",
-    [activityId]
-  );
-  if (result.affectedRows === 0) {
-    return res.status(400).json({ success: false, message: 'Activity could not be started.' });
+  const { activityId, activityType } = req.params;
+  if (activityType === 'Assessment') {
+    const [result] = await db.promise().query(
+      "UPDATE assessment_sessions SET status = 'In Progress', start_time = NOW() WHERE id = ? AND status = 'Not Started'",
+      [activityId]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ success: false, message: 'Activity could not be started.' });
+    }
+    res.json({ success: true, message: 'Activity started.' });
   }
-  res.json({ success: true, message: 'Activity started.' });
+  else {
+    const [result] = await db.promise().query(
+      "UPDATE academic_sessions SET status = 'In Progress', start_time = NOW() WHERE id = ? AND status = 'Not Started'",
+      [activityId]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ success: false, message: 'Activity could not be started.' });
+    }
+    res.json({ success: true, message: 'Activity started.' });
+  }
 };
 
 
@@ -1774,23 +1987,23 @@ exports.completeAcademicActivity = async (req, res) => {
   const { activityId } = req.params;
   const { studentPerformances, feedback } = req.body; // Expecting [{ student_roll, performance }]
   console.log(feedback);
-  
+
   let trx;
   try {
     trx = await db.promise().beginTransaction(); // get transaction object
 
     for (const item of studentPerformances) {
       await trx.query(
-        `INSERT INTO period_activities_attendance (period_activity_id, student_roll, performance) VALUES (?, ?, ?)
+        `INSERT INTO academic_session_attendance (session_id, student_roll, attendance_status, performance) VALUES (?, ?, ?, ?)
                  ON DUPLICATE KEY UPDATE performance = VALUES(performance)`,
-        [activityId, item.student_roll, item.performance]
+        [activityId, item.student_roll, (item.performance === 'Absent' ? 'Absent' : 'Present'), item.performance]
       );
     }
     if (feedback === 'Completed normally') {
-      await trx.query("UPDATE period_activities SET status = 'Completed', completion_notes = ? WHERE id = ?", [feedback, activityId]);
+      await trx.query("UPDATE academic_sessions SET status = 'Completed', remarks = ? WHERE id = ?", [feedback, activityId]);
     }
-    else{
-      await trx.query("UPDATE period_activities SET status = 'Completed', completion_notes = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId]);
+    else {
+      await trx.query("UPDATE academic_sessions SET status = 'Completed', remarks = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId]);
     }
     await trx.commit();
     res.json({ success: true, message: 'Academic activity completed.' });
@@ -1804,25 +2017,25 @@ exports.completeAcademicActivity = async (req, res) => {
 
 exports.finishAcademicActivity = async (req, res) => {
   const { activityId } = req.params;
-  const { studentPerformances, feedback } = req.body; // Expecting [{ student_roll, performance }]
-  console.log(feedback);
-  
+  console.log(" Activity ID:", activityId);
+  const { studentPerformances, feedback } = req.body;
+
   let trx;
   try {
     trx = await db.promise().beginTransaction(); // get transaction object
 
     for (const item of studentPerformances) {
-      await trx.query(
-        `INSERT INTO period_activities_attendance (period_activity_id, student_roll, performance) VALUES (?, ?, ?)
+      const result = await trx.query(
+        `INSERT INTO academic_session_attendance (session_id, student_roll, attendance_status, performance) VALUES (?, ?, ?, ?)
                  ON DUPLICATE KEY UPDATE performance = VALUES(performance)`,
-        [activityId, item.student_roll, item.performance]
+        [activityId, item.student_roll, (item.performance === 'Absent' ? 'Absent' : 'Present'), item.performance]
       );
+      console.log(result);
     }
     if (feedback === 'Completed normally') {
-      await trx.query("UPDATE period_activities SET status = 'Completed', completion_notes = ? WHERE id = ?", [feedback, activityId]);
-    }
-    else{
-      await trx.query("UPDATE period_activities SET status = 'Completed', completion_notes = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId]);
+      await trx.query("UPDATE academic_sessions SET status = 'Completed', remarks = ? WHERE id = ?", [feedback, activityId]);
+    } else {
+      await trx.query("UPDATE academic_sessions SET status = 'Completed', remarks = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId]);
     }
     await trx.commit();
     res.json({ success: true, message: 'Academic activity completed.' });
@@ -2307,3 +2520,90 @@ const checkOverdueLevels = async () => {
   }
 };
 exports.checkOverdueLevels = checkOverdueLevels;
+
+// Get materials for a topic
+exports.getTopicMaterials = async (req, res) => {
+  try {
+    const { section_subject_activity_id, topic_id } = req.query;
+
+    if (!section_subject_activity_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Section subject activity ID is required'
+      });
+    }
+
+    const query = `
+      SELECT 
+        m.id,
+        m.file_type,
+        m.file_name,
+        m.file_url,
+        m.activity_name as title,
+        m.expected_date,
+        m.created_at AS uploaded_at,
+        t.topic_name,
+        sa.sub_act_name AS sub_activity,
+        act.activity_type
+      FROM topic_materials m
+      LEFT JOIN topic_hierarchy t ON m.topic_id = t.id
+      LEFT JOIN ssa_sub_activities sssa ON t.ssa_sub_activity_id = sssa.id
+    LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
+    LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
+    LEFT JOIN activity_types act ON ssa.activity_type = act.id
+      WHERE m.topic_id = ?
+      ORDER BY m.file_type ASC, m.activity_name ASC
+    `;
+
+    const params = topic_id ? [section_subject_activity_id, topic_id] : [section_subject_activity_id];
+
+    db.query(query, [topic_id], (err, results) => {
+      if (err) {
+        console.error('Error fetching topic materials:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'Database error while fetching materials'
+        });
+      }
+
+      console.log(results);
+      
+
+      // Group materials by level and type
+      const groupedMaterials = {};
+      results.forEach(material => {
+        const levelKey = `Level ${material.level}`;
+        if (!groupedMaterials[levelKey]) {
+          groupedMaterials[levelKey] = {
+            level: material.level,
+            materials: []
+          };
+        }
+        groupedMaterials[levelKey].materials.push({
+          id: material.id,
+          title: material.title,
+          file_name: material.file_name,
+          file_url: material.file_url,
+          material_type: material.material_type,
+          expected_date: material.expected_date,
+          uploaded_at: material.uploaded_at,
+          topic_name: material.topic_name,
+          hierarchy: material.topic_name ?
+            `${material.activity_type || ''} > ${material.sub_activity || ''} > ${material.topic_name}` : ''
+        });
+      });
+
+      res.json({
+        success: true,
+        materials: Object.values(groupedMaterials),
+        total_count: results.length
+      });
+    });
+  } catch (error) {
+    console.error('Error in getTopicMaterials:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};

@@ -161,7 +161,7 @@ const MentorDashboard = ({ route }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          mentorId: mentorData[0].id,
+          mentorId: mentorData[0].id, 
           date: formattedDate
         }),
       });
@@ -169,7 +169,7 @@ const MentorDashboard = ({ route }) => {
       const data = await response.json();
       if (data.success) {
         setScheduleData(data.scheduleData);
-        // console.log("Schedule Data:", data.scheduleData);
+        console.log("Schedule Data:", data.scheduleData[0].students);
 
       } else {
         console.error('Failed to fetch schedule data');
@@ -845,6 +845,7 @@ const MentorDashboard = ({ route }) => {
                     startTime: item.starttime,
                     endTime: item.endtime,
                     date: convertDateFormat(formatDate(date)),
+                    scheduleData: scheduleData
                   });
                 } else {
                   // Handle other activity types
