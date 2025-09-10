@@ -111,6 +111,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
     }, [selectedActivity]);
 
     const fetchTopicHierarchy = async () => {
+        setTopicHierarchy([]);
         try {
             setLoading(true);
             const response = await fetch(`${API_URL}/api/mentor/topic-hierarchy/get`, {
@@ -235,10 +236,11 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                     <View style={styles.actionButtons}>
                         <TouchableOpacity
                             style={styles.actionButton}
-                            // onPress={() => navigation.navigate('TopicMaterials', { topicId: item.id, topicName: item.topic_name })}
                             onPress={() => fetchTopicMaterials(item.id, item)}
+                            activeOpacity={0.7}
                         >
                             <Text style={styles.actionButtonText}>📁</Text>
+                            <Text style={[styles.actionButtonText, { fontSize: 10, marginLeft: 4 }]}>View</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -398,7 +400,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                     />
                 ) : (
                     <View style={styles.emptyContainer}>
-                        <Icon name="topic" size={64} color="#ccc" />
+                        <Text style={{ fontSize: 64, marginBottom: 16 }}>📚</Text>
                         <Text style={styles.emptyText}>
                             {selectedActivity && selectedSubActivity
                                 ? 'No topics found for selected criteria'

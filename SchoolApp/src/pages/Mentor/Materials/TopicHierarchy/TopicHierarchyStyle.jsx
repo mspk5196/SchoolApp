@@ -10,30 +10,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#4CAF50',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    elevation: 8,
+    paddingTop: 35,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
   
   backButton: {
-    marginRight: 16,
-    padding: 12,
-    borderRadius: 8,
+    marginRight: 12,
+    padding: 8,
+    borderRadius: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   
   headerTitle: {
     color: '#fff',
-    fontSize: 22,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 
   subjectInfo: {
@@ -50,40 +50,54 @@ const styles = StyleSheet.create({
   },
 
   subjectName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    color: '#2c3e50',
+    marginBottom: 6,
   },
 
   sectionInfo: {
     fontSize: 14,
-    color: '#666',
+    color: '#7f8c8d',
+    fontStyle: 'italic',
   },
 
   selectorContainer: {
     backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    margin: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    padding: 20,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
 
   pickerContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
 
   pickerLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    color: '#2c3e50',
+    marginBottom: 10,
+    letterSpacing: 0.3,
   },
 
   picker: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
   },
 
   content: {
@@ -94,13 +108,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
+    backgroundColor: '#fff',
+    margin: 16,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
 
   loadingText: {
-    marginTop: 16,
+    marginTop: 20,
     fontSize: 16,
-    color: '#666',
+    color: '#7f8c8d',
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
 
   hierarchyContainer: {
@@ -183,6 +207,8 @@ const styles = StyleSheet.create({
   },
 
   actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#4CAF50',
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -195,8 +221,9 @@ const styles = StyleSheet.create({
   },
 
   actionButtonText: {
-    fontSize: 16,
+    fontSize: 12,
     color: '#fff',
+    fontWeight: '600',
   },
 
   topicContainer: {
@@ -296,53 +323,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
-  },
-
-  emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-  },
-
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingTop: 10,
-    paddingBottom: 10,
-    paddingHorizontal: 16,
-    elevation: 4,
-  },
-
-  modalCloseButton: {
-    marginRight: 16,
-    padding: 8,
-  },
-
-  modalTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-
-  materialsList: {
-    padding: 16,
-  },
-
-  materialItem: {
+    paddingVertical: 80,
     backgroundColor: '#fff',
-    marginBottom: 12,
-    borderRadius: 8,
-    padding: 16,
+    margin: 16,
+    borderRadius: 12,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -350,81 +334,162 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
 
+  emptyText: {
+    marginTop: 20,
+    fontSize: 16,
+    color: '#95a5a6',
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 24,
+    paddingHorizontal: 40,
+  },
+
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    paddingTop: 35,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+
+  modalCloseButton: {
+    marginRight: 12,
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+
+  modalTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    letterSpacing: 0.3,
+  },
+
+  materialsList: {
+    padding: 20,
+  },
+
+  materialItem: {
+    backgroundColor: '#fff',
+    marginBottom: 16,
+    borderRadius: 12,
+    padding: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+
   materialInfo: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
 
   materialName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    color: '#2c3e50',
+    marginBottom: 6,
+    lineHeight: 24,
   },
 
   materialType: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#4CAF50',
     backgroundColor: '#E8F5E8',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 15,
     alignSelf: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 
   materialDescription: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    lineHeight: 20,
+    color: '#7f8c8d',
+    marginBottom: 10,
+    lineHeight: 22,
+    fontStyle: 'italic',
   },
 
   materialMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
   },
 
   mandatoryTag: {
-    fontSize: 12,
-    color: '#F44336',
-    backgroundColor: '#FFEBEE',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    fontSize: 11,
+    color: '#e74c3c',
+    backgroundColor: '#fdf2f2',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
-    marginRight: 8,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
 
   completionTime: {
-    fontSize: 12,
-    color: '#FF9800',
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    fontSize: 11,
+    color: '#f39c12',
+    backgroundColor: '#fef9e7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
+    fontWeight: '600',
   },
 
   materialActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
+    marginTop: 8,
   },
 
   downloadButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#4CAF50',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginRight: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     marginBottom: 8,
   },
 
   downloadButtonText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    marginLeft: 4,
+    marginLeft: 6,
+    letterSpacing: 0.3,
   },
 });
 
