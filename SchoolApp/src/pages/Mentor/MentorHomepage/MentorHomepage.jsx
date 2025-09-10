@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, TouchableOpacity, Alert } from "react-native";
+import { View, Text, Pressable, TouchableOpacity, Alert, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import styles from "./MentorHomepagesty";
 import { Switch } from 'react-native-switch';
 import Iconlogo from "../../../assets/MentorPage/Group.svg";
@@ -45,94 +46,132 @@ const MentorHomepage = ({ navigation, route }) => {
   }
 
   return (
-    <View style={styles.container}>
-
+    <SafeAreaView style={styles.container}>
       <View style={styles.page}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Logo style={styles.backIcon} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Menu</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('MentorProfileDetails', { mentorData })}>
-          <Iconlogo style={styles.profile} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setShowLogoutModal(true)}>
-          <Icon style={styles.logout} />
-        </TouchableOpacity>
+        <View style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Logo style={styles.backIcon} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Menu</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => navigation.navigate('MentorProfileDetails', { mentorData })}>
+            <Iconlogo style={styles.profile} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowLogoutModal(true)}>
+            <Icon style={styles.logout} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
         <Text style={styles.text}>Mentor</Text>
-        <View style={styles.switch}>
-          <Switch
-            value={isMentor}
-            onValueChange={(value) => mentorSwitch(value)}
+        <Switch
+          value={isMentor}
+          onValueChange={(value) => mentorSwitch(value)}
 
-            // Track Colors
-            backgroundActive="#2962ff"
-            backgroundInactive="#dcdcdc"
+          // Track Colors
+          backgroundActive="#2962ff"
+          backgroundInactive="#dcdcdc"
 
-            // Thumb (circle)
-            circleActiveColor="#ffffff"
-            circleInActiveColor="#ffffff"
+          // Thumb (circle)
+          circleActiveColor="#ffffff"
+          circleInActiveColor="#ffffff"
 
-            // Sizes
-            barHeight={30}
-            circleSize={24}
-            switchWidthMultiplier={2.3}
+          // Sizes
+          barHeight={30}
+          circleSize={24}
+          switchWidthMultiplier={2.3}
 
-            // Style tweaks
-            renderActiveText={false}
-            renderInActiveText={false}
-            changeValueImmediately={true}
-            innerCircleStyle={{ elevation: 4, borderColor: 'white' }}
-          />
-        </View>
+          // Style tweaks
+          renderActiveText={false}
+          renderInActiveText={false}
+          changeValueImmediately={true}
+          innerCircleStyle={{ elevation: 4, borderColor: 'white' }}
+        />
       </View>
 
-      <View style={styles.mainpage}>
-        <View style={styles.menus}>
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorDashboard', { mentorData })}>
+      <ScrollView style={styles.mainpage}>
+        <View style={styles.gridRow}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.card1,
+              pressed && styles.menuItemPressed
+            ]} 
+            onPress={() => navigation.navigate('MentorDashboard', { mentorData })}
+          >
             <Dashboard style={styles.icons} />
             <Text style={styles.menutitle}>Dashboard</Text>
           </Pressable>
 
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorStudentLeaveApproval', { mentorData })}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.card1,
+              pressed && styles.menuItemPressed
+            ]} 
+            onPress={() => navigation.navigate('MentorStudentLeaveApproval', { mentorData })}
+          >
             <Approve style={styles.icons} />
             <Text style={styles.menutitle}>Approval</Text>
           </Pressable>
         </View>
 
-        <View style={styles.menus}>
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorHomeworkList', { mentorData })}>
+        <View style={styles.gridRow}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.card1,
+              pressed && styles.menuItemPressed
+            ]} 
+            onPress={() => navigation.navigate('MentorHomeworkList', { mentorData })}
+          >
             <Homework style={styles.icons} />
             <Text style={styles.menutitle}>Homework</Text>
           </Pressable>
 
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorMessages', { mentorData })}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.card1,
+              pressed && styles.menuItemPressed
+            ]} 
+            onPress={() => navigation.navigate('MentorMessages', { mentorData })}
+          >
             <Message style={styles.icons} />
             <Text style={styles.menutitle}>Messages</Text>
           </Pressable>
         </View>
 
-        <View style={styles.menus}>
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorActivity', { mentorData })}>
-            <Activity style={styles.icons1} />
-            <Text style={styles.menutitle1}>Activity</Text>
+        <View style={styles.gridRow}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.card1,
+              pressed && styles.menuItemPressed
+            ]} 
+            onPress={() => navigation.navigate('MentorActivity', { mentorData })}
+          >
+            <Activity style={styles.icons} />
+            <Text style={styles.menutitle}>Activity</Text>
           </Pressable>
 
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorAssesmentRequest', { mentorData })}>
-            <AssessmentRequest style={styles.icons1} />
-            <Text style={styles.menutitle1}>Assessment Request</Text>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.card1,
+              pressed && styles.menuItemPressed
+            ]} 
+            onPress={() => navigation.navigate('MentorAssesmentRequest', { mentorData })}
+          >
+            <AssessmentRequest style={styles.icons} />
+            <Text style={styles.menutitle}>Assessment Request</Text>
           </Pressable>
-
-          {/* <Pressable style={styles.card1} onPress={() => navigation.navigate('EnhancedAssessmentManagement', { mentorId: mentorData[0]?.id })}>
-            <AssessmentRequest style={styles.icons1} />
-            <Text style={styles.menutitle1}>Enhanced Assessment</Text>
-          </Pressable> */}
         </View>
 
-        <View style={styles.menus}>
-          <Pressable style={styles.card1} onPress={() => navigation.navigate('MentorMaterialHome', { mentorData })}>
+        <View style={styles.gridRow}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.card1,
+              pressed && styles.menuItemPressed
+            ]} 
+            onPress={() => navigation.navigate('MentorMaterialHome', { mentorData })}
+          >
             <Homework style={styles.icons} />
             <Text style={styles.menutitle}>Materials</Text>
           </Pressable>
@@ -142,8 +181,8 @@ const MentorHomepage = ({ navigation, route }) => {
           onClose={() => setShowLogoutModal(false)}
           navigation={navigation}
         />
-      </View>
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 

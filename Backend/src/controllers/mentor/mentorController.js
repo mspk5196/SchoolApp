@@ -36,7 +36,7 @@ exports.getMentorData = (req, res) => {
 
 exports.getGrades = (req, res) => {
 
-  const sql = `SELECT * FROM Grades`;
+  const sql = `SELECT * FROM Grades ORDER BY id`;
   db.query(sql, (err, results) => {
     if (err) {
       console.error("Error fetching grades data:", err);

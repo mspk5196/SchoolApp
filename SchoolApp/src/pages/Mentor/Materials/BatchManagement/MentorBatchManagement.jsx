@@ -9,447 +9,553 @@ import {
   RefreshControl,
   Modal,
   FlatList,
+  SafeAreaView,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { API_URL } from '../../../../utils/env.js';
 import styles from './BatchManagementStyle.jsx';
+import { useNavigation } from '@react-navigation/native';
 
-const MentorBatchManagement = ({ navigation, route }) => {
-  const { mentorData, selectedSubjectId, selectedSectionId, selectedSubjectName } = route.params || {};
-  
+const MentorBatchManagement = ({route}) => {
+  const navigation = useNavigation();
+  const {activeGrade, mentorData, selectedSubjectId, selectedSectionId, selectedSubjectName} = route.params;
+  console.log('MentorBatchManagement mounted with params:', route.params);
+
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [subjects, setSubjects] = useState([]);
+  const [selectedSection, setSelectedSection] = useState(selectedSectionId);
+//   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState(selectedSubjectId);
   const [batchData, setBatchData] = useState([]);
   const [analytics, setAnalytics] = useState(null);
-  const [showBatchModal, setShowBatchModal] = useState(false);
-  const [selectedBatchDetails, setSelectedBatchDetails] = useState(null);
-  const [batchStudents, setBatchStudents] = useState([]);
-  const [batchLoading, setBatchLoading] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+
 
   useEffect(() => {
-    if (selectedSectionId) {
-      fetchSectionSubjects();
-    }
-  }, [selectedSectionId]);
-
-  useEffect(() => {
-    if (selectedSectionId && selectedSubject) {
+    console.log('useEffect triggered - selectedSection:', selectedSection, 'selectedSubject:', selectedSubject);
+    if (selectedSection && selectedSubject) {
       fetchBatchData();
       fetchAnalytics();
     }
-  }, [selectedSectionId, selectedSubject]);
+  }, [selectedSection, selectedSubject]);
 
-  const fetchSectionSubjects = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/mentor/batch-subjects`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sectionId: selectedSectionId })
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        setSubjects(result.data);
-        // Set default subject if not already set
-        if (!selectedSubject && result.data.length > 0) {
-          setSelectedSubject(result.data[0].id);
-        }
-      } else {
-        Alert.alert('Error', result.message || 'Failed to fetch subjects');
-      }
-    } catch (error) {
-      console.error('Fetch subjects error:', error);
-      Alert.alert('Error', 'Failed to fetch subjects');
+  useEffect(() => {
+    // Initialize data immediately if we have the values from route params
+    console.log('Component mounted with:', { selectedSectionId, selectedSubjectId });
+    if (selectedSectionId && selectedSubjectId) {
+      setLoading(true);
+      fetchBatchData();
+      fetchAnalytics();
     }
+  }, []);
+
+  useEffect(() => {
+    // Auto-refresh every 30 seconds when data exists
+    let interval;
+    if (batchData.length > 0) {
+      interval = setInterval(() => {
+        if (!loading && !refreshing) {
+          fetchAnalytics(); // Light refresh of analytics only
+        }
+      }, 30000);
+    }
+    return () => clearInterval(interval); 
+  }, [batchData.length, loading, refreshing]);
+
+  const showErrorMessage = (message) => {
+    Alert.alert('Error', message);
   };
 
   const fetchBatchData = async () => {
     try {
-      setLoading(true);
+      const sectionId = selectedSection || selectedSectionId;
       const subjectId = selectedSubject || selectedSubjectId;
       
-      if (!selectedSectionId || !subjectId) {
+      console.log('fetchBatchData called with:', { sectionId, subjectId });
+      
+      if (!sectionId || !subjectId) {
+        console.log('Missing sectionId or subjectId, skipping fetch');
         setLoading(false);
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/mentor/batches/${selectedSectionId}/${subjectId}`, {
+      const response = await fetch(`${API_URL}/api/mentor/batches/${sectionId}/${subjectId}`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
-
-      const result = await response.json();
-      if (result.success) {
-        setBatchData(result.data.batches || []);
+   
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Batch data response:', result);
+        const batches = result.data || [];
+        
+        // Add calculated fields for better display
+        const enhancedBatches = batches.map(batch => ({
+          ...batch,
+          student_count: batch.current_students || 0,
+          capacity_utilization: batch.max_students > 0 
+            ? ((batch.current_students / batch.max_students) * 100).toFixed(1)
+            : 0,
+          performance_grade: getPerformanceGrade(batch.avg_performance)
+        }));
+        
+        setBatchData(enhancedBatches);
+        setLastUpdateTime(new Date().toLocaleTimeString());
+        console.log('Enhanced batches set:', enhancedBatches);
       } else {
-        setBatchData([]);
-        if (result.message !== 'No batches found') {
-          Alert.alert('Info', result.message || 'No batches found');
-        }
+        console.log('Failed to fetch batch data, response not ok');
+        showErrorMessage('Failed to fetch batch data');
       }
     } catch (error) {
-      console.error('Fetch batch data error:', error);
-      Alert.alert('Error', 'Failed to fetch batch data');
-    } finally {
+      console.error('Error fetching batch data:', error);
+      showErrorMessage('Network error while fetching batch data');
+    }
+    finally{
       setLoading(false);
     }
   };
 
+  const getPerformanceGrade = (performance) => {
+    if (!performance || performance === 0) return 'Not Available';
+    if (performance >= 90) return 'Excellent';
+    if (performance >= 80) return 'Good';
+    if (performance >= 70) return 'Average';
+    if (performance >= 60) return 'Below Average';
+    return 'Needs Attention';
+  };
+
   const fetchAnalytics = async () => {
     try {
+      const sectionId = selectedSection || selectedSectionId;
       const subjectId = selectedSubject || selectedSubjectId;
       
-      if (!selectedSectionId || !subjectId) {
+      console.log('fetchAnalytics called with:', { sectionId, subjectId });
+      
+      if (!sectionId || !subjectId) {
+        console.log('Missing sectionId or subjectId for analytics, skipping fetch');
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/mentor/batch-analytics`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sectionId: selectedSectionId,
-          subjectId: subjectId
-        })
+      const response = await fetch(`${API_URL}/api/mentor/batches/analytics/${sectionId}/${subjectId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      const result = await response.json();
-      if (result.success) {
-        setAnalytics(result.data);
-      }
-    } catch (error) {
-      console.error('Fetch analytics error:', error);
-    }
-  };
-
-  const fetchBatchDetails = async (batch) => {
-    try {
-      setBatchLoading(true);
-      const response = await fetch(`${API_URL}/api/mentor/batch-details`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          batch_name: batch.batch_name,
-          section_id: selectedSectionId,
-          subject_id: selectedSubject || selectedSubjectId
-        })
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        setSelectedBatchDetails(result.data.batch_info);
-        setBatchStudents(result.data.students);
-        setShowBatchModal(true);
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Analytics response:', result);
+        const analyticsData = result.data;
+        
+        // Enhance analytics with calculated metrics
+        const enhancedAnalytics = {
+          ...analyticsData,
+          overall_grade: getPerformanceGrade(analyticsData.avg_performance),
+          students_per_batch: analyticsData.total_batches > 0 
+            ? (analyticsData.total_students / analyticsData.total_batches).toFixed(1)
+            : 0,
+          batch_efficiency: analyticsData.total_batches > 0 && analyticsData.total_students > 0
+            ? ((analyticsData.total_students / (analyticsData.total_batches * 15)) * 100).toFixed(1) // Assuming 15 as ideal batch size
+            : 0
+        };
+        
+        setAnalytics(enhancedAnalytics);
+        console.log('Enhanced analytics set:', enhancedAnalytics);
       } else {
-        Alert.alert('Error', result.message || 'Failed to fetch batch details');
+        console.log('Failed to fetch analytics, response not ok');
+        showErrorMessage('Failed to fetch analytics');
       }
     } catch (error) {
-      console.error('Fetch batch details error:', error);
-      Alert.alert('Error', 'Failed to fetch batch details');
-    } finally {
-      setBatchLoading(false);
+      console.error('Error fetching analytics:', error);
+      showErrorMessage('Network error while fetching analytics');
     }
   };
 
-  const getBatchStatusColor = (status) => {
-    switch (status) {
-      case 'Full': return '#F44336';
-      case 'Active': return '#4CAF50';
-      case 'Empty': return '#9E9E9E';
-      default: return '#FF9800';
+  const handleRefresh = () => {
+    setRefreshing(true);
+    const sectionId = selectedSection || selectedSectionId;
+    const subjectId = selectedSubject || selectedSubjectId;
+    
+    if (sectionId && subjectId) {
+      Promise.all([fetchBatchData(), fetchAnalytics()]).finally(() => {
+        setRefreshing(false);
+      });
+    } else {
+      setRefreshing(false);
     }
   };
+
 
   const renderBatchCard = (batch) => (
     <TouchableOpacity
-      key={batch.id}
-      style={styles.batchCard}
-      onPress={() => fetchBatchDetails(batch)}
+      key={batch.batch_name}
+      style={[
+        styles.batchCard,
+        { 
+          borderLeftColor: getBatchStatusColor(batch),
+          borderLeftWidth: 4 
+        }
+      ]}
+      onPress={() => navigation.navigate('MentorBatchDetails', { 
+        batchName: batch.batch_name,
+        batchId: batch.id,
+        sectionId: selectedSection || selectedSectionId,
+        subjectId: selectedSubject || selectedSubjectId,
+        mentorId: mentorData.id
+      })}
     >
       <View style={styles.batchHeader}>
-        <View style={styles.batchTitle}>
+        <View style={styles.batchNameContainer}>
           <Text style={styles.batchName}>{batch.batch_name}</Text>
-          <Text style={[
-            styles.batchStatus,
-            { color: getBatchStatusColor(batch.status) }
-          ]}>
-            {batch.status}
+          <Text style={styles.batchLevel}>Level {batch.batch_level || 1}</Text>
+        </View>
+        <View style={styles.studentCount}>
+          <Text style={{ fontSize: 16, color: '#666' }}>👥</Text>
+          <Text style={styles.countText}>
+            {batch.student_count}/{batch.max_students || 30}
           </Text>
         </View>
-        <Text style={styles.batchLevel}>Level {batch.batch_level}</Text>
       </View>
-
+      
       <View style={styles.batchStats}>
         <View style={styles.statItem}>
-          <Icon name="people" size={16} color="#666" />
-          <Text style={styles.statText}>
-            {batch.current_students}/{batch.max_students}
+          <Text style={[styles.statValue, { color: getPerformanceColor(batch.avg_performance) }]}>
+            {batch.avg_performance && typeof batch.avg_performance === 'number' 
+              ? batch.avg_performance.toFixed(1) + '%' 
+              : 'N/A'
+            }
           </Text>
+          <Text style={styles.statLabel}>Performance</Text>
+          <Text style={styles.statSubLabel}>{batch.performance_grade}</Text>
         </View>
-        
         <View style={styles.statItem}>
-          <Icon name="trending-up" size={16} color="#666" />
-          <Text style={styles.statText}>{batch.avg_performance}%</Text>
+          <Text style={styles.statValue}>{batch.active_topics || 0}</Text>
+          <Text style={styles.statLabel}>Topics</Text>
         </View>
-        
         <View style={styles.statItem}>
-          <Icon name="donut-small" size={16} color="#666" />
-          <Text style={styles.statText}>{batch.utilization_percentage}%</Text>
+          <Text style={styles.statValue}>{batch.capacity_utilization}%</Text>
+          <Text style={styles.statLabel}>Capacity</Text>
         </View>
       </View>
 
-      <View style={styles.batchFooter}>
-        <Text style={styles.viewDetailsText}>Tap to view details</Text>
-        <Icon name="chevron-right" size={20} color="#4CAF50" />
+      {/* Quick Action Buttons */} 
+      <View style={styles.quickActions}>
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            // Quick view analytics for this batch
+            Alert.alert(
+              `${batch.batch_name} Details`,
+              `Students: ${batch.student_count}/${batch.max_students}\n` +
+              `Performance: ${batch.avg_performance && typeof batch.avg_performance === 'number' ? batch.avg_performance.toFixed(1) + '%' : 'N/A'}\n` +
+              `Grade: ${batch.performance_grade}\n` +
+              `Created: ${new Date(batch.created_at).toLocaleDateString()}`
+            );
+          }}
+        >
+          <Text style={styles.quickActionText}>📊 Info</Text>
+        </TouchableOpacity>
+        
+        {/* <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleChangeBatchSize(batch);
+          }}
+        >
+          <Text style={styles.quickActionText}>👥 Resize</Text>
+        </TouchableOpacity> */}
       </View>
     </TouchableOpacity>
   );
 
-  const renderAnalyticsCard = () => {
-    if (!analytics) return null;
-
-    return (
-      <View style={styles.analyticsCard}>
-        <Text style={styles.analyticsTitle}>Overall Statistics</Text>
-        
-        <View style={styles.analyticsGrid}>
-          <View style={styles.analyticsItem}>
-            <Text style={styles.analyticsValue}>
-              {analytics.overall_stats?.total_batches || 0}
-            </Text>
-            <Text style={styles.analyticsLabel}>Total Batches</Text>
-          </View>
-          
-          <View style={styles.analyticsItem}>
-            <Text style={styles.analyticsValue}>
-              {analytics.overall_stats?.total_students || 0}
-            </Text>
-            <Text style={styles.analyticsLabel}>Total Students</Text>
-          </View>
-          
-          <View style={styles.analyticsItem}>
-            <Text style={styles.analyticsValue}>
-              {analytics.overall_stats?.overall_utilization || 0}%
-            </Text>
-            <Text style={styles.analyticsLabel}>Utilization</Text>
-          </View>
-          
-          <View style={styles.analyticsItem}>
-            <Text style={styles.analyticsValue}>
-              {analytics.overall_stats?.overall_performance || 0}%
-            </Text>
-            <Text style={styles.analyticsLabel}>Performance</Text>
-          </View>
-        </View>
-      </View>
-    );
+  const getBatchStatusColor = (batch) => {
+    if (!batch.avg_performance) return '#ccc';
+    if (batch.avg_performance >= 80) return '#4CAF50';
+    if (batch.avg_performance >= 60) return '#FF9800';
+    return '#F44336';
   };
 
-  const renderStudentItem = ({ item }) => (
-    <View style={styles.studentItem}>
-      <View style={styles.studentInfo}>
-        <Text style={styles.studentName}>{item.student_name}</Text>
-        <Text style={styles.studentRoll}>Roll: {item.student_roll}</Text>
-        <Text style={styles.studentEmail}>{item.student_email}</Text>
-        <Text style={styles.assignedDate}>
-          Assigned: {item.assigned_date}
-        </Text>
-      </View>
-      
-      <View style={styles.studentStats}>
-        <View style={styles.performanceContainer}>
-          <Text style={styles.performanceLabel}>Performance</Text>
-          <Text style={styles.performanceValue}>
-            {item.current_performance}%
+  const getPerformanceColor = (performance) => {
+    if (!performance) return '#999';
+    if (performance >= 80) return '#4CAF50';
+    if (performance >= 60) return '#FF9800';
+    return '#F44336';
+  };
+
+  console.log('Render - selectedSection:', selectedSection, 'selectedSubject:', selectedSubject, 'batchData length:', batchData.length, 'analytics:', !!analytics);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={{ fontSize: 24, color: 'white' }}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Batch Management</Text>
+            {selectedSubjectName && (
+              <Text style={styles.headerSubtitle}>
+                {selectedSubjectName} - Grade {activeGrade}
+              </Text>
+            )}
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2196F3" />
+          {/* <Text style={styles.loadingText}>
+            {processingAction || 'Loading batch management...'}
           </Text>
-          {item.performance_change !== 0 && (
-            <Text style={[
-              styles.performanceChange,
-              { color: item.performance_change > 0 ? '#4CAF50' : '#F44336' }
-            ]}>
-              {item.performance_change > 0 ? '+' : ''}{item.performance_change}%
+          {processingAction && (
+            <Text style={styles.loadingSubtext}>
+              Please wait, this may take a few moments
+            </Text>
+          )} */}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={{ fontSize: 24, color: 'white' }}>←</Text>
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Batch Management</Text>
+          {selectedSubjectName && (
+            <Text style={styles.headerSubtitle}>
+              {selectedSubjectName} - Grade {activeGrade}
             </Text>
           )}
         </View>
-        
-        <View style={styles.progressContainer}>
-          <Text style={styles.progressLabel}>Topics</Text>
-          <Text style={styles.progressValue}>{item.completed_topics}</Text>
-        </View>
-      </View>
-    </View>
-  );
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([fetchBatchData(), fetchAnalytics()]);
-    setRefreshing(false);
-  };
-
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-back" size={24} color="#fff" />
+        <TouchableOpacity onPress={handleRefresh}>
+          <Text style={{ fontSize: 24, color: 'white' }}>🔄</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Batch Management</Text>
       </View>
 
-      {/* Subject Info */}
-      <View style={styles.subjectInfo}>
-        <Text style={styles.subjectName}>
-          {selectedSubjectName || 'Subject Management'}
-        </Text>
-        <Text style={styles.sectionInfo}>
-          Section ID: {selectedSectionId}
-        </Text>
-      </View>
-
-      {/* Subject Selector */}
-      {subjects.length > 1 && (
-        <View style={styles.selectorContainer}>
-          <Text style={styles.pickerLabel}>Subject</Text>
-          <Picker
-            selectedValue={selectedSubject}
-            style={styles.picker}
-            onValueChange={(value) => setSelectedSubject(value)}
-          >
-            {subjects.map(subject => (
-              <Picker.Item 
-                key={subject.id} 
-                label={`${subject.subject_name} (${subject.batch_count} batches)`} 
-                value={subject.id} 
-              />
-            ))}
-          </Picker>
-        </View>
-      )}
-
-      <ScrollView 
-        style={styles.content}
+      <ScrollView
+        style={styles.scrollView}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Analytics Card */}
-        {renderAnalyticsCard()}
 
-        {/* Batch Cards */}
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#4CAF50" />
-            <Text style={styles.loadingText}>Loading batches...</Text>
+        {/* Analytics Summary */}
+        {analytics && (
+          <TouchableOpacity 
+            style={styles.analyticsCard}
+            onPress={() => setShowAnalyticsModal(true)}
+          >
+            <View style={styles.analyticsHeader}>
+              <Text style={styles.cardTitle}>Analytics Overview</Text>
+              <Text style={styles.analyticsSubtitle}>Tap for details 📊</Text>
+            </View>
+            <View style={styles.analyticsRow}>
+              <View style={styles.analyticsItem}>
+                <Text style={styles.analyticsValue}>{analytics.total_students}</Text>
+                <Text style={styles.analyticsLabel}>Total Students</Text>
+              </View>
+              <View style={styles.analyticsItem}>
+                <Text style={styles.analyticsValue}>{analytics.total_batches}</Text>
+                <Text style={styles.analyticsLabel}>Active Batches</Text>
+              </View>
+              <View style={styles.analyticsItem}>
+                <Text style={[styles.analyticsValue, { color: getPerformanceColor(analytics.avg_performance) }]}>
+                  {analytics.avg_performance && typeof analytics.avg_performance === 'number' 
+                    ? analytics.avg_performance.toFixed(1) + '%' 
+                    : 'N/A'
+                  }
+                </Text>
+                <Text style={styles.analyticsLabel}>Avg Performance</Text>
+                <Text style={styles.analyticsSubLabel}>{analytics.overall_grade}</Text>
+              </View>
+            </View>
+            {lastUpdateTime && (
+              <Text style={styles.lastUpdateText}>
+                Last updated: {lastUpdateTime}
+              </Text>
+            )}
+          </TouchableOpacity> 
+        )}
+
+        {/* Action Buttons */}
+        {((selectedSection && selectedSubject) || (selectedSectionId && selectedSubjectId)) && (
+          <View style={styles.actionsContainer}>
+            {/* <TouchableOpacity
+              style={[styles.actionButton, styles.configureButton]}
+              onPress={handleConfigureBatches}
+            >
+              <Text style={{ fontSize: 20, color: 'white' }}>⚙️</Text>
+              <Text style={styles.actionButtonText}>Configure Batches</Text>
+            </TouchableOpacity> */}
+
+            {/* <TouchableOpacity
+              style={[styles.actionButton, styles.reallocateButton]}
+              onPress={handleRunReallocation}
+            >
+              <Text style={{ fontSize: 20, color: 'white' }}>🔀</Text>
+              <Text style={styles.actionButtonText}>Run Reallocation</Text>
+            </TouchableOpacity> */}
+
+            {/* <TouchableOpacity
+              style={[styles.actionButton, styles.initializeButton]}
+              onPress={handleInitializeBatches}
+            >
+              <Text style={{ fontSize: 20, color: 'white' }}>👥➕</Text>
+              <Text style={styles.actionButtonText}>Initialize Batches</Text>
+            </TouchableOpacity> */}
           </View>
-        ) : batchData.length > 0 ? (
-          <View style={styles.batchContainer}>
-            <Text style={styles.sectionTitle}>Batches</Text>
-            {batchData.map(batch => renderBatchCard(batch))}
+        )}
+
+        {/* Batch List */}
+        {batchData.length > 0 && (
+          <View style={styles.batchesContainer}>
+            <Text style={styles.sectionTitle}>Current Batches</Text>
+            {batchData.map(renderBatchCard)}
           </View>
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Icon name="group-work" size={64} color="#ccc" />
+        )}
+
+        {/* Empty State */}
+        {((selectedSection && selectedSubject) || (selectedSectionId && selectedSubjectId)) && batchData.length === 0 && !loading && (
+          <View style={styles.emptyState}>
+            <Text style={{ fontSize: 64, color: '#ccc' }}>👥</Text>
             <Text style={styles.emptyText}>No batches found</Text>
-            <Text style={styles.emptySubtext}>
-              Batches will appear here once they are configured
-            </Text>
+            <Text style={styles.emptySubtext}>First configure batches, then initialize students</Text>
           </View>
         )}
       </ScrollView>
 
-      {/* Batch Details Modal */}
+      {/* Detailed Analytics Modal */}
       <Modal
-        visible={showBatchModal}
+        visible={showAnalyticsModal}
+        transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowBatchModal(false)}
+        onRequestClose={() => setShowAnalyticsModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity 
-              onPress={() => setShowBatchModal(false)}
-              style={styles.modalCloseButton}
-            >
-              <Icon name="close" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {selectedBatchDetails?.batch_name} Details
-            </Text>
-          </View>
-
-          {batchLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#4CAF50" />
-              <Text style={styles.loadingText}>Loading batch details...</Text>
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            padding: 20,
+            borderRadius: 15,
+            width: '90%',
+            maxWidth: 400,
+            maxHeight: '80%'
+          }}>
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 20
+            }}>
+              <Text style={{
+                fontSize: 20,
+                fontWeight: 'bold',
+                color: '#333'
+              }}>Detailed Analytics</Text>
+              <TouchableOpacity
+                onPress={() => setShowAnalyticsModal(false)}
+                style={{
+                  padding: 5,
+                  borderRadius: 15,
+                  backgroundColor: '#f5f5f5'
+                }}
+              >
+                <Text style={{ fontSize: 18, color: '#666' }}>✕</Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            <ScrollView style={styles.modalContent}>
-              {/* Batch Info */}
-              {selectedBatchDetails && (
-                <View style={styles.batchDetailsCard}>
-                  <Text style={styles.detailsTitle}>Batch Information</Text>
-                  
-                  <View style={styles.detailsGrid}>
-                    <View style={styles.detailsItem}>
-                      <Text style={styles.detailsLabel}>Level</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedBatchDetails.batch_level}
-                      </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {analytics && (
+                <View>
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10, color: '#333' }}>
+                      Student Distribution
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Total Students:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{analytics.total_students}</Text>
                     </View>
-                    
-                    <View style={styles.detailsItem}>
-                      <Text style={styles.detailsLabel}>Capacity</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedBatchDetails.total_students}/{selectedBatchDetails.max_students}
-                      </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Students per Batch:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{analytics.students_per_batch}</Text>
                     </View>
-                    
-                    <View style={styles.detailsItem}>
-                      <Text style={styles.detailsLabel}>Utilization</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedBatchDetails.utilization_percentage}%
-                      </Text>
-                    </View>
-                    
-                    <View style={styles.detailsItem}>
-                      <Text style={styles.detailsLabel}>Avg Performance</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedBatchDetails.avg_performance}%
-                      </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Batch Efficiency:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{analytics.batch_efficiency}%</Text>
                     </View>
                   </View>
+
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10, color: '#333' }}>
+                      Performance Overview
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Overall Performance:</Text>
+                      <Text style={{ 
+                        fontWeight: 'bold',
+                        color: getPerformanceColor(analytics.avg_performance)
+                      }}>
+                        {analytics.avg_performance && typeof analytics.avg_performance === 'number' 
+                          ? analytics.avg_performance.toFixed(1) + '%' 
+                          : 'N/A'
+                        }
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Performance Grade:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{analytics.overall_grade}</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10, color: '#333' }}>
+                      Batch Summary
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Active Batches:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{analytics.total_batches}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Subject:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{selectedSubjectName || 'N/A'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Grade:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{activeGrade}</Text>
+                    </View>
+                  </View>
+
+                  {lastUpdateTime && (
+                    <Text style={{
+                      textAlign: 'center',
+                      fontSize: 12,
+                      color: '#666',
+                      fontStyle: 'italic'
+                    }}>
+                      Last updated: {lastUpdateTime}
+                    </Text>
+                  )}
                 </View>
               )}
-
-              {/* Students */}
-              <View style={styles.studentsSection}>
-                <Text style={styles.sectionTitle}>
-                  Students ({batchStudents.length})
-                </Text>
-                
-                {batchStudents.length > 0 ? (
-                  <FlatList
-                    data={batchStudents}
-                    renderItem={renderStudentItem}
-                    keyExtractor={(item) => item.student_roll}
-                    scrollEnabled={false}
-                  />
-                ) : (
-                  <View style={styles.emptyContainer}>
-                    <Icon name="person-outline" size={48} color="#ccc" />
-                    <Text style={styles.emptyText}>No students in this batch</Text>
-                  </View>
-                )}
-              </View>
             </ScrollView>
-          )}
+          </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -216,14 +216,14 @@ const MentorMaterialHome = ({ navigation, route }) => {
           <View style={styles.subjectContainer}>
             {/* Main Subject Card */}
             <Pressable
-              onPress={() => {
-                navigation.navigate('MentorSubjectActivityPage', {
-                  grade: `Grade ${activeGrade}`,
-                  gradeID: activeGrade,
-                  subject: item.subject_name,
-                  subjectID: item.subject_id
-                });
-              }}
+              // onPress={() => {
+              //   navigation.navigate('MentorSubjectActivityPage', {
+              //     grade: `Grade ${activeGrade}`,
+              //     gradeID: activeGrade,
+              //     subject: item.subject_name,
+              //     subjectID: item.subject_id,
+              //   });
+              // }}
             >
               <Cards
                 title={item.subject_name}
@@ -263,7 +263,8 @@ const MentorMaterialHome = ({ navigation, route }) => {
                       mentorData: mentorData,
                       selectedSubjectId: item.subject_id,
                       selectedSectionId: selectedSection,
-                      selectedSubjectName: item.subject_name
+                      selectedSubjectName: item.subject_name,
+                      activeGrade: activeGrade,
                     });
                   } else {
                     Alert.alert('Error', 'Section information not available');

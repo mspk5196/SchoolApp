@@ -5,400 +5,284 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  loadingSubtext: {
+    marginTop: 5,
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
   header: {
+    backgroundColor: '#2196F3',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingTop: 40,
-    paddingBottom: 16,
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingVertical: 12,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
-  
-  backButton: {
-    marginRight: 16,
-    padding: 8,
-  },
-  
   headerTitle: {
-    color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
+    color: 'white',
   },
-
-  subjectInfo: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
   },
-
-  subjectName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-
-  sectionInfo: {
+  headerSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
   },
-
-  selectorContainer: {
-    backgroundColor: '#fff',
+  scrollView: {
+    flex: 1,
+  },
+  filtersContainer: {
+    backgroundColor: 'white',
+    margin: 16,
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-
+  pickerContainer: {
+    marginBottom: 16,
+  },
   pickerLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
   },
-
-  picker: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
+  pickerWrapper: {
     borderWidth: 1,
     borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#f9f9f9',
   },
-
-  content: {
-    flex: 1,
+  picker: {
+    height: 50,
   },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-  },
-
   analyticsCard: {
-    backgroundColor: '#fff',
-    margin: 16,
-    marginBottom: 8,
-    borderRadius: 12,
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 16,
     padding: 16,
-    elevation: 3,
+    borderRadius: 12,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 2,
   },
-
-  analyticsTitle: {
+  analyticsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  analyticsSubtitle: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  lastUpdateText: {
+    fontSize: 10,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 10,
+    fontStyle: 'italic',
+  },
+  cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 16,
   },
-
-  analyticsGrid: {
+  analyticsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
   },
-
   analyticsItem: {
-    width: '48%',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 8,
   },
-
   analyticsValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4CAF50',
-    marginBottom: 4,
+    color: '#2196F3',
   },
-
   analyticsLabel: {
     fontSize: 12,
     color: '#666',
+    marginTop: 4,
     textAlign: 'center',
   },
-
-  batchContainer: {
-    padding: 16,
-    paddingTop: 8,
+  analyticsSubLabel: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 2,
+    textAlign: 'center',
   },
-
+  actionsContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  reallocateButton: {
+    backgroundColor: '#FF9800',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  configureButton: {
+    backgroundColor: '#2a62ffff',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  initializeButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 26,
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  batchesContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 16,
-  },
-
-  batchCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
-
+  batchCard: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
   batchHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-
-  batchTitle: {
+  batchNameContainer: {
     flex: 1,
   },
-
   batchName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
   },
-
-  batchStatus: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
   batchLevel: {
-    fontSize: 14,
-    color: '#4CAF50',
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
-
+  studentCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  countText: {
+    fontSize: 14,
+    color: '#666',
+  },
   batchStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 12,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#f0f0f0',
   },
-
   statItem: {
-    flexDirection: 'row',
     alignItems: 'center',
   },
-
-  statText: {
-    marginLeft: 4,
-    fontSize: 14,
+  statValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2196F3',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  statSubLabel: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 1,
+    textAlign: 'center',
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  quickActionButton: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginLeft: 8,
+  },
+  quickActionText: {
+    fontSize: 12,
     color: '#666',
   },
-
-  batchFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyState: {
     alignItems: 'center',
-  },
-
-  viewDetailsText: {
-    fontSize: 12,
-    color: '#4CAF50',
-    fontWeight: '600',
-  },
-
-  emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     paddingVertical: 60,
   },
-
   emptyText: {
-    marginTop: 16,
-    fontSize: 16,
+    fontSize: 18,
     color: '#999',
-    textAlign: 'center',
+    marginTop: 16,
   },
-
   emptySubtext: {
-    marginTop: 8,
     fontSize: 14,
     color: '#ccc',
-    textAlign: 'center',
-  },
-
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingTop: 40,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    elevation: 4,
-  },
-
-  modalCloseButton: {
-    marginRight: 16,
-    padding: 8,
-  },
-
-  modalTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-
-  modalContent: {
-    flex: 1,
-  },
-
-  batchDetailsCard: {
-    backgroundColor: '#fff',
-    margin: 16,
-    borderRadius: 12,
-    padding: 16,
-    elevation: 3,
-  },
-
-  detailsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-  },
-
-  detailsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-
-  detailsItem: {
-    width: '48%',
-    marginBottom: 16,
-  },
-
-  detailsLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-
-  detailsValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-
-  studentsSection: {
-    margin: 16,
-    marginTop: 0,
-  },
-
-  studentItem: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    elevation: 2,
-  },
-
-  studentInfo: {
-    flex: 1,
-  },
-
-  studentName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-
-  studentRoll: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 2,
-  },
-
-  studentEmail: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-
-  assignedDate: {
-    fontSize: 12,
-    color: '#999',
-  },
-
-  studentStats: {
-    alignItems: 'flex-end',
-  },
-
-  performanceContainer: {
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-
-  performanceLabel: {
-    fontSize: 10,
-    color: '#666',
-    marginBottom: 2,
-  },
-
-  performanceValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-  },
-
-  performanceChange: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
-  progressContainer: {
-    alignItems: 'center',
-  },
-
-  progressLabel: {
-    fontSize: 10,
-    color: '#666',
-    marginBottom: 2,
-  },
-
-  progressValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FF9800',
+    marginTop: 8,
   },
 });
 

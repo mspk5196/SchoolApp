@@ -167,7 +167,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
 
     const downloadMaterial = async (fileUrl, fileName) => {
         console.log('Attempting to download file:', fileUrl, fileName);
-        
+
         try {
             if (!fileUrl) {
                 Alert.alert('Error', 'File URL not available');
@@ -180,7 +180,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                 fullUrl = `${API_URL}${fileUrl}`;
             }
             console.log('Constructed full URL for download:', fullUrl);
-            
+
             const supported = true;
             // const supported = await Linking.canOpenURL(fullUrl);
             if (supported) {
@@ -292,7 +292,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                         onPress={() => downloadMaterial(fileUrl.url, fileUrl.name)}
                     >
                         {/* <Icon name="download" size={16} color="#fff" /> */}
-                        <Text style={{color: '#fff', fontSize: 16, marginRight: 4}}>📥</Text>
+                        <Text style={{ color: '#fff', fontSize: 16, marginRight: 4 }}>📥</Text>
                         <Text style={styles.downloadButtonText}>
                             {fileUrl.name || `Download ${index + 1}`}
                         </Text>
@@ -319,7 +319,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                     onPress={() => navigation.goBack()}
                 >
                     {/* <Icon name="arrow-back" size={24} color="#fff" /> */}
-                    <Text style={{color: '#fff', fontSize: 24}}>⬅️</Text>
+                    <Text style={{ color: '#fff', fontSize: 24 }}>⬅️</Text>
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Topic Hierarchy</Text>
             </View>
@@ -421,7 +421,9 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                             onPress={() => setMaterialsModal(false)}
                             style={styles.modalCloseButton}
                         >
-                            <Icon name="close" size={24} color="#fff" />
+                            {/* <Icon name="close" size={24} color="#fff" /> */}
+
+                            <Text style={{ color: '#fff', fontSize: 24 }}>⬅️</Text>
                         </TouchableOpacity>
                         <Text style={styles.modalTitle}>
                             {selectedTopicInfo?.topic_name} - Materials
@@ -442,7 +444,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                             ListEmptyComponent={
                                 <View style={styles.emptyContainer}>
                                     {/* <Icon name="library-books" size={64} color="#ccc" /> */}
-                                    <Text style={{color: '#ccc', fontSize: 64}}>📚</Text>
+                                    <Text style={{ color: '#ccc', fontSize: 64 }}>📚</Text>
                                     <Text style={styles.emptyText}>No materials available</Text>
                                 </View>
                             }

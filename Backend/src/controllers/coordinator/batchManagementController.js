@@ -55,16 +55,23 @@ exports.getBatchDetails = async (req, res) => {
         // First get batch info
         const batchInfoSql = `
             SELECT 
-                sb.*,
-                COUNT(sba.id) as total_students,
-                AVG(COALESCE(sap.performance_score, 0)) as avg_performance,
-                COUNT(DISTINCT th.id) as active_topics
-            FROM section_batches sb
-            LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id AND sba.is_current = 1
-            LEFT JOIN student_activity_participation sap ON sba.student_roll = sap.student_roll
-            LEFT JOIN topic_hierarchy th ON th.subject_id = sb.subject_id
-            WHERE sb.batch_name = ? AND sb.section_id = ? AND sb.subject_id = ?
-            GROUP BY sb.id
+    sb.*,
+    COUNT(DISTINCT sba.student_roll) AS total_students,
+    AVG(COALESCE(sap.performance_score, 0)) AS avg_performance,
+    COUNT(DISTINCT th.id) AS active_topics
+FROM section_batches sb
+LEFT JOIN student_batch_assignments sba 
+    ON sb.id = sba.batch_id 
+   AND sb.subject_id = sba.subject_id   -- ensure student count is per batch+subject
+LEFT JOIN student_activity_participation sap 
+    ON sba.student_roll = sap.student_roll
+LEFT JOIN topic_hierarchy th 
+    ON th.subject_id = sb.subject_id    -- topics filtered by subject
+WHERE sb.batch_name = ? 
+  AND sb.section_id = ? 
+  AND sb.subject_id = ?
+GROUP BY sb.id;
+
         `;
 
         db.query(batchInfoSql, [batch_name, section_id, subject_id], (error, batchInfo) => {
@@ -347,8 +354,8 @@ exports.moveStudentToBatch = async (req, res) => {
                 }
 
                 // Update current assignment
-                const updateSql = 'UPDATE student_batch_assignments SET is_current = 0 WHERE student_roll = ? AND batch_id = ? AND is_current = 1';
-                
+                const updateSql = 'DELETE FROM student_batch_assignments WHERE student_roll = ? AND batch_id = ? AND is_current = 1';
+
                 db.query(updateSql, [studentRoll, fromBatchId], (error2) => {
                     if (error2) {
                         console.error('Error updating current assignment:', error2);
@@ -361,9 +368,9 @@ exports.moveStudentToBatch = async (req, res) => {
                     }
 
                     // Create new assignment
-                    const insertSql = 'INSERT INTO student_batch_assignments (student_roll, batch_id, assigned_by, is_current) VALUES (?, ?, ?, 1)';
-                    
-                    db.query(insertSql, [studentRoll, toBatchId, coordinatorId], (error3) => {
+                    const insertSql = 'INSERT INTO student_batch_assignments (student_roll, subject_id, batch_id, assigned_by, is_current) VALUES (?, ?, ?, ?, 1)';
+
+                    db.query(insertSql, [studentRoll, subjectId,toBatchId, coordinatorId], (error3) => {
                         if (error3) {
                             console.error('Error creating new assignment:', error3);
                             db.query('ROLLBACK', [], () => {});

@@ -186,8 +186,8 @@ router.post('/mentor/topic-hierarchy/student-progress', MentorTopicHierarchyCont
 
 // Batch Management Routes (Mentor View - Read Only)
 router.get('/mentor/batches/:sectionId/:subjectId', MentorBatchManagementController.getBatches);
-router.post('/mentor/batch-details', MentorBatchManagementController.getBatchDetails);
-router.post('/mentor/batch-analytics', MentorBatchManagementController.getBatchAnalytics);
+router.post('/mentor/batches/details', MentorBatchManagementController.getBatchDetails);
+router.get('/mentor/batches/analytics/:sectionId/:subjectId', MentorBatchManagementController.getBatchAnalytics);
 router.post('/mentor/batch-subjects', MentorBatchManagementController.getSectionSubjects);
 
 module.exports = router;

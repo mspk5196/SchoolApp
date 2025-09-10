@@ -80,7 +80,6 @@ import MentorGenrealActivityRegister from '../../pages/Mentor/Activity/GeneralAc
 import MentorSurvey from '../../pages/Mentor/Activity/Survey/MentorSurvey';
 import MentorSurveyRegister from '../../pages/Mentor/Activity/Survey/MentorSurveyRegister';
 import MentorAssessmentRequestRegister from '../../pages/Mentor/AssesmentRequest/MentorAssessmentRequestRegister';
-import MentorSubjectPage from '../../pages/Mentor/Materials/Subject/MentorSubjectPage';
 import MentorProfileDetails from '../../pages/Mentor/Profile/ProfileHome/MentorProfileDetails';
 import MentorLeaveApply from '../../pages/Mentor/Profile/LeaveApply/MentorLeaveApply';
 import MentorLeaveHistory from '../../pages/Mentor/Profile/LeaveApply/MentorLeaveHistory';
@@ -143,7 +142,6 @@ import AdminMessageBox from '../../pages/Admin/Messages/MessageBox/AdminMessageB
 import AdminMessageHome from '../../pages/Admin/Messages/MessageHome/AdminMessageHome';
 import CoordinatorMessageHome from '../../pages/Coordinator/Messages/MessageHome/CoordinatorMessageHome';
 // import SubjectActivityPage from '../../pages/Coordinator/Material/SubjectActivity/SubjectActivityPage';
-import MentorSubjectActivityPage from '../../pages/Mentor/Materials/SubjectActivity/MentorSubjectActivityPage';
 import StudentPageMaterialScreen from '../../pages/Parent/MaterialScreen/StudentPageMaterialScreen';
 import StudentSubjectActivityPage from '../../pages/Parent/MaterialScreen/StudentSubjectActivityPage';
 
@@ -168,6 +166,7 @@ import { StatusBar } from 'react-native';
 import CoordinatorStudentSchedule from '../../pages/Coordinator/Schedule/StudentSchedule/CoordinatorStudentSchedule';
 import MentorTopicHierarchy from '../../pages/Mentor/Materials/TopicHierarchy/MentorTopicHierarchy';
 import MentorBatchManagement from '../../pages/Mentor/Materials/BatchManagement/MentorBatchManagement';
+import MentorBatchDetails from '../../pages/Mentor/Materials/BatchManagement/MentorBatchDetails';
 
 const Stack = createNativeStackNavigator();
 
@@ -304,10 +303,9 @@ const Routes = () => {
                         {/* Mentor  Assessment*/}
                         <Stack.Screen name="MentorAssessmentRequestRegister" component={MentorAssessmentRequestRegister} />
                         {/* Mentor Materials */}
-                        <Stack.Screen name="MentorSubjectPage" component={MentorSubjectPage} />
-                        <Stack.Screen name="MentorSubjectActivityPage" component={MentorSubjectActivityPage} />
                         <Stack.Screen name="MentorTopicHierarchy" component={MentorTopicHierarchy} />
                         <Stack.Screen name="MentorBatchManagement" component={MentorBatchManagement} />
+                        <Stack.Screen name="MentorBatchDetails" component={MentorBatchDetails} />
                         {/* Mentor Profile */}
                         <Stack.Screen name="MentorLeaveApply" component={MentorLeaveApply} />
                         <Stack.Screen name="MentorLeaveHistory" component={MentorLeaveHistory} />

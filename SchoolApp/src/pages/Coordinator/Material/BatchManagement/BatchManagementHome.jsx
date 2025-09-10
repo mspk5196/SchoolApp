@@ -23,7 +23,7 @@ const BatchManagementHome = ({route}) => {
   console.log('BatchManagementHome mounted with params:', route.params);
 
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false); 
   const [sections, setSections] = useState([]);
   const [selectedSection, setSelectedSection] = useState(selectedSectionId);
   const [subjects, setSubjects] = useState([]);

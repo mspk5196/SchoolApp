@@ -1,104 +1,129 @@
-import {StyleSheet} from 'react-native';
+import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 1,
+    backgroundColor: '#FFFFFF',
   },
   page: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backIcon: {
-    width: 30,
-    height: 30,
-    marginLeft: 40,
-    marginTop: 60,
+    width: 28,
+    height: 28,
   },
   title: {
     fontSize: 30,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#4A5E6D',
-    marginRight: 2.5,
-    marginTop: 55,
+    marginLeft: 12,
   },
   profile: {
     width: 28,
     height: 28,
-    marginTop: 62,
-    marginLeft: 90,
+    marginRight: 16,
   },
   logout: {
-    width: 28,
-    height: 28,
-    marginLeft: 10,
-    marginTop: 62,
-    marginRight: 45,
+    width: 24,
+    height: 24,
+    tintColor: '#FF3B30',
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 35,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
   },
   text: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '600',
-    color: '#000',
-    marginLeft: 40,
+    color: '#000000',
+    marginLeft: 12,
   },
 
-  //switch
   switch: {
-    marginLeft: 185,
-    width: 48,
-    height: 26.67,
+    // Switch styling handled by the Switch component itself
   },
 
-  //menus
-
-  menus: {
-    padding: 0.5,
-    flexDirection: 'row',
-    marginLeft: 13,
-  },
   mainpage: {
-    flexDirection: 'column',
+    flex: 1,
+    paddingHorizontal: 35,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  menuItem: {
+    width: '45%',
+    aspectRatio: 1,
+    backgroundColor: '#EBEEFF',
+    borderRadius: 8,
+    alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  menuItemPressed: {
+    backgroundColor: '#D6D6F5',
+    transform: [{ scale: 0.98 }],
   },
   card1: {
-    width: 130,
-    height: 130,
-    borderColor: '#EBEEFF',
-    borderWidth: 0.1,
-    borderRadius: 10,
-    alignItems: 'center',
+    width: '45%',
+    aspectRatio: 1,
     backgroundColor: '#EBEEFF',
-    marginLeft: 30,
-    marginTop: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+  },
+  menus: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
   menutitle: {
-    color: 'black',
-    marginTop: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '500',
+    color: '#000000',
+    marginTop: 13,
     textAlign: 'center',
   },
   menutitle1: {
-    color: 'black',
-    marginTop: 5,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '500',
+    color: '#000000',
+    marginTop: 13,
     textAlign: 'center',
   },
   icons: {
-    width: 70,
-    height: 70,
-    marginTop: 30,
+    width: 50,
+    height: 50,
   },
   icons1: {
-    width: 70,
-    height: 70,
-    marginTop: 20,
+    width: 50,
+    height: 50,
   },
 });
 

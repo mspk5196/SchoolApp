@@ -5,37 +5,25 @@ exports.getBatches = async (req, res) => {
     try {
         const { sectionId, subjectId } = req.params;
 
-        if (!sectionId || !subjectId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Section ID and Subject ID are required'
-            });
-        }
-
         const sql = `
-            SELECT 
-                sb.*,
-                sbc.max_batches,
-                COUNT(sba.id) as current_students,
-                AVG(COALESCE(sap.performance_score, 0)) as avg_performance,
-                sec.section_name,
-                sec.grade_id,
-                s.subject_name
-            FROM section_batches sb
-            LEFT JOIN subject_batch_config sbc ON sb.subject_id = sbc.subject_id 
-                AND sbc.section_id = sb.section_id
-            LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id AND sba.is_current = 1
-            LEFT JOIN student_activity_participation sap ON sba.student_roll = sap.student_roll
-            LEFT JOIN sections sec ON sb.section_id = sec.id
-            LEFT JOIN subjects s ON sb.subject_id = s.id
-            WHERE sb.section_id = ? AND sb.subject_id = ? AND sb.is_active = 1
-            GROUP BY sb.id, sb.batch_name, sb.batch_level, sb.max_students, sbc.max_batches
-            ORDER BY sb.batch_level, sb.batch_name
-        `;
+                SELECT 
+                    sb.*,
+                    sbc.max_batches,
+                    COUNT(sba.student_roll) as current_students,
+                    AVG(COALESCE(sap.performance_score, 0)) as avg_performance
+                FROM section_batches sb
+                LEFT JOIN subject_batch_config sbc ON sb.subject_id = sbc.subject_id 
+                    AND sbc.section_id = sb.section_id
+                LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id
+                LEFT JOIN student_activity_participation sap ON sba.student_roll = sap.student_roll
+                WHERE sb.section_id = ? AND sb.subject_id = ? AND sb.is_active = 1
+                GROUP BY sb.id, sb.batch_name, sb.batch_level, sb.max_students, sbc.max_batches
+                ORDER BY sb.batch_level
+            `;
 
         db.query(sql, [sectionId, subjectId], (error, batches) => {
             if (error) {
-                console.error('Database error:', error);
+                console.error('Get batches error:', error);
                 return res.status(500).json({
                     success: false,
                     message: 'Failed to fetch batches',
@@ -43,28 +31,9 @@ exports.getBatches = async (req, res) => {
                 });
             }
 
-            // Calculate additional analytics
-            const processedBatches = batches.map(batch => ({
-                ...batch,
-                utilization_percentage: batch.max_students > 0 
-                    ? Math.round((batch.current_students / batch.max_students) * 100) 
-                    : 0,
-                avg_performance: Math.round(batch.avg_performance || 0),
-                status: batch.current_students === 0 ? 'Empty' : 
-                       batch.current_students === batch.max_students ? 'Full' : 'Active'
-            }));
-
-            res.status(200).json({
+            res.json({
                 success: true,
-                message: 'Batches fetched successfully',
-                data: {
-                    batches: processedBatches,
-                    section_name: batches.length > 0 ? batches[0].section_name : '',
-                    subject_name: batches.length > 0 ? batches[0].subject_name : '',
-                    grade_id: batches.length > 0 ? batches[0].grade_id : '',
-                    total_batches: batches.length,
-                    total_students: batches.reduce((sum, batch) => sum + batch.current_students, 0)
-                }
+                data: batches
             });
         });
     } catch (error) {
@@ -75,126 +44,103 @@ exports.getBatches = async (req, res) => {
             error: error.message
         });
     }
-};
+}
 
 // Get batch details with students for a specific batch (mentor view - read only)
 exports.getBatchDetails = async (req, res) => {
     try {
         const { batch_name, section_id, subject_id } = req.body;
 
-        if (!batch_name || !section_id || !subject_id) {
-            return res.status(400).json({
-                success: false,
-                message: 'Batch name, Section ID, and Subject ID are required'
-            });
-        }
-
         // First get batch info
         const batchInfoSql = `
             SELECT 
-                sb.*,
-                COUNT(sba.id) as total_students,
-                AVG(COALESCE(sap.performance_score, 0)) as avg_performance,
-                COUNT(DISTINCT th.id) as active_topics,
-                sec.section_name,
-                sec.grade_id,
-                s.subject_name
-            FROM section_batches sb
-            LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id AND sba.is_current = 1
-            LEFT JOIN student_activity_participation sap ON sba.student_roll = sap.student_roll
-            LEFT JOIN topic_hierarchy th ON th.subject_id = sb.subject_id AND th.is_active = 1
-            LEFT JOIN sections sec ON sb.section_id = sec.id
-            LEFT JOIN subjects s ON sb.subject_id = s.id
-            WHERE sb.batch_name = ? AND sb.section_id = ? AND sb.subject_id = ?
-            GROUP BY sb.id
+    sb.*,
+    COUNT(DISTINCT sba.student_roll) AS total_students,
+    AVG(COALESCE(sap.performance_score, 0)) AS avg_performance,
+    COUNT(DISTINCT th.id) AS active_topics
+FROM section_batches sb
+LEFT JOIN student_batch_assignments sba 
+    ON sb.id = sba.batch_id 
+   AND sb.subject_id = sba.subject_id   -- ensure student count is per batch+subject
+LEFT JOIN student_activity_participation sap 
+    ON sba.student_roll = sap.student_roll
+LEFT JOIN topic_hierarchy th 
+    ON th.subject_id = sb.subject_id    -- topics filtered by subject
+WHERE sb.batch_name = ? 
+  AND sb.section_id = ? 
+  AND sb.subject_id = ?
+GROUP BY sb.id;
+
+
         `;
 
         db.query(batchInfoSql, [batch_name, section_id, subject_id], (error, batchInfo) => {
             if (error) {
-                console.error('Database error getting batch info:', error);
+                console.error('Get batch info error:', error);
                 return res.status(500).json({
                     success: false,
-                    message: 'Failed to fetch batch information',
+                    message: 'Failed to fetch batch info',
                     error: error.message
                 });
             }
-
-            if (batchInfo.length === 0) {
+            console.log(batchInfo);
+            
+            if (!batchInfo.length) {
                 return res.status(404).json({
                     success: false,
                     message: 'Batch not found'
                 });
             }
 
-            // Now get students in this batch
-            const studentsInBatchSql = `
+            const batchId = batchInfo[0].id;
+
+            // Get students in the batch
+            const studentsSql = `
                 SELECT 
-                    st.student_roll,
-                    st.student_name,
-                    st.student_email,
-                    st.phone,
-                    sba.assigned_date,
-                    sba.performance_at_assignment,
-                    AVG(COALESCE(sap.performance_score, 0)) as current_performance,
-                    COUNT(stp.id) as completed_topics,
-                    sb.batch_name,
-                    sb.batch_level
-                FROM students st
-                JOIN student_batch_assignments sba ON st.student_roll = sba.student_roll
-                JOIN section_batches sb ON sba.batch_id = sb.id
-                LEFT JOIN student_activity_participation sap ON st.student_roll = sap.student_roll
-                LEFT JOIN student_topic_progress stp ON st.student_roll = stp.student_roll 
-                    AND stp.completion_status = 'completed'
-                WHERE sb.batch_name = ? AND sb.section_id = ? AND sb.subject_id = ? 
-                    AND sba.is_current = 1
-                GROUP BY st.student_roll, st.student_name, sba.assigned_date, sba.performance_at_assignment
-                ORDER BY st.student_name
+                    s.roll as student_roll, 
+                    s.name as student_name, 
+                    s.profile_photo,
+                    sba.assigned_at,
+                    COALESCE(stp_summary.completed_topics, 0) as topics_completed,
+                    COALESCE(stp_summary.total_topics, 0) as total_topics,
+                    COALESCE(stp_summary.avg_score, 0) as current_performance,
+                    COALESCE(spt.homework_miss_count, 0) as pending_homework,
+                    COALESCE(spt.failed_assessment_count, 0) as penalty_count,
+                    spt.is_on_penalty,
+                    sba.assigned_at as last_activity
+                FROM student_batch_assignments sba
+                JOIN students s ON sba.student_roll = s.roll
+                LEFT JOIN (
+                    SELECT 
+                        student_roll, 
+                        COUNT(*) as total_topics,
+                        SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_topics,
+                        AVG(last_assessment_score) as avg_score
+                    FROM student_topic_progress stp
+                    JOIN topic_hierarchy th ON stp.topic_id = th.id
+                    WHERE th.subject_id = ?
+                    GROUP BY student_roll
+                ) stp_summary ON s.roll = stp_summary.student_roll
+                LEFT JOIN student_penalty_tracking spt ON s.roll = spt.student_roll 
+                    AND spt.subject_id = ?
+                WHERE sba.batch_id = ? AND sba.is_current = 1
+                ORDER BY s.name
             `;
 
-            db.query(studentsInBatchSql, [batch_name, section_id, subject_id], (studentsError, students) => {
-                if (studentsError) {
-                    console.error('Database error getting students:', studentsError);
+            db.query(studentsSql, [subject_id, subject_id, batchId], (error2, students) => {
+                if (error2) {
+                    console.error('Get batch students error:', error2);
                     return res.status(500).json({
                         success: false,
                         message: 'Failed to fetch batch students',
-                        error: studentsError.message
+                        error: error2.message
                     });
                 }
 
-                // Process student data
-                const processedStudents = students.map(student => ({
-                    ...student,
-                    current_performance: Math.round(student.current_performance || 0),
-                    performance_change: student.current_performance - (student.performance_at_assignment || 0),
-                    assigned_date: new Date(student.assigned_date).toLocaleDateString(),
-                    progress_status: student.completed_topics > 0 ? 'Active' : 'Not Started'
-                }));
-
-                res.status(200).json({
+                res.json({
                     success: true,
-                    message: 'Batch details fetched successfully',
-                    data: {
-                        batch_info: {
-                            ...batchInfo[0],
-                            avg_performance: Math.round(batchInfo[0].avg_performance || 0),
-                            utilization_percentage: batchInfo[0].max_students > 0 
-                                ? Math.round((batchInfo[0].total_students / batchInfo[0].max_students) * 100) 
-                                : 0
-                        },
-                        students: processedStudents,
-                        analytics: {
-                            total_students: students.length,
-                            avg_performance: Math.round(
-                                students.length > 0 
-                                    ? students.reduce((sum, s) => sum + s.current_performance, 0) / students.length 
-                                    : 0
-                            ),
-                            active_students: students.filter(s => s.completed_topics > 0).length,
-                            top_performer: students.length > 0 
-                                ? students.reduce((max, s) => s.current_performance > max.current_performance ? s : max)
-                                : null
-                        }
-                    }
+                    batch_info: batchInfo[0],
+                    students: students
                 });
             });
         });
@@ -206,42 +152,35 @@ exports.getBatchDetails = async (req, res) => {
             error: error.message
         });
     }
-};
+}
 
 // Get batch analytics for mentor view
 exports.getBatchAnalytics = async (req, res) => {
     try {
-        const { sectionId, subjectId } = req.body;
+        const { sectionId, subjectId } = req.params;
 
-        if (!sectionId || !subjectId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Section ID and Subject ID are required'
-            });
-        }
+        const sql = `
+                SELECT 
+                    sb.id, sb.batch_name, sb.batch_level,
+                    COUNT(sba.student_roll) as student_count,
+                    AVG(COALESCE(stp.completion_percentage, 0)) as avg_completion,
+                    AVG(COALESCE(stp.last_assessment_score, 0)) as avg_assessment_score,
+                    SUM(CASE WHEN spt.is_on_penalty = 1 THEN 1 ELSE 0 END) as students_on_penalty,
+                    0 as avg_homework_rate
+                FROM section_batches sb
+                LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id
+                LEFT JOIN student_topic_progress stp ON sba.student_roll = stp.student_roll 
+                    AND stp.subject_id = sb.subject_id
+                LEFT JOIN student_penalty_tracking spt ON sba.student_roll = spt.student_roll 
+                    AND spt.subject_id = sb.subject_id
+                WHERE sb.section_id = ? AND sb.subject_id = ? AND sb.is_active = 1
+                GROUP BY sb.id, sb.batch_name, sb.batch_level
+                ORDER BY sb.batch_level
+            `;
 
-        const analyticsSql = `
-            SELECT 
-                sb.batch_name,
-                sb.batch_level,
-                sb.max_students,
-                COUNT(sba.id) as current_students,
-                AVG(COALESCE(sap.performance_score, 0)) as avg_performance,
-                COUNT(DISTINCT stp.student_roll) as active_learners,
-                SUM(CASE WHEN stp.completion_status = 'completed' THEN 1 ELSE 0 END) as completed_topics,
-                AVG(stp.progress_percentage) as avg_progress
-            FROM section_batches sb
-            LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id AND sba.is_current = 1
-            LEFT JOIN student_activity_participation sap ON sba.student_roll = sap.student_roll
-            LEFT JOIN student_topic_progress stp ON sba.student_roll = stp.student_roll
-            WHERE sb.section_id = ? AND sb.subject_id = ? AND sb.is_active = 1
-            GROUP BY sb.id, sb.batch_name, sb.batch_level, sb.max_students
-            ORDER BY sb.batch_level, sb.batch_name
-        `;
-
-        db.query(analyticsSql, [sectionId, subjectId], (error, results) => {
+        db.query(sql, [sectionId, subjectId], (error, analytics) => {
             if (error) {
-                console.error('Database error:', error);
+                console.error('Get batch analytics error:', error);
                 return res.status(500).json({
                     success: false,
                     message: 'Failed to fetch batch analytics',
@@ -249,41 +188,35 @@ exports.getBatchAnalytics = async (req, res) => {
                 });
             }
 
-            // Calculate overall statistics
-            const totalStudents = results.reduce((sum, batch) => sum + batch.current_students, 0);
-            const totalCapacity = results.reduce((sum, batch) => sum + batch.max_students, 0);
-            const overallPerformance = results.length > 0 
-                ? results.reduce((sum, batch) => sum + (batch.avg_performance || 0), 0) / results.length 
+            // Calculate summary statistics
+            const summary = analytics.reduce((acc, batch) => {
+                acc.total_students += batch.student_count || 0;
+                acc.total_batches += 1;
+                acc.total_completion += batch.avg_completion || 0;
+                acc.total_assessment += batch.avg_assessment_score || 0;
+                return acc;
+            }, { 
+                total_students: 0, 
+                total_batches: 0, 
+                total_completion: 0, 
+                total_assessment: 0 
+            });
+
+            // Calculate averages
+            const avgPerformance = analytics.length > 0 
+                ? (summary.total_completion + summary.total_assessment) / (2 * analytics.length)
                 : 0;
 
-            const processedAnalytics = results.map(batch => ({
-                ...batch,
-                avg_performance: Math.round(batch.avg_performance || 0),
-                avg_progress: Math.round(batch.avg_progress || 0),
-                utilization_rate: batch.max_students > 0 
-                    ? Math.round((batch.current_students / batch.max_students) * 100) 
-                    : 0,
-                engagement_rate: batch.current_students > 0 
-                    ? Math.round((batch.active_learners / batch.current_students) * 100) 
-                    : 0
-            }));
+            const analyticsData = {
+                total_students: summary.total_students,
+                total_batches: summary.total_batches,
+                avg_performance: avgPerformance,
+                batches: analytics
+            };
 
-            res.status(200).json({
+            res.json({
                 success: true,
-                message: 'Batch analytics fetched successfully',
-                data: {
-                    batch_analytics: processedAnalytics,
-                    overall_stats: {
-                        total_batches: results.length,
-                        total_students: totalStudents,
-                        total_capacity: totalCapacity,
-                        overall_utilization: totalCapacity > 0 
-                            ? Math.round((totalStudents / totalCapacity) * 100) 
-                            : 0,
-                        overall_performance: Math.round(overallPerformance),
-                        active_batches: results.filter(b => b.current_students > 0).length
-                    }
-                }
+                data: analyticsData
             });
         });
     } catch (error) {
@@ -294,7 +227,7 @@ exports.getBatchAnalytics = async (req, res) => {
             error: error.message
         });
     }
-};
+}
 
 // Get sections and subjects for mentor
 exports.getSectionSubjects = (req, res) => {
@@ -348,4 +281,5 @@ exports.getSectionSubjects = (req, res) => {
     }
 };
 
+//Cron Jobs for batch management can be added here in the future
 module.exports = exports;
