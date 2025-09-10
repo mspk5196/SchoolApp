@@ -75,6 +75,38 @@ const MentorSubjectActivityPage = ({ navigation, route }) => {
         <Text style={styles.headerText}>{subject} Activities</Text>
       </View>
 
+      {/* Quick Access Buttons */}
+      <View style={styles.quickAccessContainer}>
+        <Pressable
+          style={[styles.quickAccessButton, styles.topicHierarchyButton]}
+          onPress={() => {
+            // Need to get mentor data and section ID from route params or storage
+            // For now, let's navigate directly
+            navigation.navigate('MentorTopicHierarchy', {
+              selectedSubjectId: subjectID,
+              selectedSubjectName: subject,
+              // Note: You'll need to pass mentorData and section_id from parent components
+            });
+          }}
+        >
+          <Text style={styles.quickAccessButtonText}>View Topic Hierarchy</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.quickAccessButton, styles.batchManagementButton]}
+          onPress={() => {
+            // Need to get mentor data and section ID from route params or storage
+            navigation.navigate('MentorBatchManagement', {
+              selectedSubjectId: subjectID,
+              selectedSubjectName: subject,
+              // Note: You'll need to pass mentorData and section_id from parent components
+            });
+          }}
+        >
+          <Text style={styles.quickAccessButtonText}>View Batch Management</Text>
+        </Pressable>
+      </View>
+
       <ScrollView 
         showsVerticalScrollIndicator={false}
         style={styles.scrollContainer}

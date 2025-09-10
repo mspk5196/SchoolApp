@@ -1894,6 +1894,26 @@ function buildTopicHierarchy(activity, subActivity, topic) {
   return parts.length > 0 ? parts.join(' > ') : '';
 }
 
+//Get grade sections
+exports.getGradeSections = (req, res) => {
+  const { gradeID } = req.body;
+  console.log("Received gradeID:", gradeID);
+  const sql = `
+    SELECT sec.id, sec.section_name, sec.grade_id
+    FROM Sections sec
+    WHERE sec.grade_id = ?
+  `;
+  db.query(sql, [gradeID], (err, results) => {
+    if (err) {
+      console.error("Error fetching sections data:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+    console.log(results);
+    
+    res.json({ success: true, message: "Sections data fetched successfully", gradeSections: results });
+  });
+};
+
 /**
  * HELPER: Get students for a given activity based on batch number.
  */
@@ -1943,7 +1963,7 @@ exports.startActivity = async (req, res) => {
   const { activityId, activityType } = req.params;
   if (activityType === 'Assessment') {
     const [result] = await db.promise().query(
-      "UPDATE assessment_sessions SET status = 'In Progress', start_time = NOW() WHERE id = ? AND status = 'Not Started'",
+      "UPDATE assessment_sessions SET status = 'In Progress', actual_start_time = NOW() WHERE id = ? AND status = 'Not Started'",
       [activityId]
     );
     if (result.affectedRows === 0) {
@@ -1953,7 +1973,7 @@ exports.startActivity = async (req, res) => {
   }
   else {
     const [result] = await db.promise().query(
-      "UPDATE academic_sessions SET status = 'In Progress', start_time = NOW() WHERE id = ? AND status = 'Not Started'",
+      "UPDATE academic_sessions SET status = 'In Progress', actual_start_time = NOW() WHERE id = ? AND status = 'Not Started'",
       [activityId]
     );
     if (result.affectedRows === 0) {
@@ -2003,7 +2023,7 @@ exports.completeAcademicActivity = async (req, res) => {
       await trx.query("UPDATE academic_sessions SET status = 'Completed', remarks = ? WHERE id = ?", [feedback, activityId]);
     }
     else {
-      await trx.query("UPDATE academic_sessions SET status = 'Completed', remarks = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId]);
+      await trx.query("UPDATE academic_sessions SET status = 'Completed', actual_end_time = NOW(), remarks = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId]);
     }
     await trx.commit();
     res.json({ success: true, message: 'Academic activity completed.' });
@@ -2555,9 +2575,11 @@ exports.getTopicMaterials = async (req, res) => {
       ORDER BY m.file_type ASC, m.activity_name ASC
     `;
 
-    const params = topic_id ? [section_subject_activity_id, topic_id] : [section_subject_activity_id];
-
+    // const params = topic_id ? [section_subject_activity_id, topic_id] : [section_subject_activity_id];
+    
+    
     db.query(query, [topic_id], (err, results) => {
+      console.log(results);
       if (err) {
         console.error('Error fetching topic materials:', err);
         return res.status(500).json({
@@ -2565,26 +2587,31 @@ exports.getTopicMaterials = async (req, res) => {
           message: 'Database error while fetching materials'
         });
       }
-
-      console.log(results);
       
 
-      // Group materials by level and type
-      const groupedMaterials = {};
+      // Group materials by level and type - but since we don't have level, group by type
+      const materialsArray = [];
       results.forEach(material => {
-        const levelKey = `Level ${material.level}`;
-        if (!groupedMaterials[levelKey]) {
-          groupedMaterials[levelKey] = {
-            level: material.level,
-            materials: []
-          };
+        // Parse the file_url JSON to extract the actual URL
+        let actualFileUrl = material.file_url;
+        try {
+          if (typeof material.file_url === 'string' && material.file_url.startsWith('[')) {
+            const parsedUrl = JSON.parse(material.file_url);
+            if (Array.isArray(parsedUrl) && parsedUrl.length > 0) {
+              actualFileUrl = parsedUrl[0].url || material.file_url;
+            }
+          }
+        } catch (e) {
+          console.log('Error parsing file_url JSON:', e);
+          // Keep original URL if parsing fails
         }
-        groupedMaterials[levelKey].materials.push({
+
+        materialsArray.push({
           id: material.id,
           title: material.title,
           file_name: material.file_name,
-          file_url: material.file_url,
-          material_type: material.material_type,
+          file_url: actualFileUrl,
+          material_type: material.file_type, // Use file_type from the data
           expected_date: material.expected_date,
           uploaded_at: material.uploaded_at,
           topic_name: material.topic_name,
@@ -2595,7 +2622,7 @@ exports.getTopicMaterials = async (req, res) => {
 
       res.json({
         success: true,
-        materials: Object.values(groupedMaterials),
+        materials: materialsArray,
         total_count: results.length
       });
     });

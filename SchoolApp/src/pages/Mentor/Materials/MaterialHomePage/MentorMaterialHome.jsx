@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, Pressable, SectionList, Alert, FlatList, ActivityIndicator } from 'react-native';
+import { Text, View, Pressable, SectionList, Alert, FlatList, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import styles from './MaterialHomeStyle';
 import HomeIcon from '../../../../assets/CoordinatorPage/MaterialHome/Home.svg';
 import { API_URL } from "../../../../utils/env.js";
 import Nodata from '../../../../components/General/Nodata.jsx';
+import { set } from 'date-fns';
 
 const MentorMaterialHome = ({ navigation, route }) => {
   const { mentorData } = route.params || {};
@@ -12,14 +13,16 @@ const MentorMaterialHome = ({ navigation, route }) => {
   const [activeGrade, setActiveGrade] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [sections, setSections] = useState([]);
+  const [selectedSection, setSelectedSection] = useState();
 
   // useEffect(() => {
   //   fetchGradeSubjects();
   // }, [activeGrade]);
 
-  useEffect(()=>{
+  useEffect(() => {
     fetchGrade();
-  },[])
+  }, [])
 
   const fetchGradeSubjects = async (gradeID) => {
     setIsLoading(true);
@@ -66,7 +69,7 @@ const MentorMaterialHome = ({ navigation, route }) => {
       const data = await response.json();
       if (data.success && data.grades.length > 0) {
         setGrades(data.grades);
-        
+
         setActiveGrade(data.grades[0].id);
         await fetchGradeSubjects(data.grades[0].id);
       } else {
@@ -82,7 +85,32 @@ const MentorMaterialHome = ({ navigation, route }) => {
       setIsLoading(false);
     }
   };
-  
+  const fetchSections = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          gradeID: activeGrade,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setSections(result.gradeSections || []);
+        setSelectedSection(result.gradeSections[0]?.id || null);
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchSections();
+  }, [activeGrade]);
   // Handle refresh
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -149,7 +177,25 @@ const MentorMaterialHome = ({ navigation, route }) => {
           </Pressable>
         )}
       />
-
+      <FlatList
+        data={sections}
+        horizontal
+        style={styles.gradeList}
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <Pressable
+            style={[styles.gradeItem, selectedSection === item.id && styles.selectedGrade]}
+            onPress={() => setSelectedSection(item.id)}
+          >
+            <Text
+              style={[styles.gradeText, selectedSection === item.id && styles.selectedGradeText]}
+            >
+              Section {item.section_name}
+            </Text>
+          </Pressable>
+        )}
+      />
       <SectionList
         sections={gradeSubject}
         style={styles.subjectListContainer}
@@ -167,22 +213,67 @@ const MentorMaterialHome = ({ navigation, route }) => {
         }
         keyExtractor={(item) => item.key}
         renderItem={({ item }) => (
-          <Pressable
-            onPress={() => {
-              navigation.navigate('MentorSubjectActivityPage', {
-                grade: `Grade ${activeGrade}`,
-                gradeID: activeGrade,
-                subject: item.subject_name,
-                subjectID: item.subject_id
-              });
-            }}
-          >
-            <Cards
-              title={item.subject_name}
-              bgColor={(item.subject_id % 2) ? '#C9F7F5' : '#65558F12'}
-              color={(item.subject_id % 2) ? '#0FBEB3' : '#65558F'}
-            />
-          </Pressable>
+          <View style={styles.subjectContainer}>
+            {/* Main Subject Card */}
+            <Pressable
+              onPress={() => {
+                navigation.navigate('MentorSubjectActivityPage', {
+                  grade: `Grade ${activeGrade}`,
+                  gradeID: activeGrade,
+                  subject: item.subject_name,
+                  subjectID: item.subject_id
+                });
+              }}
+            >
+              <Cards
+                title={item.subject_name}
+                bgColor={(item.subject_id % 2) ? '#C9F7F5' : '#65558F12'}
+                color={(item.subject_id % 2) ? '#0FBEB3' : '#65558F'}
+              />
+            </Pressable>
+
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
+              <Pressable
+                style={[styles.actionButton, styles.topicHierarchyButton]}
+                onPress={() => {
+                  // Navigate to mentor's section first to get section ID
+                  if (mentorData) {
+                    navigation.navigate('MentorTopicHierarchy', {
+                      mentorData: mentorData,
+                      selectedSubjectId: item.subject_id,
+                      selectedSectionId: selectedSection,
+                      selectedGradeId: activeGrade,
+                      selectedSubjectName: item.subject_name
+                    });
+                  } else {
+                    Alert.alert('Error', 'Section information not available');
+                  }
+                }}
+              >
+                <Text style={styles.actionButtonText}>Topic Hierarchy</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.actionButton, styles.batchManagementButton]}
+                onPress={() => {
+                  // Navigate to batch management
+                  if (mentorData) {
+                    navigation.navigate('MentorBatchManagement', {
+                      mentorData: mentorData,
+                      selectedSubjectId: item.subject_id,
+                      selectedSectionId: selectedSection,
+                      selectedSubjectName: item.subject_name
+                    });
+                  } else {
+                    Alert.alert('Error', 'Section information not available');
+                  }
+                }}
+              >
+                <Text style={styles.actionButtonText}>Batch Management</Text>
+              </Pressable>
+            </View>
+          </View>
         )}
         renderSectionHeader={() => null}
       />

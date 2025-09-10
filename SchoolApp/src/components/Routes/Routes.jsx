@@ -166,6 +166,8 @@ import WeeklySchedule from '../../pages/Parent/EnhancedDashboard/WeeklySchedule'
 import TopicMaterials from '../../pages/Coordinator/Material/TopicHierarchy/TopicMaterials';
 import { StatusBar } from 'react-native';
 import CoordinatorStudentSchedule from '../../pages/Coordinator/Schedule/StudentSchedule/CoordinatorStudentSchedule';
+import MentorTopicHierarchy from '../../pages/Mentor/Materials/TopicHierarchy/MentorTopicHierarchy';
+import MentorBatchManagement from '../../pages/Mentor/Materials/BatchManagement/MentorBatchManagement';
 
 const Stack = createNativeStackNavigator();
 
@@ -304,6 +306,8 @@ const Routes = () => {
                         {/* Mentor Materials */}
                         <Stack.Screen name="MentorSubjectPage" component={MentorSubjectPage} />
                         <Stack.Screen name="MentorSubjectActivityPage" component={MentorSubjectActivityPage} />
+                        <Stack.Screen name="MentorTopicHierarchy" component={MentorTopicHierarchy} />
+                        <Stack.Screen name="MentorBatchManagement" component={MentorBatchManagement} />
                         {/* Mentor Profile */}
                         <Stack.Screen name="MentorLeaveApply" component={MentorLeaveApply} />
                         <Stack.Screen name="MentorLeaveHistory" component={MentorLeaveHistory} />

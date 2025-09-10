@@ -12,6 +12,7 @@ import {
   Pressable,
   Animated,
   TextInput,
+  Linking,
 } from 'react-native';
 import styles from './Academicssty'; // Updated import
 import { API_URL } from '../../../../utils/env';
@@ -223,10 +224,33 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
 
   const downloadMaterial = async (materialUrl, fileName) => {
     try {
-      // For now, just show the URL - you can implement actual download logic
-      Alert.alert('Download', `Material: ${fileName}\nURL: ${materialUrl}`);
+      // Construct the full URL
+      const fullUrl = `${API_URL}${materialUrl}`;
+      
+      // For React Native, you can use Linking to open the file
+      const { Linking } = require('react-native');
+      
+      Alert.alert(
+        'Download Material',
+        `Do you want to download ${fileName}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Download', 
+            onPress: async () => {
+              try {
+                await Linking.openURL(fullUrl);
+              } catch (error) {
+                Alert.alert('Error', 'Failed to open download link');
+                console.error('Download error:', error);
+              }
+            }
+          }
+        ]
+      );
     } catch (error) {
       Alert.alert('Error', 'Failed to download material');
+      console.error('Download error:', error);
     }
   };
 
@@ -910,28 +934,27 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
                   <Text style={styles.emptyStateText}>No materials found for this topic.</Text>
                 </View>
               ) : (
-                materials.map((levelGroup, levelIndex) => (
-                  <View key={levelIndex} style={styles.materialLevelGroup}>
-                    <Text style={styles.materialLevelTitle}>Level {levelGroup.level}</Text>
-                    {levelGroup.materials.map((material, materialIndex) => (
-                      <View key={materialIndex} style={styles.materialItem}>
-                        <View style={styles.materialInfo}>
-                          <Text style={styles.materialTitle}>{material.title}</Text>
-                          <Text style={styles.materialType}>{material.material_type}</Text>
-                          {material.expected_date && (
-                            <Text style={styles.materialDate}>
-                              Expected: {new Date(material.expected_date).toLocaleDateString()}
-                            </Text>
-                          )}
-                        </View>
-                        <TouchableOpacity
-                          style={styles.downloadButton}
-                          onPress={() => downloadMaterial(material.file_url, material.file_name)}
-                        >
-                          <Text style={styles.downloadButtonText}>📥</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
+                materials.map((material, materialIndex) => (
+                  <View key={materialIndex} style={styles.materialItem}>
+                    <View style={styles.materialInfo}>
+                      <Text style={styles.materialTitle}>{material.title}</Text>
+                      <Text style={styles.materialType}>{material.material_type}</Text>
+                      <Text style={styles.materialFileName}>{material.file_name}</Text>
+                      {material.expected_date && (
+                        <Text style={styles.materialDate}>
+                          Expected: {new Date(material.expected_date).toLocaleDateString()}
+                        </Text>
+                      )}
+                      {material.hierarchy && (
+                        <Text style={styles.materialHierarchy}>{material.hierarchy}</Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={styles.downloadButton}
+                      onPress={() => downloadMaterial(material.file_url, material.file_name)}
+                    >
+                      <Text style={styles.downloadButtonText}>📥</Text>
+                    </TouchableOpacity>
                   </View>
                 ))
               )}

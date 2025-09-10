@@ -75,6 +75,21 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
 
+    sectionTabsContainer: {
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+        marginTop: 10, // Added from Academic Schedule
+    },
+    sectionTab: {
+        paddingHorizontal: 20, // Matched with Academic Schedule
+        paddingVertical: 12,
+        borderRadius: 20,
+        marginRight: 10,
+        backgroundColor: '#F5F5F5',
+        width: 110, // Fixed width from Academic Schedule
+        elevation: 1,
+    },
+
     //Flatlist items1
     gradeList: {
         flexDirection: "row",
@@ -132,7 +147,43 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '100%',
         height: 300,
-    }
+    },
+
+    // New styles for enhanced layout
+    subjectContainer: {
+        marginBottom: 16,
+    },
+
+    actionButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 8,
+        paddingHorizontal: 16,
+    },
+
+    actionButton: {
+        flex: 1,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 6,
+        marginHorizontal: 4,
+        alignItems: 'center',
+    },
+
+    topicHierarchyButton: {
+        backgroundColor: '#4CAF50',
+    },
+
+    batchManagementButton: {
+        backgroundColor: '#FF9800',
+    },
+
+    actionButtonText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
 });
 
 export default styles;

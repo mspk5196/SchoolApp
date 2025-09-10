@@ -87,14 +87,16 @@ const updateActivityStatuses2 = async () => {
         // `;
         const query2 = `
             UPDATE academic_sessions
-            SET status = 'Finished(need to update performance)'
+            SET status = 'Finished(need to update performance)',
+            actual_end_time = NOW()
             WHERE status = 'In Progress'
               AND date = CURDATE()
               AND end_time <= CURTIME()
         `;
         const query3 = `
             UPDATE assessment_sessions
-            SET status = 'Finished(need to update performance)'
+            SET status = 'Finished(need to update performance)',
+            actual_end_time = NOW()
             WHERE status = 'In Progress'
               AND date = CURDATE()
               AND end_time <= CURTIME()

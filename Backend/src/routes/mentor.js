@@ -5,9 +5,12 @@ const surveyController = require('../controllers/mentor/survey');
 const HomeworkController = require('../controllers/mentor/homeworkController');
 const AssessmentController = require('../controllers/mentor/assessmentController');
 const PenaltyController = require('../controllers/mentor/penaltyController');
+const MentorTopicHierarchyController = require('../controllers/mentor/topicHierarchyController');
+const MentorBatchManagementController = require('../controllers/mentor/batchManagementController');
 
 router.post('/mentor/getMentorData', mentorController.getMentorData);
 router.get('/mentor/getGrades', mentorController.getGrades);
+router.get('/mentor/getGradeSection', mentorController.getGradeSections);
 
 //Profile
 router.post('/mentor/getMentorAttendance', mentorController.getMentorAttendance);
@@ -173,5 +176,18 @@ router.patch('/penalty/clear', PenaltyController.clearPenalty);
 router.get('/penalty/statistics/:gradeId/:subjectId', PenaltyController.getPenaltyStatistics);
 router.get('/penalty/trends/:gradeId/:subjectId', PenaltyController.getPenaltyTrends);
 router.get('/penalty/history/:studentRoll', PenaltyController.getStudentPenaltyHistory);
+
+// Topic Hierarchy Routes (Mentor View - Read Only)
+router.post('/mentor/topic-hierarchy/get', MentorTopicHierarchyController.getTopicHierarchy);
+router.get('/mentor/topic-hierarchy/materials/:topicId', MentorTopicHierarchyController.getTopicMaterials);
+router.post('/mentor/topic-hierarchy/activities', MentorTopicHierarchyController.getSectionSubjectActivitiesRecords);
+router.post('/mentor/topic-hierarchy/sub-activities', MentorTopicHierarchyController.getSectionSubjectSubActivitiesRecords);
+router.post('/mentor/topic-hierarchy/student-progress', MentorTopicHierarchyController.getStudentTopicProgress);
+
+// Batch Management Routes (Mentor View - Read Only)
+router.get('/mentor/batches/:sectionId/:subjectId', MentorBatchManagementController.getBatches);
+router.post('/mentor/batch-details', MentorBatchManagementController.getBatchDetails);
+router.post('/mentor/batch-analytics', MentorBatchManagementController.getBatchAnalytics);
+router.post('/mentor/batch-subjects', MentorBatchManagementController.getSectionSubjects);
 
 module.exports = router;
