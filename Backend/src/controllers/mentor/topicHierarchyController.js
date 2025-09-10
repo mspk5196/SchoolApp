@@ -3,7 +3,7 @@ const db = require('../../config/db');
 // Get complete topic hierarchy for a subject (mentor view - read only)
 exports.getTopicHierarchy = (req, res) => {
     try {
-        const { subjectId, gradeId } = req.body;
+        const { subjectId, gradeId } = req.body; 
         if (!subjectId || !gradeId) {
             return res.status(400).json({
                 success: false,
@@ -99,6 +99,129 @@ exports.getTopicHierarchy = (req, res) => {
         });
     }
 };
+
+exports.getTopicHierarchyByActivity = (req, res) => {
+    try {
+        const { activityId, subActivityId } = req.body;
+
+        // Get section_subject_activity details first
+        const activitySql = `
+            SELECT ssa.id, ssa.section_id, ssa.subject_id, ssa.activity_type,
+                   s.subject_name, sec.section_name, at.activity_type as activity_name
+            FROM section_subject_activities ssa
+            JOIN subjects s ON ssa.subject_id = s.id
+            JOIN sections sec ON ssa.section_id = sec.id
+            JOIN activity_types at ON ssa.activity_type = at.id
+            WHERE ssa.id = ?
+        `;
+
+        db.query(activitySql, [activityId], (err, activityResult) => {
+            if (err) {
+                console.error('Get activity details error:', err);
+                return res.status(500).json({ success: false, message: 'Failed to fetch activity details' });
+            }
+
+            if (activityResult.length === 0) {
+                return res.status(404).json({ success: false, message: 'Activity not found' });
+            }
+
+            const activity = activityResult[0];
+
+            // Get topic hierarchy for this activity
+            const sql = `
+                SELECT 
+                    id, subject_id, section_subject_activity_id, parent_id, level, topic_name, topic_code, ssa_sub_activity_id,
+                    order_sequence, has_assessment, has_homework, is_bottom_level,
+                    expected_completion_days, pass_percentage, created_at, updated_at
+                FROM topic_hierarchy 
+                WHERE section_subject_activity_id = ? AND ssa_sub_activity_id = ?
+                ORDER BY level, order_sequence
+            `;
+
+            console.log('Executing hierarchy query for activityId:', activityId, 'subActivityId:', subActivityId);
+
+            db.query(sql, [activityId, subActivityId], (err, result) => {
+                if (err) {
+                    console.error('Get topic hierarchy by activity error:', err);
+                    return res.status(500).json({ success: false, message: 'Database error' });
+                }
+
+                if (result.length === 0) {
+                    return res.json({ 
+                        success: true, 
+                        data: {
+                            activity: activity,
+                            hierarchy: [],
+                            total_topics: 0
+                        }
+                    });
+                }
+
+                console.log('Hierarchy query result:', result);
+
+                // Build hierarchy path for each topic
+                const buildHierarchyPath = (topicId, topics, path = []) => {
+                    const topic = topics.find(t => t.id === topicId);
+                    if (!topic) return path;
+                    
+                    path.unshift(topic.topic_name);
+                    
+                    if (topic.parent_id) {
+                        return buildHierarchyPath(topic.parent_id, topics, path);
+                    }
+                    
+                    return path;
+                };
+
+                // Add full hierarchy path to each topic
+                const hierarchyWithPaths = result.map(topic => {
+                    const hierarchyPath = buildHierarchyPath(topic.id, result);
+                    const fullTopicName = hierarchyPath.join(' > ');
+                    
+                    return {
+                        ...topic,
+                        full_topic_name: fullTopicName,
+                        hierarchy_path: hierarchyPath,
+                        topic_depth: hierarchyPath.length
+                    };
+                });
+
+                // Build nested structure
+                const buildTree = (items, parentId = null) => {
+                    if (!Array.isArray(items)) {
+                        return [];
+                    }
+                    return items
+                        .filter(item => item.parent_id === parentId)
+                        .map(item => ({
+                            ...item,
+                            children: buildTree(items, item.id)
+                        }));
+                };
+
+                const tree = buildTree(hierarchyWithPaths);
+
+                console.log('Built tree structure:', tree);
+                res.json({
+                    success: true, 
+                    data: {
+                        activity: activity,
+                        overallData: hierarchyWithPaths,
+                        hierarchy: tree,
+                        total_topics: result.length
+                    }
+                });
+            });
+        });
+    } catch (error) {
+        console.error('Get topic hierarchy by activity error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch topic hierarchy',
+            error: error.message
+        });
+    }
+}
 
 // Get topic materials (mentor view - read only)
 exports.getTopicMaterials = (req, res) => {

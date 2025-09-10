@@ -114,12 +114,15 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
         setTopicHierarchy([]);
         try {
             setLoading(true);
-            const response = await fetch(`${API_URL}/api/mentor/topic-hierarchy/get`, {
+            const response = await fetch(`${API_URL}/api/mentor/topic-hierarchy/getByActivityId`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    subjectId: selectedSubjectId,
-                    gradeId: selectedGradeId,
+                    // subjectId: selectedSubjectId,
+                    // gradeId: selectedGradeId,
+                    activityId: selectedActivity,
+                    subActivityId: selectedSubActivity,
+                    // sectionId: selectedSectionId,
                 })
             });
 

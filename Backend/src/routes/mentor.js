@@ -179,6 +179,7 @@ router.get('/penalty/history/:studentRoll', PenaltyController.getStudentPenaltyH
 
 // Topic Hierarchy Routes (Mentor View - Read Only)
 router.post('/mentor/topic-hierarchy/get', MentorTopicHierarchyController.getTopicHierarchy);
+router.post('/mentor/topic-hierarchy/getByActivityId', MentorTopicHierarchyController.getTopicHierarchyByActivity);
 router.get('/mentor/topic-hierarchy/materials/:topicId', MentorTopicHierarchyController.getTopicMaterials);
 router.post('/mentor/topic-hierarchy/activities', MentorTopicHierarchyController.getSectionSubjectActivitiesRecords);
 router.post('/mentor/topic-hierarchy/sub-activities', MentorTopicHierarchyController.getSectionSubjectSubActivitiesRecords);
