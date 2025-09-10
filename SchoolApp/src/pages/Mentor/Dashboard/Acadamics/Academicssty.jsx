@@ -31,10 +31,11 @@ const styles = StyleSheet.create({
     marginRight: wp('3%'),
   },
   headerText: {
-    fontSize: wp('5.5%'),
+    fontSize: wp('4.5%'),
     fontWeight: '700',
     color: '#1E293B',
-    flex: 1,
+    // flex: 1,
+    // flexWrap:'nowrap'
   },
   statusIndicator: {
     paddingHorizontal: wp('3%'),
@@ -46,6 +47,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: wp('3%'),
     fontWeight: '600',
+    flexWrap: 'wrap',
+    // flex: 1,
   },
 
   // Session Information Card

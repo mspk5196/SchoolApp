@@ -593,9 +593,9 @@ exports.runBatchReallocation = async (req, res) => {
 
                         if (!hasError) {
                             // Create new assignment
-                            const insertNewSQL = 'INSERT INTO student_batch_assignments (student_roll, batch_id, assigned_by, is_current) VALUES (?, ?, ?, 1)';
+                            const insertNewSQL = 'INSERT INTO student_batch_assignments (student_roll, subject_id, batch_id, assigned_by, is_current) VALUES (?, ?, ?, ?, 1)';
                             
-                            db.query(insertNewSQL, [reallocation.studentRoll, reallocation.toBatchId, 'system'], (error4) => {
+                            db.query(insertNewSQL, [reallocation.studentRoll, subjectId, reallocation.toBatchId, 'system'], (error4) => {
                                 if (error4 && !hasError) {
                                     hasError = true;
                                     console.error('Error creating new assignment:', error4);
@@ -779,9 +779,9 @@ exports.initializeStudentBatches = async (req, res) => {
                     }
 
                     const student = unassignedStudents[index];
-                    const assignSql = 'INSERT INTO student_batch_assignments (student_roll, batch_id, assigned_by, is_current) VALUES (?, ?, ?, 1)';
+                    const assignSql = 'INSERT INTO student_batch_assignments (student_roll, subject_id, batch_id, assigned_by, is_current) VALUES (?, ?, ?, ?, 1)';
                     
-                    db.query(assignSql, [student.roll, firstBatchId, coordinatorId], (error3) => {
+                    db.query(assignSql, [student.roll, subjectId, firstBatchId, coordinatorId], (error3) => {
                         if (error3 && !hasError) {
                             hasError = true;
                             console.error('Error assigning student to batch:', error3);

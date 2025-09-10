@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialIcons'; 
 import { API_URL } from '../../../../utils/env.js';
 import { sub } from 'date-fns';
 
@@ -62,20 +62,20 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   // }, []);
 
   useEffect(() => {
-    console.log('useEffect for activities triggered:', { selectedSubject, selectedSection });
+    // console.log('useEffect for activities triggered:', { selectedSubject, selectedSection });
     if (selectedSubject && selectedSection) {
       fetchActivitiesForSubject();
     } else {
-      console.log('Cannot fetch activities: missing selectedSubject or selectedSection');
+      console.warn('Cannot fetch activities: missing selectedSubject or selectedSection');
     }
   }, [selectedSubject, selectedSection]);
 
   useEffect(() => {
-    console.log('useEffect for hierarchy triggered:', { selectedActivity, selectedSubActivity });
+    // console.log('useEffect for hierarchy triggered:', { selectedActivity, selectedSubActivity });
     if (selectedActivity && selectedSubActivity) {
       fetchTopicHierarchy();
     } else {
-      console.log('Cannot fetch hierarchy: missing selectedActivity or selectedSubActivity');
+      console.warn('Cannot fetch hierarchy: missing selectedActivity or selectedSubActivity');
     }
   }, [selectedActivity, selectedSubActivity]);
 
@@ -119,7 +119,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   // };
 
   const fetchActivitiesForSubject = async () => {
-    console.log('fetchActivitiesForSubject called with:', { selectedSubject, selectedSection });
+    // console.log('fetchActivitiesForSubject called with:', { selectedSubject, selectedSection });
     try {
       
       const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectActivities/${selectedSection}/${selectedSubject}`, {
@@ -143,7 +143,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
           setSelectedActivity(null);
         }
       } else {
-        console.log('Failed to fetch activities:', result.message);
+        console.error('Failed to fetch activities:', result.message);
       }
     } catch (error) {
       console.error('Fetch activities error:', error);
@@ -152,7 +152,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   };
 
   const fetchSubActivitiesForSubject = async () => {
-    console.log('fetchSubActivitiesForSubject called with:', { selectedActivity, selectedSubject });
+    // console.log('fetchSubActivitiesForSubject called with:', { selectedActivity, selectedSubject });
     try {
       
       const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectSubActivities/${selectedActivity}/${selectedSubject}`, {
@@ -173,7 +173,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
           setSelectedSubActivity(null);
         }
       } else {
-        console.log('Failed to fetch activities:', result.message);
+        console.error('Failed to fetch activities:', result.message);
       }
     } catch (error) {
       console.error('Fetch activities error:', error);
@@ -218,7 +218,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         
         setTopicHierarchy(result.data.hierarchy || []);
       } else {
-        console.log('Failed to fetch topic hierarchy:', result.message);
+        console.error('Failed to fetch topic hierarchy:', result.message);
         Alert.alert('Error', result.message || 'Failed to fetch topic hierarchy');
       }
     } catch (error) {
@@ -248,7 +248,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       const payload = {
         sectionSubjectActivityId: selectedActivity,
         parentId: formData.parent_id,
-        level: formData.parent_id ? 2 : 1, // Calculate level based on parent
+        level: formData.level ? (formData.level + 1) : 1,
         topicName: formData.topic_name,
         topicCode: formData.topic_code,
         orderSequence: formData.order_sequence,
@@ -266,7 +266,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         ? `${API_URL}/api/coordinator/topics/update/${editingTopic.id}`
         : `${API_URL}/api/coordinator/topics/create`;
 
-      console.log('Request URL:', url);
+      // console.log('Request URL:', url);
 
       const response = await fetch(url, {
         method: editingTopic ? 'PUT' : 'POST',
@@ -276,11 +276,11 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         body: JSON.stringify(payload),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
+      // console.log('Response status:', response.status);
+      // console.log('Response headers:', response.headers);
 
       const result = await response.json();
-      console.log('Response result:', result);
+      // console.log('Response result:', result);
 
       if (result.success) {
         Alert.alert('Success', `Topic ${editingTopic ? 'updated' : 'created'} successfully`);
@@ -347,6 +347,8 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
   const openEditModal = (topic) => {
     setEditingTopic(topic);
+    console.log('Editing topic:', topic);
+    
     setFormData({
       topic_name: topic.topic_name,
       topic_code: topic.topic_code,

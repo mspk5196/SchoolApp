@@ -60,6 +60,8 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   const [loadingMaterials, setLoadingMaterials] = useState(false);
   const [batches, setBatches] = useState({});
   const [expandedBatches, setExpandedBatches] = useState({});
+  const [statusCheckInterval, setStatusCheckInterval] = useState(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
   // Animation values
   const [slideAnim] = useState(new Animated.Value(hp('100%')));
@@ -124,7 +126,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
 
   // Simulate session progress and update time left
   useEffect(() => {
-    let interval;
+    let interval; 
     if (activity?.status === 'In Progress' && sessionStartTimestamp && sessionEndTimestamp) {
       interval = setInterval(() => {
         const now = Date.now();
@@ -149,12 +151,58 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
     return () => clearInterval(interval);
   }, [activity?.status, sessionStartTimestamp, sessionEndTimestamp]);
 
+  // Periodic status checking
+  useEffect(() => {
+    let statusInterval;
+    
+    // Only check status if activity exists and is not completed/cancelled
+    if (activity && !['Completed', 'Cancelled', 'Time Over'].includes(activity.status)) {
+      // Check status every 30 seconds
+      statusInterval = setInterval(() => {
+        checkActivityStatus();
+      }, 30000);
+      
+      setStatusCheckInterval(statusInterval);
+    }
+    
+    return () => {
+      if (statusInterval) {
+        clearInterval(statusInterval);
+      }
+    };
+  }, [activity?.id, activity?.status, students.length]); // Added students.length as dependency
+
+  // Initial status check when component is fully loaded
+  useEffect(() => {
+    if (activity && students.length > 0 && !isLoading) {
+      // Perform initial status check after a short delay
+      const initialStatusCheck = setTimeout(() => {
+        console.log('Performing initial status check');
+        checkActivityStatus();
+      }, 1000);
+      
+      return () => clearTimeout(initialStatusCheck);
+    }
+  }, [activity?.id, students.length, isLoading]);
+
+  // Cleanup status checking interval when component unmounts
+  useEffect(() => {
+    return () => {
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+      }
+    };
+  }, []);
+
   const fetchActivityDetails = async () => {
     setIsLoading(true);
     try {
       if (scheduleData && scheduleData.length > 0) {
         // Extract the first activity from the scheduleData array
-        const activityData = scheduleData[0];
+        const activityData = scheduleData[0]; // Get the first element, not the whole array
+        console.log("Activity Data (single object):", activityData);
+        console.log("students", activityData.students);
+        
         setActivity(activityData);
         
         // Set batches data
@@ -177,14 +225,21 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
           );
           setStudents(allStudents);
         } else {
-          // Fallback to existing students array
-          const allStudents = scheduleData.flatMap(schedule => schedule.students || []);
+          // Fallback to existing students array from the single activity
+          const allStudents = activityData.students || [];
           setStudents(allStudents);
-        }
+        } 
         
         setIsLoading(false);
-        console.log('Activity Data:', activityData);
+        console.log('Activity Data (processed):', activityData);
         console.log('Batches:', activityData.batches);
+        console.log('Section Subject Activity ID:', activityData.section_subject_activity_id);
+        
+        // Check status immediately after loading activity details
+        setTimeout(() => {
+          checkActivityStatus();
+        }, 500);
+        
         // Timestamps will be set by useEffect when status is 'In Progress'
       } else {
         Alert.alert('Error','Failed to fetch activity details.');
@@ -196,7 +251,108 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
     }
   };
 
+  const checkActivityStatus = async (showLoading = false) => {
+    try {
+      if (showLoading) {
+        setIsCheckingStatus(true);
+      }
+      
+      const sessionId = activity?.id || activityId;
+      
+      // If we don't have activity yet, skip status check
+      if (!sessionId) {
+        console.log('No activity ID available for status check');
+        return;
+      }
+      
+      // Collect all student schedule IDs - try from scheduleData if students not populated yet
+      let studentScheduleIds = students.map(student => student.schedule_id).filter(id => id);
+      
+      // Fallback: extract from scheduleData if students array is empty
+      if (studentScheduleIds.length === 0 && scheduleData && scheduleData.length > 0) {
+        studentScheduleIds = scheduleData.flatMap(schedule => 
+          (schedule.students || []).map(student => student.schedule_id)
+        ).filter(id => id);
+      }
+      
+      if (studentScheduleIds.length === 0) {
+        console.log('No student schedule IDs available for status check');
+        if (showLoading) {
+          Alert.alert('Info', 'No student data available for status check');
+        }
+        return;
+      }
+      
+      console.log('Checking status with student schedule IDs:', studentScheduleIds);
+      
+      const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          studentScheduleIds,
+          activityType: activity?.activity || activity?.session_type || 'Academic'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Status check response:', data);
+      
+      if (data.success && data.status !== activity?.status) {
+        console.log('Status changed from', activity?.status, 'to', data.status);
+        setActivity(prev => ({
+          ...prev,
+          status: data.status
+        }));
+        
+        // Show status change notification with session details
+        if (showLoading) {
+          const sessionDetails = data.session_details;
+          let detailMessage = `Session status changed to: ${data.status}`;
+          if (sessionDetails) {
+            detailMessage += `\n\nSession Details:\nTotal sessions: ${sessionDetails.total_sessions}`;
+            if (sessionDetails.status_breakdown && sessionDetails.status_breakdown.length > 1) {
+              detailMessage += '\nStatus breakdown:';
+              sessionDetails.status_breakdown.forEach(item => {
+                detailMessage += `\n• ${item.status}: ${item.count} student(s)`;
+              });
+            }
+          }
+          Alert.alert('Status Updated', detailMessage);
+        }
+      } else if (showLoading && data.success) {
+        const sessionDetails = data.session_details;
+        let statusMessage = `Current status: ${data.status}`;
+        if (sessionDetails) {
+          statusMessage += `\n\nTotal sessions: ${sessionDetails.total_sessions}`;
+          if (sessionDetails.status_breakdown && sessionDetails.status_breakdown.length > 1) {
+            statusMessage += '\nStatus breakdown:';
+            sessionDetails.status_breakdown.forEach(item => {
+              statusMessage += `\n• ${item.status}: ${item.count} student(s)`;
+            });
+          }
+        }
+        Alert.alert('Status Check', statusMessage);
+      }
+    } catch (error) {
+      console.error('Error checking activity status:', error);
+      if (showLoading) {
+        Alert.alert('Error', 'Failed to check activity status');
+      }
+      // Don't show alert for automatic status check errors to avoid interrupting user
+    } finally {
+      if (showLoading) {
+        setIsCheckingStatus(false);
+      }
+    }
+  };
+
   const fetchMaterials = async () => {
+    console.log('Fetching materials for activity:', activity);
+    
     if (!activity?.section_subject_activity_id) {
       Alert.alert('Error', 'Cannot fetch materials: missing activity information');
       return;
@@ -209,6 +365,8 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       const data = await response.json();
       
       if (data.success) {
+        console.log('Fetched materials:', data.materials);
+        
         setMaterials(data.materials || []);
         setShowMaterials(true);
       } else {
@@ -262,41 +420,69 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   };
 
   const handleStartSession = async () => {
-    // console.log(activity);
-    
     try {
-      const sessionId = activity?.id || activityId;
+      const sessionId = activity?.id;
+      
+      // Collect all student schedule IDs
+      const studentScheduleIds = students.map(student => student.schedule_id).filter(id => id);
+      console.log('Starting session with student schedule IDs:', studentScheduleIds);
+      
+      if (studentScheduleIds.length === 0) {
+        Alert.alert('Error', 'No student schedule IDs found.');
+        return;
+      }
+      
       const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/${activity.activity}/start`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentScheduleIds })
       });
+      
       const data = await response.json();
       if (data.success) {
         setActivity(prev => ({ ...prev, status: 'In Progress' }));
         setSessionTimestamps();
-        Alert.alert('Success', 'Session has been started.');
+        Alert.alert('Success', `Session has been started for ${data.affectedRows} student(s).`);
+        // Start status checking immediately after session starts
+        checkActivityStatus();
       } else {
         Alert.alert('Error', data.message || 'Could not start the session.');
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred.');
+      console.error('Error starting session:', error);
+      Alert.alert('Error', 'An error occurred while starting the session.');
     }
   };
 
   const handleFinishSession = async () => {
     try {
       const sessionId = activity?.id || activityId;
+      
+      // Collect all student schedule IDs
+      const studentScheduleIds = students.map(student => student.schedule_id).filter(id => id);
+      console.log('Finishing session with student schedule IDs:', studentScheduleIds);
+      
+      if (studentScheduleIds.length === 0) {
+        Alert.alert('Error', 'No student schedule IDs found.');
+        return;
+      }
+      
       const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/academic/finish`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentScheduleIds })
       });
+      
       const data = await response.json();
       if (data.success) {
         setActivity(prev => ({ ...prev, status: 'Finished(need to update performance)' }));
-        Alert.alert('Success', 'Session has been finished.');
+        Alert.alert('Success', `Session has been finished for ${data.affectedRows} student(s).`);
       } else {
         Alert.alert('Error', data.message || 'Could not finish the session.');
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred.');
+      console.error('Error finishing session:', error);
+      Alert.alert('Error', 'An error occurred while finishing the session.');
     }
   };
 
@@ -313,29 +499,51 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
       return;
     }
 
-    const studentPerformances = Object.keys(performances).map(roll => ({
-      student_roll: roll,
-      performance: performances[roll],
-    }));
-    console.log(studentPerformances, feedback, activityId);
+    // Collect all student schedule IDs
+    const studentScheduleIds = students.map(student => student.schedule_id).filter(id => id);
+    console.log('Completing session with student schedule IDs:', studentScheduleIds);
+    
+    if (studentScheduleIds.length === 0) {
+      Alert.alert('Error', 'No student schedule IDs found.');
+      return;
+    }
+
+    // Add schedule_id to each student performance
+    const studentPerformances = Object.keys(performances).map(roll => {
+      const student = students.find(s => s.student_roll === roll);
+      return {
+        student_roll: roll,
+        performance: performances[roll],
+        schedule_id: student?.schedule_id
+      };
+    });
+    
+    console.log('Student performances with schedule IDs:', studentPerformances);
+    console.log('Feedback:', feedback);
 
     try {
       const sessionId = activity?.id || activityId;
       const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/academic/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentPerformances, feedback}),
+        body: JSON.stringify({ 
+          studentPerformances, 
+          feedback,
+          studentScheduleIds
+        }),
       });
+      
       const data = await response.json();
       if (data.success) {
         setSessionEndTimestamp(new Date().toISOString());
-        Alert.alert('Success', 'Session completed successfully.', [
+        Alert.alert('Success', `Session completed successfully for ${data.affectedSessions} student(s).`, [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       } else {
-        Alert.alert('Error', 'Could not complete the session.');
+        Alert.alert('Error', data.message || 'Could not complete the session.');
       }
     } catch (error) {
+      console.error('Error completing session:', error);
       Alert.alert('Error', 'An error occurred while saving data.');
     }
   };
@@ -423,7 +631,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
               : Staff
           }
           style={styles.profileImg}
-        />
+        /> 
 
         <View style={styles.studentInfo}>
           <Text style={styles.profileName}>{student.student_name}</Text>
@@ -672,7 +880,47 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         </TouchableOpacity>
 
         <Text style={styles.headerText}>Academic Session</Text>
+      </View>
 
+      {/* Status Section */}
+      <View style={{ 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: wp('5%'),
+        paddingVertical: hp('1%'),
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}>
+        <TouchableOpacity
+          style={[
+            styles.backButton, 
+            { 
+              backgroundColor: '#F1F5F9',
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: wp('3%')
+            }
+          ]}
+          onPress={() => checkActivityStatus(true)}
+          disabled={isCheckingStatus}
+        >
+          {isCheckingStatus ? (
+            <ActivityIndicator size="small" color="#64748B" />
+          ) : (
+            <Text style={{ fontSize: 16, marginRight: 4 }}>🔄</Text>
+          )}
+          <Text style={{ color: '#64748B', fontSize: wp('3.5%'), fontWeight: '500' }}>
+            Refresh Status
+          </Text>
+        </TouchableOpacity>
+        
         <View
           style={[
             styles.statusIndicator,

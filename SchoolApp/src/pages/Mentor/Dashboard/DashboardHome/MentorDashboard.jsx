@@ -169,8 +169,7 @@ const MentorDashboard = ({ route }) => {
       const data = await response.json();
       if (data.success) {
         setScheduleData(data.scheduleData);
-        console.log("Schedule Data:", data.scheduleData[0].students);
-
+        // console.log("Schedule Data:", data.scheduleData[0].students);
       } else {
         console.error('Failed to fetch schedule data');
         setScheduleData([]);
@@ -182,7 +181,6 @@ const MentorDashboard = ({ route }) => {
       setIsScheduleLoading(false);
     }
   };
-
   const formatDateForAPI = (dateObj) => {
     const yyyy = dateObj.getFullYear();
     const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -830,7 +828,7 @@ const MentorDashboard = ({ route }) => {
             }
             renderItem={({ item }) => (
               <Pressable onPress={() => {
-                console.log("Hi", item.is_assessment);
+                console.log("Hi", item);
                 if ((item.is_assessment === 0) || (item.activity_type === 'Academic')) {
                   // console.log(item.subject_id),
                   navigation.navigate("MentorDashboardAcademics", {
@@ -850,7 +848,7 @@ const MentorDashboard = ({ route }) => {
                 } else {
                   // Handle other activity types
                   navigation.navigate("MentorDashboardAssessment", {
-                    activityId: item.id,
+                    activityId: item.pa_id,
                     sessionId: item.dsa_id,
                     subject: item.subject,
                     subject_id: item.subject_id,
@@ -861,6 +859,7 @@ const MentorDashboard = ({ route }) => {
                     startTime: item.starttime,
                     endTime: item.endtime,
                     date: convertDateFormat(formatDate(date)),
+                    scheduleData: scheduleData
                   })
                 }
               }}>

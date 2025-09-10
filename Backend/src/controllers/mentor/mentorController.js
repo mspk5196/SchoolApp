@@ -1625,7 +1625,7 @@ exports.getMentorDailySchedule = (req, res) => {
 
     console.log('Query results count:', results.length);
     if (results.length > 0) {
-      console.log('Sample result:', results[0]);
+      console.log('Sample result:', results);
     }
 
     // If no results found, try a simpler fallback query
@@ -1642,7 +1642,7 @@ exports.getMentorDailySchedule = (req, res) => {
           'Default Batch' AS batch_name,
           1 AS batch_level,
           ds.section_id,
-          ds.mentors_id AS mentor_id,
+          pa.assigned_mentor_id AS mentor_id,
           ds.subject_id,
           0 AS topic_id,
           ds.date,
@@ -1660,10 +1660,10 @@ exports.getMentorDailySchedule = (req, res) => {
           '' AS topic_name,
           0 AS section_subject_activity_id
         FROM period_activities pa
-        LEFT JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
+        LEFT JOIN daily_schedule ds ON pa.dsn_id = ds.id
         LEFT JOIN subjects sub ON ds.subject_id = sub.id
         LEFT JOIN sections sec ON ds.section_id = sec.id
-        WHERE ds.mentors_id = ? AND DATE(ds.date) = DATE(?)
+        WHERE pa.assigned_mentor_id = ? AND DATE(ds.date) = DATE(?)
         ORDER BY ds.start_time
       `;
 
@@ -1919,26 +1919,28 @@ exports.getGradeSections = (req, res) => {
  */
 async function getStudentsForActivity(activityId) {
   const [activityDetails] = await db.promise().query(
-    `SELECT pa.activity_date, pa.batch_number, ds.subject_id, ds.section_id
+    `SELECT pa.activity_date, pa.batch_id, ds.subject_id, ds.section_id
          FROM period_activities pa
-         JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
+         JOIN daily_schedule ds ON pa.dsn_id = ds.id
          WHERE pa.id = ?`,
     [activityId]
   );
-
+  // console.log(activityDetails.length);
+  
   if (!activityDetails.length) return [];
-  const { activity_date, batch_number, subject_id, section_id } = activityDetails[0];
+  const { activity_date, batch_id, subject_id, section_id } = activityDetails[0];
+  // console.log(activity_date, batch_id, subject_id, section_id);
 
   const [students] = await db.promise().query(
     `SELECT s.id, s.name, s.roll, s.profile_photo
          FROM students s
          JOIN student_batch_assignments sba ON s.roll = sba.student_roll
          JOIN section_batches sb ON sba.batch_id = sb.id
-         WHERE sb.batch_level = ? AND sb.subject_id = ? AND sb.section_id = ? AND sba.is_current = 1
+         WHERE sb.id = ? AND sb.subject_id = ? AND sb.section_id = ? AND sba.is_current = 1
          ORDER BY s.name ASC`,
-    [batch_number, subject_id, section_id]
+    [batch_id, subject_id, section_id]
   );
-
+  // console.log(students);
   if (!students.length) return [];
 
   const studentRolls = students.map(s => s.roll);
@@ -1961,25 +1963,45 @@ async function getStudentsForActivity(activityId) {
  */
 exports.startActivity = async (req, res) => {
   const { activityId, activityType } = req.params;
-  if (activityType === 'Assessment') {
-    const [result] = await db.promise().query(
-      "UPDATE assessment_sessions SET status = 'In Progress', actual_start_time = NOW() WHERE id = ? AND status = 'Not Started'",
-      [activityId]
-    );
-    if (result.affectedRows === 0) {
-      return res.status(400).json({ success: false, message: 'Activity could not be started.' });
-    }
-    res.json({ success: true, message: 'Activity started.' });
+  const { studentScheduleIds } = req.body; // Expecting array of student schedule IDs
+  console.log('Activity ID:', activityId, 'Student Schedule IDs:', studentScheduleIds);
+  
+  if (!studentScheduleIds || !Array.isArray(studentScheduleIds) || studentScheduleIds.length === 0) {
+    return res.status(400).json({ success: false, message: 'Student schedule IDs are required.' });
   }
-  else {
-    const [result] = await db.promise().query(
-      "UPDATE academic_sessions SET status = 'In Progress', actual_start_time = NOW() WHERE id = ? AND status = 'Not Started'",
-      [activityId]
-    );
-    if (result.affectedRows === 0) {
-      return res.status(400).json({ success: false, message: 'Activity could not be started.' });
+  
+  try {
+    let result;
+    if (activityType === 'Assessment') {
+      // Update all assessment sessions for the students
+      const placeholders = studentScheduleIds.map(() => '?').join(',');
+      [result] = await db.promise().query(
+        `UPDATE assessment_sessions SET status = 'In Progress', actual_start_time = NOW() 
+         WHERE id IN (${placeholders}) AND status = 'Not Started'`,
+        studentScheduleIds
+      );
+    } else {
+      // Update all academic sessions for the students
+      const placeholders = studentScheduleIds.map(() => '?').join(',');
+      [result] = await db.promise().query(
+        `UPDATE academic_sessions SET status = 'In Progress', actual_start_time = NOW() 
+         WHERE id IN (${placeholders}) AND status = 'Not Started'`,
+        studentScheduleIds
+      );
     }
-    res.json({ success: true, message: 'Activity started.' });
+    
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ success: false, message: 'No sessions could be started. Please check if sessions are already started or don\'t exist.' });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Activity started for ${result.affectedRows} student(s).`,
+      affectedRows: result.affectedRows
+    });
+  } catch (error) {
+    console.error('Error starting activity:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -1994,6 +2016,8 @@ exports.getAcademicActivityDetails = async (req, res) => {
     if (!activity.length) return res.status(404).json({ success: false, message: 'Activity not found' });
 
     const students = await getStudentsForActivity(activityId);
+    console.log(students);
+    
     res.json({ success: true, activity: activity[0], students });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -2005,64 +2029,90 @@ exports.getAcademicActivityDetails = async (req, res) => {
  */
 exports.completeAcademicActivity = async (req, res) => {
   const { activityId } = req.params;
-  const { studentPerformances, feedback } = req.body; // Expecting [{ student_roll, performance }]
-  console.log(feedback);
+  const { studentPerformances, feedback, studentScheduleIds } = req.body; // Expecting [{ student_roll, performance, schedule_id }]
+  console.log('Feedback:', feedback);
+  console.log('Student Schedule IDs:', studentScheduleIds);
+
+  if (!studentScheduleIds || !Array.isArray(studentScheduleIds) || studentScheduleIds.length === 0) {
+    return res.status(400).json({ success: false, message: 'Student schedule IDs are required.' });
+  }
 
   let trx;
   try {
-    trx = await db.promise().beginTransaction(); // get transaction object
+    trx = await db.promise().beginTransaction();
 
+    // Insert attendance and performance data for each student
     for (const item of studentPerformances) {
+      // Find the schedule_id for this student
+      const scheduleId = item.schedule_id || studentScheduleIds.find(id => id); // Use provided schedule_id or fallback
+      
       await trx.query(
         `INSERT INTO academic_session_attendance (session_id, student_roll, attendance_status, performance) VALUES (?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE performance = VALUES(performance)`,
-        [activityId, item.student_roll, (item.performance === 'Absent' ? 'Absent' : 'Present'), item.performance]
+         ON DUPLICATE KEY UPDATE performance = VALUES(performance)`,
+        [scheduleId, item.student_roll, (item.performance === 'Absent' ? 'Absent' : 'Present'), item.performance]
       );
     }
+
+    // Update all academic sessions for the students to 'Completed'
+    const placeholders = studentScheduleIds.map(() => '?').join(',');
+    const updateParams = [...studentScheduleIds, feedback];
+    
     if (feedback === 'Completed normally') {
-      await trx.query("UPDATE academic_sessions SET status = 'Completed', remarks = ? WHERE id = ?", [feedback, activityId]);
+      await trx.query(
+        `UPDATE academic_sessions SET status = 'Completed', remarks = ? WHERE id IN (${placeholders})`,
+        [feedback, ...studentScheduleIds]
+      );
+    } else {
+      await trx.query(
+        `UPDATE academic_sessions SET status = 'Completed', actual_end_time = NOW(), remarks = ? WHERE id IN (${placeholders})`,
+        [feedback, ...studentScheduleIds]
+      );
     }
-    else {
-      await trx.query("UPDATE academic_sessions SET status = 'Completed', actual_end_time = NOW(), remarks = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId]);
-    }
+
     await trx.commit();
-    res.json({ success: true, message: 'Academic activity completed.' });
+    res.json({ 
+      success: true, 
+      message: `Academic activity completed for ${studentScheduleIds.length} student(s).`,
+      affectedSessions: studentScheduleIds.length
+    });
   } catch (error) {
     if (trx && typeof trx.rollback === 'function') {
       await trx.rollback();
     }
+    console.error('Error completing academic activity:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 exports.finishAcademicActivity = async (req, res) => {
   const { activityId } = req.params;
-  console.log(" Activity ID:", activityId);
-  const { studentPerformances, feedback } = req.body;
+  console.log("Activity ID:", activityId);
+  const { studentScheduleIds } = req.body; // Expecting array of student schedule IDs
 
-  let trx;
+  if (!studentScheduleIds || !Array.isArray(studentScheduleIds) || studentScheduleIds.length === 0) {
+    return res.status(400).json({ success: false, message: 'Student schedule IDs are required.' });
+  }
+
   try {
-    trx = await db.promise().beginTransaction(); // get transaction object
+    // Update all academic sessions for the students to 'Finished(need to update performance)'
+    const placeholders = studentScheduleIds.map(() => '?').join(',');
+    const [result] = await db.promise().query(
+      `UPDATE academic_sessions SET status = 'Finished(need to update performance)' 
+       WHERE id IN (${placeholders}) AND status = 'In Progress'`,
+      studentScheduleIds
+    );
 
-    for (const item of studentPerformances) {
-      const result = await trx.query(
-        `INSERT INTO academic_session_attendance (session_id, student_roll, attendance_status, performance) VALUES (?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE performance = VALUES(performance)`,
-        [activityId, item.student_roll, (item.performance === 'Absent' ? 'Absent' : 'Present'), item.performance]
-      );
-      console.log(result);
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ success: false, message: 'No sessions could be finished. Please check if sessions are in progress.' });
     }
-    if (feedback === 'Completed normally') {
-      await trx.query("UPDATE academic_sessions SET status = 'Completed', remarks = ? WHERE id = ?", [feedback, activityId]);
-    } else {
-      await trx.query("UPDATE academic_sessions SET status = 'Completed', remarks = ?, actual_end_time = NOW() WHERE id = ?", [feedback, activityId]);
-    }
-    await trx.commit();
-    res.json({ success: true, message: 'Academic activity completed.' });
+
+    res.json({ 
+      success: true, 
+      message: `Academic activity finished for ${result.affectedRows} student(s).`,
+      affectedRows: result.affectedRows
+    });
   } catch (error) {
-    if (trx && typeof trx.rollback === 'function') {
-      await trx.rollback();
-    }
+    console.error('Error finishing academic activity:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -2073,12 +2123,49 @@ exports.finishAcademicActivity = async (req, res) => {
 exports.getAssessmentActivityDetails = async (req, res) => {
   try {
     const { activityId } = req.params;
+    console.log("Activity ID:", activityId);
     const [activity] = await db.promise().query("SELECT * FROM period_activities WHERE id = ?", [activityId]);
     if (!activity.length) return res.status(404).json({ success: false, message: 'Activity not found' });
-
+    console.log(activity);
+    
     const students = await getStudentsForActivity(activityId);
+    // console.log(students);
+    
     res.json({ success: true, activity: activity[0], students });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+exports.finishAssessmentActivity = async (req, res) => {
+  const { activityId } = req.params;
+  console.log("Assessment Activity ID:", activityId);
+  const { studentScheduleIds } = req.body; // Expecting array of student schedule IDs
+
+  if (!studentScheduleIds || !Array.isArray(studentScheduleIds) || studentScheduleIds.length === 0) {
+    return res.status(400).json({ success: false, message: 'Student schedule IDs are required.' });
+  }
+
+  try {
+    // Update all assessment sessions for the students to 'Finished(need to update marks)'
+    const placeholders = studentScheduleIds.map(() => '?').join(',');
+    const [result] = await db.promise().query(
+      `UPDATE assessment_sessions SET status = 'Finished(need to update marks)' 
+       WHERE id IN (${placeholders}) AND status = 'In Progress'`,
+      studentScheduleIds
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ success: false, message: 'No sessions could be finished. Please check if sessions are in progress.' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Assessment activity finished for ${result.affectedRows} student(s).`,
+      affectedRows: result.affectedRows
+    });
+  } catch (error) {
+    console.error('Error finishing assessment activity:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -2088,53 +2175,56 @@ exports.getAssessmentActivityDetails = async (req, res) => {
  */
 exports.completeAssessmentActivity = async (req, res) => {
   const { activityId } = req.params;
-  // Expecting [{ student_roll, marks_obtained, total_marks, is_absent }]
-  const { studentSubmissions } = req.body;
+  const { studentSubmissions, studentScheduleIds } = req.body;
+  console.log('Assessment Activity ID:', activityId, 'Student Schedule IDs:', studentScheduleIds);
 
-  const connection = await db.promise().getConnection();
-  await connection.beginTransaction();
+  if (!studentScheduleIds || !Array.isArray(studentScheduleIds) || studentScheduleIds.length === 0) {
+    return res.status(400).json({ success: false, message: 'Student schedule IDs are required.' });
+  }
 
+  let trx;
   try {
-    const [actDetails] = await connection.query(
-      `SELECT pa.topic_id, th.pass_percentage, ds.subject_id FROM period_activities pa
-             JOIN daily_schedule ds ON pa.daily_schedule_id = ds.id
-             JOIN topic_hierarchy th ON pa.topic_id = th.id WHERE pa.id = ?`,
-      [activityId]
-    );
-    const { topic_id, pass_percentage, subject_id } = actDetails[0];
+    trx = await db.promise().beginTransaction();
 
+    // Insert assessment results for each student
     for (const sub of studentSubmissions) {
-      const status = sub.is_absent
-        ? 'Absent'
-        : (((sub.marks_obtained / sub.total_marks) * 100) >= pass_percentage ? 'Passed' : 'Failed');
-
-      await connection.query(
-        `INSERT INTO period_activities_submissions (period_activity_id, student_roll, marks_obtained, total_marks, status)
-                 VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE marks_obtained=VALUES(marks_obtained), total_marks=VALUES(total_marks), status=VALUES(status)`,
-        [activityId, sub.student_roll, status === 'Absent' ? null : sub.marks_obtained, sub.total_marks, status]
+      // Find the schedule_id for this student
+      const scheduleId = sub.schedule_id || studentScheduleIds.find(id => id); // Use provided schedule_id or fallback
+      
+      await trx.query(
+        `INSERT INTO assessment_session_results (session_id, student_roll, marks_obtained, total_marks, status) 
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE marks_obtained = VALUES(marks_obtained), total_marks = VALUES(total_marks), status = VALUES(status)`,
+        [
+          scheduleId, 
+          sub.student_roll, 
+          sub.is_absent ? null : sub.marks_obtained, 
+          sub.total_marks || 100,
+          sub.is_absent ? 'Absent' : 'Completed'
+        ]
       );
-
-      if (status === 'Passed') {
-        await connection.query(
-          `INSERT INTO student_topic_progress (student_roll, topic_id, subject_id, status, completed_at) VALUES (?, ?, ?, 'Completed', NOW())
-                     ON DUPLICATE KEY UPDATE status = 'Completed', completed_at = NOW()`,
-          [sub.student_roll, topic_id, subject_id]
-        );
-        await connection.query(
-          `INSERT INTO student_topic_completion_history (student_roll, topic_id, subject_id, actual_completion_date, final_score)
-                     VALUES (?, ?, ?, CURDATE(), ?)`,
-          [sub.student_roll, topic_id, subject_id, sub.marks_obtained]
-        );
-      }
     }
-    await connection.query("UPDATE period_activities SET status = 'Completed' WHERE id = ?", [activityId]);
-    await connection.commit();
-    res.json({ success: true, message: "Assessment completed." });
+
+    // Update all assessment sessions for the students to 'Completed'
+    const placeholders = studentScheduleIds.map(() => '?').join(',');
+    const [result] = await trx.query(
+      `UPDATE assessment_sessions SET status = 'Completed', actual_end_time = NOW() 
+       WHERE id IN (${placeholders})`,
+      studentScheduleIds
+    );
+
+    await trx.commit();
+    res.json({ 
+      success: true, 
+      message: `Assessment completed for ${studentScheduleIds.length} student(s).`,
+      affectedSessions: studentScheduleIds.length
+    });
   } catch (error) {
-    await connection.rollback();
+    if (trx && typeof trx.rollback === 'function') {
+      await trx.rollback();
+    }
+    console.error('Error completing assessment activity:', error);
     res.status(500).json({ success: false, error: error.message });
-  } finally {
-    connection.release();
   }
 };
 
@@ -2632,5 +2722,141 @@ exports.getTopicMaterials = async (req, res) => {
       success: false,
       message: 'Internal server error'
     });
+  }
+};
+
+/**
+ * API: Get current activity status based on student schedule IDs
+ */
+exports.getActivityStatus = async (req, res) => {
+  try {
+    const { activityId } = req.params; // This is actually a schedule_id from academic_sessions or assessment_sessions
+    const { studentScheduleIds, activityType = 'Academic' } = req.body; // Default to Academic if not specified
+    
+    console.log('Checking activity status for:', { activityId, studentScheduleIds, activityType });
+    
+    if (!studentScheduleIds || !Array.isArray(studentScheduleIds) || studentScheduleIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Student schedule IDs are required.' });
+    }
+
+    // Get period activity details for time checking by joining through the schedule session
+    let activityQuery;
+    if (activityType === 'Assessment') {
+      activityQuery = `
+        SELECT pa.activity_date, pa.start_time, pa.end_time 
+        FROM period_activities pa
+        JOIN assessment_sessions asess ON pa.id = asess.pa_id
+        WHERE asess.id = ?
+      `;
+    } else {
+      activityQuery = `
+        SELECT pa.activity_date, pa.start_time, pa.end_time 
+        FROM period_activities pa
+        JOIN academic_sessions acad ON pa.id = acad.pa_id
+        WHERE acad.id = ?
+      `;
+    }
+    
+    const [periodActivity] = await db.promise().query(activityQuery, [activityId]);
+    console.log("Activity data from period_activities:", periodActivity);
+    
+    if (!periodActivity.length) {
+      return res.status(404).json({ success: false, message: 'Activity not found' });
+    }
+
+    const activityData = periodActivity[0];
+    console.log("hi", activityData);
+
+    // Check student session statuses
+    const placeholders = studentScheduleIds.map(() => '?').join(',');
+    let sessionQuery;
+    
+    if (activityType === 'Assessment') {
+      sessionQuery = `SELECT id, status, actual_start_time, actual_end_time FROM assessment_sessions WHERE id IN (${placeholders})`;
+    } else {
+      sessionQuery = `SELECT id, status, actual_start_time, actual_end_time FROM academic_sessions WHERE id IN (${placeholders})`;
+    }
+    
+    const [sessions] = await db.promise().query(sessionQuery, studentScheduleIds);
+    
+    if (!sessions.length) {
+      return res.status(404).json({ success: false, message: 'No student sessions found' });
+    }
+
+    // Determine overall status based on student sessions
+    const sessionStatuses = sessions.map(s => s.status);
+    const uniqueStatuses = [...new Set(sessionStatuses)];
+    
+    let overallStatus;
+    if (uniqueStatuses.length === 1) {
+      // All sessions have the same status
+      overallStatus = uniqueStatuses[0];
+    } else if (sessionStatuses.includes('In Progress')) {
+      // If any session is in progress, overall is in progress
+      overallStatus = 'In Progress';
+    } else if (sessionStatuses.includes('Finished(need to update performance)')) {
+      // If any session needs performance update
+      overallStatus = 'Finished(need to update performance)';
+    } else if (sessionStatuses.every(s => s === 'Completed')) {
+      // All sessions are completed
+      overallStatus = 'Completed';
+    } else {
+      // Mixed statuses, use the most common one
+      overallStatus = sessionStatuses[0];
+    }
+    
+    // Check if session time is over and update sessions if needed
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().split(' ')[0];
+    
+    if (activityData.activity_date === today && currentTime > activityData.end_time) {
+      // If current status is 'In Progress' and time is over, update to 'Finish Session'
+      if (overallStatus === 'In Progress') {
+        const updateQuery = activityType === 'Assessment' 
+          ? `UPDATE assessment_sessions SET status = 'Finish Session' WHERE id IN (${placeholders}) AND status = 'In Progress'`
+          : `UPDATE academic_sessions SET status = 'Finish Session' WHERE id IN (${placeholders}) AND status = 'In Progress'`;
+        
+        await db.promise().query(updateQuery, studentScheduleIds);
+        overallStatus = 'Finish Session';
+      }
+      // If session hasn't started and time is already over, mark as 'Time Over'
+      else if (overallStatus === 'Not Started') {
+        const updateQuery = activityType === 'Assessment'
+          ? `UPDATE assessment_sessions SET status = 'Time Over' WHERE id IN (${placeholders}) AND status = 'Not Started'`
+          : `UPDATE academic_sessions SET status = 'Time Over' WHERE id IN (${placeholders}) AND status = 'Not Started'`;
+        
+        await db.promise().query(updateQuery, studentScheduleIds);
+        overallStatus = 'Time Over';
+      }
+    } else if (activityData.activity_date < today) {
+      // If activity date is in the past and not completed, mark as 'Time Over'
+      if (!['Completed', 'Time Over', 'Cancelled'].includes(overallStatus)) {
+        const updateQuery = activityType === 'Assessment'
+          ? `UPDATE assessment_sessions SET status = 'Time Over' WHERE id IN (${placeholders}) AND status NOT IN ('Completed', 'Time Over', 'Cancelled')`
+          : `UPDATE academic_sessions SET status = 'Time Over' WHERE id IN (${placeholders}) AND status NOT IN ('Completed', 'Time Over', 'Cancelled')`;
+        
+        await db.promise().query(updateQuery, studentScheduleIds);
+        overallStatus = 'Time Over';
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      status: overallStatus,
+      activity_date: activityData.activity_date,
+      start_time: activityData.start_time,
+      end_time: activityData.end_time,
+      session_details: {
+        total_sessions: sessions.length,
+        status_breakdown: uniqueStatuses.map(status => ({
+          status: status,
+          count: sessionStatuses.filter(s => s === status).length
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Error in getActivityStatus:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };

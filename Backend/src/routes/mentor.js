@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const mentorController = require('../controllers/mentor/mentorController');
+router.get('/mentor/activity/:activityId/assessment', mentorController.getAssessmentActivityDetails);
+router.post('/mentor/activity/:activityId/assessment/finish', mentorController.finishAssessmentActivity);
+router.post('/mentor/activity/:activityId/assessment/complete', mentorController.completeAssessmentActivity)
 const surveyController = require('../controllers/mentor/survey');
 const HomeworkController = require('../controllers/mentor/homeworkController');
 const AssessmentController = require('../controllers/mentor/assessmentController');
@@ -98,12 +101,12 @@ router.post('/mentor/getSectionSubjects', mentorController.getSectionSubjects);
 router.post('/mentor/daily-schedule', mentorController.getMentorDailySchedule);
 
 // Universal endpoint to start any activity
-router.post('/mentor/activity/:activityId/:activityType/start', mentorController.startActivity);
+// router.post('/mentor/activity/:activityId/:activityType/start', mentorController.startActivity);
 
-// Academic Session Endpoints
+// // Academic Session Endpoints
 router.get('/mentor/activity/:activityId/academic', mentorController.getAcademicActivityDetails);
-router.post('/mentor/activity/:activityId/academic/finish', mentorController.finishAcademicActivity);
-router.post('/mentor/activity/:activityId/academic/complete', mentorController.completeAcademicActivity);
+// router.post('/mentor/activity/:activityId/academic/finish', mentorController.finishAcademicActivity);
+// router.post('/mentor/activity/:activityId/academic/complete', mentorController.completeAcademicActivity);
 
 // Assessment Session Endpoints
 router.get('/mentor/activity/:activityId/assessment', mentorController.getAssessmentActivityDetails);
@@ -190,5 +193,12 @@ router.get('/mentor/batches/:sectionId/:subjectId', MentorBatchManagementControl
 router.post('/mentor/batches/details', MentorBatchManagementController.getBatchDetails);
 router.get('/mentor/batches/analytics/:sectionId/:subjectId', MentorBatchManagementController.getBatchAnalytics);
 router.post('/mentor/batch-subjects', MentorBatchManagementController.getSectionSubjects);
+
+// Activity Management Routes
+router.post('/mentor/activity/:activityId/:activityType/start', mentorController.startActivity);
+router.post('/mentor/activity/:activityId/academic/finish', mentorController.finishAcademicActivity);
+router.post('/mentor/activity/:activityId/academic/complete', mentorController.completeAcademicActivity);
+router.get('/mentor/activity/:activityId/details', mentorController.getAcademicActivityDetails);
+router.post('/mentor/activity/:activityId/status', mentorController.getActivityStatus);
 
 module.exports = router;
