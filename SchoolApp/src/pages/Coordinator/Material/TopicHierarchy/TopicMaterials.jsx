@@ -20,13 +20,14 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { API_URL } from '../../../../utils/env.js';
 
 const TopicMaterials = ({ route, navigation }) => {
-  const { topicId, topicName } = route.params;
+  const { topicId, topicName, selectedSubjectId, selectedSectionId } = route.params;
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedBatchId, setSelectedBatchId] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -37,29 +38,58 @@ const TopicMaterials = ({ route, navigation }) => {
     estimated_duration: 30,
     difficulty_level: 'Medium',
     instructions: '',
-    expected_date: '', // New field for expected completion date
     has_assessment: false, // Track if this material has assessment
   });
 
+  // Batch-wise expected dates state
+  const [batches, setBatches] = useState([]);
+  const [batchExpectedDates, setBatchExpectedDates] = useState({});
+  const [showBatchDatePickers, setShowBatchDatePickers] = useState({});
+
   useEffect(() => {
     fetchMaterials();
+    fetchBatches();
   }, []);
+
+  const fetchBatches = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/coordinator/topics/batches/${selectedSubjectId}/${selectedSectionId}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      const result = await response.json();
+      if (result.success) {
+        setBatches(result.batches || []);
+        // Initialize batch expected dates as empty strings
+        const initialDates = {};
+        result.batches.forEach(batch => {
+          initialDates[batch.id] = null; // Start with no date set
+        });
+        setBatchExpectedDates(initialDates);
+      }
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+    }
+  };
 
   const fetchMaterials = async () => {
     setLoading(true);
     try {
       const response = await fetch(
         `${API_URL}/api/coordinator/topics/${topicId}/materials`,
-        { 
+        {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' } 
+          headers: { 'Content-Type': 'application/json' }
         }
       );
       const result = await response.json();
       if (result.success) {
         setMaterials(result.data);
         console.log('Fetched materials:', result.data);
-        
+
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch materials');
@@ -74,7 +104,7 @@ const TopicMaterials = ({ route, navigation }) => {
         type: [DocumentPicker.types.allFiles],
         allowMultiSelection: true, // Allow multiple file selection
       });
-      
+
       // Process multiple files
       const newFiles = result.map(file => ({
         name: file.name,
@@ -138,30 +168,30 @@ const TopicMaterials = ({ route, navigation }) => {
       // Extract filename from the URL path
       const urlParts = file.url.split('/');
       const filename = urlParts[urlParts.length - 1];
-      
+
       // Try direct static file serving first (Railway serves static files)
       const directUrl = `${API_URL}/api/coordinator/uploads/materials/${filename}`;
       const downloadUrl = `${API_URL}/api/coordinator/topics/materials/download/${filename}`;
-      
+
       console.log('Downloading file from:', downloadUrl);
       console.log('Direct URL:', directUrl);
       console.log('File object:', file);
-      
+
       // Check if file exists
       const directExists = await checkFileExists(directUrl);
       const downloadExists = await checkFileExists(downloadUrl);
-      
+
       console.log('Direct URL exists:', directExists);
       console.log('Download URL exists:', downloadExists);
-      
+
       if (!directExists && !downloadExists) {
         Alert.alert(
-          'File Not Found', 
+          'File Not Found',
           `The file "${file.name}" was not found on the server. It may need to be re-uploaded.`
         );
         return;
       }
-      
+
       // For web browsers or simulators, open in new tab
       if (Platform.OS === 'web') {
         const urlToUse = directExists ? directUrl : downloadUrl;
@@ -175,8 +205,8 @@ const TopicMaterials = ({ route, navigation }) => {
         `Download ${file.name}?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Download', 
+          {
+            text: 'Download',
             onPress: async () => {
               try {
                 // First try the download endpoint
@@ -206,15 +236,15 @@ const TopicMaterials = ({ route, navigation }) => {
       // Extract filename from the URL path
       const urlParts = file.url.split('/');
       const filename = urlParts[urlParts.length - 1];
-      
+
       // Try direct static file serving first (Railway serves static files)
       const directUrl = `${API_URL}/api/coordinator/uploads/materials/${filename}`;
       const viewUrl = `${API_URL}/api/coordinator/topics/materials/view/${filename}`;
-      
+
       console.log('Viewing file from:', viewUrl);
       console.log('Direct URL:', directUrl);
       console.log('File object:', file);
-      
+
       // For PDFs and images, try to open in browser/viewer
       if (file.type === 'PDF' || file.type === 'Image') {
         try {
@@ -252,22 +282,31 @@ const TopicMaterials = ({ route, navigation }) => {
     }
   };
 
-  const handleDateChange = (event, selectedDate) => {
-    const currentDate = selectedDate || new Date();
-    setShowDatePicker(Platform.OS === 'ios'); // Keep open on iOS, close on Android
-    setSelectedDate(currentDate);
-    
-    // Format date as YYYY-MM-DD
-    const formattedDate = currentDate.toISOString().split('T')[0];
-    setFormData(prev => ({ ...prev, expected_date: formattedDate }));
+  const handleBatchDateChange = (batchId, event, selectedDate) => {
+    const currentDate = selectedDate || batchExpectedDates[batchId];
+    setShowBatchDatePickers(prev => ({
+      ...prev,
+      [batchId]: Platform.OS === 'ios'
+    }));
+    setBatchExpectedDates(prev => ({
+      ...prev,
+      [batchId]: currentDate
+    }));
+  };
+
+  const showBatchDatePicker = (batchId) => {
+    setShowBatchDatePickers(prev => ({
+      ...prev,
+      [batchId]: true
+    }));
   };
 
   const showDatePickerModal = () => {
     // Set initial date from formData or default to tomorrow
-    const initialDate = formData.expected_date 
-      ? new Date(formData.expected_date) 
+    const initialDate = formData.expected_date
+      ? new Date(formData.expected_date)
       : new Date(Date.now() + 24 * 60 * 60 * 1000); // Tomorrow
-    
+
     setSelectedDate(initialDate);
     setShowDatePicker(true);
   };
@@ -282,6 +321,81 @@ const TopicMaterials = ({ route, navigation }) => {
     });
   };
 
+  // Batch date picker functions
+  const showBatchDatePickerModal = (batchId) => {
+    const currentDate = batchExpectedDates[batchId] 
+      ? new Date(batchExpectedDates[batchId])
+      : new Date(Date.now() + 24 * 60 * 60 * 1000); // Tomorrow
+
+    setSelectedBatchId(batchId);
+    setSelectedDate(currentDate);
+    setShowDatePicker(true);
+  };
+
+  const clearBatchDate = (batchId) => {
+    setBatchExpectedDates(prev => ({
+      ...prev,
+      [batchId]: null
+    }));
+  };
+
+  const loadBatchExpectedDates = async (topicId) => {
+    // if(topicId == 30001) return; // Skip loading for demo topic
+    console.log(topicId);
+    
+    try {
+      const response = await fetch(
+        `${API_URL}/api/coordinator/topics/materials/${topicId}/batch-dates`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      const result = await response.json();
+      if (result.success) {
+        // Set the batch expected dates from the response
+        const dates = {};
+        result.batchDates.forEach(item => {
+          dates[item.batch_id] = item.expected_completion_date;
+        });
+        setBatchExpectedDates(dates);
+      }
+    } catch (error) {
+      console.error('Error loading batch expected dates:', error);
+      // Initialize with null dates if loading fails
+      const dates = {};
+      batches.forEach(batch => {
+        dates[batch.id] = null;
+      });
+      setBatchExpectedDates(dates);
+    }
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    
+    if (selectedDate) {
+      setSelectedDate(selectedDate);
+      
+      // If we have a selected batch, update batch expected dates
+      if (selectedBatchId) {
+        const formattedDate = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        setBatchExpectedDates(prev => ({
+          ...prev,
+          [selectedBatchId]: formattedDate
+        }));
+        setSelectedBatchId(null); // Reset after setting
+      } else {
+        // Regular date picker for assessment expected date
+        const formattedDate = selectedDate.toISOString().split('T')[0];
+        setFormData(prev => ({
+          ...prev,
+          expected_date: formattedDate
+        }));
+      }
+    }
+  };
+
   const saveMaterial = async () => {
     try {
       // Validation
@@ -292,27 +406,27 @@ const TopicMaterials = ({ route, navigation }) => {
 
       // Validate expected date if assessment is enabled
       if (formData.has_assessment) {
-        if (!formData.expected_date.trim()) {
-          Alert.alert('Error', 'Expected completion date is required for materials with assessment');
-          return;
-        }
-        
+        // if (!formData.expected_date.trim()) {
+        //   Alert.alert('Error', 'Expected completion date is required for materials with assessment');
+        //   return;
+        // }
+
         // Basic date format validation
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(formData.expected_date)) {
-          Alert.alert('Error', 'Please enter expected date in YYYY-MM-DD format');
-          return;
-        }
-        
+        // if (!dateRegex.test(formData.expected_date)) {
+        //   Alert.alert('Error', 'Please enter expected date in YYYY-MM-DD format');
+        //   return;
+        // }
+
         // Check if the date is in the future
-        const expectedDate = new Date(formData.expected_date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (expectedDate < today) {
-          Alert.alert('Error', 'Expected completion date must be today or in the future');
-          return;
-        }
+        // const expectedDate = new Date(formData.expected_date);
+        // const today = new Date();
+        // today.setHours(0, 0, 0, 0);
+
+        // if (expectedDate < today) {
+        //   Alert.alert('Error', 'Expected completion date must be today or in the future');
+        //   return;
+        // }
       }
 
       if (editingMaterial) {
@@ -323,9 +437,25 @@ const TopicMaterials = ({ route, navigation }) => {
           estimatedDuration: formData.estimated_duration,
           difficultyLevel: formData.difficulty_level,
           instructions: formData.instructions,
-          expectedDate: formData.expected_date,
+          // expectedDate: formData.expected_date,
           hasAssessment: formData.has_assessment,
         };
+
+        // Add batch-wise expected dates for editing
+        const batchDatesArray = [];
+        Object.entries(batchExpectedDates).forEach(([batchId, expectedDate]) => {
+          if (expectedDate) { // Only add if date is set
+            batchDatesArray.push({
+              batchId: parseInt(batchId),
+              expectedDate: expectedDate,
+              topicId: topicId
+            });
+          }
+        });
+
+        if (batchDatesArray.length > 0) {
+          updateData.batchExpectedDates = batchDatesArray;
+        }
 
         const response = await fetch(
           `${API_URL}/api/coordinator/topics/materials/update/${editingMaterial.id}`,
@@ -357,7 +487,7 @@ const TopicMaterials = ({ route, navigation }) => {
         }
 
         const formDataToSend = new FormData();
-        
+
         // Add form fields
         formDataToSend.append('topicId', topicId);
         formDataToSend.append('materialType', formData.material_type);
@@ -365,19 +495,18 @@ const TopicMaterials = ({ route, navigation }) => {
         formDataToSend.append('estimatedDuration', formData.estimated_duration.toString());
         formDataToSend.append('difficultyLevel', formData.difficulty_level);
         formDataToSend.append('instructions', formData.instructions);
-        formDataToSend.append('expectedDate', formData.expected_date);
+        // formDataToSend.append('expectedDate', formData.expected_date);
         formDataToSend.append('hasAssessment', formData.has_assessment.toString());
 
-        // Add files
-        formData.files.forEach((file, index) => {
-          formDataToSend.append('files', {
-            uri: file.uri,
-            type: file.type === 'PDF' ? 'application/pdf' : 
-                  file.type === 'Video' ? 'video/mp4' :
-                  file.type === 'Image' ? 'image/jpeg' :
-                  file.type === 'Audio' ? 'audio/mpeg' : 'application/octet-stream',
-            name: file.name
-          });
+        // Add batch-wise expected dates
+        Object.entries(batchExpectedDates).forEach(([batchId, expectedDate]) => {
+          if (expectedDate) { // Only add if date is set
+            formDataToSend.append('batchExpectedDates', JSON.stringify({
+              batchId: parseInt(batchId),
+              expectedDate: expectedDate,
+              topicId: topicId
+            }));
+          }
         });
 
         const response = await fetch(`${API_URL}/api/coordinator/topics/materials/upload`, {
@@ -445,12 +574,19 @@ const TopicMaterials = ({ route, navigation }) => {
       estimated_duration: 30,
       difficulty_level: 'Medium',
       instructions: '',
-      expected_date: '',
       has_assessment: false,
     });
     setEditingMaterial(null);
     setShowDatePicker(false);
     setSelectedDate(new Date(Date.now() + 24 * 60 * 60 * 1000)); // Tomorrow
+
+    // Reset batch expected dates
+    const resetDates = {};
+    batches.forEach(batch => {
+      resetDates[batch.id] = null; // Start with no date set
+    });
+    setBatchExpectedDates(resetDates);
+    setShowBatchDatePickers({});
   };
 
   const openEditModal = (material) => {
@@ -463,17 +599,20 @@ const TopicMaterials = ({ route, navigation }) => {
       estimated_duration: material.estimated_duration,
       difficulty_level: material.difficulty_level,
       instructions: material.instructions || '',
-      expected_date: material.expected_date || '',
+      // expected_date: material.expected_date || '',
       has_assessment: material.has_assessment || material.material_type === 'Assessment',
     });
-    
+
     // Set the date picker's initial date if we have an expected date
-    if (material.expected_date) {
-      setSelectedDate(new Date(material.expected_date));
-    } else {
-      setSelectedDate(new Date(Date.now() + 24 * 60 * 60 * 1000)); // Tomorrow
-    }
-    
+    // if (material.expected_date) {
+    //   setSelectedDate(new Date(material.expected_date));
+    // } else {
+    //   setSelectedDate(new Date(Date.now() + 24 * 60 * 60 * 1000)); // Tomorrow
+    // }
+
+    // Load batch expected dates for this material
+    loadBatchExpectedDates(topicId);
+
     setModalVisible(true);
   };
 
@@ -547,7 +686,7 @@ const TopicMaterials = ({ route, navigation }) => {
             <View style={styles.filesList}>
               {item.files.map((file, index) => (
                 <View key={index} style={styles.fileItem}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.fileNameContainer}
                     onPress={() => viewFile(file)}
                   >
@@ -556,13 +695,13 @@ const TopicMaterials = ({ route, navigation }) => {
                     </Text>
                   </TouchableOpacity>
                   <View style={styles.fileActions}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.fileActionButton}
                       onPress={() => viewFile(file)}
                     >
                       <Text style={styles.fileActionText}>👁️</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.fileActionButton}
                       onPress={() => downloadFile(file)}
                     >
@@ -718,7 +857,7 @@ const TopicMaterials = ({ route, navigation }) => {
               </View>
             </View>
 
-            {formData.has_assessment && (
+            {/* {formData.has_assessment && (
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Expected Completion Date *</Text>
                 <TouchableOpacity 
@@ -748,7 +887,7 @@ const TopicMaterials = ({ route, navigation }) => {
                   Students must complete this assessment by this date or they will be moved to a lower batch
                 </Text>
               </View>
-            )}
+            )} */}
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Files *</Text>
@@ -777,7 +916,7 @@ const TopicMaterials = ({ route, navigation }) => {
                     <Text style={styles.fileIcon}>📎</Text>
                     <Text style={styles.fileButtonText}>Select Files (PDF, Video, etc.)</Text>
                   </TouchableOpacity>
-                  
+
                   {formData.files.length > 0 && (
                     <View style={styles.selectedFiles}>
                       {formData.files.map((file, index) => (
@@ -786,7 +925,7 @@ const TopicMaterials = ({ route, navigation }) => {
                             <Text style={styles.selectedFileName}>{file.name}</Text>
                             <Text style={styles.selectedFileType}>{file.type}</Text>
                           </View>
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             style={styles.removeFileButton}
                             onPress={() => removeFile(index)}
                           >
@@ -800,6 +939,55 @@ const TopicMaterials = ({ route, navigation }) => {
               )}
             </View>
 
+            {/* Batch-wise Expected Completion Dates */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Batch-wise Expected Completion Dates</Text>
+              <Text style={styles.helpText}>
+                Set different expected completion dates for each batch in this section
+              </Text>
+              
+              {batches.length > 0 ? (
+                <View style={styles.batchesContainer}>
+                  {batches.map((batch) => (
+                    <View key={batch.id} style={styles.batchItem}>
+                      <View style={styles.batchHeader}>
+                        <Text style={styles.batchName}>{batch.batch_name}</Text>
+                        {/* <Text style={styles.batchStudentCount}>
+                          ({batch.student_count || 0} students)
+                        </Text> */}
+                      </View>
+                      
+                      <TouchableOpacity 
+                        style={styles.batchDatePickerButton}
+                        onPress={() => showBatchDatePickerModal(batch.id)}
+                      >
+                        <Text style={styles.batchDatePickerButtonText}>
+                          {batchExpectedDates[batch.id] 
+                            ? formatDateForDisplay(batchExpectedDates[batch.id])
+                            : 'Set Expected Date'
+                          }
+                        </Text>
+                        <Text style={styles.datePickerIcon}>📅</Text>
+                      </TouchableOpacity>
+                      
+                      {batchExpectedDates[batch.id] && (
+                        <TouchableOpacity
+                          style={styles.clearDateButton}
+                          onPress={() => clearBatchDate(batch.id)}
+                        >
+                          <Text style={styles.clearDateText}>Clear</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.noBatchesText}>
+                  No batches available for this section
+                </Text>
+              )}
+            </View>
+
             <TouchableOpacity style={styles.saveButton} onPress={saveMaterial}>
               <Text style={styles.saveButtonText}>
                 {editingMaterial ? 'Update Material' : 'Add Material'}
@@ -807,7 +995,7 @@ const TopicMaterials = ({ route, navigation }) => {
             </TouchableOpacity>
           </View>
         </ScrollView>
-        
+
         {/* Native Date Picker */}
         {showDatePicker && (
           <DateTimePicker
@@ -1198,6 +1386,71 @@ const styles = StyleSheet.create({
   },
   datePicker: {
     backgroundColor: '#fff',
+  },
+  batchesContainer: {
+    marginTop: 8,
+  },
+  batchItem: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  batchHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  batchName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+  },
+  batchStudentCount: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  batchDatePickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    padding: 10,
+    backgroundColor: '#fff',
+  },
+  batchDatePickerButtonText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  clearDateButton: {
+    marginTop: 6,
+    alignSelf: 'flex-end',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#ff6b6b',
+    borderRadius: 4,
+  },
+  clearDateText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  noBatchesText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
   },
 });
 

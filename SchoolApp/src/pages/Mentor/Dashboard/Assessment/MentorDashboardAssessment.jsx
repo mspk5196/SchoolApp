@@ -240,12 +240,16 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
   };
 
   const checkActivityStatus = async (showLoading = false) => {
+    if(!activity) {
+      // console.warn('No activity available for status check');
+      return;
+    }
     try {
       if (showLoading) {
         setIsCheckingStatus(true);
       }
       
-      const sessionId = activity?.id || activityId;
+      const sessionId = activity?.id;
       
       // If we don't have activity yet, skip status check
       if (!sessionId) {
@@ -345,10 +349,11 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       Alert.alert('Error', 'Cannot fetch materials: missing activity information');
       return;
     }
-
+    // console.log('Fetching materials for activity:', activity);
+    
     setLoadingMaterials(true);
     try {
-      const url = `${API_URL}/api/mentor/getTopicMaterials?section_subject_activity_id=${activity.section_subject_activity_id}${activity.topic_id ? `&topic_id=${activity.topic_id}` : ''}`;
+      const url = `${API_URL}/api/mentor/getTopicMaterials?section_subject_activity_id=${activity.section_subject_activity_id}${activity.topic_id ? `&topic_id=${activity.topic_id}${activity.batch_id ? `&batch_id=${activity.batch_id}` : ''}` : ''}`;
       const response = await fetch(url);
       const data = await response.json();
       
@@ -441,7 +446,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
 
   const handleFinishSession = async () => {
     try {
-      const sessionId = activity?.id || activityId;
+      const sessionId = activity?.id;
       
       // Collect all student schedule IDs
       const studentScheduleIds = students.map(student => student.schedule_id).filter(id => id);
@@ -975,7 +980,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
         onRequestClose={closeMarkModal}
       >
         <Pressable
-          style={styles.modalOverlay}
+          style={styles.modalOverlay}   
           onPress={closeMarkModal}
         >
           <Animated.View

@@ -443,13 +443,13 @@ exports.uploadTopicMaterials = async (req, res) => {
         const {
             topicId, materialType, activityName,
             estimatedDuration, difficultyLevel, instructions,
-            expectedDate, hasAssessment
+            hasAssessment, batchExpectedDates
         } = req.body;
 
         console.log('Uploading topic materials with data:', {
             topicId, materialType, activityName,
             estimatedDuration, difficultyLevel, instructions,
-            expectedDate, hasAssessment
+            hasAssessment, batchExpectedDates
         });
 
         if (!req.files || req.files.length === 0) {
@@ -476,15 +476,15 @@ exports.uploadTopicMaterials = async (req, res) => {
         const sql = `
             INSERT INTO topic_materials 
             (topic_id, material_type, activity_name, file_name, file_url, file_type,
-             estimated_duration, difficulty_level, instructions, expected_date, has_assessment)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             estimated_duration, difficulty_level, instructions, has_assessment)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         db.query(sql, [
             topicId, materialType, activityName, 
             primaryFile.name, allFilesJson, primaryFile.type,
             estimatedDuration, difficultyLevel, instructions, 
-            expectedDate || null, hasAssessment === 'true' || hasAssessment === true
+            hasAssessment === 'true' || hasAssessment === true
         ], (error, result) => {
             if (error) {
                 console.error('Upload topic materials error:', error);
@@ -500,6 +500,36 @@ exports.uploadTopicMaterials = async (req, res) => {
                 materialId = result.insertId;
             } else {
                 materialId = 'created_successfully';
+            }
+
+            // Handle batch expected dates if provided
+            if (batchExpectedDates && Array.isArray(batchExpectedDates)) {
+                const batchDateInserts = batchExpectedDates.map(batchDate => {
+                    const parsed = typeof batchDate === 'string' ? JSON.parse(batchDate) : batchDate;
+                    return [
+                        parsed.topicId,
+                        parsed.batchId,
+                        parsed.expectedDate
+                    ];
+                });
+
+                if (batchDateInserts.length > 0) {
+                    const batchSql = `
+                        INSERT INTO topic_completion_dates 
+                        (topic_id, batch_id, expected_completion_date) 
+                        VALUES ?
+                        ON DUPLICATE KEY UPDATE expected_completion_date = VALUES(expected_completion_date)
+                    `;
+
+                    db.query(batchSql, [batchDateInserts], (batchError) => {
+                        if (batchError) {
+                            console.error('Error saving batch expected dates:', batchError);
+                            // Don't fail the entire operation for batch date errors
+                        } else {
+                            console.log('Batch expected dates saved successfully');
+                        }
+                    });
+                }
             }
 
             res.json({
@@ -518,7 +548,7 @@ exports.uploadTopicMaterials = async (req, res) => {
             message: 'Failed to upload materials',
             error: error.message
         });
-    }
+    } 
 };
 
 // Helper function to determine file type
@@ -545,6 +575,42 @@ function getFileTypeFromExtension(fileName) {
     }
 }
 
+// Get batch expected dates for a material
+exports.getMaterialBatchDates = (req, res) => {
+    try {
+        const { materialId } = req.params;
+
+        const sql = `
+            SELECT batch_id, expected_completion_date
+            FROM topic_completion_dates
+            WHERE topic_id = ?
+            ORDER BY batch_id
+        `;
+
+        db.query(sql, [materialId], (err, result) => {
+            if (err) {
+                console.error('Error fetching batch dates:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to fetch batch dates'
+                });
+            }
+
+            res.json({
+                success: true,
+                batchDates: result || []
+            });
+        });
+    } catch (error) {
+        console.error('Get material batch dates error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get batch dates',
+            error: error.message
+        });
+    }
+};
+
 // Update existing topic material
 exports.updateTopicMaterial = async (req, res) => {
     try {
@@ -556,7 +622,8 @@ exports.updateTopicMaterial = async (req, res) => {
             difficultyLevel,
             instructions,
             expectedDate,
-            hasAssessment
+            hasAssessment,
+            batchExpectedDates
         } = req.body;
 
         console.log('Updating material with ID:', materialId);
@@ -586,14 +653,14 @@ exports.updateTopicMaterial = async (req, res) => {
             const updateSql = `
                 UPDATE topic_materials 
                 SET material_type = ?, activity_name = ?, estimated_duration = ?,
-                    difficulty_level = ?, instructions = ?, expected_date = ?, 
+                    difficulty_level = ?, instructions = ?, 
                     has_assessment = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `;
 
             db.query(updateSql, [
                 materialType, activityName, estimatedDuration,
-                difficultyLevel, instructions, expectedDate || null, 
+                difficultyLevel, instructions,
                 hasAssessment === 'true' || hasAssessment === true, materialId
             ], (updateError, updateResult) => {
                 if (updateError) {
@@ -606,18 +673,88 @@ exports.updateTopicMaterial = async (req, res) => {
                 }
 
                 console.log('Material updated successfully');
-                res.json({
-                    success: true,
-                    message: 'Material updated successfully',
-                    data: {
-                        id: materialId,
-                        material_type: materialType,
-                        activity_name: activityName,
-                        estimated_duration: estimatedDuration,
-                        difficulty_level: difficultyLevel,
-                        instructions: instructions
+
+                // Handle batch expected dates if provided
+                if (batchExpectedDates && Array.isArray(batchExpectedDates)) {
+                    const batchDateInserts = batchExpectedDates.map(batchDate => {
+                        const parsed = typeof batchDate === 'string' ? JSON.parse(batchDate) : batchDate;
+                        return [
+                            parsed.topicId,
+                            parsed.batchId,
+                            parsed.expectedDate
+                        ];
+                    });
+
+                    if (batchDateInserts.length > 0) {
+                        const batchSql = `
+                            INSERT INTO topic_completion_dates 
+                            (topic_id, batch_id, expected_completion_date) 
+                            VALUES ?
+                            ON DUPLICATE KEY UPDATE expected_completion_date = VALUES(expected_completion_date)
+                        `;
+
+                        db.query(batchSql, [batchDateInserts], (batchError) => {
+                            if (batchError) {
+                                console.error('Error updating batch expected dates:', batchError);
+                                // Don't fail the entire operation for batch date errors
+                                return res.json({
+                                    success: true,
+                                    message: 'Material updated successfully (batch dates may not have been updated)',
+                                    data: {
+                                        id: materialId,
+                                        material_type: materialType,
+                                        activity_name: activityName,
+                                        estimated_duration: estimatedDuration,
+                                        difficulty_level: difficultyLevel,
+                                        instructions: instructions
+                                    }
+                                });
+                            } else {
+                                console.log('Batch expected dates updated successfully');
+                                res.json({
+                                    success: true,
+                                    message: 'Material and batch dates updated successfully',
+                                    data: {
+                                        id: materialId,
+                                        material_type: materialType,
+                                        activity_name: activityName,
+                                        estimated_duration: estimatedDuration,
+                                        difficulty_level: difficultyLevel,
+                                        instructions: instructions
+                                    }
+                                });
+                            }
+                        });
+                    } else {
+                        // No batch dates to update
+                        res.json({
+                            success: true,
+                            message: 'Material updated successfully',
+                            data: {
+                                id: materialId,
+                                material_type: materialType,
+                                activity_name: activityName,
+                                estimated_duration: estimatedDuration,
+                                difficulty_level: difficultyLevel,
+                                instructions: instructions
+                            }
+                        });
                     }
-                });
+                } else {
+                    // No batch dates provided
+                    res.json({
+                        success: true,
+                        message: 'Material updated successfully',
+                        data: {
+                            id: materialId,
+                            material_type: materialType,
+                            activity_name: activityName,
+                            estimated_duration: estimatedDuration,
+                            difficulty_level: difficultyLevel,
+                            instructions: instructions
+                        }
+                    });
+                }
             });
         });
     } catch (error) {
@@ -1196,5 +1333,28 @@ exports.getSectionSubjectSubActivitiesRecords = (req, res) => {
 
     console.log('Section subject sub activities results:', results);
     res.json({ success: true, message: "Section subject sub activities fetched successfully", sectionSubjectSubActivity: results });
+  });
+};
+
+
+exports.getBatches = (req, res) => {
+  const { subjectId, sectionId } = req.params;
+
+  console.log('Getting batches for subject and section:', { subjectId, sectionId });
+
+  const sql = `
+    SELECT b.id, b.batch_name, b.batch_level
+    FROM section_batches b
+    WHERE b.subject_id = ? AND b.section_id = ?
+  `;
+
+  db.query(sql, [subjectId, sectionId], (err, results) => {
+    if (err) {
+      console.error("Error fetching batches:", err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    console.log('Batches results:', results);
+    res.json({ success: true, message: "Batches fetched successfully", batches: results });
   });
 };

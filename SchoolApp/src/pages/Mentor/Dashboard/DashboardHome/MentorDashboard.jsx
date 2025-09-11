@@ -109,43 +109,6 @@ const MentorDashboard = ({ route }) => {
       console.error('Error fetching coordinator tasks:', error);
     }
   };
-
-  // const attentionList = [
-  //   {
-  //     id: "1",
-  //     name: "Prakash Raj",
-  //     studentId: "2024VI023",
-  //     subject: "Science",
-  //     pending: "4 days",
-  //     count: 2,
-  //   },
-  //   {
-  //     id: "2",
-  //     name: "Asha Rani",
-  //     studentId: "2024VI011",
-  //     subject: "Maths",
-  //     pending: "2 days",
-  //     count: 1,
-  //   },
-  //   {
-  //     id: "3",
-  //     name: "Prakash Raj",
-  //     studentId: "2024VI023",
-  //     subject: "Science",
-  //     pending: "4 days",
-  //     count: 2,
-  //   },
-  //   {
-  //     id: "4",
-  //     name: "Asha Rani",
-  //     studentId: "2024VI011",
-  //     subject: "Maths",
-  //     pending: "2 days",
-  //     count: 1,
-  //   },
-  // ];
-
-  // Fetch schedule data when date changes
   
   useEffect(() => {
     fetchScheduleData();
@@ -871,12 +834,12 @@ const MentorDashboard = ({ route }) => {
                     </View>
                     <View style={[styles.scheduleCard, { backgroundColor: item.bgColor }]}>
                       {/* Edit icon absolutely positioned in left corner */}
-                      <TouchableOpacity
+                      {/* <TouchableOpacity
                         style={styles.editIcon}
-                        onPress={() => openEditModal(item)}
+                        onPress={() => openEditModal(item)} 
                       >
                         <Edit width={20} height={20} />
-                      </TouchableOpacity>
+                      </TouchableOpacity> */} 
 
                       <View style={[styles.sideLine, { backgroundColor: item.sideColor }]} />
                       <View style={styles.scheduleInfo}>

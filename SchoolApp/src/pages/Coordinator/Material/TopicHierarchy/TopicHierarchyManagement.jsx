@@ -13,13 +13,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import Icon from 'react-native-vector-icons/MaterialIcons'; 
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { API_URL } from '../../../../utils/env.js';
 import { sub } from 'date-fns';
 
 const TopicHierarchyManagement = ({ navigation, route }) => {
   const { coordinatorData, coordinatorGrades, activeGrade, selectedSubjectId, selectedSectionId } = route.params || {};
-  
+
   // Debug: Log the route params
   // console.log('TopicHierarchyManagement route params:', {
   //   coordinatorData,
@@ -42,6 +42,9 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
   const [expandedTopics, setExpandedTopics] = useState(new Set());
+
+  const [expectedDate, setExpectedDate] = useState(null);
+  const [subjectBatches, setSubjectBatches] = useState([]);
 
   // New/Edit Topic Form State
   const [formData, setFormData] = useState({
@@ -79,64 +82,25 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     }
   }, [selectedActivity, selectedSubActivity]);
 
-  // const fetchSubjects = async () => {
-  //   try {
-  //     console.log('Fetching subjects from:', `${API_URL}/api/coordinator/getSubjects`);
-  //     const response = await fetch(`${API_URL}/api/coordinator/getSubjects`, {
-  //       method: 'GET',
-  //       headers: { 'Content-Type': 'application/json' }
-  //     });
-  //     console.log('Subjects response status:', response.status);
-  //     const result = await response.json();
-  //     console.log('Subjects result:', result);
-  //     if (result.success) {
-  //       setSubjects(result.subjects);
-  //     }
-  //   } catch (error) {
-  //     console.error('Fetch subjects error:', error);
-  //     Alert.alert('Error', 'Failed to fetch subjects');
-  //   }
-  // };
-
-  // const fetchSections = async () => {
-  //   try {
-  //     const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ gradeID: activeGrade })
-  //     });
-  //     const result = await response.json();
-  //     if (result.success) {
-  //       setSections(result.gradeSections);
-  //       if (result.gradeSections.length > 0) {
-  //         setSelectedSection(result.gradeSections[0].id);
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error('Fetch sections error:', error);
-  //     Alert.alert('Error', 'Failed to fetch sections');
-  //   }
-  // };
-
   const fetchActivitiesForSubject = async () => {
     // console.log('fetchActivitiesForSubject called with:', { selectedSubject, selectedSection });
     try {
-      
+
       const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectActivities/${selectedSection}/${selectedSubject}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       // console.log('Activities response status:', response.status);
       const result = await response.json();
       // console.log('Activities result:', result);
-      
+
       if (result.success) {
         // console.log('Fetched activities:', result.sectionSubjectActivity);
         setActivities(result.sectionSubjectActivity || []);
         if (result.sectionSubjectActivity.length > 0) {
           setSelectedActivity(result.sectionSubjectActivity[0].id);
-          if(selectedActivity) {
+          if (selectedActivity) {
             fetchSubActivitiesForSubject();
           }
         } else {
@@ -154,16 +118,16 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   const fetchSubActivitiesForSubject = async () => {
     // console.log('fetchSubActivitiesForSubject called with:', { selectedActivity, selectedSubject });
     try {
-      
+
       const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectSubActivities/${selectedActivity}/${selectedSubject}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       // console.log('Activities response status:', response.status);
       const result = await response.json();
       // console.log('Activities result:', result);
-      
+
       if (result.success) {
         // console.log('Fetched activities:', result.sectionSubjectActivity);
         setSubActivities(result.sectionSubjectSubActivity || []);
@@ -189,33 +153,33 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     if (!selectedSubActivity) return;
     setTopicHierarchy([]);
     // console.log('Fetching topic hierarchy for activity:', selectedActivity);
-    
+
     setLoading(true);
     try {
-      
-      const response = await fetch(`${API_URL}/api/coordinator/topics/hierarchy/activity`, { 
-        method: 'POST', 
+
+      const response = await fetch(`${API_URL}/api/coordinator/topics/hierarchy/activity`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activityId: selectedActivity, subActivityId: selectedSubActivity})
+        body: JSON.stringify({ activityId: selectedActivity, subActivityId: selectedSubActivity })
       });
-       
+
       // console.log('Topic hierarchy response status:', response.status);
-      
+
       if (response.status === 404) {
         console.log('Topic hierarchy not found for activity:', selectedActivity, 'and sub-activity:', selectedSubActivity);
         setTopicHierarchy([]);
         return;
       }
-      
+
       const result = await response.json();
       // console.log('Topic hierarchy result:', result);
-      
+
       if (result.success) {
         // console.log(
         //   `Fetched topic hierarchy for activity ${selectedActivity}:`,
         //   result.data
         // );
-        
+
         setTopicHierarchy(result.data.hierarchy || []);
       } else {
         console.error('Failed to fetch topic hierarchy:', result.message);
@@ -262,7 +226,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
       console.log('Sending payload:', payload);
 
-      const url = editingTopic 
+      const url = editingTopic
         ? `${API_URL}/api/coordinator/topics/update/${editingTopic.id}`
         : `${API_URL}/api/coordinator/topics/create`;
 
@@ -348,7 +312,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   const openEditModal = (topic) => {
     setEditingTopic(topic);
     console.log('Editing topic:', topic);
-    
+
     setFormData({
       topic_name: topic.topic_name,
       topic_code: topic.topic_code,
@@ -359,7 +323,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       is_bottom_level: Boolean(topic.is_bottom_level),
       expected_completion_days: topic.expected_completion_days,
       pass_percentage: topic.pass_percentage,
-    }); 
+    });
     setModalVisible(true);
   };
 
@@ -412,7 +376,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               onPress={() => openCreateModal(item.id)}
             >
               <Text style={styles.actionButtonText}>+</Text>
-            </TouchableOpacity>  
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => openEditModal(item)}
@@ -427,7 +391,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => navigation.navigate('TopicMaterials', { topicId: item.id, topicName: item.topic_name })}
+              onPress={() => navigation.navigate('TopicMaterials', { topicId: item.id, topicName: item.topic_name, selectedSubjectId, selectedSectionId })}
             >
               <Text style={styles.actionButtonText}>📁</Text>
             </TouchableOpacity>
@@ -560,22 +524,22 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
           {selectedActivity && (
             <View style={styles.subjectSelector}>
-            <Text style={styles.label}>Select Sub Activity:</Text>
-            <Picker
-              selectedValue={selectedSubActivity}
-              onValueChange={setSelectedSubActivity}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select an activity..." value="" />
-              {subActivities.map(activity => (
-                <Picker.Item
-                  key={activity.id}
-                  label={activity.sub_act_name}
-                  value={activity.id}
-                />
-              ))}
-            </Picker>
-          </View>
+              <Text style={styles.label}>Select Sub Activity:</Text>
+              <Picker
+                selectedValue={selectedSubActivity}
+                onValueChange={setSelectedSubActivity}
+                style={styles.picker}
+              >
+                <Picker.Item label="Select an activity..." value="" />
+                {subActivities.map(activity => (
+                  <Picker.Item
+                    key={activity.id}
+                    label={activity.sub_act_name}
+                    value={activity.id}
+                  />
+                ))}
+              </Picker>
+            </View>
           )}
 
           {selectedSubActivity && (
@@ -756,6 +720,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginLeft: 4,
     fontWeight: '600',
+  },
+  expectedDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00a506ff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginHorizontal: 16,
+
+  },
+  expectedDateButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    marginHorizontal:'auto' 
   },
   subjectSelector: {
     backgroundColor: '#fff',

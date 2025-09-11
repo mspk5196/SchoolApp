@@ -250,11 +250,13 @@ router.put('/coordinator/topics/materials/update/:materialId', TopicHierarchyCon
 router.delete('/coordinator/topics/materials/delete/:materialId', TopicHierarchyController.deleteMaterial);
 router.get('/coordinator/topics/materials/download/:filename', TopicHierarchyController.downloadFile);
 router.get('/coordinator/topics/materials/view/:filename', TopicHierarchyController.viewFile);
+router.get('/coordinator/topics/materials/:materialId/batch-dates', TopicHierarchyController.getMaterialBatchDates);
 router.get('/coordinator/topics/assessment-eligible/:studentRoll/:subjectId', TopicHierarchyController.getAssessmentEligibleTopics);
 router.get('/coordinator/students/:studentRoll/progress/:subjectId', TopicHierarchyController.getStudentProgress);
 router.post('/coordinator/students/progress/update', TopicHierarchyController.updateStudentProgress);
 router.get('/coordinator/topics/getSectionSubjectActivities/:sectionId/:subjectId', TopicHierarchyController.getSectionSubjectActivitiesRecords);
 router.get('/coordinator/topics/getSectionSubjectSubActivities/:activityId/:subjectId', TopicHierarchyController.getSectionSubjectSubActivitiesRecords);
+router.get('/coordinator/topics/batches/:subjectId/:sectionId', TopicHierarchyController.getBatches);
 
 // Enhanced Batch Management Routes
 router.get('/coordinator/batches/:sectionId/:subjectId', BatchManagementController.getBatches);

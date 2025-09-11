@@ -1517,7 +1517,7 @@ exports.updateDailyScheduleActivity = async (req, res) => {
 };
 
 // Add this to mentorController.js
-exports.getMentorDailySchedule = (req, res) => {
+exports.getMentorDailySchedule = async (req, res) => {
   const { mentorId, date } = req.body;
 
   if (!mentorId || !date) {
@@ -1535,6 +1535,7 @@ exports.getMentorDailySchedule = (req, res) => {
         COALESCE(s.name, '') AS student_name,
         COALESCE(sb.batch_name, 'Default Batch') AS batch_name,
         COALESCE(sb.batch_level, 1) AS batch_level,
+        COALESCE(sb.id, 0) AS batch_id,
         a.section_id,
         a.mentor_id,
         a.subject_id,
@@ -1577,6 +1578,7 @@ exports.getMentorDailySchedule = (req, res) => {
         COALESCE(s.name, '') AS student_name,
         COALESCE(sb.batch_name, 'Default Batch') AS batch_name,
         COALESCE(sb.batch_level, 1) AS batch_level,
+        COALESCE(sb.id, 0) AS batch_id,
         asess.section_id,
         asess.mentor_id,
         asess.subject_id,
@@ -1613,7 +1615,7 @@ exports.getMentorDailySchedule = (req, res) => {
 
   console.log('Executing query with params:', { mentorId, date });
 
-  db.query(query, [mentorId, date, mentorId, date], (err, results) => {
+  db.query(query, [mentorId, date, mentorId, date], async (err, results) => {
     if (err) {
       console.error('Database error in getMentorDailySchedule:', err);
       return res.status(500).json({
@@ -1667,7 +1669,7 @@ exports.getMentorDailySchedule = (req, res) => {
         ORDER BY ds.start_time
       `;
 
-      db.query(fallbackQuery, [mentorId, date], (fallbackErr, fallbackResults) => {
+      db.query(fallbackQuery, [mentorId, date], async (fallbackErr, fallbackResults) => {
         if (fallbackErr) {
           console.error('Fallback query error:', fallbackErr);
           // Return empty result but with success true
@@ -1681,66 +1683,74 @@ exports.getMentorDailySchedule = (req, res) => {
         }
 
         // Process fallback results with simplified grouping
-        const consolidatedSchedule = fallbackResults.map(schedule => ({
-          id: schedule.id.toString(),
-          session_type: schedule.session_type,
-          pa_id: schedule.pa_id,
-          section_id: schedule.section_id,
-          mentor_id: schedule.mentor_id,
-          subject_id: schedule.subject_id,
-          topic_id: schedule.topic_id,
-          subject: schedule.subject_name,
-          section: schedule.section_name,
-          section_name: schedule.section_name,
-          grade: schedule.grade_id ? schedule.grade_id.toString() : '',
-          venue_name: schedule.venue_name,
-          date: schedule.date,
-          starttime: formatTime(schedule.start_time),
-          endtime: formatTime(schedule.end_time),
-          start_time: schedule.start_time,
-          end_time: schedule.end_time,
-          venue_id: schedule.venue_id,
-          status: schedule.status,
-          remarks: schedule.remarks,
-          student_count: 1,
-          students: [{
-            student_roll: 'UNKNOWN',
-            schedule_id: schedule.id,
-            profile_photo: '',
-            student_name: 'No Students Found',
-            batch_name: 'Default Batch',
-            batch_level: 1
-          }],
-          batches: {
-            'Default Batch': {
-              batch_name: 'Default Batch',
-              batch_level: 1,
-              students: [{
-                student_roll: 'UNKNOWN',
-                schedule_id: schedule.id,
-                profile_photo: '',
-                student_name: 'No Students Found',
-                batch_name: 'Default Batch',
-                batch_level: 1
-              }]
-            }
-          },
-          duration: calculateDuration(schedule.start_time, schedule.end_time),
-          activity: schedule.session_type,
-          bgColor: '#F8ECD2A8',
-          sideColor: '#EF7B0E',
-          fontColor: '#EF7B0E',
-          is_assessment: 0,
-          activity_name: schedule.activity_name,
-          sub_activity_name: schedule.sub_activity_name,
-          topic_name: schedule.topic_name,
-          topic_hierarchy: buildTopicHierarchy(
+        const consolidatedSchedule = [];
+        
+        for (const schedule of fallbackResults) {
+          const topicHierarchy = await buildTopicHierarchy(
             schedule.activity_name,
             schedule.sub_activity_name,
-            schedule.topic_name
-          ),
-          section_subject_activity_id: schedule.section_subject_activity_id
-        }));
+            schedule.topic_name,
+            schedule.topic_id
+          );
+
+          consolidatedSchedule.push({
+            id: schedule.id.toString(),
+            session_type: schedule.session_type,
+            pa_id: schedule.pa_id,
+            section_id: schedule.section_id,
+            mentor_id: schedule.mentor_id,
+            subject_id: schedule.subject_id,
+            topic_id: schedule.topic_id,
+            subject: schedule.subject_name,
+            section: schedule.section_name,
+            section_name: schedule.section_name,
+            grade: schedule.grade_id ? schedule.grade_id.toString() : '',
+            venue_name: schedule.venue_name,
+            date: schedule.date,
+            starttime: formatTime(schedule.start_time),
+            endtime: formatTime(schedule.end_time),
+            start_time: schedule.start_time,
+            end_time: schedule.end_time,
+            venue_id: schedule.venue_id,
+            status: schedule.status,
+            remarks: schedule.remarks,
+            student_count: 1,
+            students: [{
+              student_roll: 'UNKNOWN',
+              schedule_id: schedule.id,
+              profile_photo: '',
+              student_name: 'No Students Found',
+              batch_name: 'Default Batch',
+              batch_level: 1
+            }],
+            batches: {
+              'Default Batch': {
+                batch_name: 'Default Batch',
+                batch_level: 1,
+                students: [{
+                  student_roll: 'UNKNOWN',
+                  schedule_id: schedule.id,
+                  profile_photo: '',
+                  student_name: 'No Students Found',
+                  batch_name: 'Default Batch',
+                  batch_level: 1,
+                  batch_id: 0
+                }]
+              }
+            },
+            duration: calculateDuration(schedule.start_time, schedule.end_time),
+            activity: schedule.session_type,
+            bgColor: '#F8ECD2A8',
+            sideColor: '#EF7B0E',
+            fontColor: '#EF7B0E',
+            is_assessment: 0,
+            activity_name: schedule.activity_name,
+            sub_activity_name: schedule.sub_activity_name,
+            topic_name: schedule.topic_name,
+            topic_hierarchy: topicHierarchy,
+            section_subject_activity_id: schedule.section_subject_activity_id
+          });
+        }
 
         res.json({ success: true, scheduleData: consolidatedSchedule });
       });
@@ -1777,6 +1787,7 @@ exports.getMentorDailySchedule = (req, res) => {
           status: schedule.status,
           remarks: schedule.remarks,
           student_count: 0,
+          batch_id: schedule.batch_id,
           students: [],
           batches: {},
           duration: calculateDuration(schedule.start_time, schedule.end_time),
@@ -1785,15 +1796,11 @@ exports.getMentorDailySchedule = (req, res) => {
           sideColor: schedule.session_type === 'Assessment' ? '#1857C0' : '#EF7B0E',
           fontColor: schedule.session_type === 'Assessment' ? '#1857C0' : '#EF7B0E',
           is_assessment: schedule.session_type === 'Assessment' ? 1 : 0,
-          // Topic hierarchy
+          // Topic hierarchy - will be built later
           activity_name: schedule.activity_name || '',
           sub_activity_name: schedule.sub_activity_name || '',
           topic_name: schedule.topic_name || '',
-          topic_hierarchy: buildTopicHierarchy(
-            schedule.activity_name,
-            schedule.sub_activity_name,
-            schedule.topic_name
-          ),
+          topic_hierarchy: '', // Will be populated later
           section_subject_activity_id: schedule.section_subject_activity_id || 0
         };
       }
@@ -1807,6 +1814,7 @@ exports.getMentorDailySchedule = (req, res) => {
         groupedSchedules[groupKey].batches[batchKey] = {
           batch_name: schedule.batch_name,
           batch_level: schedule.batch_level,
+          batch_id: schedule.batch_id,
           students: []
         };
       }
@@ -1817,7 +1825,8 @@ exports.getMentorDailySchedule = (req, res) => {
         profile_photo: schedule.profile_photo,
         student_name: schedule.student_name,
         batch_name: schedule.batch_name,
-        batch_level: schedule.batch_level
+        batch_level: schedule.batch_level,
+        batch_id: schedule.batch_id
       });
 
       // Also maintain the flat students array for compatibility
@@ -1827,12 +1836,33 @@ exports.getMentorDailySchedule = (req, res) => {
         profile_photo: schedule.profile_photo,
         student_name: schedule.student_name,
         batch_name: schedule.batch_name,
-        batch_level: schedule.batch_level
+        batch_level: schedule.batch_level,
+        batch_id: schedule.batch_id
       });
     });
 
     // Convert grouped object back to array
     const consolidatedSchedule = Object.values(groupedSchedules);
+
+    // Build topic hierarchies for each schedule
+    for (const schedule of consolidatedSchedule) {
+      try {
+        schedule.topic_hierarchy = await buildTopicHierarchy(
+          schedule.activity_name,
+          schedule.sub_activity_name,
+          schedule.topic_name,
+          schedule.topic_id
+        );
+      } catch (error) {
+        console.error('Error building topic hierarchy for schedule:', schedule.id, error);
+        // Fallback to simple hierarchy
+        schedule.topic_hierarchy = [
+          schedule.activity_name,
+          schedule.sub_activity_name,
+          schedule.topic_name
+        ].filter(part => part && part.trim()).join(' > ');
+      }
+    }
 
     console.log('Consolidated mentor schedule:', consolidatedSchedule);
     res.json({ success: true, scheduleData: consolidatedSchedule });
@@ -1876,7 +1906,7 @@ function calculateDuration(startTime, endTime) {
   return `${minutes} min`;
 }
 
-function buildTopicHierarchy(activity, subActivity, topic) {
+async function buildTopicHierarchy(activity, subActivity, topic, topicId) {
   const parts = [];
 
   if (activity && activity.trim() && activity !== 'Unknown') {
@@ -1887,11 +1917,91 @@ function buildTopicHierarchy(activity, subActivity, topic) {
     parts.push(subActivity.trim());
   }
 
-  if (topic && topic.trim()) {
+  // Get the complete topic hierarchy from database
+  if (topicId) {
+    try {
+      const topicHierarchy = await getCompleteTopicHierarchy(topicId);
+      if (topicHierarchy.length > 0) {
+        parts.push(...topicHierarchy);
+      }
+    } catch (error) {
+      console.error('Error building topic hierarchy:', error);
+      // Fallback to just the topic name
+      if (topic && topic.trim()) {
+        parts.push(topic.trim());
+      }
+    }
+  } else if (topic && topic.trim()) {
     parts.push(topic.trim());
   }
 
   return parts.length > 0 ? parts.join(' > ') : '';
+}
+
+// Helper function to get complete topic hierarchy
+async function getCompleteTopicHierarchy(topicId) {
+  try {
+    // First, check if the table has a parent_id column
+    const [tableStructure] = await db.promise().query(`
+      DESCRIBE topic_hierarchy
+    `);
+    
+    const hasParentId = tableStructure.some(col => col.Field === 'parent_id');
+    
+    if (hasParentId) {
+      // Use recursive CTE if parent_id exists
+      const [result] = await db.promise().query(`
+        WITH RECURSIVE topic_path AS (
+          SELECT id, topic_name, parent_id, 0 as level
+          FROM topic_hierarchy 
+          WHERE id = ?
+          
+          UNION ALL
+          
+          SELECT th.id, th.topic_name, th.parent_id, tp.level + 1
+          FROM topic_hierarchy th
+          INNER JOIN topic_path tp ON th.id = tp.parent_id
+        )
+        SELECT topic_name 
+        FROM topic_path 
+        WHERE level > 0
+        ORDER BY level DESC
+      `, [topicId]);
+
+      return result.map(row => row.topic_name);
+    } else {
+      // Fallback: try to build hierarchy through existing relationships
+      const [result] = await db.promise().query(`
+        SELECT 
+          t.topic_name,
+          sa.sub_act_name,
+          act.activity_type
+        FROM topic_hierarchy t
+        LEFT JOIN ssa_sub_activities sssa ON t.ssa_sub_activity_id = sssa.id
+        LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
+        LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
+        LEFT JOIN activity_types act ON ssa.activity_type = act.id
+        WHERE t.id = ?
+      `, [topicId]);
+
+      if (result.length > 0) {
+        const row = result[0];
+        const hierarchy = [];
+        
+        // Build hierarchy from the relationships
+        if (row.activity_type) hierarchy.push(row.activity_type);
+        if (row.sub_act_name) hierarchy.push(row.sub_act_name);
+        if (row.topic_name) hierarchy.push(row.topic_name);
+        
+        return hierarchy;
+      }
+      
+      return [];
+    }
+  } catch (error) {
+    console.error('Error getting topic hierarchy:', error);
+    return [];
+  }
 }
 
 //Get grade sections
@@ -2308,7 +2418,144 @@ exports.completeAssessmentActivity = async (req, res) => {
       studentScheduleIds
     );
     console.log(result);
-    
+
+    // Insert/Update student_topic_completion_history and student_topic_progress
+    console.log('Inserting completion history and progress data...');
+
+    // Check if the required tables exist
+    const [completionHistoryTable] = await trx.query(
+      `SHOW TABLES LIKE 'student_topic_completion_history'`
+    );
+    const [progressTable] = await trx.query(
+      `SHOW TABLES LIKE 'student_topic_progress'`
+    );
+
+    if (completionHistoryTable.length === 0 || progressTable.length === 0) {
+      console.log('Required tables for completion tracking not found, skipping enhanced tracking');
+    } else {
+      // Get additional data needed for completion history
+      const sessionDetails = await trx.query(
+        `SELECT ass.topic_id, ass.subject_id, ass.section_id, ass.date,
+                ass.batch_id, tcd.expected_completion_date
+         FROM assessment_sessions ass
+         LEFT JOIN topic_completion_dates tcd ON ass.topic_id = tcd.topic_id AND ass.batch_id = tcd.batch_id
+         WHERE ass.id = ?`,
+        [studentScheduleIds[0]]
+      );
+      console.log(studentScheduleIds[0], 'Session Details:', sessionDetails);
+
+      if (sessionDetails && sessionDetails.length > 0) {
+        const { topic_id, subject_id, section_id, activity_date, batch_id, expected_completion_date } = sessionDetails[0];
+        const actualCompletionDate = new Date().toISOString().split('T')[0];
+        const expectedDate = expected_completion_date || activity_date;
+        const daysTaken = Math.ceil((new Date(actualCompletionDate) - new Date(expectedDate)) / (1000 * 60 * 60 * 24));
+        const daysLate = daysTaken > 0 ? daysTaken : 0;
+
+        // Insert completion history for each student
+        for (const sub of studentSubmissions) {
+          const obtainedMarks = sub.is_absent ? null : parseFloat(sub.marks_obtained);
+          const totalMarks = parseFloat(sub.total_marks || 100);
+          const finalScore = sub.is_absent ? null : ((obtainedMarks / totalMarks) * 100).toFixed(2);
+          const completionStatus = sub.is_absent ? 'Not Completed' : (finalScore >= passPercentage ? 'Completed' : 'Not Completed');
+
+          // For failed students, don't set actual completion date and batch
+          const actualCompletionDateForHistory = completionStatus === 'Completed' ? actualCompletionDate : null;
+          const daysTakenForHistory = completionStatus === 'Completed' ? daysTaken : null;
+          const daysLateForHistory = completionStatus === 'Completed' ? daysLate : 0;
+          const batchAtCompletionForHistory = completionStatus === 'Completed' ? batch_id : null;
+
+          // Insert into student_topic_completion_history
+          await trx.query(
+            `INSERT INTO student_topic_completion_history
+             (student_roll, topic_id, subject_id, as_id, expected_completion_date,
+              actual_completion_date, days_taken, days_late, completion_status,
+              final_score, attempts_taken, batch_at_start, batch_at_completion, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE
+             actual_completion_date = CASE
+               WHEN VALUES(completion_status) = 'Completed' THEN VALUES(actual_completion_date)
+               ELSE actual_completion_date
+             END,
+             days_taken = CASE
+               WHEN VALUES(completion_status) = 'Completed' THEN VALUES(days_taken)
+               ELSE days_taken
+             END,
+             days_late = CASE
+               WHEN VALUES(completion_status) = 'Completed' THEN VALUES(days_late)
+               ELSE days_late
+             END,
+             completion_status = VALUES(completion_status),
+             final_score = VALUES(final_score),
+             attempts_taken = attempts_taken + 1,
+             batch_at_completion = CASE
+               WHEN VALUES(completion_status) = 'Completed' THEN VALUES(batch_at_completion)
+               ELSE batch_at_completion
+             END`,
+            [
+              sub.student_roll,
+              topic_id,
+              subject_id,
+              sub.schedule_id || studentScheduleIds[0],
+              expectedDate,
+              actualCompletionDateForHistory,
+              daysTakenForHistory,
+              daysLateForHistory,
+              completionStatus,
+              finalScore,
+              batch_id,
+              batchAtCompletionForHistory
+            ]
+          );
+
+          // Insert/Update student_topic_progress
+          const progressStatus = sub.is_absent ? 'Failed' : (finalScore >= passPercentage ? 'Completed' : 'Failed');
+          const completionPercentage = sub.is_absent ? 0 : (finalScore >= passPercentage ? 100 : Math.min(finalScore, 99));
+
+          await trx.query(
+            `INSERT INTO student_topic_progress
+             (student_roll, topic_id, subject_id, status, completion_percentage,
+              attempts_count, attempt_date, last_assessment_score, completed_at,
+              prerequisites_met, is_parallel_allowed, updated_at)
+             VALUES (?, ?, ?, ?, ?, 1, NOW(), ?, CASE WHEN ? = 'Completed' THEN NOW() ELSE NULL END, 1, 1, NOW())
+             ON DUPLICATE KEY UPDATE
+             status = CASE
+               WHEN VALUES(status) = 'Completed' THEN 'Completed'
+               WHEN status = 'Completed' THEN 'Completed'
+               ELSE VALUES(status)
+             END,
+             completion_percentage = CASE
+               WHEN VALUES(status) = 'Completed' THEN VALUES(completion_percentage)
+               WHEN status = 'Completed' THEN completion_percentage
+               ELSE VALUES(completion_percentage)
+             END,
+             attempts_count = attempts_count + 1,
+             attempt_date = NOW(),
+             last_assessment_score = VALUES(last_assessment_score),
+             completed_at = CASE
+               WHEN VALUES(status) = 'Completed' THEN NOW()
+               WHEN status = 'Completed' THEN completed_at
+               ELSE completed_at
+             END,
+             updated_at = NOW()`,
+            [
+              sub.student_roll,
+              topic_id,
+              subject_id,
+              progressStatus,
+              completionPercentage,
+              finalScore,
+              progressStatus
+            ]
+          );
+        }
+
+        console.log(`Updated completion history and progress for ${studentSubmissions.length} students`);
+      } else {
+        await trx.rollback();
+        console.warn('Could not find session details for completion tracking');
+      }
+    }
+
     await trx.commit();
     
     const responseMessage = `Assessment completed for ${studentScheduleIds.length} student(s).`;
@@ -2319,7 +2566,9 @@ exports.completeAssessmentActivity = async (req, res) => {
       features: {
         percentageCalculated: hasPercentageColumn,
         passStatusCalculated: hasPassStatusColumn,
-        rankCalculated: hasRankColumn
+        rankCalculated: hasRankColumn,
+        completionHistoryUpdated: true,
+        progressTrackingUpdated: true
       }
     };
     
@@ -2333,7 +2582,7 @@ exports.completeAssessmentActivity = async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: error.message,
-      details: 'Failed to complete assessment activity with enhanced features'
+      details: 'Failed to complete assessment activity with enhanced tracking features'
     });
   }
 };
@@ -2744,7 +2993,7 @@ exports.checkOverdueLevels = checkOverdueLevels;
 // Get materials for a topic
 exports.getTopicMaterials = async (req, res) => {
   try {
-    const { section_subject_activity_id, topic_id } = req.query;
+    const { section_subject_activity_id, topic_id, batch_id } = req.query;
 
     if (!section_subject_activity_id) {
       return res.status(400).json({
@@ -2760,7 +3009,7 @@ exports.getTopicMaterials = async (req, res) => {
         m.file_name,
         m.file_url,
         m.activity_name as title,
-        m.expected_date,
+        tcd.expected_completion_date,
         m.created_at AS uploaded_at,
         t.topic_name,
         sa.sub_act_name AS sub_activity,
@@ -2771,6 +3020,7 @@ exports.getTopicMaterials = async (req, res) => {
     LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
     LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
     LEFT JOIN activity_types act ON ssa.activity_type = act.id
+    JOIN topic_completion_dates tcd ON m.topic_id = tcd.topic_id AND tcd.batch_id = ?
       WHERE m.topic_id = ?
       ORDER BY m.file_type ASC, m.activity_name ASC
     `;
@@ -2778,20 +3028,14 @@ exports.getTopicMaterials = async (req, res) => {
     // const params = topic_id ? [section_subject_activity_id, topic_id] : [section_subject_activity_id];
     
     
-    db.query(query, [topic_id], (err, results) => {
+    try {
+      const [results] = await db.promise().query(query, [batch_id, topic_id]);
       console.log(results);
-      if (err) {
-        console.error('Error fetching topic materials:', err);
-        return res.status(500).json({
-          success: false,
-          message: 'Database error while fetching materials'
-        });
-      }
-      
 
       // Group materials by level and type - but since we don't have level, group by type
       const materialsArray = [];
-      results.forEach(material => {
+      
+      for (const material of results) {
         // Parse the file_url JSON to extract the actual URL
         let actualFileUrl = material.file_url;
         try {
@@ -2806,6 +3050,13 @@ exports.getTopicMaterials = async (req, res) => {
           // Keep original URL if parsing fails
         }
 
+        const hierarchy = await buildTopicHierarchy(
+          material.activity_type,
+          material.sub_activity,
+          material.topic_name,
+          topic_id
+        );
+
         materialsArray.push({
           id: material.id,
           title: material.title,
@@ -2815,10 +3066,9 @@ exports.getTopicMaterials = async (req, res) => {
           expected_date: material.expected_date,
           uploaded_at: material.uploaded_at,
           topic_name: material.topic_name,
-          hierarchy: material.topic_name ?
-            `${material.activity_type || ''} > ${material.sub_activity || ''} > ${material.topic_name}` : ''
+          hierarchy: hierarchy
         });
-      });
+      }
       console.log(materialsArray);
       
       res.json({
@@ -2826,7 +3076,13 @@ exports.getTopicMaterials = async (req, res) => {
         materials: materialsArray,
         total_count: results.length
       });
-    });
+    } catch (err) {
+      console.error('Error fetching topic materials:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error while fetching materials'
+      });
+    }
   } catch (error) {
     console.error('Error in getTopicMaterials:', error);
     res.status(500).json({
