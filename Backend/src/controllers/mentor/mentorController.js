@@ -2175,7 +2175,7 @@ exports.finishAssessmentActivity = async (req, res) => {
  */
 exports.completeAssessmentActivity = async (req, res) => {
   const { activityId } = req.params;
-  const { studentSubmissions, studentScheduleIds } = req.body;
+  const { studentSubmissions, studentScheduleIds, topic_id } = req.body;
   console.log('Assessment Activity ID:', activityId, 'Student Schedule IDs:', studentScheduleIds);
 
   if (!studentScheduleIds || !Array.isArray(studentScheduleIds) || studentScheduleIds.length === 0) {
@@ -2186,45 +2186,155 @@ exports.completeAssessmentActivity = async (req, res) => {
   try {
     trx = await db.promise().beginTransaction();
 
-    // Insert assessment results for each student
+    // Check if the required columns exist in assessment_session_marks table
+    const tableStructureResult = await trx.query(
+      `DESCRIBE assessment_session_marks`
+    );
+    
+    // Handle both array and direct result formats
+    const tableStructure = Array.isArray(tableStructureResult[0]) ? tableStructureResult[0] : tableStructureResult;
+    const columnNames = tableStructure.map(col => col.Field);
+    const hasPercentageColumn = columnNames.includes('percentage');
+    const hasRankColumn = columnNames.includes('student_rank') || columnNames.includes('rank');
+    const hasPassStatusColumn = columnNames.includes('pass_status');
+    
+    console.log('Table columns available:', {
+      percentage: hasPercentageColumn,
+      rank: hasRankColumn,
+      passStatus: hasPassStatusColumn
+    });
+
+    // Get topic_id from the first assessment session to get pass percentage
+    const [topicInfo] = await trx.query(
+      `SELECT ass.topic_id, th.pass_percentage 
+       FROM assessment_sessions ass
+       LEFT JOIN topic_hierarchy th ON ass.topic_id = th.id
+       WHERE ass.id = ?`,
+      [studentScheduleIds[0]]
+    );
+    
+    const passPercentage = topicInfo[0]?.pass_percentage || 50; // Default to 50% if not found
+    console.log('Pass percentage for topic:', passPercentage);
+
+    // Insert assessment results for each student with percentage and pass_status
     for (const sub of studentSubmissions) {
       // Find the schedule_id for this student
       const scheduleId = sub.schedule_id || studentScheduleIds.find(id => id); // Use provided schedule_id or fallback
       
+      const obtainedMarks = sub.is_absent ? null : parseFloat(sub.marks_obtained);
+      const totalMarks = parseFloat(sub.total_marks || 100);
+      const percentage = sub.is_absent ? null : ((obtainedMarks / totalMarks) * 100).toFixed(2);
+      const passStatus = sub.is_absent ? 'Absent' : (percentage >= passPercentage ? 'Pass' : 'Fail');
+      
+      // Build dynamic query based on available columns
+      let insertColumns = ['as_id', 'student_roll', 'obtained_mark', 'total_marks', 'status'];
+      let insertValues = [scheduleId, sub.student_roll, obtainedMarks, totalMarks, sub.is_absent ? 'Absent' : 'Present'];
+      let updateColumns = ['obtained_mark = VALUES(obtained_mark)', 'total_marks = VALUES(total_marks)', 'status = VALUES(status)'];
+      
+      if (hasPercentageColumn) {
+        insertColumns.push('percentage');
+        insertValues.push(percentage);
+        updateColumns.push('percentage = VALUES(percentage)');
+      }
+      
+      if (hasPassStatusColumn) {
+        insertColumns.push('pass_status');
+        insertValues.push(passStatus);
+        updateColumns.push('pass_status = VALUES(pass_status)');
+      }
+      
+      const placeholders = insertColumns.map(() => '?').join(',');
+      
       await trx.query(
-        `INSERT INTO assessment_session_results (session_id, student_roll, marks_obtained, total_marks, status) 
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE marks_obtained = VALUES(marks_obtained), total_marks = VALUES(total_marks), status = VALUES(status)`,
-        [
-          scheduleId, 
-          sub.student_roll, 
-          sub.is_absent ? null : sub.marks_obtained, 
-          sub.total_marks || 100,
-          sub.is_absent ? 'Absent' : 'Completed'
-        ]
+        `INSERT INTO assessment_session_marks (${insertColumns.join(',')}) 
+         VALUES (${placeholders})
+         ON DUPLICATE KEY UPDATE ${updateColumns.join(', ')}`,
+        insertValues
       );
+    }
+
+    // Calculate and update ranks for all students in this assessment session (if rank column exists)
+    if (hasRankColumn) {
+      // Get all students' marks for ranking (excluding absent students)
+      const allMarks = await trx.query(
+        `SELECT asm.id, asm.student_roll, asm.obtained_mark, ${hasPercentageColumn ? 'asm.percentage' : 'NULL as percentage'}
+         FROM assessment_session_marks asm
+         WHERE asm.as_id IN (${studentScheduleIds.map(() => '?').join(',')})
+         AND asm.status = 'Present'
+         ORDER BY asm.obtained_mark DESC, asm.student_roll ASC`,
+        studentScheduleIds
+      );
+
+      // Calculate ranks
+      let currentRank = 1;
+      let previousMark = null;
+      let studentsWithSameMark = 0;
+
+      for (let i = 0; i < allMarks.length; i++) {
+        const currentMark = allMarks[i].obtained_mark;
+        
+        if (previousMark !== null && currentMark < previousMark) {
+          currentRank += studentsWithSameMark;
+          studentsWithSameMark = 1;
+        } else {
+          studentsWithSameMark++;
+        }
+        
+        // Determine the correct rank column name and escape it properly
+        const rankColumn = columnNames.includes('student_rank') ? '`student_rank`' : '`rank`';
+        console.log(rankColumn);
+        
+        // Update rank for this student
+        await trx.query(
+          `UPDATE assessment_session_marks 
+           SET ${rankColumn} = ? 
+           WHERE id = ?`,
+          [currentRank, allMarks[i].id]
+        );
+        
+        previousMark = currentMark;
+      }
+
+      console.log(`Updated ranks for ${allMarks.length} students`);
+    } else {
+      console.log('Rank column not found in assessment_session_marks table, skipping rank calculation');
     }
 
     // Update all assessment sessions for the students to 'Completed'
     const placeholders = studentScheduleIds.map(() => '?').join(',');
-    const [result] = await trx.query(
+    const result = await trx.query(
       `UPDATE assessment_sessions SET status = 'Completed', actual_end_time = NOW() 
        WHERE id IN (${placeholders})`,
       studentScheduleIds
     );
-
+    console.log(result);
+    
     await trx.commit();
-    res.json({ 
+    
+    const responseMessage = `Assessment completed for ${studentScheduleIds.length} student(s).`;
+    const responseData = { 
       success: true, 
-      message: `Assessment completed for ${studentScheduleIds.length} student(s).`,
-      affectedSessions: studentScheduleIds.length
-    });
+      message: responseMessage,
+      affectedSessions: studentScheduleIds.length,
+      features: {
+        percentageCalculated: hasPercentageColumn,
+        passStatusCalculated: hasPassStatusColumn,
+        rankCalculated: hasRankColumn
+      }
+    };
+    
+    console.log('Assessment completion summary:', responseData);
+    res.json(responseData);
   } catch (error) {
     if (trx && typeof trx.rollback === 'function') {
       await trx.rollback();
     }
     console.error('Error completing assessment activity:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      details: 'Failed to complete assessment activity with enhanced features'
+    });
   }
 };
 
@@ -2709,7 +2819,8 @@ exports.getTopicMaterials = async (req, res) => {
             `${material.activity_type || ''} > ${material.sub_activity || ''} > ${material.topic_name}` : ''
         });
       });
-
+      console.log(materialsArray);
+      
       res.json({
         success: true,
         materials: materialsArray,

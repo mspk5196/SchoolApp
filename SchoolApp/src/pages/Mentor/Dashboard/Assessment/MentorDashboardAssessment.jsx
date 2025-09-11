@@ -165,7 +165,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
     if (activity && students.length > 0 && !isLoading) {
       // Perform initial status check after a short delay
       const initialStatusCheck = setTimeout(() => {
-        console.log('Performing initial status check');
+        // console.log('Performing initial status check');
         checkActivityStatus();
       }, 1000);
       
@@ -188,8 +188,8 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       if (scheduleData && scheduleData.length > 0) {
         // Extract the first activity from the scheduleData array
         const activityData = scheduleData[0]; // Get the first element, not the whole array
-        console.log("Assessment Activity Data (single object):", activityData);
-        console.log("students", activityData.students);
+        // console.log("Assessment Activity Data (single object):", activityData);
+        // console.log("students", activityData.students);
         
         setActivity(activityData);
         
@@ -219,9 +219,9 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
         } 
         
         setIsLoading(false);
-        console.log('Assessment Activity Data (processed):', activityData);
-        console.log('Batches:', activityData.batches);
-        console.log('Section Subject Activity ID:', activityData.section_subject_activity_id);
+        // console.log('Assessment Activity Data (processed):', activityData);
+        // console.log('Batches:', activityData.batches);
+        // console.log('Section Subject Activity ID:', activityData.section_subject_activity_id);
         
         // Check status immediately after loading activity details
         setTimeout(() => {
@@ -249,7 +249,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       
       // If we don't have activity yet, skip status check
       if (!sessionId) {
-        console.log('No activity ID available for status check');
+        console.warn('No activity ID available for status check');
         return;
       }
       
@@ -264,14 +264,14 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       }
       
       if (studentScheduleIds.length === 0) {
-        console.log('No student schedule IDs available for status check');
+        console.warn('No student schedule IDs available for status check');
         if (showLoading) {
           Alert.alert('Info', 'No student data available for status check');
         }
         return;
       }
       
-      console.log('Checking status with student schedule IDs:', studentScheduleIds);
+      // console.log('Checking status with student schedule IDs:', studentScheduleIds);
       
       const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/status`, {
         method: 'POST',
@@ -287,10 +287,10 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       }
       
       const data = await response.json();
-      console.log('Status check response:', data);
+      // console.log('Status check response:', data);
       
       if (data.success && data.status !== activity?.status) {
-        console.log('Status changed from', activity?.status, 'to', data.status);
+        // console.log('Status changed from', activity?.status, 'to', data.status);
         setActivity(prev => ({
           ...prev,
           status: data.status
@@ -339,7 +339,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
   };
 
   const fetchMaterials = async () => {
-    console.log('Fetching materials for activity:', activity);
+    // console.log('Fetching materials for activity:', activity);
     
     if (!activity?.section_subject_activity_id) {
       Alert.alert('Error', 'Cannot fetch materials: missing activity information');
@@ -353,7 +353,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       const data = await response.json();
       
       if (data.success) {
-        console.log('Fetched materials:', data.materials);
+        // console.log('Fetched materials:', data.materials);
         
         setMaterials(data.materials || []);
         setShowMaterials(true);
@@ -410,7 +410,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       
       // Collect all student schedule IDs
       const studentScheduleIds = students.map(student => student.schedule_id).filter(id => id);
-      console.log('Starting session with student schedule IDs:', studentScheduleIds);
+      // console.log('Starting session with student schedule IDs:', studentScheduleIds);
       
       if (studentScheduleIds.length === 0) {
         Alert.alert('Error', 'No student schedule IDs found.');
@@ -445,7 +445,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       
       // Collect all student schedule IDs
       const studentScheduleIds = students.map(student => student.schedule_id).filter(id => id);
-      console.log('Finishing session with student schedule IDs:', studentScheduleIds);
+      // console.log('Finishing session with student schedule IDs:', studentScheduleIds);
       
       if (studentScheduleIds.length === 0) {
         Alert.alert('Error', 'No student schedule IDs found.');
@@ -555,7 +555,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
 
     // Collect all student schedule IDs
     const studentScheduleIds = students.map(student => student.schedule_id).filter(id => id);
-    console.log('Completing session with student schedule IDs:', studentScheduleIds);
+    // console.log('Completing session with student schedule IDs:', studentScheduleIds);
     
     if (studentScheduleIds.length === 0) {
       Alert.alert('Error', 'No student schedule IDs found.');
@@ -572,16 +572,18 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       };
     });
     
-    console.log('Student submissions with schedule IDs:', studentSubmissions);
-
+    // console.log('Student submissions with schedule IDs:', studentSubmissions);
+    // console.log('Activity details for completion:', activity);
+    
     try {
-      const sessionId = activity?.id || activityId;
+      const sessionId = activity?.id;
       const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/assessment/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           studentSubmissions,
-          studentScheduleIds
+          studentScheduleIds,
+          topic_id: activity?.topic_id || null
         }),
       });
       
@@ -714,7 +716,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
           </TouchableOpacity>
         );
 
-      case 'Finished(need to update marks)':
+      case 'Finished(need to update performance)':
         const isComplete1 = completedCount >= totalStudents;
         return (
           <TouchableOpacity
@@ -743,12 +745,12 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
           </TouchableOpacity>
         );
 
-      case 'Completed':
-        return (
-          <View style={[styles.actionButton, styles.actionButtonDisabled]}>
-            <Text style={styles.actionButtonText}>Assessment Completed</Text>
-          </View>
-        );
+      // case 'Completed':
+      //   return (
+      //     <View style={[styles.actionButton, styles.actionButtonDisabled]}>
+      //       <Text style={styles.actionButtonText}>Assessment Completed</Text>
+      //     </View>
+      //   );
 
       case 'Cancelled':
         return (
@@ -800,36 +802,30 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
         alignItems: 'center', 
         justifyContent: 'space-between',
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: wp('5%'),
-        paddingVertical: hp('1%'),
+        paddingHorizontal: wp('4%'),
+        paddingVertical: hp('1.2%'),
         borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        borderBottomColor: '#E5E5E5',
       }}>
         <TouchableOpacity
           style={[
             styles.backButton, 
             { 
-              backgroundColor: '#F1F5F9',
               flexDirection: 'row',
               alignItems: 'center',
-              paddingHorizontal: wp('3%')
+              paddingHorizontal: wp('2.5%')
             }
           ]}
           onPress={() => checkActivityStatus(true)}
           disabled={isCheckingStatus}
         >
           {isCheckingStatus ? (
-            <ActivityIndicator size="small" color="#64748B" />
+            <ActivityIndicator size="small" color="#666666" />
           ) : (
-            <Text style={{ fontSize: 16, marginRight: 4 }}>🔄</Text>
+            <Text style={{ fontSize: 14, marginRight: 4 }}>🔄</Text>
           )}
-          <Text style={{ color: '#64748B', fontSize: wp('3.5%'), fontWeight: '500' }}>
-            Refresh Status
+          <Text style={{ color: '#666666', fontSize: wp('3.2%'), fontWeight: '400' }}>
+            Refresh
           </Text>
         </TouchableOpacity>
         
@@ -1038,13 +1034,12 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       <Modal
         visible={showMaterials}
         transparent={true}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowMaterials(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.materialsModal}>
             <View style={styles.modalHeader}>
-              <View style={styles.modalHandle} />
               <Text style={styles.modalTitle}>Assessment Materials</Text>
               <TouchableOpacity
                 style={styles.closeButton}
@@ -1060,7 +1055,11 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
               </View>
             )}
 
-            <ScrollView style={styles.materialsContent}>
+            <ScrollView 
+              style={styles.materialsContent}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: hp('2%') }}
+            >
               {materials.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyStateText}>No materials found for this assessment.</Text>
