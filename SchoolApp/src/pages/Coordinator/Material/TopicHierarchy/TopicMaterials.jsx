@@ -87,9 +87,52 @@ const TopicMaterials = ({ route, navigation }) => {
       );
       const result = await response.json();
       if (result.success) {
-        setMaterials(result.data);
-        console.log('Fetched materials:', result.data);
-
+        // Process materials to handle file_url JSON parsing
+        const processedMaterials = result.data.map(material => {
+          let files = [];
+          
+          try {
+            // Try to parse file_url as JSON (new format with multiple files)
+            if (material.file_url && typeof material.file_url === 'string') {
+              const parsedFiles = JSON.parse(material.file_url);
+              if (Array.isArray(parsedFiles)) {
+                files = parsedFiles;
+              } else {
+                // Legacy format: single file
+                files = [{
+                  name: material.file_name,
+                  url: material.file_url,
+                  type: material.file_type
+                }];
+              }
+            } else if (material.file_name) {
+              // Legacy format: single file
+              files = [{
+                name: material.file_name,
+                url: material.file_url,
+                type: material.file_type
+              }];
+            }
+          } catch (error) {
+            console.warn('Error parsing file_url for material:', material.id, error);
+            // Fallback to legacy format
+            if (material.file_name) {
+              files = [{
+                name: material.file_name,
+                url: material.file_url,
+                type: material.file_type
+              }];
+            }
+          }
+          
+          return {
+            ...material,
+            files: files
+          };
+        });
+        
+        setMaterials(processedMaterials);
+        console.log('Fetched and processed materials:', processedMaterials);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch materials');
@@ -165,17 +208,31 @@ const TopicMaterials = ({ route, navigation }) => {
 
   const downloadFile = async (file) => {
     try {
-      // Extract filename from the URL path
-      const urlParts = file.url.split('/');
-      const filename = urlParts[urlParts.length - 1];
+      // Handle both legacy single file format and new multiple file format
+      let filename;
+      
+      if (typeof file.url === 'string' && file.url.startsWith('/uploads/materials/')) {
+        // Legacy format: direct URL
+        const urlParts = file.url.split('/');
+        filename = urlParts[urlParts.length - 1];
+      } else if (file.name) {
+        // New format: file object with name
+        filename = file.name;
+      } else {
+        // Try to extract from malformed URL
+        console.error('Invalid file object:', file);
+        Alert.alert('Error', 'Invalid file format');
+        return;
+      }
 
-      // Try direct static file serving first (Railway serves static files)
+      // Construct proper URLs
       const directUrl = `${API_URL}/api/coordinator/uploads/materials/${filename}`;
       const downloadUrl = `${API_URL}/api/coordinator/topics/materials/download/${filename}`;
 
       console.log('Downloading file from:', downloadUrl);
       console.log('Direct URL:', directUrl);
       console.log('File object:', file);
+      console.log('Extracted filename:', filename);
 
       // Check if file exists
       const directExists = await checkFileExists(directUrl);
@@ -187,7 +244,7 @@ const TopicMaterials = ({ route, navigation }) => {
       if (!directExists && !downloadExists) {
         Alert.alert(
           'File Not Found',
-          `The file "${file.name}" was not found on the server. It may need to be re-uploaded.`
+          `The file "${file.name || filename}" was not found on the server. It may need to be re-uploaded.`
         );
         return;
       }
@@ -233,23 +290,37 @@ const TopicMaterials = ({ route, navigation }) => {
 
   const viewFile = async (file) => {
     try {
-      // Extract filename from the URL path
-      const urlParts = file.url.split('/');
-      const filename = urlParts[urlParts.length - 1];
+      // Handle both legacy single file format and new multiple file format
+      let filename;
+      
+      if (typeof file.url === 'string' && file.url.startsWith('/uploads/materials/')) {
+        // Legacy format: direct URL
+        const urlParts = file.url.split('/');
+        filename = urlParts[urlParts.length - 1];
+      } else if (file.name) {
+        // New format: file object with name
+        filename = file.name;
+      } else {
+        // Try to extract from malformed URL
+        console.error('Invalid file object:', file);
+        Alert.alert('Error', 'Invalid file format');
+        return;
+      }
 
-      // Try direct static file serving first (Railway serves static files)
+      // Construct proper URLs
       const directUrl = `${API_URL}/api/coordinator/uploads/materials/${filename}`;
       const viewUrl = `${API_URL}/api/coordinator/topics/materials/view/${filename}`;
 
       console.log('Viewing file from:', viewUrl);
       console.log('Direct URL:', directUrl);
       console.log('File object:', file);
+      console.log('Extracted filename:', filename);
 
       // For PDFs and images, try to open in browser/viewer
       if (file.type === 'PDF' || file.type === 'Image') {
         try {
           // Try direct static file serving first for better compatibility
-          await Linking.openURL(directUrl);
+          await Linking.openURL(viewUrl);
         } catch (error) {
           console.error('Direct URL failed, trying view endpoint:', error);
           try {
@@ -262,7 +333,7 @@ const TopicMaterials = ({ route, navigation }) => {
       } else if (file.type === 'Video') {
         // For videos, also try to open directly
         try {
-          await Linking.openURL(directUrl);
+          await Linking.openURL(viewUrl);
         } catch (error) {
           console.error('Direct video URL failed:', error);
           try {

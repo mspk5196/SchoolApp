@@ -18,7 +18,7 @@ import { API_URL } from '../../../../utils/env.js';
 import { sub } from 'date-fns';
 
 const TopicHierarchyManagement = ({ navigation, route }) => {
-  const { coordinatorData, coordinatorGrades, activeGrade, selectedSubjectId, selectedSectionId } = route.params || {};
+  const { coordinatorData, coordinatorGrades, activeGrade, selectedSubjectId, selectedSectionId, selectedSubjectName } = route.params || {};
 
   // Debug: Log the route params
   // console.log('TopicHierarchyManagement route params:', {
@@ -391,7 +391,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => navigation.navigate('TopicMaterials', { topicId: item.id, topicName: item.topic_name, selectedSubjectId, selectedSectionId })}
+              onPress={() => navigation.navigate('TopicMaterials', { topicId: item.id, topicName: item.topic_name, selectedSubjectId, selectedSectionId, selectedSubject })}
             >
               <Text style={styles.actionButtonText}>📁</Text>
             </TouchableOpacity>
@@ -448,6 +448,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         <View>
           <Text style={styles.title}>Topic Hierarchy Management</Text>
           {activeGrade && <Text style={styles.subtitle}>Grade {activeGrade}</Text>}
+          <Text style={styles.subtitle}>Subject: {selectedSubjectName}</Text>
         </View>
       </View>
 
