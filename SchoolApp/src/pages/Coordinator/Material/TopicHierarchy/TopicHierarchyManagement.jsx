@@ -13,7 +13,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Entypo  from 'react-native-vector-icons/Entypo';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import AntDesign from 'react-native-vector-icons/AntDesign';
+import Foundation from 'react-native-vector-icons/Foundation';
 import { API_URL } from '../../../../utils/env.js';
 import { sub } from 'date-fns';
 
@@ -356,7 +361,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
             disabled={!hasChildren}
           >
             <Text style={[styles.expandIcon, { color: hasChildren ? '#007AFF' : '#ccc' }]}>
-              {hasChildren ? (isExpanded ? '▼' : '▶') : '●'}
+              {hasChildren ? (isExpanded ? <AntDesign name="caretdown" color="#007AFF" size={18} /> : <AntDesign name="caretright" color="#007AFF" size={18} />) : <FontAwesome name="dot-circle-o" color="#ff0000ff" size={14} />}
             </Text>
           </TouchableOpacity>
 
@@ -375,25 +380,30 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               style={styles.actionButton}
               onPress={() => openCreateModal(item.id)}
             >
-              <Text style={styles.actionButtonText}>+</Text>
+              {/* <Text style={styles.actionButtonText}>+</Text> */}
+              <Foundation name="folder-add" color="#000" size={26} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => openEditModal(item)}
             >
-              <Text style={styles.actionButtonText}>✏</Text>
+              {/* <Text style={styles.actionButtonText}>✏</Text> */}
+              <MaterialIcons name="edit-document" color="#000" size={24} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => deleteTopic(item.id)}
             >
-              <Text style={styles.actionButtonText}>🗑</Text>
+              {/* <Text style={styles.actionButtonText}>🗑</Text> */}
+              <MaterialCommunityIcons name="delete-forever" color="#ff0000ff" size={24} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => navigation.navigate('TopicMaterials', { topicId: item.id, topicName: item.topic_name, selectedSubjectId, selectedSectionId, selectedSubject })}
             >
-              <Text style={styles.actionButtonText}>📁</Text>
+              {/* <Text style={styles.actionButtonText}>📁</Text> */}
+              <Entypo  name="folder-video" size={24} color="#ffbb00ff" />  
+              
             </TouchableOpacity>
           </View>
         </View>
@@ -586,7 +596,8 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               {editingTopic ? 'Edit Topic' : 'Create New Topic'}
             </Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.closeButton}>✕</Text>
+              {/* <Text style={styles.closeButton}>✕</Text> */}
+              <AntDesign name="closecircle" color="#ff0000ff" size={24} />
             </TouchableOpacity>
           </View>
 

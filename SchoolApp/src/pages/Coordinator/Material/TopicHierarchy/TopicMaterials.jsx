@@ -18,6 +18,11 @@ import DocumentPicker from 'react-native-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { API_URL } from '../../../../utils/env.js';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import AntDesign from 'react-native-vector-icons/AntDesign';
+import Entypo from 'react-native-vector-icons/Entypo';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const TopicMaterials = ({ route, navigation }) => {
   const { topicId, topicName, selectedSubjectId, selectedSectionId } = route.params;
@@ -756,19 +761,19 @@ const TopicMaterials = ({ route, navigation }) => {
             style={styles.actionButton}
             onPress={() => openEditModal(item)}
           >
-            <Text style={styles.actionButtonText}>✏️</Text>
+            <MaterialIcons name="edit" size={20} color="#007AFF" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => deleteMaterial(item.id)}
           >
-            <Text style={styles.actionButtonText}>🗑️</Text>
+            <MaterialCommunityIcons name="delete-forever" size={20} color="#FF3B30" />
           </TouchableOpacity>
         </View>
       </View>
       {(item.files && item.files.length > 0) || item.file_name ? (
         <View style={styles.fileInfo}>
-          <Text style={styles.fileIcon}>📎</Text>
+          <Entypo name="attachment" size={16} color="#666" />
           {item.files && item.files.length > 0 ? (
             <View style={styles.filesList}>
               {item.files.map((file, index) => (
@@ -786,13 +791,13 @@ const TopicMaterials = ({ route, navigation }) => {
                       style={styles.fileActionButton}
                       onPress={() => viewFile(file)}
                     >
-                      <Text style={styles.fileActionText}>👁️</Text>
+                      <Entypo name="eye" size={18} color="#007AFF" />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.fileActionButton}
                       onPress={() => downloadFile(file)}
                     >
-                      <Text style={styles.fileActionText}>📥</Text>
+                      <MaterialIcons name="file-download" size={18} color="#007AFF" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -820,11 +825,11 @@ const TopicMaterials = ({ route, navigation }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>🔙</Text>
+          <AntDesign name="arrowleft" size={24} color="#007AFF" />
         </TouchableOpacity>
         <Text style={styles.title}>Materials - {topicName}</Text>
         <TouchableOpacity style={styles.addButton} onPress={openCreateModal}>
-          <Text style={styles.addButtonText}>+</Text>
+          <MaterialIcons name="add" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -848,7 +853,7 @@ const TopicMaterials = ({ route, navigation }) => {
               {editingMaterial ? 'Edit Material' : 'Add New Material'}
             </Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.closeButton}>✕</Text>
+              <AntDesign name="closecircle" size={24} color="#666" />
             </TouchableOpacity>
           </View>
 
@@ -937,9 +942,11 @@ const TopicMaterials = ({ route, navigation }) => {
                   style={[styles.switchButton, formData.has_assessment && styles.switchButtonActive]}
                   onPress={() => setFormData(prev => ({ ...prev, has_assessment: !prev.has_assessment }))}
                 >
-                  <Text style={[styles.switchButtonText, formData.has_assessment && styles.switchButtonTextActive]}>
-                    {formData.has_assessment ? '✓' : '✗'}
-                  </Text>
+                  {formData.has_assessment ? (
+                    <AntDesign name="check" size={16} color="#fff" />
+                  ) : (
+                    <AntDesign name="close" size={16} color="#666" />
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -957,7 +964,7 @@ const TopicMaterials = ({ route, navigation }) => {
                       : 'Select Expected Date'
                     }
                   </Text>
-                  <Text style={styles.datePickerIcon}>📅</Text>
+                  <AntDesign name="calendar" size={20} color="#007AFF" />
                 </TouchableOpacity>
                 
                 {Platform.OS === 'android' && (
@@ -1000,7 +1007,7 @@ const TopicMaterials = ({ route, navigation }) => {
                     Select multiple files (PDF, Video, Images, etc.) for this learning material
                   </Text>
                   <TouchableOpacity style={styles.fileButton} onPress={selectFile}>
-                    <Text style={styles.fileIcon}>📎</Text>
+                    <Entypo name="attachment" size={20} color="#007AFF" />
                     <Text style={styles.fileButtonText}>Select Files (PDF, Video, etc.)</Text>
                   </TouchableOpacity>
 
@@ -1016,7 +1023,7 @@ const TopicMaterials = ({ route, navigation }) => {
                             style={styles.removeFileButton}
                             onPress={() => removeFile(index)}
                           >
-                            <Text style={styles.removeFileText}>✕</Text>
+                            <AntDesign name="close" size={16} color="#fff" />
                           </TouchableOpacity>
                         </View>
                       ))}
@@ -1054,7 +1061,7 @@ const TopicMaterials = ({ route, navigation }) => {
                             : 'Set Expected Date'
                           }
                         </Text>
-                        <Text style={styles.datePickerIcon}>📅</Text>
+                        <AntDesign name="calendar" size={18} color="#007AFF" />
                       </TouchableOpacity>
                       
                       {batchExpectedDates[batch.id] && (
@@ -1204,6 +1211,11 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 8,
     marginLeft: 4,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 36,
   },
   actionButtonText: {
     fontSize: 18,
@@ -1244,7 +1256,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   fileActionButton: {
-    padding: 4,
+    padding: 8,
     marginLeft: 8,
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
     borderRadius: 4,
