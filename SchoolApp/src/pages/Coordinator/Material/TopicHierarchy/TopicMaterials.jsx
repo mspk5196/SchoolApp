@@ -485,7 +485,8 @@ const TopicMaterials = ({ route, navigation }) => {
           Alert.alert('Error', 'Please select at least one file');
           return;
         }
-
+        console.log('Preparing to upload files:', formData.files);
+        
         const formDataToSend = new FormData();
 
         // Add form fields
@@ -497,6 +498,21 @@ const TopicMaterials = ({ route, navigation }) => {
         formDataToSend.append('instructions', formData.instructions);
         // formDataToSend.append('expectedDate', formData.expected_date);
         formDataToSend.append('hasAssessment', formData.has_assessment.toString());
+
+        // Add files to FormData
+        formData.files.forEach((file, index) => {
+          // For React Native, we need to create a file object from the URI
+          const fileToUpload = {
+            uri: file.uri,
+            type: file.type === 'PDF' ? 'application/pdf' : 
+                  file.type === 'Video' ? 'video/mp4' : 
+                  file.type === 'Image' ? 'image/jpeg' : 
+                  file.type === 'Audio' ? 'audio/mpeg' : 
+                  'application/octet-stream',
+            name: file.name,
+          };
+          formDataToSend.append('files', fileToUpload);
+        });
 
         // Add batch-wise expected dates
         Object.entries(batchExpectedDates).forEach(([batchId, expectedDate]) => {
