@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Platform, Alert, Modal, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Platform, Alert, Modal, FlatList, PermissionsAndroid } from 'react-native';
 import DocumentPicker from 'react-native-document-picker';
 import { launchImageLibrary } from 'react-native-image-picker';
+import RNFS from 'react-native-fs';
 import CalenderIcon from '../../../../assets/CoordinatorPage/StudentMentorEnrollment/Calender.svg';
 import BackIcon from '../../../../assets/CoordinatorPage/StudentMentorEnrollment/Back.svg';
 import PlusIcon from '../../../../assets/CoordinatorPage/StudentMentorEnrollment/Plus.svg';
@@ -43,6 +44,8 @@ const StudentEnrollment = ({ navigation, route }) => {
   const [gradeOptions, setGradeOptions] = useState([]);
   const [sectionOptions, setSectionOptions] = useState([]);
   const [mentorID, setMentorID] = useState(null);
+  const [showUploadOptionsModal, setShowUploadOptionsModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const genderOptions = ['Male', 'Female', 'Other'];
 
@@ -237,6 +240,120 @@ const StudentEnrollment = ({ navigation, route }) => {
 
     setErrors(newErrors);
     return isValid;
+  };
+
+  const handleUploadOptions = () => {
+    setShowUploadOptionsModal(true);
+  };
+
+  const handleGenerateTemplate = async () => {
+    try {
+      setIsLoading(true);
+
+      // Request permissions for Android
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'Storage Permission',
+            message: 'App needs access to your storage to download the template',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        // if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        //   Alert.alert('Permission Denied', 'Storage permission is required to download the template');
+        //   return;
+        // }
+      }
+
+      const response = await fetch(`${API_URL}/api/coordinator/enrollment/generate-student-template`, {
+        method: 'GET'
+      });
+
+      if (response.ok) {
+        // Get the blob data
+        const blob = await response.blob();
+        const base64Data = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(',')[1]);
+          reader.readAsDataURL(blob);
+        });
+
+        // Define download path
+        const downloadPath = Platform.OS === 'ios' 
+          ? `${RNFS.DocumentDirectoryPath}/student_enrollment_template.xlsx`
+          : `${RNFS.DownloadDirectoryPath}/student_enrollment_template.xlsx`;
+
+        // Write file
+        await RNFS.writeFile(downloadPath, base64Data, 'base64');
+
+        Alert.alert(
+          'Success', 
+          `Template downloaded successfully!\nSaved to: ${Platform.OS === 'ios' ? 'Files app' : 'Downloads folder'}`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Error', errorData.message || 'Failed to generate template');
+      }
+    } catch (error) {
+      console.error('Template generation error:', error);
+      Alert.alert('Error', 'Failed to generate template. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setShowUploadOptionsModal(false);
+    }
+  };
+
+  const handleUploadDocument = async () => {
+    try {
+      const result = await DocumentPicker.pick({
+        type: [DocumentPicker.types.xlsx],
+        allowMultiSelection: false,
+      });
+
+      if (result && result.length > 0) {
+        setIsLoading(true);
+        const formData = new FormData();
+        formData.append('excelFile', {
+          uri: result[0].uri,
+          name: result[0].name,
+          type: result[0].type,
+        });
+
+        const response = await fetch(`${API_URL}/api/coordinator/enrollment/bulk-upload-students`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        console.log('Upload response status:', response.status);
+        console.log('Upload response headers:', response.headers);
+
+        const data = await response.json();
+        console.log('Upload response data:', data);
+
+        if (response.ok) {
+          Alert.alert('Success', `Successfully uploaded ${data.successfulUploads} students. ${data.failedUploads > 0 ? `${data.failedUploads} failed.` : ''}`);
+          if (data.errors && data.errors.length > 0) {
+            Alert.alert('Upload Details', data.errors.join('\n'));
+          }
+        } else {
+          Alert.alert('Error', data.message || 'Failed to upload students');
+        }
+      }
+    } catch (error) {
+      if (DocumentPicker.isCancel(error)) {
+        console.log('User cancelled document picker');
+      } else {
+        console.error('Document upload error:', error);
+        Alert.alert('Error', 'Failed to upload document');
+      }
+    } finally {
+      setIsLoading(false);
+      setShowUploadOptionsModal(false);
+    }
   };
 
   const handleConfirm = async () => {
@@ -670,10 +787,11 @@ const StudentEnrollment = ({ navigation, route }) => {
 
           <TouchableOpacity
             style={styles.uploadButton}
-            onPress={pickDocument}
+            onPress={handleUploadOptions}
           >
             <Text style={styles.uploadButtonText}>
-              Upload Documents
+              Upload Documents{'\n'}
+              <Text style={styles.uploadButtonSubtext}>Choose upload method</Text>
             </Text>
           </TouchableOpacity>
 
@@ -699,6 +817,47 @@ const StudentEnrollment = ({ navigation, route }) => {
             </View>
           )}
         </View>
+
+        {/* Upload Options Modal */}
+        <Modal
+          transparent={true}
+          visible={showUploadOptionsModal}
+          animationType="fade"
+          onRequestClose={() => setShowUploadOptionsModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowUploadOptionsModal(false)}
+          >
+            <View style={styles.uploadOptionsModal}>
+              <Text style={styles.uploadOptionsTitle}>Choose Upload Method</Text>
+
+              <TouchableOpacity
+                style={styles.uploadOptionButton}
+                onPress={handleGenerateTemplate}
+              >
+                <Text style={styles.uploadOptionButtonText}>📄 Generate Excel Template</Text>
+                <Text style={styles.uploadOptionButtonSubtext}>Download a pre-formatted Excel template with all required columns</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.uploadOptionButton}
+                onPress={handleUploadDocument}
+              >
+                <Text style={styles.uploadOptionButtonText}>📤 Upload Filled Document</Text>
+                <Text style={styles.uploadOptionButtonSubtext}>Upload an Excel file with student data already filled in</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.uploadOptionCancelButton}
+                onPress={() => setShowUploadOptionsModal(false)}
+              >
+                <Text style={styles.uploadOptionCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </ScrollView>
 
       <View style={styles.footer}>

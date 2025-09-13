@@ -7,7 +7,7 @@ exports.getCoordinatorData = (req, res) => {
     SELECT c.id AS id, c.roll, c.phone, u.name, up.file_path
     FROM Coordinators c
     JOIN Users u ON c.phone = u.phone
-    JOIN User_photos up ON c.phone = up.phone
+    LEFT JOIN User_photos up ON c.phone = up.phone
     WHERE c.phone = ?;
   `;
   db.query(sql, [phoneNumber], (err, results) => {
@@ -2117,7 +2117,7 @@ exports.getGradeMentors = async (req, res) => {
            sec.id AS section_id, sec.section_name, sub.subject_name, m.subject_id
       FROM Mentors m
       JOIN Users u ON m.phone = u.phone
-      JOIN user_photos up ON m.phone = up.phone
+      LEFT JOIN user_photos up ON m.phone = up.phone
       LEFT JOIN Sections sec ON m.section_id = sec.id
       LEFT JOIN Subjects sub ON m.subject_id = sub.id
       JOIN Grades g ON m.grade_id = g.id
@@ -2415,7 +2415,7 @@ exports.getGradeSubjects = (req, res) => {
         SEPARATOR ', '
       ) AS assigned_mentors,
       GROUP_CONCAT(DISTINCT 
-        CASE WHEN sms.section_id = ? THEN CONCAT(u.name, '|', m.roll, '|', up.file_path) ELSE NULL END
+        CASE WHEN sms.section_id = ? THEN CONCAT(u.name, '|', m.roll, '|', COALESCE(up.file_path, '')) ELSE NULL END
         SEPARATOR '|'
       ) AS section_mentor_info
     FROM section_subject_activities ss
@@ -2435,6 +2435,7 @@ exports.getGradeSubjects = (req, res) => {
       console.error("Error fetching grade subjects data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
+console.log(results);
 
     res.json({
       success: true,
@@ -2685,7 +2686,7 @@ exports.getMentorLeaveHistory = async (req, res) => {
       FROM facultyleaverequests flr
       JOIN users u ON flr.phone = u.phone
       JOIN mentors m ON flr.phone = m.phone
-      JOIN User_photos up ON m.phone = up.phone
+      LEFT JOIN User_photos up ON m.phone = up.phone
       WHERE flr.phone = ?
       ORDER BY flr.requested_at DESC
     `, [phone]);
@@ -2947,6 +2948,9 @@ exports.getEnroledGradeSubjectMentor = (req, res) => {
       return res.status(500).json({ success: false, message: 'Database error' });
     }
 
+    console.log(results);
+    
+
     res.json({
       success: true,
       message: "Mentor data fetched successfully",
@@ -3049,7 +3053,7 @@ exports.assignSubjectToMentorSection = (req, res) => {
       // Insert new section assignment
       const insertSql = `
         INSERT INTO section_mentor_subject 
-        (msa_id, section_id) 
+        (msa_id, section_id)
         VALUES (?, ?)
       `;
 
@@ -3559,161 +3563,693 @@ exports.processAssessmentRequest = async (req, res) => {
   }
 };
 
-// Manual endpoint to generate daily schedules from weekly templates
-// exports.generateDailySchedulesManual = async (req, res) => {
-//   try {
-//     const { gradeId, days = 7, includeToday = true } = req.body;
-
-//     console.log('🔄 Manually generating daily schedules...');
-//     console.log('Grade ID:', gradeId);
-//     console.log('Days to generate:', days);
-//     console.log('Include today:', includeToday);
-
-//     // Get all weekly schedules for the grade
-//     const [weeklySchedules] = await db.promise().query(`
-//       SELECT ws.*, s.section_name 
-//       FROM weekly_schedule ws
-//       JOIN sections s ON ws.section_id = s.id
-//       WHERE s.grade_id = ?
-//     `, [gradeId]);
-
-//     console.log('Found weekly schedules:', weeklySchedules.length);
-
-//     let totalCreated = 0;
-//     const today = new Date();
-//     const todayStr = today.toISOString().split('T')[0];
-//     const todayDayIndex = today.getDay();
-
-//     console.log(`Today is: ${todayStr} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][todayDayIndex]})`);
-
-//     // Generate daily schedules for each weekly template
-//     for (const weekly of weeklySchedules) {
-//       const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-//         .indexOf(weekly.day?.charAt(0).toUpperCase() + weekly.day?.slice(1).toLowerCase());
-
-//       console.log(`Processing weekly schedule: ${weekly.day} (day index: ${dayIndex}) for section ${weekly.section_id}`);
-
-//       // If includeToday is true and today matches the weekly schedule day, create it first
-//       if (includeToday && todayDayIndex === dayIndex) {
-//         console.log(`Today matches ${weekly.day}, creating schedule for today`);
-
-//         // Check if daily schedule already exists for today
-//         const [existing] = await db.promise().query(`
-//           SELECT id FROM daily_schedule 
-//           WHERE date = ? AND section_id = ? AND start_time = ? AND end_time = ?
-//         `, [todayStr, weekly.section_id, weekly.start_time, weekly.end_time]);
-
-//         if (existing.length === 0) {
-//           // Create daily schedule for today
-//           await db.promise().query(`
-//             INSERT INTO daily_schedule
-//             (original_schedule_id, date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id)
-//             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-//           `, [
-//             weekly.id,
-//             todayStr,
-//             gradeId,
-//             weekly.section_id,
-//             weekly.subject_id,
-//             weekly.session_no || 1,
-//             weekly.start_time,
-//             weekly.end_time,
-//             weekly.venue,
-//             1 // Default coordinator ID
-//           ]);
-
-//           totalCreated++;
-//           console.log(`✅ Created daily schedule for TODAY ${todayStr} - ${weekly.day}`);
-//         } else {
-//           console.log(`⚠️ Daily schedule already exists for TODAY ${todayStr} - ${weekly.day}`);
-//         }
-//       }
-
-//       // Generate for future days (starting from tomorrow)
-//       for (let i = 1; i < days; i++) {
-//         const date = new Date();
-//         date.setDate(date.getDate() + i);
-
-//         if (date.getDay() === dayIndex) {
-//           const dateStr = date.toISOString().split('T')[0];
-
-//           console.log(`Checking future date: ${dateStr} (${weekly.day})`);
-
-//           // Check if daily schedule already exists
-//           const [existing] = await db.promise().query(`
-//             SELECT id FROM daily_schedule
-//             WHERE date = ? AND section_id = ? AND start_time = ? AND end_time = ?
-//           `, [dateStr, weekly.section_id, weekly.start_time, weekly.end_time]);
-
-//           if (existing.length === 0) {
-//             // Create daily schedule
-//             await db.promise().query(`
-//               INSERT INTO daily_schedule
-//               (original_schedule_id, date, grade_id, section_id, subject_id, period_number, start_time, end_time, venue_id, created_by_coordinator_id)
-//               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-//             `, [
-//               weekly.id,
-//               dateStr,
-//               gradeId,
-//               weekly.section_id,
-//               weekly.subject_id,
-//               weekly.session_no || 1,
-//               weekly.start_time,
-//               weekly.end_time,
-//               weekly.venue,
-//               1 // Default coordinator ID
-//             ]);
-
-//             totalCreated++;
-//             console.log(`✅ Created daily schedule for ${dateStr} - ${weekly.day}`);
-//           } else {
-//             console.log(`⚠️ Daily schedule already exists for ${dateStr} - ${weekly.day}`);
-//           }
-//         }
-//       }
-//     }
-
-//     res.json({
-//       success: true,
-//       message: `Successfully generated ${totalCreated} daily schedules`,
-//       totalCreated,
-//       weeklySchedulesFound: weeklySchedules.length,
-//       todayIncluded: includeToday,
-//       todayDate: todayStr
-//     });
-
-//   } catch (error) {
-//     console.error('Error generating daily schedules:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Failed to generate daily schedules',
-//       error: error.message
-//     });
-//   }
-// };
-
-// Manual endpoint to run the daily schedule update (same as cron job)
-// exports.runDailyScheduleUpdateManual = async (req, res) => {
-//   try {
-//     console.log('🔄 Running manual daily schedule update...');
-
-//     const { runDailyScheduleUpdate } = require('../mentor/dailyScheduleUpdate');
-//     const result = await runDailyScheduleUpdate();
-
-//     res.json({
-//       success: true,
-//       message: 'Daily schedule update completed successfully',
-//       result
-//     });
-//   } catch (error) {
-//     console.error('Error running daily schedule update:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Failed to run daily schedule update',
-//       error: error.message
-//     });
-//   }
-// };
 
 
+
+const ExcelJS = require('exceljs');
+
+// Excel Template Generation Functions
+exports.generateMentorTemplate = async (req, res) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Mentor Enrollment Template');
+    
+    // Define columns based on mentor enrollment form
+    worksheet.columns = [
+      { header: 'Name*', key: 'name', width: 20 },
+      { header: 'Date of Birth* (YYYY-MM-DD)', key: 'dob', width: 25 },
+      { header: 'Gender* (Male/Female)', key: 'gender', width: 25 },
+      { header: 'Grade* (1 to 10)', key: 'grade', width: 15 },
+      // { header: 'Section', key: 'section', width: 15 },
+      // { header: 'Subject', key: 'subject', width: 20 },
+      { header: 'Mobile Number*', key: 'mobileNumber', width: 20 },
+      { header: 'Specification*', key: 'specification', width: 25 },
+      { header: 'Email*', key: 'email', width: 30 }
+    ];
+
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE6E6FA' }
+    };
+
+    // Add sample data row
+    worksheet.addRow({
+      name: 'John Doe',
+      dob: '1990-01-15',
+      gender: 'Male',
+      grade: '10',
+      // section: 'A',
+      // subject: 'Mathematics',
+      mobileNumber: '9876543210',
+      specification: 'Mathematics Teacher',
+      email: 'john.doe@school.com'
+    });
+
+    // Add instructions sheet
+    const instructionsSheet = workbook.addWorksheet('Instructions');
+    instructionsSheet.getColumn(1).width = 50;
+
+    instructionsSheet.addRow(['MENTOR ENROLLMENT TEMPLATE INSTRUCTIONS']);
+    instructionsSheet.getRow(1).font = { bold: true, size: 14 };
+
+    const instructions = [
+      '',
+      'REQUIRED FIELDS (marked with *):',
+      '- Name: Full name of the mentor',
+      '- Date of Birth: Format YYYY-MM-DD (e.g., 1990-01-15)',
+      '- Gender: Must be Male, Female, or Other',
+      '- Grade: Numeric grade (e.g., 10 for Grade 10)',
+      '- Mobile Number: 10-digit mobile number',
+      '- Specification: Mentor\'s specialization/subject',
+      '- Email: Valid email address',
+      '',
+      'OPTIONAL FIELDS:',
+      '- Section: Section name (e.g., A, B, C)',
+      '- Subject: Subject name',
+      '',
+      'IMPORTANT NOTES:',
+      '1. Do not modify the header row',
+      '2. Fill all required fields for each mentor',
+      '3. Use the exact date format specified',
+      '4. Mobile numbers must be 10 digits',
+      '5. Save the file as .xlsx format before uploading',
+      '',
+      'SAMPLE DATA:',
+      'The second row contains sample data for reference.',
+      'Replace it with actual mentor information.'
+    ];
+
+    instructions.forEach(instruction => {
+      instructionsSheet.addRow([instruction]);
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=mentor_enrollment_template.xlsx');
+
+    // Write to response
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('Error generating mentor template:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate template',
+      error: error.message
+    });
+  }
+};
+
+exports.generateStudentTemplate = async (req, res) => {
+  try {
+    console.log('Student template generated successfully');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Student Enrollment Template');
+    // Define columns based on student enrollment form
+    worksheet.columns = [
+      { header: 'Name*', key: 'name', width: 20 },
+      { header: 'Father Name*', key: 'fatherName', width: 20 },
+      { header: 'Date of Birth* (YYYY-MM-DD)', key: 'dob', width: 25 },
+      { header: 'Gender* (Male/Female)', key: 'gender', width: 25 },
+      { header: 'Grade*', key: 'grade', width: 15 },
+      { header: 'Section*', key: 'section', width: 15 },
+      { header: 'Mobile Number*', key: 'mobileNumber', width: 20 },
+      // { header: 'Aadhar Number', key: 'aadharNo', width: 20 },
+      // { header: 'EMIS Number', key: 'emisNo', width: 20 },
+      // { header: 'Blood Group', key: 'bloodGroup', width: 15 },
+      // { header: 'Mother Name*', key: 'motherName', width: 20 },
+      // { header: 'Father Mobile*', key: 'fatherMobile', width: 20 },
+      // { header: 'Mother Mobile', key: 'motherMobile', width: 20 },
+      // { header: 'Address', key: 'address', width: 30 },
+      // { header: 'Pincode', key: 'pincode', width: 15 }
+    ];
+
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE6E6FA' }
+    };
+
+    // Add sample data row
+    worksheet.addRow({
+      name: 'Rahul Kumar',
+      fatherName: 'Rajesh Kumar',
+      dob: '2010-05-15',
+      gender: 'Male',
+      grade: '10',
+      section: 'A',
+      mobileNumber: '9876543210',
+      // aadharNo: '123456789012',
+      // emisNo: 'EMIS123456',
+      // bloodGroup: 'O+',
+      // motherName: 'Priya Kumar',
+      // fatherMobile: '9876543210',
+      // motherMobile: '9876543211',
+      // address: '123 Main Street, City, State',
+      // pincode: '110001'
+    });
+
+    // Add instructions sheet
+    const instructionsSheet = workbook.addWorksheet('Instructions');
+    instructionsSheet.getColumn(1).width = 50;
+
+    instructionsSheet.addRow(['STUDENT ENROLLMENT TEMPLATE INSTRUCTIONS']);
+    instructionsSheet.getRow(1).font = { bold: true, size: 14 };
+
+    const instructions = [
+      '',
+      'REQUIRED FIELDS (marked with *):',
+      '- Name: Full name of the student',
+      '- Father Name: Father\'s full name',
+      '- Date of Birth: Format YYYY-MM-DD (e.g., 2010-05-15)',
+      '- Gender: Must be Male, Female, or Other',
+      '- Grade: Numeric grade (e.g., 10 for Grade 10)',
+      '- Section: Section name (e.g., A, B, C)',
+      '- Mobile Number: 10-digit mobile number',
+      '- Mother Name: Mother\'s full name',
+      '- Father Mobile: 10-digit mobile number',
+      '',
+      'OPTIONAL FIELDS:',
+      '- Aadhar Number: 12-digit Aadhar number',
+      '- EMIS Number: School EMIS number',
+      '- Blood Group: Blood group (e.g., O+, A-, B+)',
+      '- Mother Mobile: 10-digit mobile number',
+      '- Address: Complete address',
+      '- Pincode: 6-digit pincode',
+      '',
+      'IMPORTANT NOTES:',
+      '1. Do not modify the header row',
+      '2. Fill all required fields for each student',
+      '3. Use the exact date format specified',
+      '4. Mobile numbers must be 10 digits',
+      '5. Aadhar numbers must be 12 digits',
+      '6. Pincode must be 6 digits',
+      '7. Save the file as .xlsx format before uploading',
+      '',
+      'SAMPLE DATA:',
+      'The second row contains sample data for reference.',
+      'Replace it with actual student information.'
+    ];
+
+    instructions.forEach(instruction => {
+      instructionsSheet.addRow([instruction]);
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=student_enrollment_template.xlsx');
+
+    // Write to response
+    await workbook.xlsx.write(res);
+    
+    
+    res.end();
+
+  } catch (error) {
+    console.error('Error generating student template:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate template',
+      error: error.message
+    });
+  }
+};
+
+// Bulk Upload Functions
+exports.bulkUploadMentors = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+
+    const worksheet = workbook.getWorksheet('Mentor Enrollment Template');
+    if (!worksheet) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid template. Please use the mentor enrollment template.'
+      });
+    }
+
+    const mentors = [];
+    const errors = [];
+    let errorCount = 0;
+
+    // Skip header row, start from row 2
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // Skip header
+
+      const rowData = {
+        name: row.getCell(1).value,
+        dob: row.getCell(2).value,
+        gender: row.getCell(3).value,
+        grade: row.getCell(4).value,
+        mobileNumber: row.getCell(5).value,
+        // subject: row.getCell(5).value,
+        specification: row.getCell(6).value,
+        email: row.getCell(7).value
+      };
+
+      // Validate required fields
+      const validationErrors = [];
+      if (!rowData.name || typeof rowData.name !== 'string' || rowData.name.trim() === '') {
+        validationErrors.push('Name is required');
+      }
+      if (!rowData.dob) {
+        validationErrors.push('Date of birth is required');
+      }
+      if (!rowData.gender || !['Male', 'Female', 'Other'].includes(rowData.gender)) {
+        validationErrors.push('Gender must be Male, Female, or Other');
+      }
+      if (!rowData.grade) {
+        validationErrors.push('Grade is required');
+      }
+      if (!rowData.mobileNumber || !/^\d{10}$/.test(rowData.mobileNumber.toString())) {
+        validationErrors.push('Valid 10-digit mobile number is required');
+      }
+      if (!rowData.specification || typeof rowData.specification !== 'string' || rowData.specification.trim() === '') {
+        validationErrors.push('Specification is required');
+      }
+      if (!rowData.email || typeof rowData.email !== 'string' || rowData.email.trim() === '') {
+        validationErrors.push('Email is required');
+      }
+
+      if (validationErrors.length > 0) {
+        errors.push({
+          row: rowNumber,
+          data: rowData,
+          errors: validationErrors
+        });
+        errorCount++;
+      } else {
+        mentors.push({
+          ...rowData,
+          name: rowData.name.trim(),
+          dob: typeof rowData.dob === 'object' ? rowData.dob.toISOString().split('T')[0] : rowData.dob,
+          gender: rowData.gender,
+          grade: parseInt(rowData.grade),
+          subject: rowData.subject || null,
+          mobileNumber: rowData.mobileNumber.toString(),
+          specification: rowData.specification.trim(),
+          email: rowData.email.trim()
+        });
+      }
+    });
+
+    // Process valid mentors
+    const results = {
+      total: mentors.length + errorCount,
+      success: 0,
+      errors: errors,
+      successfulInserts: []
+    };
+
+    if (mentors.length > 0) {
+      for (const mentor of mentors) {
+        let transaction = null;
+        try {
+          // Start transaction using the db.js beginTransaction method
+          transaction = await db.promise().beginTransaction();
+
+          // Get current mentor count for roll number generation
+          const countResult = await transaction.query(`SELECT COUNT(*) AS mentor_count FROM Mentors`);
+          const mentorCount = countResult[0].mentor_count + 1;
+          const newRoll = `M${String(mentorCount).padStart(3, '0')}`;
+
+          // Check if user already exists
+          const existingUser = await transaction.query(
+            `SELECT * FROM Users WHERE phone = ?`,
+            [mentor.mobileNumber]
+          );
+
+          if (existingUser.length === 0) {
+            // New user - hash DOB for password
+            const hashedPassword = await bcrypt.hash(mentor.dob, 12);
+
+            await transaction.query(
+              `INSERT INTO Users (name, email, phone, password_hash, roles)
+               VALUES (?, ?, ?, ?, ?)`,
+              [mentor.name, mentor.email, mentor.mobileNumber, hashedPassword, 'Mentor']
+            );
+
+            await transaction.query(
+              `INSERT INTO facultyattendance (phone, total_days, on_duty_days, leave_days)
+               VALUES (?, '1', '0', '0')`,
+              [mentor.mobileNumber]
+            );
+          }
+
+          // Insert into Mentors table
+          await transaction.query(
+            `INSERT INTO Mentors (roll, phone, user_type, specification, dob, grade_id)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [newRoll, mentor.mobileNumber, 'Mentor', mentor.specification, mentor.dob, mentor.grade]
+          );
+
+          await transaction.commit();
+          transaction = null;
+          
+          results.success++;
+          results.successfulInserts.push({
+            roll: newRoll,
+            name: mentor.name,
+            mobile: mentor.mobileNumber
+          });
+
+        } catch (dbError) {
+          if (transaction) {
+            try {
+              await transaction.rollback();
+            } catch (rollbackError) {
+              console.error('Rollback error:', rollbackError);
+            }
+          }
+          console.error('Database error for mentor:', mentor.name, dbError);
+          results.errors.push({
+            row: 'N/A',
+            data: mentor,
+            errors: ['Database insertion failed: ' + dbError.message]
+          });
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Bulk upload completed. ${results.success} mentors enrolled successfully.`,
+      successfulUploads: results.success,
+      failedUploads: results.errors.length,
+      results: results
+    });
+
+  } catch (error) {
+    console.error('Error in bulk mentor upload:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process bulk upload',
+      error: error.message
+    });
+  }
+};
+
+exports.bulkUploadStudents = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+
+    const worksheet = workbook.getWorksheet('Student Enrollment Template');
+    if (!worksheet) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid template. Please use the student enrollment template.'
+      });
+    }
+
+    const students = [];
+    const errors = [];
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Skip header row, start from row 2
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // Skip header
+
+      const rowData = {
+        name: row.getCell(1).value,
+        fatherName: row.getCell(2).value,
+        dob: row.getCell(3).value,
+        gender: row.getCell(4).value,
+        grade: row.getCell(5).value,
+        section: row.getCell(6).value,
+        mobileNumber: row.getCell(7).value,
+        // aadharNo: row.getCell(8).value,
+        // emisNo: row.getCell(9).value,
+        // bloodGroup: row.getCell(10).value,
+        // motherName: row.getCell(11).value,
+        // fatherMobile: row.getCell(12).value,
+        // motherMobile: row.getCell(13).value,
+        // address: row.getCell(14).value,
+        // pincode: row.getCell(15).value
+      };
+
+      // Validate required fields
+      const validationErrors = [];
+      if (!rowData.name || typeof rowData.name !== 'string' || rowData.name.trim() === '') {
+        validationErrors.push('Name is required');
+      }
+      if (!rowData.fatherName || typeof rowData.fatherName !== 'string' || rowData.fatherName.trim() === '') {
+        validationErrors.push('Father name is required');
+      }
+      if (!rowData.dob) {
+        validationErrors.push('Date of birth is required');
+      }
+      if (!rowData.gender || !['Male', 'Female', 'Other'].includes(rowData.gender)) {
+        validationErrors.push('Gender must be Male, Female, or Other');
+      }
+      if (!rowData.grade) {
+        validationErrors.push('Grade is required');
+      }
+      if (!rowData.section || typeof rowData.section !== 'string' || rowData.section.trim() === '') {
+        validationErrors.push('Section is required');
+      }
+      // if (!rowData.mobileNumber || !/^\d{10}$/.test(rowData.mobileNumber.toString())) {
+      //   validationErrors.push('Valid 10-digit mobile number is required');
+      // }
+      // if (!rowData.motherName || typeof rowData.motherName !== 'string' || rowData.motherName.trim() === '') {
+      //   validationErrors.push('Mother name is required');
+      // }
+      // if (!rowData.fatherMobile || !/^\d{10}$/.test(rowData.fatherMobile.toString())) {
+      //   validationErrors.push('Valid 10-digit father mobile is required');
+      // }
+
+      // // Validate optional fields
+      // if (rowData.aadharNo && !/^\d{12}$/.test(rowData.aadharNo.toString())) {
+      //   validationErrors.push('Aadhar number must be 12 digits');
+      // }
+      // if (rowData.motherMobile && !/^\d{10}$/.test(rowData.motherMobile.toString())) {
+      //   validationErrors.push('Mother mobile must be 10 digits');
+      // }
+      // if (rowData.pincode && !/^\d{6}$/.test(rowData.pincode.toString())) {
+      //   validationErrors.push('Pincode must be 6 digits');
+      // }
+
+      if (validationErrors.length > 0) {
+        errors.push({
+          row: rowNumber,
+          data: rowData,
+          errors: validationErrors
+        });
+        errorCount++;
+      } else {
+        students.push({
+          ...rowData,
+          name: rowData.name.trim(),
+          fatherName: rowData.fatherName.trim(),
+          dob: typeof rowData.dob === 'object' ? rowData.dob.toISOString().split('T')[0] : rowData.dob,
+          gender: rowData.gender,
+          grade: parseInt(rowData.grade),
+          section: rowData.section.trim(),
+          mobileNumber: rowData.mobileNumber.toString(),
+          // aadharNo: rowData.aadharNo ? rowData.aadharNo.toString() : null,
+          // emisNo: rowData.emisNo ? rowData.emisNo.toString() : null,
+          // bloodGroup: rowData.bloodGroup ? rowData.bloodGroup.toString() : null,
+          // motherName: rowData.motherName.trim(),
+          // fatherMobile: rowData.fatherMobile.toString(),
+          // motherMobile: rowData.motherMobile ? rowData.motherMobile.toString() : null,
+          // address: rowData.address ? rowData.address.toString() : null,
+          // pincode: rowData.pincode ? rowData.pincode.toString() : null
+        });
+      }
+    });
+
+    // Process valid students
+    const results = {
+      total: students.length + errorCount,
+      success: 0,
+      errors: errors,
+      successfulInserts: []
+    };
+
+    if (students.length > 0) {
+      const con = db.promise();
+
+      for (const student of students) {
+        try {
+          // Get section ID
+          const [sectionResult] = await con.query(
+            `SELECT id FROM Sections WHERE grade_id = ? AND section_name = ?`,
+            [student.grade, student.section]
+          );
+
+          if (sectionResult.length === 0) {
+            results.errors.push({
+              row: 'N/A',
+              data: student,
+              errors: [`Section '${student.section}' not found for grade ${student.grade}`]
+            });
+            continue;
+          }
+
+          const sectionId = sectionResult[0].id;
+
+          // Get mentor for this section
+          const [mentorResult] = await con.query(
+            `SELECT id FROM Mentors WHERE section_id = ? LIMIT 1`,
+            [sectionId]
+          );
+
+          const mentorId = mentorResult.length > 0 ? mentorResult[0].id : null;
+
+          // Get student count for roll number generation
+          const [studentCountResult] = await con.query(`
+            SELECT COUNT(*) AS student_count
+            FROM Students
+            JOIN Sections sec ON Students.section_id = sec.id
+            WHERE sec.grade_id = ?
+          `, [student.grade]);
+
+          let studentCount = studentCountResult[0].student_count || 0;
+          studentCount++; // new student
+          const rollNumber = `S${student.grade}${(1000 + studentCount).toString().substring(1)}`;
+
+          // Start transaction
+          const connection = await con.beginTransaction();
+
+          try {
+            // Check if user already exists
+            const existingUser = await connection.query(
+              `SELECT * FROM Users WHERE phone = ?`,
+              [student.mobileNumber]
+            );
+
+            const getSectionSubjects = await connection.query(
+              `SELECT DISTINCT subject_id FROM section_subject_activities WHERE section_id = ?`,
+              [sectionId]
+            );
+            const subjectIDs = getSectionSubjects.map(subject => subject.subject_id);
+
+            if (existingUser.length > 0) {
+              // User exists - update roles if needed
+              let roles = existingUser[0].roles;
+              if (!roles.includes('Student')) {
+                roles = roles + ',Student';
+              }
+
+              await connection.query(
+                `UPDATE Users SET roles = ? WHERE phone = ?`,
+                [roles, student.mobileNumber]
+              );
+
+              await connection.query(
+                `INSERT INTO Students (name, dob, gender, section_id, father_mob, roll, mentor_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [student.name, student.dob, student.gender, sectionId, student.mobileNumber, rollNumber, mentorId]
+              );
+
+              await connection.query(
+                `INSERT INTO studentattendance (roll, total_days, on_duty, leave_days)
+                 VALUES (?, '1', '0', '0')`,
+                [rollNumber]
+              );
+
+              // Insert into student_subjects table
+              for (const subjectID of subjectIDs) {
+                await connection.query(
+                  `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
+                 VALUES (?, ?, ?, ?, ?)`,
+                  [rollNumber, subjectID, '1', sectionId, 'OnGoing']
+                );
+              }
+            } else {
+              const hashedPassword = await bcrypt.hash(student.dob, 12);
+
+              await connection.query(
+                `INSERT INTO Users (name, email, phone, password_hash, roles)
+                 VALUES (?, ?, ?, ?, ?)`,
+                [student.fatherName, `${rollNumber}.student@school.com`, student.mobileNumber, hashedPassword, 'Student']
+              );
+
+              await connection.query(
+                `INSERT INTO Students (name, dob, gender, section_id, father_mob, roll, mentor_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [student.name, student.dob, student.gender, sectionId, student.fatherMobile, rollNumber, mentorId]
+              );
+
+              await connection.query(
+                `INSERT INTO studentattendance (roll, total_days, on_duty, leave_days)
+                 VALUES (?, '1', '0', '0')`,
+                [rollNumber]
+              );
+
+              for (const subjectID of subjectIDs) {
+                await connection.query(
+                  `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
+                 VALUES (?, ?, ?, ?, ?)`,
+                  [rollNumber, subjectID, '1', sectionId, 'OnGoing']
+                );
+              }
+            }
+
+            await connection.commit();
+            results.success++;
+            results.successfulInserts.push({
+              roll: rollNumber,
+              name: student.name,
+              mobile: student.mobileNumber
+            });
+
+          } catch (dbError) {
+            await connection.rollback();
+            console.error('Database error for student:', student.name, dbError);
+            results.errors.push({
+              row: 'N/A',
+              data: student,
+              errors: ['Database insertion failed: ' + dbError.message]
+            });
+          }
+
+        } catch (error) {
+          console.error('Error processing student:', student.name, error);
+          results.errors.push({
+            row: 'N/A',
+            data: student,
+            errors: ['Processing failed: ' + error.message]
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Bulk upload completed. ${results.success} students enrolled successfully.`,
+      results: results
+    });
+
+  } catch (error) {
+    console.error('Error in bulk student upload:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process bulk upload',
+      error: error.message
+    });
+  }
+};
 

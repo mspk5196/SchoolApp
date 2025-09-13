@@ -1097,7 +1097,8 @@ exports.getPeriodActivities = (req, res) => {
                             activity_instructions: activity.activity_instructions
                         };
                     });
-
+                    console.log('Activities with Hierarchy:', (activitiesWithHierarchy));
+                    
                 res.json({
                     success: true,
                     data: activitiesWithHierarchy
@@ -1826,23 +1827,46 @@ exports.getStudentSchedule = async (req, res) => {
             // Check if this student has a period activity for this time slot
             const activityQuery = `
                 SELECT 
-                    pa.id as period_activity_id, pa.start_time, pa.end_time, ds.subject_id, ds.venue_id, m.roll as mentor_roll,
-                    pa.batch_id, u.name as mentor_name, sb.batch_name, sb.batch_level,
-                    pa.ssa_sub_activity_id, pa.topic_id, pa.section_id, pa.assigned_mentor_id, 
+                    acs.id as period_activity_id, acs.start_time, acs.end_time, ds.subject_id, ds.venue_id, m.roll as mentor_roll,
+                    acs.batch_id, u.name as mentor_name, sb.batch_name, sb.batch_level,
+                    acs.ssa_sub_activity_id, acs.topic_id, acs.section_id, acs.assigned_mentor_id, 
                     sa.sub_act_name, at.activity_type, th.topic_name, th.parent_id,
-                    pa.activity_name, pa.activity_type as period_activity_type
-                FROM period_activities pa
+                    acs.activity_name, acs.activity_type as period_activity_type
+                FROM academic_sessions acs
+                LEFT JOIN period_activities pa ON acs.pa_id = pa.id
                 JOIN daily_schedule ds ON ds.id = pa.dsn_id
-                JOIN student_batch_assignments sba ON sba.batch_id = pa.batch_id AND sba.student_roll = ? AND sba.is_current = '1'
+                JOIN student_batch_assignments sba ON sba.batch_id = acs.batch_id AND sba.student_roll = ? AND sba.is_current = '1'
                 JOIN section_batches sb ON sb.id = sba.batch_id
-                LEFT JOIN mentors m ON pa.assigned_mentor_id = m.id
+                LEFT JOIN mentors m ON acs.assigned_mentor_id = m.id
                 LEFT JOIN users u ON m.phone = u.phone
-                LEFT JOIN topic_hierarchy th ON pa.topic_id = th.id
-                LEFT JOIN ssa_sub_activities sssa ON pa.ssa_sub_activity_id = sssa.id
+                LEFT JOIN topic_hierarchy th ON acs.topic_id = th.id
+                LEFT JOIN ssa_sub_activities sssa ON acs.ssa_sub_activity_id = sssa.id
                 LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
                 LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
                 LEFT JOIN activity_types at ON ssa.activity_type = at.id
-                WHERE pa.dsn_id = ?;
+                WHERE pa.dsn_id = ?
+
+                UNION ALL
+
+                SELECT 
+                    ass.id as period_activity_id, ass.start_time, ass.end_time, ds.subject_id, ds.venue_id, m.roll as mentor_roll,
+                    ass.batch_id, u.name as mentor_name, sb.batch_name, sb.batch_level,
+                    ass.ssa_sub_activity_id, ass.topic_id, ass.section_id, ass.assigned_mentor_id, 
+                    sa.sub_act_name, at.activity_type, th.topic_name, th.parent_id,
+                    ass.activity_name, ass.activity_type as period_activity_type
+                FROM assessment_sessions ass
+                LEFT JOIN period_activities pa ON ass.pa_id = pa.id
+                JOIN daily_schedule ds ON ds.id = pa.dsn_id
+                JOIN student_batch_assignments sba ON sba.batch_id = ass.batch_id AND sba.student_roll = ? AND sba.is_current = '1'
+                JOIN section_batches sb ON sb.id = sba.batch_id
+                LEFT JOIN mentors m ON ass.assigned_mentor_id = m.id
+                LEFT JOIN users u ON m.phone = u.phone
+                LEFT JOIN topic_hierarchy th ON ass.topic_id = th.id
+                LEFT JOIN ssa_sub_activities sssa ON ass.ssa_sub_activity_id = sssa.id
+                LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
+                LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
+                LEFT JOIN activity_types at ON ssa.activity_type = at.id
+                WHERE pa.dsn_id = ?
             `;
             const [activityResult] = await db.promise().query(activityQuery, [studentRoll, schedule.daily_schedule_id]);
 
@@ -2326,9 +2350,13 @@ exports.generateScheduleTemplate = async (req, res) => {
                     [gradeId]
                 ),
                 dbPromise.query(
-                    `SELECT m.id, u.name, m.roll, m.subject_id
+                    `SELECT m.id, u.name, m.roll, msa.subject_id, sub.subject_name, sec.section_name
            FROM mentors m 
            JOIN users u ON m.phone = u.phone
+           LEFT JOIN mentor_section_assignments msa ON m.id = msa.mentor_id
+           LEFT JOIN section_mentor_subject sms ON msa.id = sms.msa_id
+           LEFT JOIN subjects sub ON msa.subject_id = sub.id
+           LEFT JOIN sections sec ON sms.section_id = sec.id
            WHERE m.grade_id = ?`,
                     [gradeId]
                 ),
@@ -2477,7 +2505,7 @@ exports.generateScheduleTemplate = async (req, res) => {
             if (!subjectMentorMap[mentor.subject_id]) {
                 subjectMentorMap[mentor.subject_id] = [];
             }
-            subjectMentorMap[mentor.subject_id].push(`${mentor.name} (${mentor.roll})`);
+            subjectMentorMap[mentor.subject_id].push(`${mentor.name} (${mentor.roll}) [Section ${mentor.section_name}-${mentor.subject_name}]`);
         });
 
         // Helper function to build topic hierarchy path
@@ -2521,7 +2549,7 @@ exports.generateScheduleTemplate = async (req, res) => {
         const batchLevels = batchesData.map(b => `[${b.subject_name}] ${b.batch_level}`);
         const activityTypes = activitiesData.map(a => a.activity_type);
         const subActivityNames = subActivitiesData.map(s => s.sub_act_name);
-        const mentorDisplayNames = mentorsData.map(m => `${m.name} (${m.roll})`);
+        const mentorDisplayNames = mentorsData.map(m => `${m.name} (${m.roll}) [Section ${m.section_name}-${m.subject_name}]`);
 
         // Create topic hierarchy display
         const topicHierarchy = topicsData.map(topic => {
@@ -2549,7 +2577,7 @@ exports.generateScheduleTemplate = async (req, res) => {
                 allowBlank: false,
                 formulae: [subjectRange],
                 showErrorMessage: true,
-                errorStyle: 'error',
+                errorStyle: 'error', 
                 errorTitle: 'Invalid Subject',
                 error: 'Please select a valid subject from the dropdown list.'
             };

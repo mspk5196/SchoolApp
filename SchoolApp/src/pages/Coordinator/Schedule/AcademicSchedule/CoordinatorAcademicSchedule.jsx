@@ -13,6 +13,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
 import { API_URL } from '../../../../utils/env';
 import styles from './AcademicScheduleSty';
@@ -101,10 +102,12 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         {
           headers: { 'Content-Type': 'application/json' }
         }
-      );
+      );  
 
       const result = await response.json();
-      if (result.success) {
+      if (result.success && Array.isArray(result.data)) {
+        console.log('Fetched activities:', result.data);
+         
         setPeriodActivities(result.data);
       } else {
         Alert.alert('Error', result.message || 'Failed to fetch activities.');
@@ -265,15 +268,15 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
       ]}>
         <View style={styles.calendarHeader}>
           <TouchableOpacity onPress={() => changeMonth(-1)}>
-            {/* <Icon name="chevron-left" size={28} color={styles.chevronIcon.color} /> */}
-            <Text style={styles.chevronIcon}>{"◀️"}</Text>
+            <Icon name="chevron-left" size={28} color={styles.chevronIcon.color} />
+            {/* <Text style={styles.chevronIcon}>◀️</Text> */}
           </TouchableOpacity>
           <Text style={styles.monthYear}>
             {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </Text>
           <TouchableOpacity onPress={() => changeMonth(1)}>
-            {/* <Icon name="chevron-right" size={28} color={styles.chevronIcon.color} /> */}
-            <Text style={styles.chevronIcon}>{"▶️"}</Text>
+            <Icon name="chevron-right" size={28} color={styles.chevronIcon.color} />
+            {/* <Text style={styles.chevronIcon}>▶️</Text> */}
           </TouchableOpacity>
           {calendarMinimized && (
             <TouchableOpacity
@@ -284,7 +287,8 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
               style={styles.expandButton}
             >
               {/* <Icon name="chevron-down" size={16} color={styles.expandIcon.color} /> */}
-              <Text style={styles.expandIcon}>{"⬇️"}</Text>
+              <Ionicons name="chevron-down-outline" color={styles.expandIcon.color} size={24}/>
+              {/* <Text style={styles.expandIcon}>⬇️</Text> */}
             </TouchableOpacity>
           )}
         </View>
@@ -391,26 +395,20 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View style={styles.periodTime}>
-                    <Text style={styles.timeText}>{String(item.timeStart || '')}</Text>
+                    <Text style={styles.timeText}>{item.timeStart || ''}</Text>
                     <Text style={styles.timeSeparator}>-</Text>
-                    <Text style={styles.timeText}>{String(item.timeEnd || '')}</Text>
+                    <Text style={styles.timeText}>{item.timeEnd || ''}</Text>
                   </View>
 
                   <View style={styles.periodInfo}>
-                    <Text style={styles.subjectName}>{String(item.subject_name || '')}</Text>
-                    <Text style={styles.venueText}>{String(item.venue_name || '')}</Text>
-                    <Text style={styles.sectionText}>Section {String(item.section_name || '')}</Text>
+                    <Text style={styles.subjectName}>{item.subject_name || ''}</Text>
+                    <Text style={styles.venueText}>{item.venue_name || ''}</Text>
+                    <Text style={styles.sectionText}>Section {item.section_name || ''}</Text>
                   </View>
                 </View>
 
                 <View style={styles.periodActions}>
-                  {/* <Icon
-                    name="chevron-down"
-                    size={22}
-                    color={styles.expandIndicator.color}
-                    style={isExpanded && styles.expandIndicatorRotated}
-                  /> */}
-                  <Text style={isExpanded && styles.expandIndicatorRotated}>{"⬇️"}</Text>
+                  <Ionicons name="chevron-down-outline" color={styles.expandIndicator.color} size={24} style={isExpanded && styles.expandIndicatorRotated}/>
                 </View>
               </TouchableOpacity>
 
@@ -418,7 +416,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                 <View style={styles.periodEditorContentContainer}>
                   <View style={styles.inlineEditorHeader}>
                     <Text style={styles.inlineEditorTitle}>
-                      Period Activities: {String(item.subject_name || '')}
+                      Period Activities: {item.subject_name || ''}
                     </Text>
                     {/* <TouchableOpacity
                       onPress={() => {
@@ -428,7 +426,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                       style={styles.closeInlineButton}
                     >
                       <Icon name="close-circle" size={24} color={styles.closeInlineIcon.color} />
-                      <Text style={styles.closeInlineIcon}>{"❌"}</Text>
+                      
                     </TouchableOpacity> */}
                   </View>
 
@@ -451,24 +449,24 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                           {periodActivities.map((activity) => (
                             <View key={activity.id} style={styles.activityItem}>
                               <View style={styles.activityHeader}>
-                                <Text style={styles.activityType}>{String(activity.activity_type || 'Unknown')}</Text>
-                                <Text style={styles.activityDuration}>{String(activity.start_time || '')} - {String(activity.end_time || '')}</Text>
-                                {activity.duration && <Text style={styles.activityDuration}>{String(activity.duration)} min</Text>}
+                                <Text style={styles.activityType}>{activity.activity_type || 'Unknown'}</Text>
+                                <Text style={styles.activityDuration}>{activity.start_time || ''} - {activity.end_time || ''}</Text>
+                                {/* {activity.duration && } */}
+                                <Text style={styles.activityDuration}>{activity.duration} min</Text>
                               </View>
-                              {activity.batch_number ? <Text style={styles.activityBatch}>Batch {String(activity.batch_number)}</Text> : null}
-                              {activity.mentor_name ? <Text style={styles.activityMentor}>Mentor: {String(activity.mentor_name)}</Text> : null}
-                              {/* Using 'item' for venue_name if needed, assuming activity doesn't have it directly */}
-                              {item.venue_name ? <Text style={styles.venueText}>Venue: {String(item.venue_name)}</Text> : null}
+                              {activity.batch_number ? <Text style={styles.activityBatch}>Batch {activity.batch_number}</Text> : null}
+                              {activity.mentor_name ? <Text style={styles.activityMentor}>Mentor: {activity.mentor_name}</Text> : null}
+                              {item.venue_name ? <Text style={styles.venueText}>Venue: {item.venue_name}</Text> : null}
                               {activity.topic_name ? (
                                 <Text style={styles.activityTopic}>
                                   Topic: {activity.topic_hierarchy_path && activity.topic_hierarchy_path !== null
-                                    ? `${String(activity.topic_name || '')} (${String(activity.topic_hierarchy_path || '')})`
-                                    : String(activity.topic_name || '')}
+                                    ? `${activity.topic_name || ''} (${activity.topic_hierarchy_path || ''})`
+                                    : activity.topic_name || ''}
                                 </Text>
                               ) : null}
                               {activity.has_assessment ? (
                                 <Text style={styles.assessmentBadge}>
-                                  {String(activity.assessment_type || 'Assessment')} ({String(activity.total_marks || 0)} marks)
+                                  {activity.assessment_type || 'Assessment'} ({activity.total_marks || 0} marks)
                                 </Text>
                               ) : null}
                             </View>
@@ -484,8 +482,8 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                           setShowTimeBasedModal(true);
                         }}
                       >
-                        {/* <Icon name="clock" size={16} color={styles.quickActionIcon.color} style={styles.quickActionIcon} /> */}
-                        <Text style={styles.quickActionIcon}>{"🕒"}</Text>
+                        <Icon name="clock" size={16} color={styles.quickActionIcon.color} style={styles.quickActionIcon} />
+                   
                         <Text style={styles.quickActionText}>Time-Based Creator</Text>
                       </TouchableOpacity>
                     </View>
@@ -541,7 +539,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                 styles.sectionTabText,
                 activeSection === section.id && styles.activeSectionTabText
               ]}>
-                Section {String(section.section_name || '')}
+                Section {section.section_name || ''}
               </Text>
             </TouchableOpacity>
           ))}

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Platform, Alert, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Platform, Alert, Modal, ActivityIndicator, PermissionsAndroid } from 'react-native';
 import DocumentPicker from 'react-native-document-picker';
 import { launchImageLibrary } from 'react-native-image-picker';
+import RNFS from 'react-native-fs';
 import CalenderIcon from '../../../../assets/CoordinatorPage/StudentMentorEnrollment/Calender.svg';
 import BackIcon from '../../../../assets/CoordinatorPage/StudentMentorEnrollment/Back.svg';
 import PlusIcon from '../../../../assets/CoordinatorPage/StudentMentorEnrollment/Plus.svg';
@@ -21,7 +22,7 @@ const MentorEnrollment = ({ navigation, route }) => {
     grade: '',
     section: '',
     subject: '',
-    mobileNumber: '',
+    mobileNumber: '', 
     specification: '',
     profileImage: null,
   });
@@ -33,6 +34,8 @@ const MentorEnrollment = ({ navigation, route }) => {
   const [showSectionModal, setShowSectionModal] = useState(false);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [uploadedDocuments, setUploadedDocuments] = useState([]);
+  const [showUploadOptionsModal, setShowUploadOptionsModal] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [gradeOptions, setGradeOptions] = useState([]);
   const [sectionOptions, setSectionOptions] = useState([]);
@@ -233,6 +236,159 @@ const MentorEnrollment = ({ navigation, route }) => {
 
     setErrors(newErrors);
     return isValid;
+  };
+
+  const handleUploadOptions = () => {
+    setShowUploadOptionsModal(true);
+  };
+
+  const handleGenerateTemplate = async () => {
+    try {
+      setIsLoading(true);
+
+      // Request permissions for Android
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'Storage Permission',
+            message: 'App needs access to your storage to download the template',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        // if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        //   Alert.alert('Permission Denied', 'Storage permission is required to download the template');
+        //   return;
+        // }
+      }
+
+      const response = await fetch(`${API_URL}/api/coordinator/enrollment/generate-mentor-enroll-template`, {
+        method: 'GET'
+      });
+
+      console.log('Template response status:', response.status);
+      console.log('Template response headers:', response.headers);
+
+      if (response.ok) {
+        // Get the blob data
+        const blob = await response.blob();
+        const base64Data = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(',')[1]);
+          reader.readAsDataURL(blob);
+        });
+
+        // Define download path
+        const downloadPath = Platform.OS === 'ios' 
+          ? `${RNFS.DocumentDirectoryPath}/mentor_enrollment_template.xlsx`
+          : `${RNFS.DownloadDirectoryPath}/mentor_enrollment_template.xlsx`;
+
+        // Write file
+        await RNFS.writeFile(downloadPath, base64Data, 'base64');
+
+        Alert.alert(
+          'Success', 
+          `Template downloaded successfully!\nSaved to: ${Platform.OS === 'ios' ? 'Files app' : 'Downloads folder'}`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Error', errorData.message || 'Failed to generate template');
+      }
+    } catch (error) {
+      console.error('Template generation error:', error);
+      Alert.alert('Error', 'Failed to generate template. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setShowUploadOptionsModal(false);
+    }
+  };
+
+  const handleUploadDocument = async () => {
+    try {
+      const result = await DocumentPicker.pick({
+        type: [DocumentPicker.types.xlsx],
+        allowMultiSelection: false,
+      });
+
+      if (result && result.length > 0) {
+        setIsLoading(true);
+        const formData = new FormData();
+        formData.append('excelFile', {
+          uri: result[0].uri,
+          name: result[0].name,
+          type: result[0].type,
+        });
+
+        const response = await fetch(`${API_URL}/api/coordinator/enrollment/bulk-upload-mentors`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        console.log('Upload response status:', response.status);
+
+        if (!response.ok) {
+          // Try to get error message from response
+          const errorText = await response.text();
+          console.log('Error response:', errorText);
+          
+          let errorMessage = 'Failed to upload mentors';
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || errorMessage;
+          } catch (parseError) {
+            console.error('Error parsing error response:', parseError);
+            errorMessage = 'Server error occurred';
+          }
+          
+          Alert.alert('Error', errorMessage);
+          return;
+        }
+
+        const data = await response.json();
+        console.log('Upload response data:', data);
+
+        if (data.success) {
+          const successMessage = data.message || `Successfully uploaded ${data.successfulUploads || 0} mentors.`;
+          let alertMessage = successMessage;
+          
+          if (data.failedUploads > 0) {
+            alertMessage += `\n${data.failedUploads} upload(s) failed.`;
+          }
+          
+          Alert.alert('Success', alertMessage);
+          
+          // Show detailed errors if any
+          if (data.results && data.results.errors && data.results.errors.length > 0) {
+            const errorDetails = data.results.errors.slice(0, 5).map(error => 
+              `Row ${error.row}: ${error.errors.join(', ')}`
+            ).join('\n');
+            
+            Alert.alert(
+              'Upload Details', 
+              `${errorDetails}${data.results.errors.length > 5 ? '\n...and more' : ''}`
+            );
+          }
+        } else {
+          Alert.alert('Error', data.message || 'Failed to upload mentors');
+        }
+      }
+    } catch (error) {
+      if (DocumentPicker.isCancel(error)) {
+        console.log('User cancelled document picker');
+      } else {
+        console.error('Document upload error:', error);
+        Alert.alert('Error', 'Failed to upload document. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+      setShowUploadOptionsModal(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -578,11 +734,11 @@ const MentorEnrollment = ({ navigation, route }) => {
           <Text style={styles.label}>Documents<Text style={styles.requiredAsterisk}>*</Text></Text>
           <TouchableOpacity
             style={styles.uploadButton}
-            onPress={pickDocument}
+            onPress={handleUploadOptions}
           >
             <Text style={styles.uploadButtonText}>
-              Upload Mentor{'\n'}
-              <Text style={styles.uploadButtonSubtext}>details from sheet</Text>
+              Upload Documents{'\n'}
+              <Text style={styles.uploadButtonSubtext}>Choose upload method</Text>
             </Text>
           </TouchableOpacity>
 
@@ -606,6 +762,47 @@ const MentorEnrollment = ({ navigation, route }) => {
             </View>
           )}
         </View>
+
+        {/* Upload Options Modal */}
+        <Modal
+          transparent={true}
+          visible={showUploadOptionsModal}
+          animationType="fade"
+          onRequestClose={() => setShowUploadOptionsModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowUploadOptionsModal(false)}
+          >
+            <View style={styles.uploadOptionsModal}>
+              <Text style={styles.uploadOptionsTitle}>Choose Upload Method</Text>
+
+              <TouchableOpacity
+                style={styles.uploadOptionButton}
+                onPress={handleGenerateTemplate}
+              >
+                <Text style={styles.uploadOptionButtonText}>📄 Generate Excel Template</Text>
+                <Text style={styles.uploadOptionButtonSubtext}>Download a pre-formatted Excel template with all required columns</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.uploadOptionButton}
+                onPress={handleUploadDocument}
+              >
+                <Text style={styles.uploadOptionButtonText}>📤 Upload Filled Document</Text>
+                <Text style={styles.uploadOptionButtonSubtext}>Upload an Excel file with mentor data already filled in</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.uploadOptionCancelButton}
+                onPress={() => setShowUploadOptionsModal(false)}
+              >
+                <Text style={styles.uploadOptionCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </ScrollView>
 
       <View style={styles.footer}>

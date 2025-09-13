@@ -488,6 +488,7 @@ exports.runBatchReallocation = async (req, res) => {
                 sba.student_roll,
                 sba.batch_id as current_batch_id,
                 sb.batch_level as current_level,
+                sba.assigned_by,
                 COALESCE(AVG(stp.last_assessment_score), 0) as avg_score,
                 COUNT(CASE WHEN stp.status = 'Completed' THEN 1 END) as completed_topics
             FROM student_batch_assignments sba
@@ -495,7 +496,7 @@ exports.runBatchReallocation = async (req, res) => {
             LEFT JOIN student_topic_progress stp ON sba.student_roll = stp.student_roll 
                 AND stp.subject_id = sb.subject_id
             WHERE sb.section_id = ? AND sb.subject_id = ? AND sba.is_current = 1
-            GROUP BY sba.student_roll, sba.batch_id, sb.batch_level
+            GROUP BY sba.student_roll, sba.batch_id, sb.batch_level, sba.assigned_by
         `;
 
         db.query(getStudentsSQL, [sectionId, subjectId], (error1, students) => {
@@ -549,6 +550,7 @@ exports.runBatchReallocation = async (req, res) => {
                             studentRoll: student.student_roll,
                             fromBatchId: student.current_batch_id,
                             toBatchId: targetBatch.id,
+                            coordinatorId: student.assigned_by,
                             reason: 'Performance-based reallocation'
                         });
                     }
@@ -596,7 +598,7 @@ exports.runBatchReallocation = async (req, res) => {
                             // Create new assignment
                             const insertNewSQL = 'INSERT INTO student_batch_assignments (student_roll, subject_id, batch_id, assigned_by, is_current) VALUES (?, ?, ?, ?, 1)';
                             
-                            db.query(insertNewSQL, [reallocation.studentRoll, subjectId, reallocation.toBatchId, 'system'], (error4) => {
+                            db.query(insertNewSQL, [reallocation.studentRoll, subjectId, reallocation.toBatchId, reallocation.coordinatorId], (error4) => {
                                 if (error4 && !hasError) {
                                     hasError = true;
                                     console.error('Error creating new assignment:', error4);

@@ -8,6 +8,8 @@ import Staff from '../../../../assets/CoordinatorPage/MentorMapping/staff.png';
 import Mentorimg from '../../../../assets/CoordinatorPage/MentorMapping/mentor.svg';
 
 const CoordinatorMentorDetails = ({ route, navigation }) => {
+  // console.log("hi");
+  
   const { mentor } = route.params;
   const tabs = ['Student', 'Subject Mentor'];
   const [activeTab, setActiveTab] = useState('Student');
@@ -32,7 +34,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
       });
 
       const data = await response.json();
-      console.log('Section students Data API Response:', data);
+      // console.log('Section students Data API Response:', data);
 
       if (data.success) {
         setStudents(data.sectionStudents);
@@ -50,11 +52,11 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeSubjects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sectionID: mentor.section_id }),
+        body: JSON.stringify({ sectionID: mentor.section_id }),  
       });
 
       const data = await response.json();
-      console.log('Section subjects Data API Response:', data);
+      // console.log('Section subjects Data API Response:', data);
 
       if (data.success) {
         const initializedSubjects = data.mentorSubjects.map(subject => ({
@@ -87,7 +89,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
       });
 
       const data = await response.json();
-      console.log('Subject mentor Data API Response:', data);
+      // console.log('Subject mentor Data API Response:', data);
 
       if (data.success) {
         setStaffMembers(data.enroledGradeSubjectMentor);
@@ -151,7 +153,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
   };
 
   const removeMentorStudents = async (mentorId, studentId) => {
-    console.log(mentorId, studentId);
+    // console.log(mentorId, studentId);
     
     try {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/removeMentorStudents`, {

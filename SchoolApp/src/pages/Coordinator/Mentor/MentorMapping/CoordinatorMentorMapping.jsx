@@ -27,6 +27,7 @@ import Nodata from '../../../../components/General/Nodata';
 import styles from './MentorMappingStyles';
 
 const CoordinatorMentorMapping = ({ navigation, route }) => {
+// console.log("hi");
 
   const { coordinatorData, activeGrade } = route.params;
 

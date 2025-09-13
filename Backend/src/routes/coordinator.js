@@ -352,4 +352,30 @@ router.post('/coordinator/schedule/process-schedule-sheet', uploadScheduleSheet.
 router.post('/coordinator/generate-student-wise-schedules-manual', ScheduleManagementController.generateStudentWiseSchedulesManual);
 // router.post('/coordinator/run-daily-schedule-update-manual', coordinatorController.runDailyScheduleUpdateManual);
 
+const enrollmentStorage = multer.memoryStorage();
+
+const uploadEnrollmentSheet = multer({ 
+  storage: enrollmentStorage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
+
+// Excel Template and Bulk Upload Routes
+router.get('/coordinator/enrollment/generate-mentor-enroll-template', coordinatorController.generateMentorTemplate);
+router.get('/coordinator/enrollment/generate-student-template', coordinatorController.generateStudentTemplate);
+router.post('/coordinator/enrollment/bulk-upload-mentors', uploadEnrollmentSheet.single('excelFile'), coordinatorController.bulkUploadMentors);
+router.post('/coordinator/enrollment/bulk-upload-students', uploadEnrollmentSheet.single('excelFile'), coordinatorController.bulkUploadStudents);
+
 module.exports = router;

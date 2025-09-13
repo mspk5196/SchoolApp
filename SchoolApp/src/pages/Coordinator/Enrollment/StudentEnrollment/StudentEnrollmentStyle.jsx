@@ -340,6 +340,75 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginLeft: 12,
   },
+
+  // Upload Options Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadOptionsModal: {
+    width: 320,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.3,
+    shadowRadius: 25,
+    elevation: 15,
+  },
+  uploadOptionsTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  uploadOptionButton: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  uploadOptionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 8,
+  },
+  uploadOptionButtonSubtext: {
+    fontSize: 14,
+    color: '#64748B',
+    lineHeight: 20,
+  },
+  uploadOptionCancelButton: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+  },
+  uploadOptionCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  uploadButtonSubtext: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#3B82F6',
+  },
 });
 
 export default styles;
