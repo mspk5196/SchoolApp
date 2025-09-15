@@ -51,68 +51,124 @@ const styles = StyleSheet.create({
     // flex: 1,
   },
 
-  // Session Information Card
+  // Simplified Status Section
+  statusSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: wp('4%'),
+    paddingVertical: hp('1.5%'),
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: wp('3%'),
+    paddingVertical: hp('0.8%'),
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  refreshIcon: {
+    fontSize: wp('4%'),
+    marginRight: wp('1.5%'),
+  },
+  refreshText: {
+    fontSize: wp('3.5%'),
+    fontWeight: '600',
+    color: '#374151',
+  },
+
+  // Simplified Session Card
   sessionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: wp('5%'),
+    borderRadius: 12,
+    padding: wp('4%'),
     marginHorizontal: wp('4%'),
     marginTop: hp('2%'),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
     borderLeftWidth: 4,
     borderLeftColor: '#3B82F6',
   },
   sessionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: hp('1.5%'),
+    alignItems: 'center',
+    marginBottom: hp('1%'),
   },
-  subjectContainer: {
+  sessionInfo: {
     flex: 1,
   },
   subject: {
-    fontSize: wp('5.5%'),
+    fontSize: wp('4.5%'),
     fontWeight: '700',
     color: '#1E293B',
-    marginBottom: hp('0.5%'),
+  },
+  sessionDetails: {
+    fontSize: wp('3.2%'),
+    color: '#64748B',
+    fontWeight: '500',
+    marginTop: hp('0.3%'),
+  },
+  sessionTime: {
+    fontSize: wp('3%'),
+    color: '#94A3B8',
+    marginTop: hp('0.2%'),
+  },
+  materialsButton: {
+    padding: wp('2%'),
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    marginLeft: wp('2%'),
+  },
+  materialsButtonText: {
+    fontSize: wp('4%'),
+  },
+  topicText: {
+    fontSize: wp('3.2%'),
+    color: '#475569',
+    fontWeight: '500',
+    marginTop: hp('1%'),
   },
   sessionMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: hp('0.5%'),
+    marginTop: hp('0.5%'),
   },
   gradeText: {
-    fontSize: wp('3.8%'),
+    fontSize: wp('3.5%'),
     color: '#64748B',
     fontWeight: '500',
   },
   academicBadge: {
     backgroundColor: '#EBF4FF',
-    paddingHorizontal: wp('2.5%'),
-    paddingVertical: hp('0.3%'),
-    borderRadius: 12,
+    paddingHorizontal: wp('2%'),
+    paddingVertical: hp('0.2%'),
+    borderRadius: 8,
     marginLeft: wp('2%'),
   },
   academicText: {
     color: '#3B82F6',
     fontWeight: '600',
-    fontSize: wp('3.2%'),
+    fontSize: wp('3%'),
   },
   timeContainer: {
     alignItems: 'flex-end',
   },
   timeText: {
-    fontSize: wp('4%'),
+    fontSize: wp('3.8%'),
     fontWeight: '600',
     color: '#475569',
   },
   durationText: {
-    fontSize: wp('3.2%'),
+    fontSize: wp('3%'),
     color: '#94A3B8',
     marginTop: hp('0.2%'),
   },
@@ -160,132 +216,241 @@ const styles = StyleSheet.create({
     marginTop: hp('2%'),
     flex: 1,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: hp('1.5%'),
-    paddingHorizontal: wp('1%'),
-  },
-  sectionTitle: {
-    fontSize: wp('4.5%'),
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  studentCount: {
-    fontSize: wp('3.5%'),
-    color: '#64748B',
-    fontWeight: '500',
-  },
 
   scrollContainer: {
     paddingBottom: hp('12%'),
   },
 
-  // Student Profile Card
-  profileCard: {
+  // Simplified Student Card Styles
+  studentCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: wp('4%'),
-    marginBottom: hp('1.5%'),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: 12,
+    padding: wp('3%'),
+    marginBottom: hp('1%'),
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  profileCardOnLeave: {
+  studentCardOnLeave: {
     backgroundColor: '#FEF3C7',
     borderColor: '#FBBF24',
   },
+  studentCardSelected: {
+    borderColor: '#3B82F6',
+    borderWidth: 2,
+    backgroundColor: '#EFF6FF',
+  },
+  checkboxContainer: {
+    marginRight: wp('3%'),
+  },
+  studentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   profileImg: {
-    width: wp('14%'),
-    height: wp('14%'),
-    borderRadius: wp('7%'),
-    marginRight: wp('4%'),
+    width: wp('12%'),
+    height: wp('12%'),
+    borderRadius: wp('6%'),
+    marginRight: wp('3%'),
     borderWidth: 2,
     borderColor: '#E2E8F0',
   },
-  studentInfo: {
+  studentDetails: {
     flex: 1,
   },
-  profileName: {
-    fontSize: wp('4.2%'),
+  studentHeader: {
+    marginBottom: hp('0.5%'),
+  },
+  studentName: {
+    fontSize: wp('4%'),
     fontWeight: '600',
     color: '#1E293B',
-    marginBottom: hp('0.3%'),
   },
-  profileId: {
-    fontSize: wp('3.5%'),
+  studentRoll: {
+    fontSize: wp('3.2%'),
     color: '#64748B',
     fontWeight: '500',
   },
-  leaveIndicator: {
+  performanceBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: wp('2.5%'),
+    paddingVertical: hp('0.3%'),
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+  },
+  performanceText: {
     fontSize: wp('3%'),
-    color: '#D97706',
     fontWeight: '600',
-    backgroundColor: '#FEF3C7',
+    color: '#374151',
+  },
+  leaveBadge: {
+    alignSelf: 'flex-start',
     paddingHorizontal: wp('2%'),
     paddingVertical: hp('0.2%'),
     borderRadius: 8,
-    marginTop: hp('0.5%'),
-    alignSelf: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    marginTop: hp('0.3%'),
   },
-
-  // Performance Selection
-  performanceContainer: {
-    flexDirection: 'column',
-    alignItems: 'flex-end',
+  leaveText: {
+    fontSize: wp('2.8%'),
+    color: '#D97706',
+    fontWeight: '600',
   },
-  performanceButtons: {
+  performanceActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    maxWidth: wp('35%'),
+    alignItems: 'center',
   },
-  perfButton: {
-    paddingHorizontal: wp('2.5%'),
-    paddingVertical: hp('0.8%'),
-    borderRadius: 20,
+  quickPerfButtons: {
+    flexDirection: 'row',
+  },
+  quickPerfButton: {
+    paddingHorizontal: wp('2%'),
+    paddingVertical: hp('0.4%'),
+    borderRadius: 12,
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     marginLeft: wp('1%'),
-    marginBottom: hp('0.5%'),
-    minWidth: wp('12%'),
+    minWidth: wp('8%'),
     alignItems: 'center',
   },
-  selectedPerfButton: {
+  selectedQuickPerfButton: {
     backgroundColor: '#10B981',
     borderColor: '#10B981',
   },
-  perfButtonText: {
+  quickPerfButtonText: {
     fontSize: wp('2.8%'),
     fontWeight: '600',
     color: '#64748B',
   },
-  selectedPerfButtonText: {
+  selectedQuickPerfButtonText: {
     color: '#FFFFFF',
   },
 
-  // Performance Status Display
-  performanceStatus: {
+  // Simplified Students Header
+  studentsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: hp('1.5%'),
+  },
+  selectAllRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  performanceText: {
+  selectAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectAllText: {
+    marginLeft: wp('1.5%'),
     fontSize: wp('3.5%'),
     fontWeight: '600',
+    color: '#374151',
+  },
+  selectedCount: {
+    marginLeft: wp('2%'),
+    fontSize: wp('3%'),
+    color: '#3B82F6',
+    fontWeight: '600',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: wp('2%'),
+    paddingVertical: hp('0.3%'),
+    borderRadius: 12,
+  },
+
+  // Bulk actions panel
+  bulkActionsPanel: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: wp('4%'),
+    marginHorizontal: wp('4%'),
+    marginBottom: hp('1%'),
+  },
+  bulkActionsTitle: {
+    fontSize: wp('4%'),
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: hp('1%'),
+  },
+  selectedStudentsPreview: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+    padding: wp('3%'),
+    marginBottom: hp('1.5%'),
+    borderLeftWidth: 3,
+    borderLeftColor: '#3B82F6',
+  },
+  selectedStudentsText: {
+    fontSize: wp('3.2%'),
+    color: '#1E40AF',
+    fontWeight: '500',
+  },
+  bulkPerformanceButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: hp('1.5%'),
+  },
+  bulkPerfButton: {
+    paddingHorizontal: wp('3%'),
+    paddingVertical: hp('1%'),
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    marginRight: wp('2%'),
+    marginBottom: hp('0.5%'),
+  },
+  selectedBulkPerfButton: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  bulkPerfButtonText: {
+    fontSize: wp('3.2%'),
+    fontWeight: '500',
+    color: '#374151',
+  },
+  selectedBulkPerfButtonText: {
+    color: '#FFFFFF',
+  },
+  bulkActionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  cancelBulkButton: {
+    paddingHorizontal: wp('4%'),
+    paddingVertical: hp('1%'),
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
     marginRight: wp('2%'),
   },
-  editButton: {
-    padding: wp('1.5%'),
-    borderRadius: 6,
-    backgroundColor: '#F3F4F6',
+  cancelBulkButtonText: {
+    fontSize: wp('3.5%'),
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  applyBulkButton: {
+    paddingHorizontal: wp('4%'),
+    paddingVertical: hp('1%'),
+    borderRadius: 8,
+    backgroundColor: '#3B82F6',
+  },
+  applyBulkButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  applyBulkButtonText: {
+    fontSize: wp('3.5%'),
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 
   // Action Buttons
@@ -549,6 +714,42 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: wp('3.8%'),
     fontWeight: '600',
+  },
+
+  // Progress Bar Styles
+  progressSection: {
+    marginTop: hp('2%'),
+  },
+  progressContainer: {
+    height: hp('0.8%'),
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: hp('1%'),
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#10B981',
+    borderRadius: 4,
+  },
+  progressInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressText: {
+    fontSize: wp('3.2%'),
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  timeLeftText: {
+    fontSize: wp('3.2%'),
+    color: '#3B82F6',
+    fontWeight: '600',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: wp('2%'),
+    paddingVertical: hp('0.3%'),
+    borderRadius: 8,
   },
 
   // Batch Organization Styles

@@ -452,7 +452,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                                 <Text style={styles.activityType}>{activity.activity_type || 'Unknown'}</Text>
                                 <Text style={styles.activityDuration}>{activity.start_time || ''} - {activity.end_time || ''}</Text>
                                 {/* {activity.duration && } */}
-                                <Text style={styles.activityDuration}>{activity.duration} min</Text>
+                                {/* <Text style={styles.activityDuration}>{activity.duration} min</Text> */}
                               </View>
                               {activity.batch_number ? <Text style={styles.activityBatch}>Batch {activity.batch_number}</Text> : null}
                               {activity.mentor_name ? <Text style={styles.activityMentor}>Mentor: {activity.mentor_name}</Text> : null}

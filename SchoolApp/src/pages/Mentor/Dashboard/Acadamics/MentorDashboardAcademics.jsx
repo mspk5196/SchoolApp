@@ -62,6 +62,12 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
   const [expandedBatches, setExpandedBatches] = useState({});
   const [statusCheckInterval, setStatusCheckInterval] = useState(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  
+  // Bulk selection states
+  const [selectedStudents, setSelectedStudents] = useState(new Set());
+  const [isSelectAllMode, setIsSelectAllMode] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [bulkSelectedPerformance, setBulkSelectedPerformance] = useState('');
 
   // Animation values
   const [slideAnim] = useState(new Animated.Value(hp('100%')));
@@ -612,87 +618,171 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
     return option ? option.color : '#64748B';
   };
 
+  // Bulk selection functions
+  const toggleStudentSelection = (studentRoll) => {
+    const newSelected = new Set(selectedStudents);
+    if (newSelected.has(studentRoll)) {
+      newSelected.delete(studentRoll);
+    } else {
+      newSelected.add(studentRoll);
+    }
+    setSelectedStudents(newSelected);
+    setShowBulkActions(newSelected.size > 0);
+  };
+
+  const toggleSelectAll = () => {
+    const availableStudents = students.filter(s => !s.has_approved_leave);
+    const availableRolls = availableStudents.map(s => s.student_roll);
+    
+    // Check if all available students are currently selected
+    const allSelected = availableRolls.every(roll => selectedStudents.has(roll));
+    
+    if (allSelected && selectedStudents.size === availableStudents.length) {
+      // If all are selected, deselect all
+      setSelectedStudents(new Set());
+      setShowBulkActions(false);
+    } else {
+      // Otherwise, select all available students
+      const allRolls = new Set(availableRolls);
+      setSelectedStudents(allRolls);
+      setShowBulkActions(true);
+    }
+  };
+
+  const applyBulkPerformance = () => {
+    if (!bulkSelectedPerformance || selectedStudents.size === 0) {
+      Alert.alert('Error', 'Please select students and performance level');
+      return;
+    }
+
+    // Show confirmation dialog with selected student count
+    Alert.alert(
+      'Confirm Bulk Update',
+      `Apply "${bulkSelectedPerformance}" to ${selectedStudents.size} selected students?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Apply', 
+          onPress: () => {
+            const newPerformances = { ...performances };
+            selectedStudents.forEach(roll => {
+              newPerformances[roll] = bulkSelectedPerformance;
+            });
+            setPerformances(newPerformances);
+            
+            // Clear selection and bulk actions
+            setSelectedStudents(new Set());
+            setShowBulkActions(false);
+            setBulkSelectedPerformance('');
+            
+            Alert.alert('Success', `Applied "${bulkSelectedPerformance}" to ${selectedStudents.size} students`);
+          }
+        }
+      ]
+    );
+  };
+
   const renderStudentCard = (student, index) => {
     const performance = performances[student.student_roll];
     const hasLeave = student.has_approved_leave;
-    
+    const isSelected = selectedStudents.has(student.student_roll);
+
     return (
       <View
         key={`student-${student.student_roll}-${index}`}
         style={[
-          styles.profileCard,
-          hasLeave && styles.profileCardOnLeave
+          styles.studentCard,
+          hasLeave && styles.studentCardOnLeave,
+          isSelected && styles.studentCardSelected
         ]}
       >
-        <Image
-          source={
-            student.profile_photo
-              ? { uri: `${API_URL}/${student.profile_photo}`.replace(/\\/g, '/') }
-              : Staff
-          }
-          style={styles.profileImg}
-        /> 
+        {/* Selection Checkbox */}
+        {!hasLeave && (
+          <TouchableOpacity
+            style={styles.checkboxContainer}
+            onPress={() => toggleStudentSelection(student.student_roll)}
+          >
+            <View style={[
+              styles.checkboxCircle,
+              isSelected && styles.checkboxSelected
+            ]}>
+              {isSelected && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+          </TouchableOpacity>
+        )}
 
+        {/* Student Info */}
         <View style={styles.studentInfo}>
-          <Text style={styles.profileName}>{student.student_name}</Text>
-          <Text style={styles.profileId}>{student.student_roll}</Text>
-          <Text style={styles.profileId}>{student.batch_name}</Text>
-          {hasLeave && (
-            <Text style={styles.leaveIndicator}>On Approved Leave</Text>
-          )}
-        </View>
+          {/* Profile Image */}
+          <Image
+            source={
+              student.profile_photo
+                ? { uri: `${API_URL}/${student.profile_photo}`.replace(/\\/g, '/') }
+                : Staff
+            }
+            style={styles.profileImg}
+          />
 
-        <View style={styles.performanceContainer}>
-          {hasLeave ? (
-            <View style={styles.performanceStatus}>
-              <Text style={[styles.performanceText, { color: '#D97706' }]}>
-                Absent
+          <View style={styles.studentDetails}>
+            <View style={styles.studentHeader}>
+              <Text style={styles.studentName}>{student.student_name}</Text>
+              <Text style={styles.studentRoll}>{student.student_roll}</Text>
+            </View>
+
+            {/* Performance Badge */}
+            <View style={styles.performanceBadge}>
+              <Text style={styles.performanceText}>
+                {hasLeave ? 'Absent' : (performance || 'Not Set')}
               </Text>
             </View>
-          ) : performance ? (
-            <View style={styles.performanceStatus}>
-              <Text
-                style={[
-                  styles.performanceText,
-                  { color: getPerformanceColor(performance) }
-                ]}
-              >
-                {performance}
-              </Text>
+
+            {/* Leave Status */}
+            {hasLeave && (
+              <View style={styles.leaveBadge}>
+                <Text style={styles.leaveText}>On Leave</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Performance Actions */}
+        {!hasLeave && (
+          <View style={styles.performanceActions}>
+            {performance ? (
               <TouchableOpacity
                 style={styles.editButton}
                 onPress={() => openFeedbackModal(student)}
               >
                 <Pencil width={wp('4%')} height={wp('4%')} />
               </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.performanceButtons}>
-              {performanceOptions.map(option => (
-                <TouchableOpacity
-                  key={option.key}
-                  style={[
-                    styles.perfButton,
-                    performance === option.key && styles.selectedPerfButton
-                  ]}
-                  onPress={() => setPerformances(prev => ({
-                    ...prev,
-                    [student.student_roll]: option.key
-                  }))}
-                >
-                  <Text
+            ) : (
+              <View style={styles.quickPerfButtons}>
+                {performanceOptions.slice(0, 3).map(option => (
+                  <TouchableOpacity
+                    key={option.key}
                     style={[
-                      styles.perfButtonText,
-                      performance === option.key && styles.selectedPerfButtonText
+                      styles.quickPerfButton,
+                      performance === option.key && styles.selectedQuickPerfButton
                     ]}
+                    onPress={() => setPerformances(prev => ({
+                      ...prev,
+                      [student.student_roll]: option.key
+                    }))}
                   >
-                    {option.short}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+                    <Text
+                      style={[
+                        styles.quickPerfButtonText,
+                        performance === option.key && styles.selectedQuickPerfButtonText
+                      ]}
+                    >
+                      {option.short}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
       </View>
     );
   };
@@ -882,133 +972,175 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         <Text style={styles.headerText}>Academic Session</Text>
       </View>
 
-      {/* Status Section */}
-      <View style={{ 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: wp('5%'),
-        paddingVertical: hp('1%'),
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-      }}>
+      {/* Status Section - Simplified */}
+      <View style={styles.statusSection}>
         <TouchableOpacity
-          style={[
-            styles.backButton, 
-            { 
-              backgroundColor: '#F1F5F9',
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: wp('3%')
-            }
-          ]}
+          style={styles.refreshButton}
           onPress={() => checkActivityStatus(true)}
           disabled={isCheckingStatus}
         >
           {isCheckingStatus ? (
             <ActivityIndicator size="small" color="#64748B" />
           ) : (
-            <Text style={{ fontSize: 16, marginRight: 4 }}>🔄</Text>
+            <Text style={styles.refreshIcon}>🔄</Text>
           )}
-          <Text style={{ color: '#64748B', fontSize: wp('3.5%'), fontWeight: '500' }}>
-            Refresh Status
-          </Text>
+          <Text style={styles.refreshText}>Refresh</Text>
         </TouchableOpacity>
-        
-        <View
-          style={[
-            styles.statusIndicator,
-            { backgroundColor: getStatusColor(activity?.status) }
-          ]}
-        >
-          <Text style={styles.statusText}>
-            {activity?.status || 'Loading'}
-          </Text>
+
+        <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(activity?.status) }]}>
+          <Text style={styles.statusText}>{activity?.status || 'Loading'}</Text>
         </View>
       </View>
 
-      {/* Session Information Card */}
+      {/* Session Information Card - Simplified */}
       <View style={styles.sessionCard}>
         <View style={styles.sessionHeader}>
-          <View style={styles.subjectContainer}>
+          <View style={styles.sessionInfo}>
             <Text style={styles.subject}>{activity?.subject || subject}</Text>
-            <View style={styles.sessionMeta}>
-              <Text style={styles.gradeText}>
-                Grade {activity?.grade || grade} - {activity?.section_name || section_name}
-              </Text>
-              <View style={styles.academicBadge}>
-                <Text style={styles.academicText}>{activity?.session_type || 'Academic'}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.timeContainer}>
-            <Text style={styles.timeText}>
-              {activity?.starttime || startTime} - {activity?.endtime || endTime}
+            <Text style={styles.sessionDetails}>
+              Grade {activity?.grade || grade} • {activity?.section_name || section_name} • {activity?.session_type || 'Academic'}
             </Text>
-            {(activity?.duration || duration) && (
-              <Text style={styles.durationText}>{activity?.duration || duration}</Text>
-            )}
+            <Text style={styles.sessionTime}>
+              {activity?.starttime || startTime} - {activity?.endtime || endTime}
+              {(activity?.duration || duration) && ` • ${activity?.duration || duration}`}
+            </Text>
           </View>
-        </View>
 
-        {/* Topic Hierarchy */}
-        {activity?.topic_hierarchy && (
-          <View style={styles.topicContainer}>
-            <Text style={styles.topicLabel}>Topic:</Text>
-            <Text style={styles.topicHierarchy}>{activity.topic_hierarchy}</Text>
-          </View>
-        )}
-
-        {/* Materials Button */}
-        {activity?.section_subject_activity_id && (
-          <View style={styles.materialsContainer}>
+          {activity?.section_subject_activity_id && (
             <TouchableOpacity
               style={styles.materialsButton}
               onPress={fetchMaterials}
               disabled={loadingMaterials}
             >
               <Text style={styles.materialsButtonText}>
-                {loadingMaterials ? 'Loading...' : 'View Materials'}
+                {loadingMaterials ? '...' : '📚'}
               </Text>
             </TouchableOpacity>
-          </View>
+          )}
+        </View>
+
+        {/* Topic Hierarchy - Compact */}
+        {activity?.topic_hierarchy && (
+          <Text style={styles.topicText}>📖 {activity.topic_hierarchy}</Text>
         )}
 
-        {/* Progress Bar for In Progress Sessions */}
+        {/* Progress Bar for In Progress Sessions - Simplified */}
         {activity?.status === 'In Progress' && (
-          <View style={{ marginTop: hp('2%') }}>
+          <View style={styles.progressSection}>
             <View style={styles.progressContainer}>
-              <View
-                style={[styles.progressBar, { width: `${sessionProgress}%` }]}
-              />
+              <View style={[styles.progressBar, { width: `${sessionProgress}%` }]} />
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={styles.progressText}>
-                Session Progress: {sessionProgress}%
-              </Text>
-              <Text style={[styles.progressText, { color: '#2563EB', fontWeight: 'bold' }]}>
-                {timeLeftString}
-              </Text>
-            </View>
+            <Text style={styles.progressText}>
+              {sessionProgress}% • {timeLeftString}
+            </Text>
           </View>
         )}
       </View>
 
-      {/* Students List */}
+      {/* Students List - Simplified */}
       <View style={styles.studentsContainer}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Students</Text>
-          <Text style={styles.studentCount}>
-            {students.length} student{students.length !== 1 ? 's' : ''}
+        <View style={styles.studentsHeader}>
+          <Text style={styles.sectionTitle}>
+            Students ({students.length})
           </Text>
+
+          {/* Select All Controls - Compact */}
+          {students.filter(s => !s.has_approved_leave).length > 0 && (
+            <View style={styles.selectAllRow}>
+              <TouchableOpacity
+                style={styles.selectAllButton}
+                onPress={toggleSelectAll}
+              >
+                <View style={[
+                  styles.checkboxCircle,
+                  (() => {
+                    const availableStudents = students.filter(s => !s.has_approved_leave);
+                    const availableRolls = availableStudents.map(s => s.student_roll);
+                    const allSelected = availableRolls.every(roll => selectedStudents.has(roll)) && availableRolls.length > 0;
+                    return allSelected && styles.checkboxSelected;
+                  })()
+                ]}>
+                  {(() => {
+                    const availableStudents = students.filter(s => !s.has_approved_leave);
+                    const availableRolls = availableStudents.map(s => s.student_roll);
+                    const allSelected = availableRolls.every(roll => selectedStudents.has(roll)) && availableRolls.length > 0;
+                    return allSelected && <Text style={styles.checkmark}>✓</Text>;
+                  })()}
+                </View>
+                <Text style={styles.selectAllText}>All</Text>
+              </TouchableOpacity>
+
+              {selectedStudents.size > 0 && (
+                <Text style={styles.selectedCount}>{selectedStudents.size}</Text>
+              )}
+            </View>
+          )}
         </View>
+
+        {/* Bulk Actions Panel */}
+        {showBulkActions && (
+          <View style={styles.bulkActionsPanel}>
+            <Text style={styles.bulkActionsTitle}>
+              Mark Performance for {selectedStudents.size} students:
+            </Text>
+            
+            {/* Show selected student names */}
+            <View style={styles.selectedStudentsPreview}>
+              <Text style={styles.selectedStudentsText}>
+                Selected: {students
+                  .filter(s => selectedStudents.has(s.student_roll))
+                  .map(s => s.student_name)
+                  .slice(0, 3)
+                  .join(', ')}
+                {selectedStudents.size > 3 && ` and ${selectedStudents.size - 3} more`}
+              </Text>
+            </View>
+            
+            <View style={styles.bulkPerformanceButtons}>
+              {performanceOptions.map(option => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.bulkPerfButton,
+                    bulkSelectedPerformance === option.key && styles.selectedBulkPerfButton
+                  ]}
+                  onPress={() => setBulkSelectedPerformance(option.key)}
+                >
+                  <Text
+                    style={[
+                      styles.bulkPerfButtonText,
+                      bulkSelectedPerformance === option.key && styles.selectedBulkPerfButtonText
+                    ]}
+                  >
+                    {option.key}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.bulkActionButtons}>
+              <TouchableOpacity
+                style={styles.cancelBulkButton}
+                onPress={() => {
+                  setSelectedStudents(new Set());
+                  setShowBulkActions(false);
+                  setBulkSelectedPerformance('');
+                }}
+              >
+                <Text style={styles.cancelBulkButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.applyBulkButton,
+                  !bulkSelectedPerformance && styles.applyBulkButtonDisabled
+                ]}
+                onPress={applyBulkPerformance}
+                disabled={!bulkSelectedPerformance}
+              >
+                <Text style={styles.applyBulkButtonText}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         <ScrollView
           style={{ flex: 1 }}
