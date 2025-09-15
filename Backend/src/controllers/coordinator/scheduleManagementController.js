@@ -1796,147 +1796,162 @@ exports.getSectionBatches = (req, res) => {
 
 
 // Get daily schedule for a specific student with overrides
-// Get daily schedule for a specific student with overrides
 exports.getStudentSchedule = async (req, res) => {
     const { date, studentRoll } = req.params;
 
     try {
+        // Get student's section
         const [student] = await db.promise().query('SELECT section_id FROM students WHERE roll = ?', [studentRoll]);
         if (student.length === 0) {
             return res.status(404).json({ success: false, message: 'Student not found' });
         }
         const sectionId = student[0].section_id;
 
-        // First get the basic daily schedule
-        const dailyScheduleQuery = `
+        // Single optimized query to get student's schedule with activities
+        const scheduleQuery = `
             SELECT DISTINCT
-                ds.id as daily_schedule_id, ds.date, ds.start_time as period_start_time, ds.end_time as period_end_time,
-                s.subject_name, v.name as venue_name, s.id as subject_id
+                ds.id as daily_schedule_id,
+                ds.date,
+                ds.start_time as period_start_time,
+                ds.end_time as period_end_time,
+                s.subject_name,
+                s.id as subject_id,
+                v.name as venue_name,
+                pa.id as period_activity_id,
+                COALESCE(acs.start_time, ass.start_time) as start_time,
+                COALESCE(acs.end_time, ass.end_time) as end_time,
+                COALESCE(acs.batch_id, ass.batch_id) as batch_id,
+                COALESCE(acs.mentor_id, ass.mentor_id) as mentor_id,
+                COALESCE(acs.ssa_sub_activity_id, ass.ssa_sub_activity_id) as ssa_sub_activity_id,
+                COALESCE(acs.topic_id, ass.topic_id) as topic_id,
+                COALESCE(u1.name, u2.name) as mentor_name,
+                COALESCE(m1.roll, m2.roll) as mentor_roll,
+                sb.batch_name,
+                sb.batch_level as batch_number,
+                th.topic_name,
+                sa.sub_act_name,
+                at.activity_type,
+                CASE WHEN ass.id IS NOT NULL THEN 'Assessment' ELSE 'Academic' END as session_type
             FROM daily_schedule ds
             JOIN subjects s ON ds.subject_id = s.id
             JOIN venues v ON ds.venue_id = v.id
-            WHERE ds.date = ? AND ds.section_id = ?
-            ORDER BY ds.start_time;
+            LEFT JOIN period_activities pa ON pa.dsn_id = ds.id
+            LEFT JOIN academic_sessions acs ON acs.pa_id = pa.id
+            LEFT JOIN assessment_sessions ass ON ass.pa_id = pa.id
+            LEFT JOIN student_batch_assignments sba ON (
+                sba.batch_id = COALESCE(acs.batch_id, ass.batch_id)
+                AND sba.student_roll = ?
+                AND sba.is_current = '1'
+            )
+            LEFT JOIN section_batches sb ON sb.id = COALESCE(acs.batch_id, ass.batch_id)
+            LEFT JOIN mentors m1 ON acs.mentor_id = m1.id
+            LEFT JOIN mentors m2 ON ass.mentor_id = m2.id
+            LEFT JOIN users u1 ON m1.phone = u1.phone
+            LEFT JOIN users u2 ON m2.phone = u2.phone
+            LEFT JOIN topic_hierarchy th ON COALESCE(acs.topic_id, ass.topic_id) = th.id
+            LEFT JOIN ssa_sub_activities sssa ON COALESCE(acs.ssa_sub_activity_id, ass.ssa_sub_activity_id) = sssa.id
+            LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
+            LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
+            LEFT JOIN activity_types at ON ssa.activity_type = at.id
+            WHERE ds.date = ? 
+            AND ds.section_id = ?
+            AND (pa.id IS NULL OR (acs.id IS NOT NULL OR ass.id IS NOT NULL))
+            AND (sba.batch_id IS NOT NULL OR pa.id IS NULL)
+            ORDER BY ds.start_time, COALESCE(acs.start_time, ass.start_time)
         `;
-        const [dailyScheduleResult] = await db.promise().query(dailyScheduleQuery, [date, sectionId]);
 
-        // For each daily schedule, get the student's specific period activities (based on their batch assignments)
-        const baseSchedule = [];
+        const [scheduleResult] = await db.promise().query(scheduleQuery, [studentRoll, date, sectionId]);
+
+        // Get all topics for hierarchy building
+        const subjectIds = [...new Set(scheduleResult.map(row => row.subject_id).filter(id => id))];
+        let allTopics = [];
         
-        for (const schedule of dailyScheduleResult) {
-            // Check if this student has a period activity for this time slot
-            const activityQuery = `
-                SELECT 
-                    acs.id as period_activity_id, acs.start_time, acs.end_time, ds.subject_id, ds.venue_id, m.roll as mentor_roll,
-                    acs.batch_id, u.name as mentor_name, sb.batch_name, sb.batch_level,
-                    acs.ssa_sub_activity_id, acs.topic_id, acs.section_id, acs.assigned_mentor_id, 
-                    sa.sub_act_name, at.activity_type, th.topic_name, th.parent_id,
-                    acs.activity_name, acs.activity_type as period_activity_type
-                FROM academic_sessions acs
-                LEFT JOIN period_activities pa ON acs.pa_id = pa.id
-                JOIN daily_schedule ds ON ds.id = pa.dsn_id
-                JOIN student_batch_assignments sba ON sba.batch_id = acs.batch_id AND sba.student_roll = ? AND sba.is_current = '1'
-                JOIN section_batches sb ON sb.id = sba.batch_id
-                LEFT JOIN mentors m ON acs.assigned_mentor_id = m.id
-                LEFT JOIN users u ON m.phone = u.phone
-                LEFT JOIN topic_hierarchy th ON acs.topic_id = th.id
-                LEFT JOIN ssa_sub_activities sssa ON acs.ssa_sub_activity_id = sssa.id
-                LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
-                LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
-                LEFT JOIN activity_types at ON ssa.activity_type = at.id
-                WHERE pa.dsn_id = ?
-
-                UNION ALL
-
-                SELECT 
-                    ass.id as period_activity_id, ass.start_time, ass.end_time, ds.subject_id, ds.venue_id, m.roll as mentor_roll,
-                    ass.batch_id, u.name as mentor_name, sb.batch_name, sb.batch_level,
-                    ass.ssa_sub_activity_id, ass.topic_id, ass.section_id, ass.assigned_mentor_id, 
-                    sa.sub_act_name, at.activity_type, th.topic_name, th.parent_id,
-                    ass.activity_name, ass.activity_type as period_activity_type
-                FROM assessment_sessions ass
-                LEFT JOIN period_activities pa ON ass.pa_id = pa.id
-                JOIN daily_schedule ds ON ds.id = pa.dsn_id
-                JOIN student_batch_assignments sba ON sba.batch_id = ass.batch_id AND sba.student_roll = ? AND sba.is_current = '1'
-                JOIN section_batches sb ON sb.id = sba.batch_id
-                LEFT JOIN mentors m ON ass.assigned_mentor_id = m.id
-                LEFT JOIN users u ON m.phone = u.phone
-                LEFT JOIN topic_hierarchy th ON ass.topic_id = th.id
-                LEFT JOIN ssa_sub_activities sssa ON ass.ssa_sub_activity_id = sssa.id
-                LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
-                LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
-                LEFT JOIN activity_types at ON ssa.activity_type = at.id
-                WHERE pa.dsn_id = ?
+        if (subjectIds.length > 0) {
+            const topicsQuery = `
+                SELECT id, parent_id, topic_name, subject_id
+                FROM topic_hierarchy 
+                WHERE subject_id IN (${subjectIds.map(() => '?').join(',')})
             `;
-            const [activityResult] = await db.promise().query(activityQuery, [studentRoll, schedule.daily_schedule_id]);
+            const [topicsResult] = await db.promise().query(topicsQuery, subjectIds);
+            allTopics = topicsResult;
+        }
 
-            // Get all topics for hierarchy building if we have topics
-            const topicIds = activityResult.map(activity => activity.topic_id).filter(id => id);
-            let allTopics = [];
-            
-            if (topicIds.length > 0) {
-                const topicsQuery = `
-                    SELECT id, parent_id, topic_name, subject_id
-                    FROM topic_hierarchy 
-                    WHERE subject_id = ?
-                `;
-                const [topicsResult] = await db.promise().query(topicsQuery, [schedule.subject_id]);
-                allTopics = topicsResult;
+        // Build hierarchy path function
+        const buildHierarchyPath = (topicId, topics, path = []) => {
+            const topic = topics.find(t => t.id === topicId);
+            if (!topic) return path;
+
+            path.unshift(topic.topic_name);
+
+            if (topic.parent_id) {
+                return buildHierarchyPath(topic.parent_id, topics, path);
             }
 
-            // Build hierarchy path function
-            const buildHierarchyPath = (topicId, topics, path = []) => {
-                const topic = topics.find(t => t.id === topicId);
-                if (!topic) return path;
+            return path;
+        };
 
-                path.unshift(topic.topic_name);
+        // Process results and remove duplicates
+        const processedActivities = new Map(); // Use Map to track unique activities
+        
+        for (const row of scheduleResult) {
+            // Create unique key for deduplication
+            const uniqueKey = `${row.daily_schedule_id}-${row.period_activity_id || 'base'}-${row.start_time || row.period_start_time}-${row.batch_id || 'nobatch'}`;
+            
+            if (processedActivities.has(uniqueKey)) {
+                continue; // Skip duplicate
+            }
 
-                if (topic.parent_id) {
-                    return buildHierarchyPath(topic.parent_id, topics, path);
-                }
+            let topicHierarchyPath = null;
+            if (row.topic_id && allTopics.length > 0) {
+                const hierarchyPath = buildHierarchyPath(row.topic_id, allTopics);
+                topicHierarchyPath = hierarchyPath.length > 0 ? hierarchyPath.join(' > ') : row.topic_name;
+            }
 
-                return path;
+            const scheduleItem = {
+                daily_schedule_id: row.daily_schedule_id,
+                date: row.date,
+                period_start_time: row.period_start_time,
+                period_end_time: row.period_end_time,
+                subject_name: row.subject_name,
+                subject_id: row.subject_id,
+                venue_name: row.venue_name,
+                period_activity_id: row.period_activity_id,
+                start_time: row.start_time || row.period_start_time,
+                end_time: row.end_time || row.period_end_time,
+                batch_id: row.batch_id,
+                mentor_id: row.mentor_id,
+                assigned_mentor_id: row.mentor_id,
+                ssa_sub_activity_id: row.ssa_sub_activity_id,
+                topic_id: row.topic_id,
+                mentor_name: row.mentor_name,
+                mentor_roll: row.mentor_roll,
+                batch_name: row.batch_name,
+                batch_number: row.batch_number,
+                topic_name: row.topic_name,
+                topic_hierarchy_path: topicHierarchyPath,
+                sub_activity_name: row.sub_act_name,
+                activity_type: row.activity_type,
+                session_type: row.session_type,
+                section_id: sectionId,
+                venue_id: row.venue_id,
+                activity_name: row.activity_type,
+                period_activity_type: row.sub_act_name
             };
 
-            // Combine daily schedule with student's specific activity (if any)
-            for (const activity of activityResult) {
-                let topicHierarchyPath = null;
-                
-                if (activity.topic_id && allTopics.length > 0) {
-                    const hierarchyPath = buildHierarchyPath(activity.topic_id, allTopics);
-                    topicHierarchyPath = hierarchyPath.length > 0 ? hierarchyPath.join(' > ') : activity.topic_name;
-                }
-
-                const scheduleItem = {
-                    ...schedule,
-                    period_activity_id: activity.period_activity_id,
-                    start_time: activity.start_time,
-                    end_time: activity.end_time,
-                    batch_id: activity.batch_id,
-                    mentor_name: activity.mentor_name,
-                    topic_name: activity.topic_name,
-                    topic_hierarchy_path: topicHierarchyPath,
-                    batch_name: activity.batch_name,
-                    batch_number: activity.batch_level,
-                    ssa_sub_activity_id: activity.ssa_sub_activity_id,
-                    topic_id: activity.topic_id,
-                    section_id: activity.section_id,
-                    assigned_mentor_id: activity.assigned_mentor_id,
-                    sub_activity_name: activity.sub_act_name,
-                    activity_type: activity.activity_type,
-                    subject_id: activity.subject_id,
-                    subject_name: schedule.subject_name,
-                    venue_id: activity.venue_id,
-                    activity_name: activity.activity_name,
-                    period_activity_type: activity.period_activity_type,
-                    mentor_roll: activity.mentor_roll
-                };
-
-                baseSchedule.push(scheduleItem);
-            }
+            processedActivities.set(uniqueKey, scheduleItem);
         }
+
+        // Convert Map to array and sort
+        const finalSchedule = Array.from(processedActivities.values());
+        finalSchedule.sort((a, b) => {
+            const timeA = a.start_time || a.period_start_time;
+            const timeB = b.start_time || b.period_start_time;
+            return timeA.localeCompare(timeB);
+        });
+
+        console.log(`Student Schedule: Found ${finalSchedule.length} unique activities for ${studentRoll} on ${date}`);
         
-        res.json({ success: true, schedule: baseSchedule });
+        res.json({ success: true, schedule: finalSchedule });
 
     } catch (error) {
         console.error("Error fetching student schedule:", error);

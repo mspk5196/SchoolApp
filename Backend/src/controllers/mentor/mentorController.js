@@ -2993,6 +2993,8 @@ exports.checkOverdueLevels = checkOverdueLevels;
 // Get materials for a topic
 exports.getTopicMaterials = async (req, res) => {
   try {
+    console.log("Fetching materials with params:", req.query);
+    
     const { section_subject_activity_id, topic_id, batch_id } = req.query;
 
     if (!section_subject_activity_id) {
@@ -3009,7 +3011,6 @@ exports.getTopicMaterials = async (req, res) => {
         m.file_name,
         m.file_url,
         m.activity_name as title,
-        tcd.expected_completion_date,
         m.created_at AS uploaded_at,
         t.topic_name,
         sa.sub_act_name AS sub_activity,
@@ -3020,7 +3021,6 @@ exports.getTopicMaterials = async (req, res) => {
     LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
     LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
     LEFT JOIN activity_types act ON ssa.activity_type = act.id
-    JOIN topic_completion_dates tcd ON m.topic_id = tcd.topic_id AND tcd.batch_id = ?
       WHERE m.topic_id = ?
       ORDER BY m.file_type ASC, m.activity_name ASC
     `;
@@ -3029,7 +3029,7 @@ exports.getTopicMaterials = async (req, res) => {
     
     
     try {
-      const [results] = await db.promise().query(query, [batch_id, topic_id]);
+      const [results] = await db.promise().query(query, [topic_id]);
       console.log(results);
 
       // Group materials by level and type - but since we don't have level, group by type
