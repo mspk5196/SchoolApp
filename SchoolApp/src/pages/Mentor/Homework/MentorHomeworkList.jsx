@@ -36,9 +36,15 @@ const MentorHomeworkList = ({ navigation, route }) => {
             title: item.grade_name,
             subject: {
               name: item.subject_name,
-              level: `Level ${item.level}`,
-              status: item.notCom_count != 0 ||item.redo_count != 0 ? 'Evaluate' : 'Evaluated',
-              homeworkId: item.id
+              topic: item.topic_name || 'No Topic',
+              batch: item.batch_name || 'No Batch',
+              section: item.section_name,
+              status: item.notCom_count != 0 || item.redo_count != 0 ? 'Evaluate' : 'Evaluated',
+              homeworkId: item.id,
+              totalStudents: item.total_students,
+              doneCount: item.done_count,
+              redoCount: item.redo_count,
+              notComCount: item.notCom_count
             }
           });
 
@@ -121,9 +127,20 @@ const MentorHomeworkList = ({ navigation, route }) => {
                         {grade.subjects.map((subject, sIdx) => (
                           <View key={sIdx} style={styles.subjectRow}>
                             <Book width={20} height={20} />
-                            <Text style={styles.subjectText}>
-                              {subject.name} – {subject.level}
-                            </Text>
+                            <View style={styles.subjectInfo}>
+                              <Text style={styles.subjectText}>
+                                {subject.name} – {subject.section}
+                              </Text>
+                              <Text style={styles.topicText}>
+                                Topic: {subject.topic}
+                              </Text>
+                              <Text style={styles.batchText}>
+                                Batch: {subject.batch}
+                              </Text>
+                              <Text style={styles.statsText}>
+                                Students: {subject.totalStudents} | Done: {subject.doneCount} | Redo: {subject.redoCount} | Pending: {subject.notComCount}
+                              </Text>
+                            </View>
                             <Text
                               onPress={() => handleSubjectPress(subject.homeworkId, subject.status)}
                               style={[

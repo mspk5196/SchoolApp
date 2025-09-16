@@ -86,3 +86,5 @@ app.json
 Gemfile
 index.js
 jest.config.js
+
+firebase.js

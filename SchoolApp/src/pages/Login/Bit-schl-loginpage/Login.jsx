@@ -22,13 +22,14 @@ import Tickicon from '../../../assets/ParentPage/basic-img/tick.svg';
 import Tickbox from '../../../assets/ParentPage/basic-img/tickbox.svg';
 import EyeOn from '../../../assets/FirstPage/login-page/img/eye-svgrepo-com.svg';
 import EyeOff from '../../../assets/FirstPage/login-page/img/eye-slash-svgrepo-com.svg';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+// import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../../utils/env.js';
 import { encryptPassword } from '../../../components/Login/encrypt/encryptPassword';
-import Config from 'react-native-config';
+import { GoogleSignInService } from '../../../utils/googleSignIn';
+// import Config from 'react-native-config';
 
 const Login = () => {
     const navigation = useNavigation();
@@ -78,6 +79,57 @@ const Login = () => {
         } catch (error) {
             console.error('Login error:', error);
             Alert.alert('Something went wrong');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        // if (!checked) {
+        //     Alert.alert("Please accept the Privacy Policy");
+        //     return;
+        // }
+
+        setIsLoading(true);
+
+        try {
+            // Sign in with Google using Firebase
+            const { idToken, user } = await GoogleSignInService.signInWithGoogle();
+
+            // Send the Firebase ID token to your backend
+            const response = await fetch(`${API_URL}/api/google-login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken }),
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                Alert.alert(data.message || 'Google login failed');
+                await GoogleSignInService.signOut(); // Sign out on failure
+                return;
+            }
+
+            // Store user data
+            await AsyncStorage.setItem('userRoles', JSON.stringify(data.user.roles));
+            await AsyncStorage.setItem('userPhone', JSON.stringify(data.user.phone || ''));
+            await AsyncStorage.setItem('userEmail', JSON.stringify(data.user.email || ''));
+
+            // Navigate to the app
+            navigation.navigate('Redirect', { 
+                email: data.user.email,
+                isGoogleLogin: true 
+            });
+
+        } catch (error) {
+            console.error('Google login error:', error);
+            if (error.code === 'sign_in_cancelled') {
+                // User cancelled the sign-in
+                console.log('User cancelled Google Sign-In');
+            } else {
+                Alert.alert('Google Sign-In failed', 'Please try again');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -167,7 +219,11 @@ const Login = () => {
 
                             <Text style={styles.googletext}>Login with Google</Text>
 
-                            <Pressable style={styles.googleauthcontainer}>
+                            <Pressable 
+                                style={[styles.googleauthcontainer, isLoading && { opacity: 0.7 }]}
+                                onPress={handleGoogleLogin}
+                                disabled={isLoading}
+                            >
                                 <Googleicon height={18} width={18} style={styles.googleicon} />
                                 <Text style={styles.googleauthtext}>Continue with Google</Text>
                             </Pressable>

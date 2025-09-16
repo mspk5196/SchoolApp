@@ -79,16 +79,35 @@ const styles = StyleSheet.create({
   },
   subjectRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: hp('0.8%'),
     gap: wp('3%'),
-    flexWrap: 'wrap',
+    paddingVertical: hp('1%'),
+  },
+  subjectInfo: {
+    flex: 1,
+    flexDirection: 'column',
   },
   subjectText: {
     fontSize: wp('4%'),
-    flex: 1,
-    flexBasis: 'auto',
-    color:'#323F49'
+    fontWeight: '600',
+    color: '#323F49',
+    marginBottom: hp('0.3%'),
+  },
+  topicText: {
+    fontSize: wp('3.5%'),
+    color: '#666',
+    marginBottom: hp('0.2%'),
+  },
+  batchText: {
+    fontSize: wp('3.5%'),
+    color: '#666',
+    marginBottom: hp('0.2%'),
+  },
+  statsText: {
+    fontSize: wp('3.2%'),
+    color: '#888',
+    fontStyle: 'italic',
   },
   statusText: {
     fontSize: wp('3.8%'),

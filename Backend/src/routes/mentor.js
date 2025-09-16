@@ -1,9 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const mentorController = require('../controllers/mentor/mentorController');
-router.get('/mentor/activity/:activityId/assessment', mentorController.getAssessmentActivityDetails);
-router.post('/mentor/activity/:activityId/assessment/finish', mentorController.finishAssessmentActivity);
-router.post('/mentor/activity/:activityId/assessment/complete', mentorController.completeAssessmentActivity)
 const surveyController = require('../controllers/mentor/survey');
 const HomeworkController = require('../controllers/mentor/homeworkController');
 const AssessmentController = require('../controllers/mentor/assessmentController');
@@ -87,15 +84,6 @@ router.post('/mentor/getSubjectsForGradeSection', mentorController.getSubjectsFo
 router.post('/mentor/getStudentsForGradeSection', mentorController.getStudentsForGradeSection);
 router.post('/mentor/createAssessmentRequest', mentorController.createAssessmentRequest);
 
-//Homework
-
-router.get('/mentor/getHomeworkList', mentorController.getHomeworkList);
-router.get('/mentor/getHomeworkDetails', mentorController.getHomeworkDetails);
-router.post('/mentor/updateHomeworkStatus', mentorController.bulkUpdateHomeworkStatus);
-router.get('/mentor/getLevels', mentorController.getLevels);
-router.post('/mentor/addHomework', mentorController.addHomework);
-router.post('/mentor/getSectionSubjects', mentorController.getSectionSubjects);
-
 //Dashboard
 // Fetches the daily schedule for a mentor from period_activities
 router.post('/mentor/daily-schedule', mentorController.getMentorDailySchedule);
@@ -128,13 +116,10 @@ router.post('/mentor/update-leave-days', mentorController.updateLeaveDays);
 
 //Dashboard Assessment
 
-// router.post('/mentor/getAssessmentSession', mentorController.getAssessmentSession);
-// router.post('/mentor/assessmentSessionStart', mentorController.assessmentSessionStart);
-// router.post('/mentor/getAssessmentStudents', mentorController.getAssessmentStudents);
-// router.post('/mentor/updateAssessmentMarks', mentorController.updateAssessmentMarks);
-// router.post('/mentor/getAssessmentMaterials', mentorController.getAssessmentMaterials);
-// router.post('/mentor/createTodayAssessmentSessions', mentorController.createTodayAssessmentSessions);
-// router.post('/mentor/getPassPercentage', mentorController.getPassPercentage);
+
+router.get('/mentor/activity/:activityId/assessment', mentorController.getAssessmentActivityDetails);
+router.post('/mentor/activity/:activityId/assessment/finish', mentorController.finishAssessmentActivity);
+router.post('/mentor/activity/:activityId/assessment/complete', mentorController.completeAssessmentActivity)
 router.post('/mentor/getAbsentees', mentorController.getAbsentees);
 
 //Edit Daily Schedule
@@ -150,15 +135,14 @@ router.post('/mentor/accept-task', mentorController.acceptTask);
 router.post('/mentor/checkOverdueLevels', mentorController.checkOverdueLevels);
 
 // Enhanced Homework Management Routes
-router.post('/homework/create', HomeworkController.createHomework);
-router.post('/homework/assign', HomeworkController.assignHomework);
-router.get('/homework/marking/:mentorId', HomeworkController.getHomeworkForMarking);
-router.patch('/homework/mark/:trackingId', HomeworkController.markHomework);
-router.get('/homework/student/:studentRoll', HomeworkController.getStudentHomework);
-router.patch('/homework/submit/:trackingId', HomeworkController.submitHomework);
-router.get('/homework/statistics/:subjectId/:gradeId/:sectionId', HomeworkController.getHomeworkStatistics);
-router.get('/homework/overdue/:mentorId', HomeworkController.getOverdueHomework);
-router.get('/homework/analytics/:gradeId/:subjectId', HomeworkController.getHomeworkAnalytics);
+//Homework
+
+router.get('/mentor/getHomeworkList', HomeworkController.getHomeworkList);
+router.get('/mentor/getHomeworkDetails', HomeworkController.getHomeworkDetails);
+router.post('/mentor/updateHomeworkStatus', HomeworkController.bulkUpdateHomeworkStatus);
+router.post('/mentor/addHomework', HomeworkController.addHomework);
+router.post('/mentor/getSectionSubjects', mentorController.getSectionSubjects);
+
 
 // Enhanced Assessment Management Routes
 router.post('/assessment/schedule', AssessmentController.scheduleAssessment);

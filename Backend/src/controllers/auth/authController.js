@@ -1,6 +1,7 @@
 const db = require('../../config/db');
 const bcrypt = require('bcrypt');
 const { decryptAES } = require('../../utils/decryptAES');
+const { verifyFirebaseToken } = require('../../config/firebase');
 
 exports.login = (req, res) => {
   const { phoneNumber, password } = req.body;
@@ -30,9 +31,51 @@ exports.login = (req, res) => {
   });
 };
 
-// SECURITY NOTE: Private key functions removed for security.
-// Private keys should NEVER be stored on the server - they should only exist 
-// locally on user devices to maintain end-to-end encryption.
+exports.googleLogin = async (req, res) => {
+  const { idToken } = req.body;
 
-// Removed: uploadPrivateKey and getPrivateKey functions 
-// These were security vulnerabilities that could compromise E2EE
+  try {
+    // Verify the Firebase ID token
+    const decodedToken = await verifyFirebaseToken(idToken);
+    const { email, name, uid } = decodedToken;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email not found in token' });
+    }
+
+    // Check if user exists in database
+    const query = 'SELECT * FROM Users WHERE email = ?';
+    db.query(query, [email], (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ success: false, message: 'Server error' });
+      }
+
+      if (results.length === 0) {
+        // User doesn't exist, you might want to create them or return an error
+        return res.status(401).json({ 
+          success: false, 
+          message: 'User not found. Please contact administrator to register your account.' 
+        });
+      }
+
+      const user = results[0];
+      const roles = user.roles.split(',').map(role => role.trim());
+      
+      res.json({ 
+        success: true, 
+        user: { 
+          id: user.id, 
+          name: user.name || name, 
+          email: user.email,
+          phone: user.phone, 
+          roles 
+        } 
+      });
+    });
+
+  } catch (error) {
+    console.error('Google login error:', error);
+    return res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+};

@@ -28,7 +28,7 @@ exports.getTopicHierarchy = (req, res) => {
             if (err) return res.status(500).json({ success: false });
             if (result.length === 0) return res.status(404).json({ success: false });
 
-            console.log('Hierarchy query result:', result);
+            // console.log('Hierarchy query result:', result);
 
             let hierarchy;
             if (Array.isArray(result) && result.length > 0) {
@@ -37,7 +37,7 @@ exports.getTopicHierarchy = (req, res) => {
                 hierarchy = [];
             }
 
-            console.log('Processed hierarchy data:', hierarchy);
+            // console.log('Processed hierarchy data:', hierarchy);
 
             // Build hierarchy path for each topic
             const buildHierarchyPath = (topicId, topics, path = []) => {
@@ -79,9 +79,9 @@ exports.getTopicHierarchy = (req, res) => {
                     }));
             };
 
-            const tree = buildTree(hierarchyWithPaths);
+            const tree = buildTree(hierarchyWithPaths); 
 
-            console.log('Built tree structure:', tree);
+            // console.log('Built tree structure:', tree);
             res.json({
                 success: true, data: {
                     overallData: hierarchyWithPaths,
@@ -157,7 +157,7 @@ exports.getTopicHierarchyByActivity = (req, res) => {
                     });
                 }
 
-                console.log('Hierarchy query result:', result);
+                // console.log('Hierarchy query result:', result);
 
                 // Build hierarchy path for each topic
                 const buildHierarchyPath = (topicId, topics, path = []) => {

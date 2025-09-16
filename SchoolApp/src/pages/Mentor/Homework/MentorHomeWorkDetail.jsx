@@ -14,7 +14,11 @@ import {
     ScrollView,
     Alert,
     RefreshControl,
-    ToastAndroid
+    ToastAndroid,
+    TextInput,
+    ActivityIndicator,
+    TouchableWithoutFeedback,
+    Keyboard
 } from 'react-native';
 import Done from '../../../assets/MentorPage/done.svg';
 import Redo from '../../../assets/MentorPage/redo.svg';
@@ -33,7 +37,12 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedItems, setSelectedItems] = useState([]);
     const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+    const [showRedoReasonModal, setShowRedoReasonModal] = useState(false);
+    const [showSingleRedoModal, setShowSingleRedoModal] = useState(false);
+    const [redoReason, setRedoReason] = useState('');
+    const [singleRedoReason, setSingleRedoReason] = useState('');
     const [pendingAction, setPendingAction] = useState(null);
+    const [currentStudentId, setCurrentStudentId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -64,24 +73,38 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
             if (data.success) {
                 setHomework({
                     subject: data.homework.subject_name,
-                    date: data.homework.date,
-                    level: `Level ${data.homework.level}`,
-                    section: data.homework.section_name
+                    date: data.homework.given_date,
+                    topic: data.homework.topic_name,
+                    batch: data.homework.batch_name,
+                    section: data.homework.section_name,
+                    grade: data.homework.grade_name
                 });
 
                 const formattedSubmissions = data.homework.submissions.map(sub => ({
                     id: sub.student_roll,
                     name: sub.student_name,
-                    date: sub.completed_date || '',
-                    done: sub.status === 'Done',
-                    redo: sub.status === 'Redo',
+                    date: sub.submission_date || '',
+                    done: sub.status === 'Marked_Complete',
+                    redo: sub.status === 'Redo' && sub.redo_count > 0,
+                    incomplete: sub.status === 'Marked_Incomplete' && (!sub.redo_count || sub.redo_count === 0),
+                    notCom: sub.status === 'Assigned' || sub.status === 'Submitted' || sub.status === 'Late_Submitted' || sub.status === 'Missing',
+                    status: sub.status,
+                    attempts_used: sub.attempts_used || 0,
+                    days_late: sub.days_late || 0,
                     redo_count: sub.redo_count || 0,
-                    lastChecked: sub.checked_date,
-                    notCom: sub.status === 'Not completed',
+                    redo_reason: sub.redo_reason || '',
+                    marked_date: sub.marked_date,
+                    submission_date: sub.submission_date,
+                    assigned_date: sub.assigned_date,
+                    due_date: sub.due_date,
+                    mentor_score: sub.mentor_score,
+                    mentor_feedback: sub.mentor_feedback,
                     profilePhoto: sub.profile_photo || Staff
                 }));
 
                 setSubmissions(formattedSubmissions);
+                console.log(formattedSubmissions);
+                
                 setRefreshing(false)
             }
         } catch (error) {
@@ -91,23 +114,50 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
         }
     };
 
-    // const handleMarkSelectedAsDone = () => {
-    //     setPendingAction('Done');
-    //     setShowEvaluationModal(true);
-    // };
-
-    // const handleMarkSelectedAsRedo = () => {
-    //     setPendingAction('Redo');
-    //     setShowEvaluationModal(true);
-    // };
-
     const confirmEvaluation = async () => {
         if (!pendingAction || selectedItems.length === 0) {
             Alert.alert('Error', 'Please select at least one submission and an action.');
             return;
         }
 
+        // If redo is selected, show reason modal
+        if (pendingAction === 'redo') {
+            setShowEvaluationModal(false);
+            setShowRedoReasonModal(true);
+            return;
+        }
+
+        await updateHomeworkStatus();
+    };
+
+    const confirmRedo = async () => {
+        if (!redoReason.trim()) {
+            Alert.alert('Error', 'Please provide a reason for redo.');
+            return;
+        }
+
+        setShowRedoReasonModal(false);
+        await updateHomeworkStatus();
+    };
+
+    const updateHomeworkStatus = async () => {
         try {
+            let status;
+            switch (pendingAction) {
+                case 'done':
+                    status = 'Marked_Complete';
+                    break;
+                case 'incomplete':
+                    status = 'Marked_Incomplete';
+                    break;
+                case 'redo':
+                    status = 'Redo';
+                    break;
+                default:
+                    Alert.alert('Error', 'Invalid action selected.');
+                    return;
+            }
+
             const response = await fetch(`${API_URL}/api/mentor/updateHomeworkStatus`, {
                 method: 'POST',
                 headers: {
@@ -116,7 +166,10 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                 body: JSON.stringify({
                     homeworkId,
                     studentRolls: selectedItems,
-                    status: pendingAction
+                    status: status,
+                    isRedo: pendingAction === 'redo',
+                    redoReason: pendingAction === 'redo' ? redoReason : null,
+                    mentorId: 1 // You should get this from route params or context
                 }),
             });
 
@@ -128,9 +181,14 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                         selectedItems.includes(submission.id)
                             ? {
                                 ...submission,
-                                done: pendingAction === 'Done',
-                                redo: pendingAction === 'Redo',
-                                date: pendingAction === 'Done' ? new Date().toLocaleDateString('en-GB') : ''
+                                done: pendingAction === 'done',
+                                redo: pendingAction === 'redo',
+                                incomplete: pendingAction === 'incomplete',
+                                notCom: false,
+                                status: status,
+                                marked_date: new Date().toISOString(),
+                                redo_reason: pendingAction === 'redo' ? redoReason : submission.redo_reason,
+                                redo_count: pendingAction === 'redo' ? (submission.redo_count || 0) + 1 : submission.redo_count
                             }
                             : submission
                     )
@@ -139,11 +197,17 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                 setSelectedItems([]);
                 setSelectionMode(false);
                 setShowEvaluationModal(false);
+                setShowRedoReasonModal(false);
                 setPendingAction(null);
+                setRedoReason('');
                 fetchHomeworkDetails(); // Refresh the homework details
+                Alert.alert('Success', 'Homework status updated successfully.');
+            } else {
+                Alert.alert('Error', data.message || 'Failed to update homework status.');
             }
         } catch (error) {
             console.error('Error updating homework status:', error);
+            Alert.alert('Error', 'Network error. Please try again.');
         }
     };
 
@@ -157,7 +221,9 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                 body: JSON.stringify({
                     homeworkId,
                     studentRolls: [id],
-                    status: 'Done'
+                    status: 'Marked_Complete',
+                    isRedo: false,
+                    mentorId: 1 // You should get this from route params or context
                 }),
             });
 
@@ -170,19 +236,87 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                                 ...submission,
                                 done: true,
                                 redo: false,
-                                date: new Date().toLocaleDateString('en-GB')
+                                incomplete: false,
+                                notCom: false,
+                                status: 'Marked_Complete',
+                                marked_date: new Date().toISOString()
                             }
                             : submission
                     )
                 );
                 fetchHomeworkDetails(); // Refresh the homework details
+                Alert.alert('Success', 'Homework marked as done successfully.');
+            } else {
+                Alert.alert('Error', data.message || 'Failed to update homework status.');
             }
         } catch (error) {
             console.error('Error marking as done:', error);
+            Alert.alert('Error', 'Network error. Please try again.');
         }
     };
 
     const handleMarkAsRedo = async (id) => {
+        setCurrentStudentId(id);
+        setSingleRedoReason('');
+        setShowSingleRedoModal(true);
+    };
+
+    const confirmSingleRedo = async () => {
+        if (!singleRedoReason.trim()) {
+            Alert.alert('Error', 'Please provide a reason for redo.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/api/mentor/updateHomeworkStatus`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    homeworkId,
+                    studentRolls: [currentStudentId],
+                    status: 'Redo',
+                    isRedo: true,
+                    redoReason: singleRedoReason,
+                    mentorId: 1
+                }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setSubmissions(
+                    submissions.map(submission =>
+                        submission.id === currentStudentId
+                            ? {
+                                ...submission,
+                                redo: true,
+                                done: false,
+                                incomplete: false,
+                                notCom: false,
+                                status: 'Redo',
+                                redo_reason: singleRedoReason,
+                                marked_date: new Date().toISOString(),
+                                redo_count: (submission.redo_count || 0) + 1
+                            }
+                            : submission
+                    )
+                );
+                setShowSingleRedoModal(false);
+                setSingleRedoReason('');
+                setCurrentStudentId(null);
+                fetchHomeworkDetails(); // Refresh the homework details
+                Alert.alert('Success', 'Homework marked for redo successfully.');
+            } else {
+                Alert.alert('Error', data.message || 'Failed to update homework status.');
+            }
+        } catch (error) {
+            console.error('Error marking as redo:', error);
+            Alert.alert('Error', 'Network error. Please try again.');
+        }
+    };
+
+    const handleMarkAsIncomplete = async (id) => {
         try {
             const response = await fetch(`${API_URL}/api/mentor/updateHomeworkStatus`, {
                 method: 'POST',
@@ -192,7 +326,9 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                 body: JSON.stringify({
                     homeworkId,
                     studentRolls: [id],
-                    status: 'Redo'
+                    status: 'Marked_Incomplete',
+                    isRedo: false,
+                    mentorId: 1
                 }),
             });
 
@@ -203,17 +339,24 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                         submission.id === id
                             ? {
                                 ...submission,
-                                redo: true,
                                 done: false,
-                                date: ''
+                                redo: false,
+                                incomplete: true,
+                                notCom: false,
+                                status: 'Marked_Incomplete',
+                                marked_date: new Date().toISOString()
                             }
                             : submission
                     )
                 );
                 fetchHomeworkDetails(); // Refresh the homework details
+                Alert.alert('Success', 'Homework marked as incomplete successfully.');
+            } else {
+                Alert.alert('Error', data.message || 'Failed to update homework status.');
             }
         } catch (error) {
-            console.error('Error marking as redo:', error);
+            console.error('Error marking as incomplete:', error);
+            Alert.alert('Error', 'Network error. Please try again.');
         }
     };
 
@@ -256,7 +399,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
             const fullImageUrl = `${API_URL}/${normalizedPath}`;
             return { uri: fullImageUrl };
         } else {
-            return Profile;
+            return Staff;
         }
     };
 
@@ -285,10 +428,17 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                     <Text style={styles.assignmentDate}>{convertToISTDate(homework.date)}</Text>
                 </View>
                 <View style={styles.assignmentDetails}>
-                    <View style={styles.levelBadge}>
-                        <Text style={styles.levelText}>{homework.level}</Text>
+                    <View style={styles.gradeSection}>
+                        <Text style={styles.gradeText}>{homework.grade} - {homework.section}</Text>
                     </View>
-                    <Text style={styles.sectionText}>Section {homework.section}</Text>
+                </View>
+                <View style={styles.topicBatchInfo}>
+                    <View style={styles.topicBadge}>
+                        <Text style={styles.topicText}>Topic: {homework.topic || 'No Topic'}</Text>
+                    </View>
+                    <View style={styles.batchBadge}>
+                        <Text style={styles.batchText}>Batch: {homework.batch || 'No Batch'}</Text>
+                    </View>
                 </View>
             </View>
         );
@@ -359,18 +509,47 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                         <Text style={styles.userName}>{item.name}</Text>
                         <Text style={styles.submissionDate}>{item.id}</Text>
                         {item.done ? (
-                            <Text style={{ color: 'green', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>Last Checked At: {convertUTCtoIST12hr(item.lastChecked)}</Text>
+                            <Text style={{ color: 'green', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>
+                                Marked Complete: {item.marked_date ? convertUTCtoIST12hr(item.marked_date) : 'N/A'}
+                            </Text>
                         ) : null}
-                        {item.notCom ? (
-                            <Text style={{ color: 'blue', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>Not Checked</Text>
-                        ) : null}
-                        {item.redo_count > 0 ? (
+                        {item.redo ? (
                             <View>
-                                <Text style={{ color: 'red', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>Redo Count: {item.redo_count}</Text>
-                                <Text style={{ color: 'green', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>Last Checked At: {convertUTCtoIST12hr(item.lastChecked)}</Text>
+                                <Text style={{ color: 'red', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>
+                                    Marked for Redo: {item.marked_date ? convertUTCtoIST12hr(item.marked_date) : 'N/A'}
+                                </Text>
+                                {item.redo_reason ? (
+                                    <Text style={{ color: 'red', fontSize: 10, marginTop: 2, width: 160, flexWrap: 'wrap', fontStyle: 'italic' }}>
+                                        Reason: {item.redo_reason}
+                                    </Text>
+                                ) : null}
+                                {item.redo_count > 0 ? (
+                                    <Text style={{ color: 'red', fontSize: 10, marginTop: 2, width: 160, flexWrap: 'wrap', fontWeight: 'bold' }}>
+                                        Redo Count: {item.redo_count}
+                                    </Text>
+                                ) : null}
                             </View>
                         ) : null}
-
+                        {item.incomplete ? (
+                            <Text style={{ color: 'orange', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>
+                                Marked Incomplete: {item.marked_date ? convertUTCtoIST12hr(item.marked_date) : 'N/A'}
+                            </Text>
+                        ) : null}
+                        {item.notCom ? (
+                            <Text style={{ color: 'blue', fontSize: 11, marginTop: 5, width: 160, flexWrap: 'wrap' }}>
+                                Status: {item.status}
+                            </Text>
+                        ) : null}
+                        {item.attempts_used > 0 ? (
+                            <Text style={{ color: 'orange', fontSize: 11, marginTop: 2, width: 160, flexWrap: 'wrap' }}>
+                                Attempts: {item.attempts_used}
+                            </Text>
+                        ) : null}
+                        {item.days_late > 0 ? (
+                            <Text style={{ color: 'red', fontSize: 11, marginTop: 2, width: 160, flexWrap: 'wrap' }}>
+                                Days Late: {item.days_late}
+                            </Text>
+                        ) : null}
                     </View>
                 </View>
 
@@ -388,6 +567,11 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                                     style={styles.actionButton}
                                     onPress={() => handleMarkAsRedo(item.id)}>
                                     <Redo />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.actionButton}
+                                    onPress={() => handleMarkAsIncomplete(item.id)}>
+                                    <Text style={styles.incompleteText}>INC</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.actionButton}
@@ -455,6 +639,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                                 onPress={() => setPendingAction('done')}
                             >
                                 <Done />
+                                <Text style={styles.modalOptionText}>Done</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -465,6 +650,18 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                                 onPress={() => setPendingAction('redo')}
                             >
                                 <Redo />
+                                <Text style={styles.modalOptionText}>Redo</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.modalOption,
+                                    pendingAction === 'incomplete' && styles.selectedOption
+                                ]}
+                                onPress={() => setPendingAction('incomplete')}
+                            >
+                                <Text style={styles.incompleteText}>INC</Text>
+                                <Text style={styles.modalOptionText}>Incomplete</Text>
                             </TouchableOpacity>
                         </View>
                         <TouchableOpacity
@@ -478,6 +675,136 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                             <Text style={styles.confirmButtonText}>Confirm</Text>
                         </TouchableOpacity>
                     </View>
+                </Pressable>
+            </Modal>
+        );
+    };
+
+    // Single Redo Reason Modal component
+    const SingleRedoReasonModal = () => {
+        return (
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={showSingleRedoModal}
+                onRequestClose={() => setShowSingleRedoModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    {/* Overlay: closes modal only when tapping outside content */}
+                    <Pressable
+                        style={StyleSheet.absoluteFill}
+                        onPress={() => {
+                            setShowSingleRedoModal(false);
+                            setSingleRedoReason('');
+                            setCurrentStudentId(null);
+                        }}
+                    />
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                    >
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Redo Reason</Text>
+                            <Text style={styles.reasonSubtitle}>
+                                Please provide a reason for marking as redo:
+                            </Text>
+                            <TextInput
+                                style={styles.reasonInput}
+                                placeholder="Enter reason here..."
+                                value={singleRedoReason}
+                                onChangeText={setSingleRedoReason}
+                                multiline
+                                numberOfLines={4}
+                                textAlignVertical="top"
+                                autoFocus={true}
+                            // No need for onBlur/onFocus manipulations!
+                            />
+                            <View style={styles.reasonModalButtons}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.reasonButton,
+                                        styles.cancelReasonButton,
+                                    ]}
+                                    onPress={() => {
+                                        setShowSingleRedoModal(false);
+                                        setSingleRedoReason('');
+                                        setCurrentStudentId(null);
+                                    }}
+                                >
+                                    <Text style={styles.cancelReasonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.reasonButton,
+                                        styles.submitReasonButton,
+                                        !singleRedoReason.trim() && styles.disabledButton,
+                                    ]}
+                                    onPress={confirmSingleRedo}
+                                    disabled={!singleRedoReason.trim()}
+                                >
+                                    <Text style={styles.submitReasonText}>Submit</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
+        );
+    };
+
+    // Redo Reason Modal component
+    const RedoReasonModal = () => {
+        return (
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={showRedoReasonModal}
+                onRequestClose={() => setShowRedoReasonModal(false)}
+            >
+                <Pressable
+                    style={styles.modalOverlay}
+                    onPress={() => setShowRedoReasonModal(false)}
+                >
+                    <Pressable
+                        style={styles.modalContent}
+                        onPress={(e) => e.stopPropagation()}
+                    >
+                        <Text style={styles.modalTitle}>Redo Reason</Text>
+                        <Text style={styles.reasonSubtitle}>Please provide a reason for marking as redo:</Text>
+                        <TextInput
+                            style={styles.reasonInput}
+                            placeholder="Enter reason here..."
+                            value={redoReason}
+                            onChangeText={setRedoReason}
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                            autoFocus={false}
+                        />
+                        <View style={styles.reasonModalButtons}>
+                            <TouchableOpacity
+                                style={[styles.reasonButton, styles.cancelReasonButton]}
+                                onPress={() => {
+                                    setShowRedoReasonModal(false);
+                                    setRedoReason('');
+                                    setPendingAction(null);
+                                }}
+                            >
+                                <Text style={styles.cancelReasonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.reasonButton,
+                                    styles.submitReasonButton,
+                                    !redoReason.trim() && styles.disabledButton
+                                ]}
+                                onPress={confirmRedo}
+                                disabled={!redoReason.trim()}
+                            >
+                                <Text style={styles.submitReasonText}>Submit</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Pressable>
                 </Pressable>
             </Modal>
         );
@@ -507,7 +834,10 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
             >
                 <Header />
                 {loading ? (
-                    <Text>Loading...</Text>
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color="#3557FF" />
+                        <Text>Loading...</Text>
+                    </View>
                 ) : (
                     <>
                         <AssignmentInfo />
@@ -533,6 +863,8 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                         />
                         {selectionMode && <EvaluateButton />}
                         <EvaluationModal />
+                        <RedoReasonModal />
+                        <SingleRedoReasonModal />
                     </>
                 )}
             </KeyboardAvoidingView>
@@ -644,6 +976,41 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        marginBottom: 8,
+    },
+    gradeSection: {
+        flex: 1,
+    },
+    gradeText: {
+        color: '#333',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    topicBatchInfo: {
+        flexDirection: 'column',
+        gap: 6,
+    },
+    topicBadge: {
+        backgroundColor: '#E3F2FD',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    topicText: {
+        color: '#1976D2',
+        fontWeight: '500',
+        fontSize: 12,
+    },
+    batchBadge: {
+        backgroundColor: '#F3E5F5',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    batchText: {
+        color: '#7B1FA2',
+        fontWeight: '500',
+        fontSize: 12,
     },
     levelBadge: {
         backgroundColor: '#E3FCEF',
@@ -795,6 +1162,56 @@ const styles = StyleSheet.create({
     evaluateButtonText: {
         color: 'white',
         fontSize: 16,
+        fontWeight: '600',
+    },
+    incompleteText: {
+        color: '#FF6600',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    reasonSubtitle: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    reasonInput: {
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 14,
+        marginBottom: 20,
+        minHeight: 80,
+        backgroundColor: '#F9F9F9',
+    },
+    reasonModalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 10,
+    },
+    reasonButton: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    cancelReasonButton: {
+        backgroundColor: '#F0F0F0',
+        borderWidth: 1,
+        borderColor: '#D0D0D0',
+    },
+    submitReasonButton: {
+        backgroundColor: '#3557FF',
+    },
+    cancelReasonText: {
+        color: '#666',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    submitReasonText: {
+        color: 'white',
+        fontSize: 14,
         fontWeight: '600',
     },
 });

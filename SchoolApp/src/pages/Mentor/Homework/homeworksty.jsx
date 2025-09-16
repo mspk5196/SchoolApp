@@ -163,6 +163,89 @@ const styles = StyleSheet.create({
     fontSize: wp('4.5%'),
     fontWeight: '600',
   },
+  // Student selection modal styles
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: '#C0C0C0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginRight: 12,
+  },
+  checkboxSelected: {
+    backgroundColor: '#3557FF',
+    borderColor: '#3557FF',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  selectAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  selectAllText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3557FF',
+  },
+  studentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  studentInfo: {
+    flex: 1,
+  },
+  studentName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  studentRoll: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    paddingTop: 16,
+    paddingHorizontal: 16,
+  },
+  // Hierarchy styles
+  selectableTopicItem: {
+    backgroundColor: '#F8F8F8',
+  },
+  parentTopicItem: {
+    backgroundColor: '#E8F4FD',
+    borderLeftWidth: 3,
+    borderLeftColor: '#4A90E2',
+  },
+  selectableTopicText: {
+    color: '#333',
+    fontWeight: '500',
+  },
+  parentTopicText: {
+    color: '#4A90E2',
+    fontWeight: '600',
+  },
+  parentIndicator: {
+    fontSize: 12,
+    color: '#4A90E2',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
 });
 
 export default styles;
