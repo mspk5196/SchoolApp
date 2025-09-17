@@ -10,7 +10,8 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     KeyboardAvoidingView,
-    Platform, // Added missing import
+    Platform,
+    ToastAndroid, // Added missing import
 } from 'react-native';
 import Loginimg from '../../../assets/FirstPage/login-page/img/loginimg.svg';
 import styles from './loginsty';
@@ -24,17 +25,22 @@ import EyeOn from '../../../assets/FirstPage/login-page/img/eye-svgrepo-com.svg'
 import EyeOff from '../../../assets/FirstPage/login-page/img/eye-slash-svgrepo-com.svg';
 // import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
+import {
+    GoogleSignin,
+    statusCodes,
+} from '@react-native-google-signin/google-signin';
+
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../../utils/env.js';
 import { encryptPassword } from '../../../components/Login/encrypt/encryptPassword';
-import { GoogleSignInService } from '../../../utils/googleSignIn';
-// import Config from 'react-native-config';
+import Config from 'react-native-config';
+import { set } from 'date-fns';
 
 const Login = () => {
     const navigation = useNavigation();
     const passwordRef = useRef(null); // Added passwordRef
-    
+
     const [phoneNumber, setPhoneNumber] = useState('');
     const [password, setPassword] = useState('');
     const [checked, setChecked] = useState(false);
@@ -85,55 +91,78 @@ const Login = () => {
     };
 
     const handleGoogleLogin = async () => {
-        // if (!checked) {
-        //     Alert.alert("Please accept the Privacy Policy");
-        //     return;
-        // }
-
-        setIsLoading(true);
-
         try {
-            // Sign in with Google using Firebase
-            const { idToken, user } = await GoogleSignInService.signInWithGoogle();
-
-            // Send the Firebase ID token to your backend
-            const response = await fetch(`${API_URL}/api/google-login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idToken }),
+            setIsLoading(true);
+            
+            const webClientId = Config.GOOGLE_ANDROID_CLIENT_ID;
+            // console.log('Using webClientId:', webClientId);
+            
+            GoogleSignin.configure({
+                offlineAccess: true,
+                webClientId: webClientId,
             });
 
-            const data = await response.json();
-
-            if (!data.success) {
-                Alert.alert(data.message || 'Google login failed');
-                await GoogleSignInService.signOut(); // Sign out on failure
+            const hasPlayService = await GoogleSignin.hasPlayServices();
+            if (!hasPlayService) {
+                Alert.alert('Error', 'Google Play Services are not available. Please update or enable them.');
                 return;
             }
 
-            // Store user data
-            await AsyncStorage.setItem('userRoles', JSON.stringify(data.user.roles));
-            await AsyncStorage.setItem('userPhone', JSON.stringify(data.user.phone || ''));
-            await AsyncStorage.setItem('userEmail', JSON.stringify(data.user.email || ''));
-
-            // Navigate to the app
-            navigation.navigate('Redirect', { 
-                email: data.user.email,
-                isGoogleLogin: true 
-            });
-
-        } catch (error) {
-            console.error('Google login error:', error);
-            if (error.code === 'sign_in_cancelled') {
-                // User cancelled the sign-in
-                console.log('User cancelled Google Sign-In');
-            } else {
-                Alert.alert('Google Sign-In failed', 'Please try again');
+            try {
+                await GoogleSignin.signOut();
+            } catch (signOutError) {
+                setIsLoading(false);
+                console.log('Sign out error (expected if not signed in):', signOutError);
             }
-        } finally {
+
+            const userInfo = await GoogleSignin.signIn();
+            const googleEmail = userInfo.data ? userInfo.data.user.email : userInfo.user.email;
+            if (googleEmail) {
+                console.log('Google Email:', googleEmail);
+                
+
+                const response = await fetch(`${API_URL}/api/auth/google-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: googleEmail }),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await AsyncStorage.setItem('userRoles', JSON.stringify(data.user.roles));
+                    await AsyncStorage.setItem('userPhone', JSON.stringify(data.user.phone));
+                    navigation.navigate('Redirect', { phoneNumber: data.user.phone, password: '' });
+                }
+                else {
+                    Alert.alert(data.message || 'Google login failed');
+                    setIsLoading(false);
+                    return;
+                }
+            }
+        } catch (e) {
             setIsLoading(false);
+            if (e.code === statusCodes.SIGN_IN_CANCELLED) {
+                console.log('User cancelled the login flow');
+                ToastAndroid.show('User cancelled the login flow', ToastAndroid.SHORT);
+            } else if (e.code === statusCodes.IN_PROGRESS) {
+                ToastAndroid.show('Sign in is already in progress', ToastAndroid.SHORT);
+            } else if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                ToastAndroid.show('Play services not available or outdated', ToastAndroid.SHORT);
+            } else {
+                console.log('Google login error:', e);
+                ToastAndroid.show('Something went wrong with Google login', ToastAndroid.SHORT);
+            }
         }
     };
+
+    if(isLoading){
+        console.log("Loading...");
+        return (
+            <View style={{flex:1, justifyContent:'center', alignItems:'center'}}>
+                <ActivityIndicator size="large" color="#0000ff" />
+            </View>
+        );
+    }
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -219,7 +248,7 @@ const Login = () => {
 
                             <Text style={styles.googletext}>Login with Google</Text>
 
-                            <Pressable 
+                            <Pressable
                                 style={[styles.googleauthcontainer, isLoading && { opacity: 0.7 }]}
                                 onPress={handleGoogleLogin}
                                 disabled={isLoading}

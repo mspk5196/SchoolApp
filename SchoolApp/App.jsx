@@ -3,8 +3,6 @@ import { SafeAreaView, StyleSheet, StatusBar, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Router from "./src/components/Routes/Routes";
 import 'react-native-get-random-values';
-// Initialize Firebase configuration
-import './src/utils/firebase';
 
 const App = () => {
   return (

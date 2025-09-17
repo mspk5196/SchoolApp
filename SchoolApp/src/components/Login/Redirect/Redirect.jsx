@@ -6,6 +6,7 @@ import { Switch } from 'react-native-switch';
 import { API_URL } from '../../../utils/env.js';
 import { backupPrivateKey } from '../../../utils/backupPrivateKey';
 import { restorePrivateKey } from '../../../utils/restorePrivateKey';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 // Encryption key management removed - now using direct messaging
 
 const Redirect = ({ route }) => {
@@ -171,11 +172,13 @@ const Redirect = ({ route }) => {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.multiRemove([
-        'userPhone', 'userRoles', 'adminData', 'coordinatorData', 
-        'studentData', 'mentorData', 'ecdhPrivateKey' // Clear the private key on logout
-      ]);
-      Alert.alert('Logged Out', 'You have successfully logged out.');
+      // await AsyncStorage.multiRemove([
+      //   'userPhone', 'userRoles', 'adminData', 'coordinatorData', 
+      //   'studentData', 'mentorData', 'ecdhPrivateKey' // Clear the private key on logout
+      // ]);
+      await AsyncStorage.clear(); // Clear all data on logout
+      await GoogleSignin.signOut();
+      ToastAndroid.show('Logged Out', ToastAndroid.SHORT);
       navigation.reset({
         index: 0,
         routes: [{ name: 'Welcome' }],

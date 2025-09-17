@@ -14,6 +14,7 @@ import ReportIcon from       '../../../../assets/ParentPage/SettingsIcon/report.
 import Add_AccountIcon from  '../../../../assets/ParentPage/SettingsIcon/add_account.svg';
 import LogoutIcon from       '../../../../assets/ParentPage/SettingsIcon/logout.svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const SettingItem = ({ icon, title, onPress }) => {
   return (
@@ -34,14 +35,8 @@ const Setting = ({ navigation }) => {
   const handleLogout = async () => {
     try {
       // Remove the user data from AsyncStorage
-      await AsyncStorage.removeItem('userPhone');
-      await AsyncStorage.removeItem('userRoles');
-      
-      // You can clear any other data if needed, like admin or coordinator data
-      await AsyncStorage.removeItem('adminData');
-      await AsyncStorage.removeItem('coordinatorData');
-      await AsyncStorage.removeItem('studentData');
-      await AsyncStorage.removeItem('mentorData');
+      await AsyncStorage.clear();
+      await GoogleSignin.signOut();
   
       // Show a logout confirmation (optional)
       Alert.alert('Logged Out', 'You have successfully logged out.');

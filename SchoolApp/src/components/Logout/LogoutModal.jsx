@@ -2,6 +2,7 @@ import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import React, { Component, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 // Encryption utilities no longer needed - using direct messaging
 
 const LogoutModal = ({ visible, onClose, navigation }) => {
@@ -9,6 +10,7 @@ const LogoutModal = ({ visible, onClose, navigation }) => {
         try {
             // Clear ALL AsyncStorage data for security
             await AsyncStorage.clear();
+            await GoogleSignin.signOut();
             
             console.log('🚪 Complete logout: All data cleared');
             
