@@ -296,7 +296,7 @@ exports.bulkUpdateHomeworkStatus = async (req, res) => {
     for (const studentRoll of studentRolls) {
       // Get current tracking info to calculate redo count
       const currentInfo = await transaction.query(
-        `SELECT redo_count, due_date, submission_date 
+        `SELECT redo_count, due_date, submission_date, mentor_feedback
          FROM student_homework_tracking 
          WHERE homework_id = ? AND student_roll = ?`,
         [homeworkId, studentRoll]
@@ -307,7 +307,7 @@ exports.bulkUpdateHomeworkStatus = async (req, res) => {
       let newRedoCount = 0;
       
       if (currentInfo.length > 0) {
-        const { due_date, submission_date, redo_count } = currentInfo[0];
+        const { due_date, submission_date, redo_count} = currentInfo[0];
         
         // Calculate days late
         if (submission_date && new Date(submission_date) > new Date(due_date)) {
@@ -323,7 +323,6 @@ exports.bulkUpdateHomeworkStatus = async (req, res) => {
           newRedoCount = redo_count || 0;
         }
       }
-
       // Update student homework tracking
       if (isRedo) {
         await transaction.query(
@@ -338,9 +337,9 @@ exports.bulkUpdateHomeworkStatus = async (req, res) => {
         await transaction.query(
           `UPDATE student_homework_tracking 
            SET status = ?, marked_date = ?, marked_by_mentor_id = ?, 
-               mentor_score = ?, mentor_feedback = ?, days_late = ?
+               mentor_score = ?,  days_late = ?, mentor_feedback = ?
            WHERE homework_id = ? AND student_roll = ?`,
-          [status, markedDate, mentorId, mentorScore, mentorFeedback, daysLate, homeworkId, studentRoll]
+          [status, markedDate, mentorId, mentorScore, daysLate, currentInfo[0].mentor_feedback, homeworkId, studentRoll]
         );
       }
     }

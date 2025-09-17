@@ -206,7 +206,6 @@ const TimeBasedActivityCreator = ({
             topic_id: null,
             mentor_id: null,
             has_assessment: false,
-            assessment_type: null,
             total_marks: 100,
             activity_instructions: ''
         };
@@ -410,7 +409,7 @@ const TimeBasedActivityCreator = ({
                 </Text>
                 {activity.has_assessment && (
                     <Text style={styles.existingActivityDetail}>
-                        📝 {activity.assessment_type} - {activity.total_marks} marks
+                        📝 {activity.total_marks} marks
                     </Text>
                 )}
                 {activity.activity_instructions && activity.activity_instructions !== 'Nil' && (
@@ -631,20 +630,6 @@ const TimeBasedActivityCreator = ({
 
                         {activityToEdit.has_assessment && (
                             <>
-                                <View style={styles.formGroup}>
-                                    <Text style={styles.label}>Assessment Type</Text>
-                                    <View style={styles.pickerContainer}>
-                                        <Picker
-                                            selectedValue={activityToEdit.assessment_type}
-                                            onValueChange={(value) => setActivityToEdit(prev => ({ ...prev, assessment_type: value }))}
-                                            style={styles.picker}
-                                        >
-                                            {assessmentTypes.map(type => (
-                                                <Picker.Item key={type} label={type} value={type} />
-                                            ))}
-                                        </Picker>
-                                    </View>
-                                </View>
 
                                 <View style={styles.formGroup}>
                                     <Text style={styles.label}>Total Marks</Text>
@@ -891,20 +876,6 @@ const TimeBasedActivityCreator = ({
 
                                             {activity.has_assessment && (
                                                 <>
-                                                    <View style={styles.formGroup}>
-                                                        <Text style={styles.label}>Assessment Type</Text>
-                                                        <View style={styles.pickerContainer}>
-                                                            <Picker
-                                                                selectedValue={activity.assessment_type}
-                                                                onValueChange={(value) => updateActivity(batch.id, activity.id, 'assessment_type', value)}
-                                                                style={styles.picker}
-                                                            >
-                                                                {assessmentTypes.map(type => (
-                                                                    <Picker.Item key={type} label={type} value={type} />
-                                                                ))}
-                                                            </Picker>
-                                                        </View>
-                                                    </View>
 
                                                     <View style={styles.formGroup}>
                                                         <Text style={styles.label}>Total Marks</Text>

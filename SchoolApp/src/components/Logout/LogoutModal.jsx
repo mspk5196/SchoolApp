@@ -10,7 +10,7 @@ const LogoutModal = ({ visible, onClose, navigation }) => {
         try {
             // Clear ALL AsyncStorage data for security
             await AsyncStorage.clear();
-            await GoogleSignin.signOut();
+            // await GoogleSignin.signOut();
             
             console.log('🚪 Complete logout: All data cleared');
             

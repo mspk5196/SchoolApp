@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import Octicons from 'react-native-vector-icons/Octicons';
 import BackIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
 import { API_URL } from '../../../../utils/env';
 import styles from './AcademicScheduleSty';
@@ -482,7 +483,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                           setShowTimeBasedModal(true);
                         }}
                       >
-                        <Icon name="clock" size={16} color={styles.quickActionIcon.color} style={styles.quickActionIcon} />
+                        <Octicons name="clock" size={16} color={styles.quickActionIcon.color} style={styles.quickActionIcon} />
                    
                         <Text style={styles.quickActionText}>Time-Based Creator</Text>
                       </TouchableOpacity>

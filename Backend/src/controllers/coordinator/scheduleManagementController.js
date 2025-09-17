@@ -1009,7 +1009,7 @@ exports.getPeriodActivities = (req, res) => {
                         topic_hierarchy_path: null,
                         material_id: activity.material_id,
                         material_name: activity.material_name || '',
-                        has_assessment: activity.is_assessment || false,
+                        has_assessment: activity.is_assessment === 1 ? true : false,
                         assessment_type: activity.assessment_type || '',
                         total_marks: activity.total_marks || 0,
                         start_time: activity.start_time,
@@ -1548,7 +1548,7 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
                     const activity = activities[currentIndex];
                     const {
                         batch_number, activity_type, activity_type_id, sub_activity_type_id, start_time, end_time, topic_id,
-                        mentor_id, has_assessment, assessment_type, total_marks, activity_instructions, batch_id
+                        mentor_id, has_assessment, total_marks, activity_instructions, batch_id
                     } = activity;
 
                     // Calculate duration in minutes
@@ -1613,50 +1613,176 @@ exports.createTimeBasedActivitiesBatch = (req, res) => {
 };
 
 // Update period activity
-exports.updatePeriodActivity = (req, res) => {
+exports.updatePeriodActivity = async (req, res) => {
+    let connection;
     try {
         const { activityId } = req.params;
         const {
             activity_type, activity_type_id, sub_activity_id, sub_activity_type_id, duration, batch_number, batch_id,
-            mentor_id, topic_id, has_assessment, assessment_type, total_marks,
-            activity_instructions, activity_name, end_time, start_time
+            mentor_id, topic_id, has_assessment, total_marks,
+            activity_instructions, activity_name, end_time, start_time, venue_id
         } = req.body;
 
         console.log('Updating activity:', {
             activityId,
             activity_type, activity_type_id, sub_activity_id, sub_activity_type_id, duration, batch_number, batch_id,
-            mentor_id, topic_id, has_assessment, assessment_type, total_marks,
-            activity_instructions, activity_name, end_time, start_time
+            mentor_id, topic_id, has_assessment, total_marks,
+            activity_instructions, activity_name, end_time, start_time, venue_id
         });
 
-        const updateQuery = `
-                UPDATE period_activities 
-                SET activity_type = ?, duration = ?, batch_id = ?,
-                    assigned_mentor_id = ?, topic_id = ?, is_assessment = ?, section_subject_activity_id = ?, ssa_sub_activity_id = ?,
-                    total_marks = ?, activity_instructions = ?, activity_name = ?, end_time = ?, start_time = ?, updated_at = NOW()
-                WHERE id = ?
-            `;
+        // Get database connection and start transaction
+        connection = await db.promise();
+        await connection.query('START TRANSACTION');
 
-        db.query(updateQuery, [
+        // First, get the current period activity data to compare assessment status
+        const [currentActivity] = await connection.query(
+            'SELECT * FROM period_activities WHERE id = ?',
+            [activityId]
+        );
+
+        if (currentActivity.length === 0) {
+            await connection.query('ROLLBACK');
+            return res.status(404).json({
+                success: false,
+                message: 'Period activity not found'
+            });
+        }
+
+        const oldActivity = currentActivity[0];
+        const wasAssessment = oldActivity.is_assessment || oldActivity.activity_type === 'Assessment';
+        const isNowAssessment = has_assessment || activity_type === 'Assessment';
+
+        // Get daily schedule info for session tables
+        const [dailySchedule] = await connection.query(
+            'SELECT date, section_id, subject_id FROM daily_schedule WHERE id = ?',
+            [oldActivity.dsn_id]
+        );
+
+        if (dailySchedule.length === 0) {
+            await connection.query('ROLLBACK');
+            return res.status(404).json({
+                success: false,
+                message: 'Daily schedule not found'
+            });
+        }
+
+        const { date, section_id, subject_id } = dailySchedule[0];
+
+        // Update the period_activities table
+        const updateQuery = `
+            UPDATE period_activities 
+            SET activity_type = ?, duration = ?, batch_id = ?,
+                assigned_mentor_id = ?, topic_id = ?, is_assessment = ?, section_subject_activity_id = ?, ssa_sub_activity_id = ?,
+                total_marks = ?, activity_instructions = ?, activity_name = ?, end_time = ?, start_time = ?, 
+                venue_id = ?, updated_at = NOW()
+            WHERE id = ?
+        `;
+
+        await connection.query(updateQuery, [
             activity_type, duration, batch_id,
-            mentor_id, topic_id, has_assessment, activity_type_id, sub_activity_type_id, total_marks,
-            activity_instructions, activity_name, end_time, start_time, activityId
-        ], (err, result) => {
-            if (err) {
-                console.error('Update period activity error:', err);
-                return res.status(500).json({
-                    success: false,
-                    message: 'Failed to update activity',
-                    error: err.message
-                });
+            mentor_id, topic_id, isNowAssessment ? 1 : 0, activity_type_id, sub_activity_type_id, total_marks,
+            activity_instructions, activity_name, end_time, start_time, venue_id || oldActivity.venue_id, activityId
+        ]);
+
+        // Handle session table updates based on assessment status change
+        if (wasAssessment && !isNowAssessment) {
+            // Changed from assessment to academic
+            console.log('Converting from assessment to academic session');
+            
+            // Delete from assessment_sessions
+            await connection.query('DELETE FROM assessment_sessions WHERE pa_id = ?', [activityId]);
+            
+            // Insert into academic_sessions for all students in the batch
+            const [batchStudents] = await connection.query(`
+                SELECT sba.student_roll 
+                FROM student_batch_assignments sba 
+                WHERE sba.batch_id = ? AND sba.is_current = '1'
+            `, [batch_id]);
+
+            for (const student of batchStudents) {
+                await connection.query(`
+                    INSERT INTO academic_sessions (
+                        pa_id, student_roll, section_id, mentor_id, subject_id, 
+                        ssa_sub_activity_id, batch_id, topic_id, date, start_time, end_time, venue_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    activityId, student.student_roll, section_id, mentor_id, subject_id,
+                    sub_activity_type_id, batch_id, topic_id, date, start_time, end_time, venue_id || oldActivity.venue_id
+                ]);
             }
 
-            res.json({
-                success: true,
-                message: 'Activity updated successfully'
-            });
+        } else if (!wasAssessment && isNowAssessment) {
+            // Changed from academic to assessment
+            console.log('Converting from academic to assessment session');
+            
+            // Delete from academic_sessions
+            await connection.query('DELETE FROM academic_sessions WHERE pa_id = ?', [activityId]);
+            
+            // Insert into assessment_sessions for all students in the batch
+            const [batchStudents] = await connection.query(`
+                SELECT sba.student_roll 
+                FROM student_batch_assignments sba 
+                WHERE sba.batch_id = ? AND sba.is_current = '1'
+            `, [batch_id]);
+
+            for (const student of batchStudents) {
+                await connection.query(`
+                    INSERT INTO assessment_sessions (
+                        pa_id, student_roll, section_id, mentor_id, subject_id, 
+                        ssa_sub_activity_id, batch_id, topic_id, date, start_time, end_time, 
+                        venue_id, total_marks
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    activityId, student.student_roll, section_id, mentor_id, subject_id,
+                    sub_activity_type_id, batch_id, topic_id, date, start_time, end_time, 
+                    venue_id || oldActivity.venue_id, total_marks
+                ]);
+            }
+
+        } else {
+            // Same assessment status, just update existing sessions
+            const sessionTable = isNowAssessment ? 'assessment_sessions' : 'academic_sessions';
+            
+            console.log(`Updating existing ${sessionTable}`);
+            
+            let updateSessionQuery = `
+                UPDATE ${sessionTable} 
+                SET mentor_id = ?, ssa_sub_activity_id = ?, batch_id = ?, topic_id = ?, 
+                    start_time = ?, end_time = ?, venue_id = ?, updated_at = NOW()
+                WHERE pa_id = ?
+            `;
+            
+            const sessionParams = [
+                mentor_id, sub_activity_type_id, batch_id, topic_id, 
+                start_time, end_time, venue_id || oldActivity.venue_id, activityId
+            ];
+
+            // Add total_marks for assessment sessions
+            if (isNowAssessment) {
+                updateSessionQuery = `
+                    UPDATE ${sessionTable} 
+                    SET mentor_id = ?, ssa_sub_activity_id = ?, batch_id = ?, topic_id = ?, 
+                        start_time = ?, end_time = ?, venue_id = ?, total_marks = ?, updated_at = NOW()
+                    WHERE pa_id = ?
+                `;
+                sessionParams.splice(-1, 0, total_marks); // Insert total_marks before activityId
+            }
+
+            await connection.query(updateSessionQuery, sessionParams);
+        }
+
+        // Commit transaction
+        await connection.query('COMMIT');
+        
+        res.json({
+            success: true,
+            message: 'Activity and related sessions updated successfully'
         });
+
     } catch (error) {
+        if (connection) {
+            await connection.query('ROLLBACK');
+        }
         console.error('Update period activity error:', error);
         res.status(500).json({
             success: false,
