@@ -1,6 +1,6 @@
 // CoordinatorLogs.jsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Linking, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Linking, RefreshControl, Modal } from 'react-native';
 import BackIcon from '../../../assets/CoordinatorPage/Logs/Back.svg';
 import Phone from '../../../assets/CoordinatorPage/Logs/Phone.svg';
 import MessageSquare from '../../../assets/CoordinatorPage/Logs/MessageSquare.svg';
@@ -9,6 +9,90 @@ const Staff = require('../../../assets/CoordinatorPage/MentorList/staff.png');
 import styles from './LogsStyle';
 import { API_URL } from '../../../utils/env.js';
 import { formatDate } from 'date-fns';
+
+// Overdue Class Card Component
+const OverdueClassCard = ({ cls, formatTime, handleCallPress, styles }) => {
+  const [showStudents, setShowStudents] = useState(false);
+  
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'Not Started': return '#FF6B6B';
+      case 'Time Over': return '#FF9500';
+      default: return '#FF6B6B';
+    }
+  };
+  
+  const getStatusText = (status) => {
+    switch(status) {
+      case 'Not Started': return 'Class not started!';
+      case 'Time Over': return 'Time is over!';
+      default: return 'Class not started!';
+    }
+  };
+  
+  return (
+    <View style={styles.alertCard}>
+      <View style={styles.alertCardContent}>
+        <View>
+          <Text style={styles.teacherName}>{cls.mentor_name}</Text>
+          <Text style={styles.subjectText}>
+            {cls.grade_name} - {cls.section_name} - {cls.subject_name}
+          </Text>
+          {cls.batch_name && (
+            <Text style={styles.batchText}>Batch: {cls.batch_name}</Text>
+          )}
+          <Text style={[styles.warningText, { color: getStatusColor(cls.status) }]}>
+            {getStatusText(cls.status)}
+          </Text>
+          <Text style={styles.sessionTypeText}>
+            {cls.session_type} Session
+          </Text>
+        </View>
+        <View style={styles.alertActions}>
+          <View style={styles.timeDisplay}>
+            <Clock width={16} height={16} style={styles.timeIcon} />
+            <Text style={styles.timeText}>
+              {formatTime(cls.start_time)} - {formatTime(cls.end_time)}
+            </Text>
+          </View>
+          <View style={styles.actionButtons1}>
+            <TouchableOpacity style={styles.actionButtonCall} onPress={() => handleCallPress(cls.mentor_phone)}>
+              <Phone width={15} height={15} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButtonMsg}>
+              <MessageSquare width={18} height={18} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+      
+      {/* Students Section */}
+      {cls.students && cls.students.length > 0 && (
+        <View style={styles.studentsSection}>
+          <TouchableOpacity 
+            style={styles.studentsToggle}
+            onPress={() => setShowStudents(!showStudents)}
+          >
+            <Text style={styles.studentsToggleText}>
+              Students ({cls.students.length}) {showStudents ? '▼' : '▶'}
+            </Text>
+          </TouchableOpacity>
+          
+          {showStudents && (
+            <View style={styles.studentsList}>
+              {cls.students.map((student, index) => (
+                <View key={index} style={styles.studentItem}>
+                  <Text style={styles.studentRoll}>{student.roll}</Text>
+                  <Text style={styles.studentName}>{student.name}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+};
 
 const CoordinatorLogs = ({ navigation, route }) => {
   const { coordinatorData } = route.params;
@@ -187,33 +271,7 @@ const CoordinatorLogs = ({ navigation, route }) => {
             </View>
           )}
           {overdueClasses.map((cls, index) => (
-            <View key={`class-${index}`} style={styles.alertCard}>
-              <View style={styles.alertCardContent}>
-                <View>
-                  <Text style={styles.teacherName}>{cls.mentor_name}</Text>
-                  <Text style={styles.subjectText}>
-                    {cls.grade_name} - {cls.section_name} - {cls.subject_name}
-                  </Text>
-                  <Text style={styles.warningText}>Class not started!</Text>
-                </View>
-                <View style={styles.alertActions}>
-                  <View style={styles.timeDisplay}>
-                    <Clock width={16} height={16} style={styles.timeIcon} />
-                    <Text style={styles.timeText}>
-                      {formatTime(cls.start_time)} - {formatTime(cls.end_time)}
-                    </Text>
-                  </View>
-                  <View style={styles.actionButtons1}>
-                    <TouchableOpacity style={styles.actionButtonCall} onPress={() => handleCallPress(cls.mentor_phone)}>
-                      <Phone width={15} height={15} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButtonMsg}>
-                      <MessageSquare width={18} height={18} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            </View>
+            <OverdueClassCard key={`class-${index}`} cls={cls} formatTime={formatTime} handleCallPress={handleCallPress} styles={styles} />
           ))}
 
           {/* Overdue Levels Section */}

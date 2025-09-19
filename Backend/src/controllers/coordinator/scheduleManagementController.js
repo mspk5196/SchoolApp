@@ -1940,16 +1940,21 @@ exports.getStudentSchedule = async (req, res) => {
                 ds.date,
                 ds.start_time as period_start_time,
                 ds.end_time as period_end_time,
+                ds.venue_id,
                 s.subject_name,
                 s.id as subject_id,
                 v.name as venue_name,
                 pa.id as period_activity_id,
-                COALESCE(acs.start_time, ass.start_time) as start_time,
-                COALESCE(acs.end_time, ass.end_time) as end_time,
+                COALESCE(acs.start_time, ass.start_time, ds.start_time) as start_time,
+                COALESCE(acs.end_time, ass.end_time, ds.end_time) as end_time,
                 COALESCE(acs.batch_id, ass.batch_id) as batch_id,
                 COALESCE(acs.mentor_id, ass.mentor_id) as mentor_id,
                 COALESCE(acs.ssa_sub_activity_id, ass.ssa_sub_activity_id) as ssa_sub_activity_id,
                 COALESCE(acs.topic_id, ass.topic_id) as topic_id,
+                COALESCE(acs.actual_start_time, ass.actual_start_time) as actual_start_time,
+                COALESCE(acs.actual_end_time, ass.actual_end_time) as actual_end_time,
+                COALESCE(acs.remarks, ass.remarks) as remarks,
+                COALESCE(acs.status, ass.status) as status,
                 COALESCE(u1.name, u2.name) as mentor_name,
                 COALESCE(m1.roll, m2.roll) as mentor_roll,
                 sb.batch_name,
@@ -1957,13 +1962,17 @@ exports.getStudentSchedule = async (req, res) => {
                 th.topic_name,
                 sa.sub_act_name,
                 at.activity_type,
-                CASE WHEN ass.id IS NOT NULL THEN 'Assessment' ELSE 'Academic' END as session_type
+                CASE WHEN ass.id IS NOT NULL THEN 'Assessment' ELSE 'Academic' END as session_type,
+                CASE WHEN ass.id IS NOT NULL THEN 1 ELSE 0 END as is_assessment,
+                CASE WHEN ass.id IS NOT NULL THEN ass.total_marks ELSE NULL END as total_marks,
+                COALESCE(acs.remarks, ass.remarks) as activity_instructions,
+                'general' as schedule_source
             FROM daily_schedule ds
             JOIN subjects s ON ds.subject_id = s.id
             JOIN venues v ON ds.venue_id = v.id
             LEFT JOIN period_activities pa ON pa.dsn_id = ds.id
-            LEFT JOIN academic_sessions acs ON acs.pa_id = pa.id
-            LEFT JOIN assessment_sessions ass ON ass.pa_id = pa.id
+            LEFT JOIN academic_sessions acs ON acs.pa_id = pa.id AND acs.student_roll = ?
+            LEFT JOIN assessment_sessions ass ON ass.pa_id = pa.id AND ass.student_roll = ?
             LEFT JOIN student_batch_assignments sba ON (
                 sba.batch_id = COALESCE(acs.batch_id, ass.batch_id)
                 AND sba.student_roll = ?
@@ -1981,12 +1990,123 @@ exports.getStudentSchedule = async (req, res) => {
             LEFT JOIN activity_types at ON ssa.activity_type = at.id
             WHERE ds.date = ? 
             AND ds.section_id = ?
-            AND (pa.id IS NULL OR (acs.id IS NOT NULL OR ass.id IS NOT NULL))
-            AND (sba.batch_id IS NOT NULL OR pa.id IS NULL)
-            ORDER BY ds.start_time, COALESCE(acs.start_time, ass.start_time)
+            AND (
+                pa.id IS NULL 
+                OR acs.id IS NOT NULL 
+                OR ass.id IS NOT NULL
+                OR (sba.batch_id IS NOT NULL AND (acs.id IS NOT NULL OR ass.id IS NOT NULL))
+            )
+
+            UNION ALL
+
+            -- Student-specific academic sessions without pa_id
+            SELECT DISTINCT
+                NULL as daily_schedule_id,
+                acs.date,
+                acs.start_time as period_start_time,
+                acs.end_time as period_end_time,
+                acs.venue_id,
+                s.subject_name,
+                s.id as subject_id,
+                v.name as venue_name,
+                acs.id as period_activity_id,
+                acs.start_time,
+                acs.end_time,
+                acs.batch_id,
+                acs.mentor_id,
+                acs.ssa_sub_activity_id,
+                acs.topic_id,
+                acs.actual_start_time,
+                acs.actual_end_time,
+                acs.remarks,
+                acs.status,
+                u.name as mentor_name,
+                m.roll as mentor_roll,
+                sb.batch_name,
+                sb.batch_level as batch_number,
+                th.topic_name,
+                sa.sub_act_name,
+                at.activity_type,
+                'Academic' as session_type,
+                0 as is_assessment,
+                NULL as total_marks,
+                acs.remarks as activity_instructions,
+                'student_specific' as schedule_source
+            FROM academic_sessions acs
+            JOIN subjects s ON acs.subject_id = s.id
+            JOIN venues v ON acs.venue_id = v.id
+            LEFT JOIN mentors m ON acs.mentor_id = m.id
+            LEFT JOIN users u ON m.phone = u.phone
+            LEFT JOIN section_batches sb ON sb.id = acs.batch_id
+            LEFT JOIN topic_hierarchy th ON acs.topic_id = th.id
+            LEFT JOIN ssa_sub_activities sssa ON acs.ssa_sub_activity_id = sssa.id
+            LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
+            LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
+            LEFT JOIN activity_types at ON ssa.activity_type = at.id
+            WHERE acs.date = ?
+            AND acs.student_roll = ?
+            AND acs.section_id = ?
+            AND acs.pa_id IS NULL
+
+            UNION ALL
+
+            -- Student-specific assessment sessions without pa_id
+            SELECT DISTINCT
+                NULL as daily_schedule_id,
+                ass.date,
+                ass.start_time as period_start_time,
+                ass.end_time as period_end_time,
+                ass.venue_id,
+                s.subject_name,
+                s.id as subject_id,
+                v.name as venue_name,
+                ass.id as period_activity_id,
+                ass.start_time,
+                ass.end_time,
+                ass.batch_id,
+                ass.mentor_id,
+                ass.ssa_sub_activity_id,
+                ass.topic_id,
+                ass.actual_start_time,
+                ass.actual_end_time,
+                ass.remarks,
+                ass.status,
+                u.name as mentor_name,
+                m.roll as mentor_roll,
+                sb.batch_name,
+                sb.batch_level as batch_number,
+                th.topic_name,
+                sa.sub_act_name,
+                at.activity_type,
+                'Assessment' as session_type,
+                1 as is_assessment,
+                ass.total_marks,
+                ass.remarks as activity_instructions,
+                'student_specific' as schedule_source
+            FROM assessment_sessions ass
+            JOIN subjects s ON ass.subject_id = s.id
+            JOIN venues v ON ass.venue_id = v.id
+            LEFT JOIN mentors m ON ass.mentor_id = m.id
+            LEFT JOIN users u ON m.phone = u.phone
+            LEFT JOIN section_batches sb ON sb.id = ass.batch_id
+            LEFT JOIN topic_hierarchy th ON ass.topic_id = th.id
+            LEFT JOIN ssa_sub_activities sssa ON ass.ssa_sub_activity_id = sssa.id
+            LEFT JOIN sub_activities sa ON sssa.sub_act_id = sa.id
+            LEFT JOIN section_subject_activities ssa ON sssa.ssa_id = ssa.id
+            LEFT JOIN activity_types at ON ssa.activity_type = at.id
+            WHERE ass.date = ?
+            AND ass.student_roll = ?
+            AND ass.section_id = ?
+            AND ass.pa_id IS NULL
+
+            ORDER BY start_time, period_start_time
         `;
 
-        const [scheduleResult] = await db.promise().query(scheduleQuery, [studentRoll, date, sectionId]);
+        const [scheduleResult] = await db.promise().query(scheduleQuery, [
+            studentRoll, studentRoll, studentRoll, date, sectionId,  // First query parameters
+            date, studentRoll, sectionId,  // Academic sessions parameters  
+            date, studentRoll, sectionId   // Assessment sessions parameters
+        ]);
 
         // Get all topics for hierarchy building
         const subjectIds = [...new Set(scheduleResult.map(row => row.subject_id).filter(id => id))];
@@ -2020,8 +2140,8 @@ exports.getStudentSchedule = async (req, res) => {
         const processedActivities = new Map(); // Use Map to track unique activities
         
         for (const row of scheduleResult) {
-            // Create unique key for deduplication
-            const uniqueKey = `${row.daily_schedule_id}-${row.period_activity_id || 'base'}-${row.start_time || row.period_start_time}-${row.batch_id || 'nobatch'}`;
+            // Create unique key for deduplication - handle both general and student-specific schedules
+            const uniqueKey = `${row.schedule_source}-${row.daily_schedule_id || 'student'}-${row.period_activity_id || 'direct'}-${row.start_time || row.period_start_time}-${row.batch_id || 'nobatch'}-${row.subject_id}`;
             
             if (processedActivities.has(uniqueKey)) {
                 continue; // Skip duplicate
@@ -2041,7 +2161,9 @@ exports.getStudentSchedule = async (req, res) => {
                 subject_name: row.subject_name,
                 subject_id: row.subject_id,
                 venue_name: row.venue_name,
+                venue_id: row.venue_id,
                 period_activity_id: row.period_activity_id,
+                session_id: row.schedule_source === 'student_specific' ? row.period_activity_id : null, // For student-specific schedules
                 start_time: row.start_time || row.period_start_time,
                 end_time: row.end_time || row.period_end_time,
                 batch_id: row.batch_id,
@@ -2058,10 +2180,17 @@ exports.getStudentSchedule = async (req, res) => {
                 sub_activity_name: row.sub_act_name,
                 activity_type: row.activity_type,
                 session_type: row.session_type,
+                is_assessment: row.is_assessment || 0,
+                total_marks: row.total_marks,
+                activity_instructions: row.activity_instructions,
+                actual_start_time: row.actual_start_time,
+                actual_end_time: row.actual_end_time,
+                remarks: row.remarks,
+                status: row.status,
                 section_id: sectionId,
-                venue_id: row.venue_id,
                 activity_name: row.activity_type,
-                period_activity_type: row.sub_act_name
+                period_activity_type: row.sub_act_name,
+                schedule_source: row.schedule_source // Indicates if it's 'general' or 'student_specific'
             };
 
             processedActivities.set(uniqueKey, scheduleItem);
@@ -2075,7 +2204,8 @@ exports.getStudentSchedule = async (req, res) => {
             return timeA.localeCompare(timeB);
         });
 
-        console.log(`Student Schedule: Found ${finalSchedule.length} unique activities for ${studentRoll} on ${date}`);
+        // console.log(`Student Schedule: Found ${finalSchedule.length} unique activities for ${studentRoll} on ${date}`);
+        // console.log(finalSchedule);
         
         res.json({ success: true, schedule: finalSchedule });
 
@@ -2121,6 +2251,102 @@ exports.createOrUpdateStudentScheduleOverride = async (req, res) => {
             res.json({ success: true, message: 'Schedule changed successfully', id: result.insertId });
         });
     });
+};
+
+// Edit student-specific schedule (for schedules without pa_id)
+exports.editStudentSpecificSchedule = async (req, res) => {
+    const { 
+        sessionId, sessionType, studentRoll, sectionId, mentorId, 
+        ssaSubActivityId, topicId, startTime, endTime, venueId, 
+        activityInstructions, isAssessment, totalMarks, date, subjectId, batchId 
+    } = req.body;
+
+    let connection;
+    try {
+        connection = await db.promise().getConnection();
+        await connection.query('START TRANSACTION');
+
+        // Determine which table to update based on session type
+        const tableName = sessionType === 'Assessment' ? 'assessment_sessions' : 'academic_sessions';
+        
+        let updateQuery;
+        let updateParams;
+
+        if (sessionType === 'Assessment') {
+            updateQuery = `
+                UPDATE assessment_sessions 
+                SET mentor_id = ?, ssa_sub_activity_id = ?, topic_id = ?, 
+                    start_time = ?, end_time = ?, venue_id = ?, 
+                    remarks = ?, total_marks = ?, batch_id = ?, updated_at = NOW()
+                WHERE id = ? AND student_roll = ? AND section_id = ? AND pa_id IS NULL
+            `;
+            updateParams = [
+                mentorId, ssaSubActivityId, topicId, startTime, endTime, venueId,
+                activityInstructions, totalMarks, batchId, sessionId, studentRoll, sectionId
+            ];
+        } else {
+            updateQuery = `
+                UPDATE academic_sessions 
+                SET mentor_id = ?, ssa_sub_activity_id = ?, topic_id = ?, 
+                    start_time = ?, end_time = ?, venue_id = ?, 
+                    remarks = ?, batch_id = ?, updated_at = NOW()
+                WHERE id = ? AND student_roll = ? AND section_id = ? AND pa_id IS NULL
+            `;
+            updateParams = [
+                mentorId, ssaSubActivityId, topicId, startTime, endTime, venueId,
+                activityInstructions, batchId, sessionId, studentRoll, sectionId
+            ];
+        }
+
+        const result = await connection.query(updateQuery, updateParams);
+
+        if (result.affectedRows === 0) {
+            await connection.query('ROLLBACK');
+            connection.release();
+            return res.status(404).json({
+                success: false,
+                message: 'Student-specific schedule not found or cannot be edited'
+            });
+        }
+
+        // Log the edit in history table
+        const historyQuery = `
+            INSERT INTO student_schedule_edit_history 
+            (edited_session_id, session_type, student_roll, section_id, mentor_id, subject_id, 
+             ssa_sub_activity_id, batch_id, topic_id, date, start_time, end_time, venue_id, remarks) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        await connection.query(historyQuery, [
+            sessionId, sessionType, studentRoll, sectionId, mentorId, subjectId,
+            ssaSubActivityId, batchId, topicId, date, startTime, endTime, venueId, 
+            `Edited student-specific ${sessionType.toLowerCase()} schedule`
+        ]);
+
+        await connection.query('COMMIT');
+        connection.release();
+
+        res.json({
+            success: true,
+            message: 'Student-specific schedule updated successfully'
+        });
+
+    } catch (error) {
+        if (connection) {
+            try {
+                await connection.query('ROLLBACK');
+                connection.release();
+            } catch (rollbackError) {
+                console.error('Rollback error:', rollbackError);
+            }
+        }
+        console.error('Edit student-specific schedule error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update student-specific schedule',
+            error: error.message
+        });
+    }
 };
 
 // Delete a student-specific schedule override

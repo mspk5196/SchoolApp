@@ -453,6 +453,61 @@ noDataMessage: {
   lineHeight: 24,
 },
 
+// Students section styles
+batchText: {
+  fontSize: 12,
+  color: '#8B5CF6',
+  fontWeight: '500',
+  marginTop: 2,
+},
+sessionTypeText: {
+  fontSize: 12,
+  color: '#059669',
+  fontWeight: '500',
+  marginTop: 2,
+},
+studentsSection: {
+  borderTopWidth: 1,
+  borderTopColor: '#E5E7EB',
+  marginTop: 16,
+  paddingTop: 12,
+},
+studentsToggle: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 8,
+},
+studentsToggleText: {
+  fontSize: 14,
+  fontWeight: '600',
+  color: '#374151',
+},
+studentsList: {
+  marginTop: 8,
+  paddingLeft: 16,
+},
+studentItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 4,
+  paddingHorizontal: 8,
+  backgroundColor: '#F3F4F6',
+  borderRadius: 6,
+  marginBottom: 4,
+},
+studentRoll: {
+  fontSize: 12,
+  fontWeight: '600',
+  color: '#1F2937',
+  minWidth: 60,
+},
+studentName: {
+  fontSize: 12,
+  color: '#6B7280',
+  marginLeft: 8,
+  flex: 1,
+},
+
 });
 
 export default styles;

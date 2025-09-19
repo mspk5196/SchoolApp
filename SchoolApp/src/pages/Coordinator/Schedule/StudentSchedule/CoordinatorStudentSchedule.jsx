@@ -35,7 +35,11 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
         topic_id: null,
         activity_instructions: '',
         is_assessment: false,
-        total_marks: ''
+        total_marks: '',
+        schedule_source: null, // Track if general or student_specific
+        session_id: null, // For student-specific schedules
+        session_type: null, // Academic or Assessment
+        batch_id: null // Add batch_id
     });
 
     // Dropdown data states
@@ -174,7 +178,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getSectionSubjectSubActivities`,{
+            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getSectionSubjectSubActivities`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ activityId, subjectId })
@@ -198,8 +202,8 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getTopicHierarchyBySubActivity`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    subActivityId, 
+                body: JSON.stringify({
+                    subActivityId,
                     subjectId,
                     gradeId: activeGrade,
                     activityId: overrideData.activity_type
@@ -239,10 +243,10 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getAllVenuesByTime`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    startTime: overrideData.start_time, 
-                    endTime: overrideData.end_time, 
-                    date: selectedDate.toISOString().split('T')[0] 
+                body: JSON.stringify({
+                    startTime: overrideData.start_time,
+                    endTime: overrideData.end_time,
+                    date: selectedDate.toISOString().split('T')[0]
                 })
             });
             const data = await response.json();
@@ -304,36 +308,69 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/override`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...overrideData,
-                    student_roll: selectedStudent,
-                    total_marks: overrideData.is_assessment ? parseInt(overrideData.total_marks) : null
-                })
-            });
+            let response;
+
+            // Check if this is a student-specific schedule (no pa_id) or general schedule
+            if (overrideData.schedule_source === 'student_specific' && overrideData.session_id) {
+                // Use new endpoint for student-specific schedules
+                console.log("Using student-specific edit endpoint");
+                response = await fetch(`${API_URL}/api/coordinator/schedule/student/edit-specific`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: overrideData.session_id,
+                        sessionType: overrideData.session_type,
+                        studentRoll: selectedStudent,
+                        sectionId: activeSection,
+                        mentorId: overrideData.mentor_id,
+                        ssaSubActivityId: overrideData.ssa_sub_activity_id,
+                        topicId: overrideData.topic_id,
+                        startTime: overrideData.start_time,
+                        endTime: overrideData.end_time,
+                        venueId: overrideData.venue_id,
+                        activityInstructions: overrideData.activity_instructions,
+                        isAssessment: overrideData.is_assessment,
+                        totalMarks: overrideData.is_assessment ? parseInt(overrideData.total_marks) : null,
+                        date: overrideData.date,
+                        subjectId: overrideData.subject_id,
+                        batchId: overrideData.batch_id
+                    })
+                });
+            } else {
+                // Use existing override endpoint for general schedules
+                console.log("Using general schedule override endpoint");
+                response = await fetch(`${API_URL}/api/coordinator/schedule/student/override`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...overrideData,
+                        student_roll: selectedStudent,
+                        total_marks: overrideData.is_assessment ? parseInt(overrideData.total_marks) : null
+                    })
+                });
+            }
+
             const data = await response.json();
             if (data.success) {
-                Alert.alert("Success", "Schedule override saved successfully.");
+                Alert.alert("Success", "Schedule updated successfully.");
                 setModalVisible(false);
                 fetchStudentSchedule();
             } else {
-                Alert.alert("Error", data.message || "Failed to save override.");
+                Alert.alert("Error", data.message || "Failed to update schedule.");
             }
         } catch (error) {
-            console.error("Error saving override:", error);
-            Alert.alert("Error", "Failed to save override. Please try again.");
+            console.error("Error saving schedule:", error);
+            Alert.alert("Error", "Failed to update schedule. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
     const handleEditPress = async (period) => {
-        // console.log("Editing period:", selectedStudent);
-        
+        console.log("Editing period:", period);
+
         setLoadingDropdown(true);
-        
+
         // Initialize override data with current period data
         setOverrideData({
             id: null, // This is for a new override
@@ -342,6 +379,10 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             ssa_sub_activity_id: period.ssa_sub_activity_id,
             topic_id: period.topic_id,
             pa_id: period.period_activity_id,
+            session_id: period.session_id, // For student-specific schedules
+            schedule_source: period.schedule_source, // Track schedule type
+            session_type: period.session_type, // Academic or Assessment
+            batch_id: period.batch_id, // Add batch_id
             activity_type: period.activity_type,
             sub_activity_name: period.sub_activity_name,
             start_time: period.start_time,
@@ -353,7 +394,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             topic_hierarchy_path: period.topic_hierarchy_path,
             mentor_roll: period.mentor_roll,
             activity_instructions: period.activity_instructions || '',
-            is_assessment: period.is_assessment || false,
+            is_assessment: Boolean(period.is_assessment),
             total_marks: period.total_marks || '',
             notes: '',
             student_roll: selectedStudent,
@@ -366,19 +407,19 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                 fetchSubjects(),
                 fetchMentors()
             ]);
-            
+
             // Fetch dependent data if subject is already selected
             if (period.subject_id) {
                 await fetchActivitiesForSubject(period.subject_id);
-                
+
                 if (period.activity_type) {
                     // Find activity ID from activity type
-                    const activities = await fetch(`${API_URL}/api/coordinator/getSubjectActivities`, {
+                    const activities = await fetch(`${API_URL}/api/coordinator/schedule/student/getSubjectActivity`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ subjectId: period.subject_id })
                     }).then(res => res.json());
-                    
+
                     if (activities.success) {
                         const selectedActivity = activities.subjectActivities.find(act => act.activity_type === period.activity_type);
                         if (selectedActivity && period.ssa_sub_activity_id) {
@@ -394,7 +435,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
         } finally {
             setLoadingDropdown(false);
         }
-        
+
         setModalVisible(true);
     };
 
@@ -453,12 +494,13 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
     const renderPeriod = (period, index) => {
         // Create a unique key combining multiple identifiers
         const uniqueKey = `${period.daily_schedule_id}_${period.period_activity_id || 'no_pa'}_${period.start_time}_${index}`;
-        
+
         return (
             <View key={uniqueKey} style={styles.periodContainer}>
                 <View style={styles.periodHeader}>
                     <Text style={styles.periodTime}>{period.start_time} - {period.period_end_time}</Text>
                     <Text style={styles.periodSubject}>{period.subject_name} - (Batch {period.batch_number})</Text>
+
                     <TouchableOpacity
                         onPress={() => handleEditPress(period)}
                         activeOpacity={0.7}
@@ -469,10 +511,22 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                 <View style={styles.activityContainer}>
                     {period.activity_type ? (
                         <View style={styles.activity}>
+                            {/* Schedule type indicator */}
+                            {period.schedule_source === 'student_specific' && (
+                                <Text style={styles.studentSpecificLabel}>
+                                    🎯 Student-Specific {period.session_type}
+                                </Text>
+                            )}
                             <Text>{period.start_time} - {period.end_time}: {period.activity_type} - {period.sub_activity_name}</Text>
                             <Text>Mentor: {period.mentor_name}({period.mentor_roll})</Text>
                             <Text>Topic: {period.topic_hierarchy_path}</Text>
                             <Text>Venue: {period.venue_name}</Text>
+                            {period.is_assessment ? (
+                                <View style={{ marginTop: 4 }}>
+                                    <Text style={{ fontWeight: 'bold', color: 'black' }}>Assessment Type: {period.session_type}</Text>
+                                    <Text style={{ fontWeight: 'bold', color: 'black' }}>Total Marks: {period.total_marks}</Text>
+                                </View>
+                            ) : null}
                         </View>
                     ) : (
                         <Text>No specific activity</Text>
@@ -496,12 +550,12 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     onPress={() => {
-                        if(selectedStudent){
+                        if (selectedStudent) {
                             handleBackToStudentList()
                         }
-                        else{
+                        else {
                             navigation.goBack();
                         }
                     }}
@@ -616,7 +670,19 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                     <View style={styles.modalContent}>
                         <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
                             <Text style={styles.modalTitle}>Edit Student Schedule</Text>
-                            
+
+                            {/* Schedule Type Indicator */}
+                            {overrideData.schedule_source && (
+                                <View style={styles.scheduleTypeIndicator}>
+                                    <Text style={styles.scheduleTypeText}>
+                                        {overrideData.schedule_source === 'student_specific'
+                                            ? `📝 Student-Specific ${overrideData.session_type || ''} Schedule`
+                                            : '📋 General Class Schedule'
+                                        }
+                                    </Text>
+                                </View>
+                            )}
+
                             {loadingDropdown && (
                                 <View style={styles.loadingContainer}>
                                     <ActivityIndicator size="small" color="#007AFF" />
@@ -659,9 +725,9 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     onChange={(event, selectedTime) => {
                                         setStartTimePickerVisibility(false);
                                         if (selectedTime) {
-                                            setOverrideData({ 
-                                                ...overrideData, 
-                                                start_time: dateToTimeString(selectedTime) 
+                                            setOverrideData({
+                                                ...overrideData,
+                                                start_time: dateToTimeString(selectedTime)
                                             });
                                         }
                                     }}
@@ -677,9 +743,9 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     onChange={(event, selectedTime) => {
                                         setEndTimePickerVisibility(false);
                                         if (selectedTime) {
-                                            setOverrideData({ 
-                                                ...overrideData, 
-                                                end_time: dateToTimeString(selectedTime) 
+                                            setOverrideData({
+                                                ...overrideData,
+                                                end_time: dateToTimeString(selectedTime)
                                             });
                                         }
                                     }}
@@ -693,8 +759,8 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     <Picker
                                         selectedValue={overrideData.subject_id}
                                         onValueChange={(value) => {
-                                            setOverrideData({ 
-                                                ...overrideData, 
+                                            setOverrideData({
+                                                ...overrideData,
                                                 subject_id: value,
                                                 activity_type: '',
                                                 ssa_sub_activity_id: null,
@@ -705,10 +771,10 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     >
                                         <Picker.Item label="Select Subject" value={null} />
                                         {subjects.map(subject => (
-                                            <Picker.Item 
-                                                key={subject.id} 
-                                                label={subject.subject_name} 
-                                                value={subject.id} 
+                                            <Picker.Item
+                                                key={subject.id}
+                                                label={subject.subject_name}
+                                                value={subject.id}
                                             />
                                         ))}
                                     </Picker>
@@ -722,8 +788,8 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     <Picker
                                         selectedValue={overrideData.activity_type}
                                         onValueChange={(value) => {
-                                            setOverrideData({ 
-                                                ...overrideData, 
+                                            setOverrideData({
+                                                ...overrideData,
                                                 activity_type: value,
                                                 ssa_sub_activity_id: null,
                                                 topic_id: null
@@ -734,10 +800,10 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     >
                                         <Picker.Item label="Select Activity Type" value="" />
                                         {activities.map(activity => (
-                                            <Picker.Item 
-                                                key={activity.id} 
-                                                label={activity.activity_type} 
-                                                value={activity.id} 
+                                            <Picker.Item
+                                                key={activity.id}
+                                                label={activity.activity_type}
+                                                value={activity.activity_type}
                                             />
                                         ))}
                                     </Picker>
@@ -751,8 +817,8 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     <Picker
                                         selectedValue={overrideData.ssa_sub_activity_id}
                                         onValueChange={(value) => {
-                                            setOverrideData({ 
-                                                ...overrideData, 
+                                            setOverrideData({
+                                                ...overrideData,
                                                 ssa_sub_activity_id: value,
                                                 topic_id: null
                                             });
@@ -762,10 +828,10 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     >
                                         <Picker.Item label="Select Sub Activity" value={null} />
                                         {subActivities.map(subActivity => (
-                                            <Picker.Item 
-                                                key={subActivity.id} 
-                                                label={subActivity.sub_act_name} 
-                                                value={subActivity.id} 
+                                            <Picker.Item
+                                                key={subActivity.id}
+                                                label={subActivity.sub_act_name}
+                                                value={subActivity.id}
                                             />
                                         ))}
                                     </Picker>
@@ -786,10 +852,10 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     >
                                         <Picker.Item label="Select Topic" value={null} />
                                         {topics.map(topic => (
-                                            <Picker.Item 
-                                                key={topic.id} 
-                                                label={topic.hierarchy_path} 
-                                                value={topic.id} 
+                                            <Picker.Item
+                                                key={topic.id}
+                                                label={topic.hierarchy_path}
+                                                value={topic.id}
                                             />
                                         ))}
                                     </Picker>
@@ -809,10 +875,10 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     >
                                         <Picker.Item label="Select Mentor" value={null} />
                                         {mentors.map(mentor => (
-                                            <Picker.Item 
-                                                key={mentor.id} 
-                                                label={`${mentor.name} (${mentor.roll})`} 
-                                                value={mentor.id} 
+                                            <Picker.Item
+                                                key={mentor.id}
+                                                label={`${mentor.name} (${mentor.roll})`}
+                                                value={mentor.id}
                                             />
                                         ))}
                                     </Picker>
@@ -831,10 +897,10 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     >
                                         <Picker.Item label="Select Venue" value={null} />
                                         {venues.map(venue => (
-                                            <Picker.Item 
-                                                key={venue.id} 
-                                                label={`${venue.name}`} 
-                                                value={venue.id} 
+                                            <Picker.Item
+                                                key={venue.id}
+                                                label={`${venue.name}`}
+                                                value={venue.id}
                                             />
                                         ))}
                                     </Picker>
@@ -861,8 +927,8 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                                     <Switch
                                         value={overrideData.is_assessment}
                                         onValueChange={(value) => {
-                                            setOverrideData({ 
-                                                ...overrideData, 
+                                            setOverrideData({
+                                                ...overrideData,
                                                 is_assessment: value,
                                                 total_marks: value ? overrideData.total_marks : ''
                                             });

@@ -97,8 +97,8 @@ router.get('/mentor/activity/:activityId/academic', mentorController.getAcademic
 // router.post('/mentor/activity/:activityId/academic/complete', mentorController.completeAcademicActivity);
 
 // Assessment Session Endpoints
-router.get('/mentor/activity/:activityId/assessment', mentorController.getAssessmentActivityDetails);
-router.post('/mentor/activity/:activityId/assessment/complete', mentorController.completeAssessmentActivity);
+// router.get('/mentor/activity/:activityId/assessment', mentorController.getAssessmentActivityDetails);
+// router.post('/mentor/activity/:activityId/assessment/complete', mentorController.completeAssessmentActivity);
 
 // This cron-trigger endpoint can be secured or removed in production
 router.post('/mentor/sessions/update-statuses', mentorController.triggerActivityStatusUpdate);

@@ -149,7 +149,7 @@ const BatchManagementHome = ({route}) => {
       
       if (!sectionId || !subjectId) {
         console.log('Missing sectionId or subjectId for analytics, skipping fetch');
-        return;
+        return; 
       }
 
       const response = await fetch(`${API_URL}/api/coordinator/batches/analytics/${sectionId}/${subjectId}`, {

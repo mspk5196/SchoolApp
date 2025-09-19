@@ -1957,7 +1957,7 @@ exports.finishAssessmentActivity = async (req, res) => {
     // Update all assessment sessions for the students to 'Finished(need to update marks)'
     const placeholders = studentScheduleIds.map(() => '?').join(',');
     const [result] = await db.promise().query(
-      `UPDATE assessment_sessions SET status = 'Finished(need to update marks)' 
+      `UPDATE assessment_sessions SET status = 'Finished(need to update marks)', actual_end_time = NOW()
        WHERE id IN (${placeholders}) AND status = 'In Progress'`,
       studentScheduleIds
     );
@@ -2244,6 +2244,38 @@ exports.completeAssessmentActivity = async (req, res) => {
               progressStatus
             ]
           );
+          if(progressStatus === 'Failed'){
+            // Get the assessment_session_marks id for this student
+            console.log(sub);
+            
+            const [markRecord] = await trx.query(
+              `SELECT id FROM assessment_session_marks WHERE as_id = ? AND student_roll = ? AND pass_status = 'Fail'`,
+              [sub.schedule_id, sub.student_roll]
+            );
+            console.log(markRecord.id);
+            
+            
+            const asMarkId = markRecord ? markRecord.id : null;
+            console.log(asMarkId);
+            if (!asMarkId) trx.rollback();
+            
+            // Get student's current batch in this subject
+            const [studentBatch] = await trx.query(
+              `SELECT sba.batch_id FROM student_batch_assignments sba 
+               JOIN section_batches sb ON sba.batch_id = sb.id 
+               WHERE sba.student_roll = ? AND sb.subject_id = ? AND sb.section_id = ? AND sba.is_current = 1`,
+              [sub.student_roll, subject_id, section_id]
+            );
+            
+            const batchId = studentBatch.length > 0 ? studentBatch[0].batch_id : batch_id;
+            
+            await trx.query(
+              `INSERT INTO student_penalty_tracking 
+               (student_roll, subject_id, section_id, penalty_type, as_mark_id, start_batch_id, failed_assessment) 
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [sub.student_roll, subject_id, section_id, 'Assessment_Failed', asMarkId, batchId, 1]
+            );
+          }
         }
 
         console.log(`Updated completion history and progress for ${studentSubmissions.length} students`);

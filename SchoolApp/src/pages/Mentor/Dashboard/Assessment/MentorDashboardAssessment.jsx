@@ -533,6 +533,10 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
 
   const confirmMarks = () => {
     if (editingStudent && tempMarks !== '') {
+      if(isNaN(tempMarks) || Number(tempMarks) < 0 || Number(tempMarks) > 100) {
+        Alert.alert('Invalid Marks', 'Please enter valid marks between 0 and 100.');
+        return;
+      }
       setSubmissions(prev => ({
         ...prev,
         [editingStudent.student_roll]: {
@@ -543,6 +547,37 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       }));
     }
     closeMarkModal();
+  };
+
+  const fillRandomMarks = () => {
+    const activeStudents = students.filter(s => !s.has_approved_leave);
+    if (activeStudents.length === 0) return;
+
+    const newSubmissions = { ...submissions };
+    let hasLowScore = false;
+
+    // Fill random marks for all active students
+    activeStudents.forEach((student, index) => {
+      let marks;
+      
+      // Ensure at least one student gets below 48
+      if (index === 0 && !hasLowScore) {
+        marks = Math.floor(Math.random() * 47) + 1; // 1-47
+        hasLowScore = true;
+      } else {
+        marks = Math.floor(Math.random() * 100) + 1; // 1-100
+      }
+
+      newSubmissions[student.student_roll] = {
+        ...newSubmissions[student.student_roll],
+        marks_obtained: marks.toString(),
+        total_marks: '100',
+        is_absent: false
+      };
+    });
+
+    setSubmissions(newSubmissions);
+    Alert.alert('Success', `Random marks filled for ${activeStudents.length} students (at least one below 48).`);
   };
 
   const handleCompleteSession = async () => {
@@ -705,15 +740,15 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
         );
 
       case 'In Progress':
-        const isComplete = completedCount >= totalStudents;
+        // const isComplete = completedCount >= totalStudents;
         return (
           <TouchableOpacity
             style={[
               styles.actionButton,
-              !isComplete && styles.actionButtonDisabled
+              // !isComplete && styles.actionButtonDisabled
             ]}
             onPress={handleFinishSession}
-            disabled={!isComplete}
+            // disabled={!isComplete}
           >
             <Text style={styles.actionButtonText}>
               Finish Assessment ({timeLeftString})
@@ -736,6 +771,45 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
               Complete Assessment {completedCount}/{totalStudents}
             </Text>
           </TouchableOpacity>
+        );
+
+      case 'Finished(need to update marks)':
+        const isComplete2 = completedCount >= totalStudents;
+        return (
+          <View style={{ flexDirection: 'row', gap: wp('2%') }}>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                { flex: 1 },
+                !isComplete2 && styles.actionButtonDisabled
+              ]}
+              onPress={handleCompleteSession}
+              disabled={!isComplete2}
+            >
+              <Text style={styles.actionButtonText}>
+                Complete Assessment {completedCount}/{totalStudents}
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Random Marks Button for Testing */}
+            {completedCount < totalStudents && (
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  { 
+                    backgroundColor: '#F59E0B', 
+                    paddingHorizontal: wp('3%'),
+                    minWidth: wp('25%')
+                  }
+                ]}
+                onPress={fillRandomMarks}
+              >
+                <Text style={[styles.actionButtonText, { fontSize: wp('3%') }]}>
+                  Fill Random Marks
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         );
 
       case 'Finish Session':
@@ -1010,6 +1084,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
                 <TextInput
                   style={styles.markInputField}
                   placeholder="Enter marks (e.g., 85)"
+                  maxLength={3}
                   keyboardType="numeric"
                   value={tempMarks}
                   onChangeText={setTempMarks}

@@ -470,6 +470,33 @@ const styles = StyleSheet.create({
         height: 50,
         width: '100%',
     },
+    
+    // New styles for schedule type indicators
+    scheduleTypeIndicator: {
+        backgroundColor: '#E3F2FD',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 16,
+        borderLeftWidth: 4,
+        borderLeftColor: '#2196F3',
+    },
+    scheduleTypeText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1976D2',
+        textAlign: 'center',
+    },
+    studentSpecificLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#FF9800',
+        backgroundColor: '#FFF3E0',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        alignSelf: 'flex-start',
+        marginTop: 4,
+    },
 });
 
 export default styles;

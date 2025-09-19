@@ -3255,34 +3255,84 @@ exports.getOverdueClasses = async (req, res) => {
 
     const query = `
       SELECT 
-        ds.id,
-        ds.date,
-        ds.start_time,
-        ds.end_time,
+        'Academic' AS session_type,
+        ac.pa_id,
+        ac.date,
+        ac.start_time,
+        ac.end_time,
+        ac.status,
         s.subject_name,
         sec.section_name,
         g.grade_name,
         u.name AS mentor_name,
         m.roll AS mentor_roll,
-        m.phone AS mentor_phone
-      FROM daily_schedule ds
-      JOIN sections sec ON ds.section_id = sec.id
+        m.phone AS mentor_phone,
+        sb.batch_name,
+        GROUP_CONCAT(DISTINCT CONCAT(ac.student_roll, ':', st.name) SEPARATOR '|') AS students_list
+      FROM academic_sessions ac
+      JOIN sections sec ON ac.section_id = sec.id
       JOIN grades g ON sec.grade_id = g.id
-      JOIN subjects s ON ds.subject_id = s.id
-      JOIN mentors m ON ds.mentors_id = m.id
+      JOIN subjects s ON ac.subject_id = s.id
+      JOIN mentors m ON ac.mentor_id = m.id
       JOIN users u ON m.phone = u.phone
-      LEFT JOIN academic_sessions ac ON ac.dsa_id = ds.id
+      JOIN section_batches sb ON ac.batch_id = sb.id
+      JOIN students st ON ac.student_roll = st.roll
       WHERE sec.grade_id IN (
         SELECT grade_id FROM coordinator_grade_assignments WHERE coordinator_id = ?
       )
-      AND ds.date = CURDATE()
-      AND ds.start_time < CURTIME()
-      AND (ac.status IS NULL OR ac.status != 'In Progress')
-      ORDER BY ds.start_time
+      AND ac.date = CURDATE()
+      AND ac.start_time < CURTIME()
+      AND ac.status IN ('Not Started', 'Time Over')
+      GROUP BY ac.pa_id, ac.date, ac.start_time, ac.end_time, ac.status, s.subject_name, sec.section_name, g.grade_name, u.name, m.roll, m.phone, sb.batch_name
+      
+      UNION ALL
+      
+      SELECT 
+        'Assessment' AS session_type,
+        asess.pa_id,
+        asess.date,
+        asess.start_time,
+        asess.end_time,
+        asess.status,
+        s.subject_name,
+        sec.section_name,
+        g.grade_name,
+        u.name AS mentor_name,
+        m.roll AS mentor_roll,
+        m.phone AS mentor_phone,
+        sb.batch_name,
+        GROUP_CONCAT(DISTINCT CONCAT(asess.student_roll, ':', st.name) SEPARATOR '|') AS students_list
+      FROM assessment_sessions asess
+      JOIN sections sec ON asess.section_id = sec.id
+      JOIN grades g ON sec.grade_id = g.id
+      JOIN subjects s ON asess.subject_id = s.id
+      JOIN mentors m ON asess.mentor_id = m.id
+      JOIN users u ON m.phone = u.phone
+      JOIN section_batches sb ON asess.batch_id = sb.id
+      JOIN students st ON asess.student_roll = st.roll
+      WHERE sec.grade_id IN (
+        SELECT grade_id FROM coordinator_grade_assignments WHERE coordinator_id = ?
+      )
+      AND asess.date = CURDATE()
+      AND asess.start_time < CURTIME()
+      AND asess.status IN ('Not Started', 'Time Over')
+      GROUP BY asess.pa_id, asess.date, asess.start_time, asess.end_time, asess.status, s.subject_name, sec.section_name, g.grade_name, u.name, m.roll, m.phone, sb.batch_name
+      
+      ORDER BY start_time
     `;
 
-    const [results] = await db.promise().query(query, [coordinatorId]);
-    res.json({ success: true, overdueClasses: results });
+    const [results] = await db.promise().query(query, [coordinatorId, coordinatorId]);
+    
+    // Parse students list for each result
+    const formattedResults = results.map(result => ({
+      ...result,
+      students: result.students_list ? result.students_list.split('|').map(student => {
+        const [roll, name] = student.split(':');
+        return { roll, name };
+      }) : []
+    }));
+    
+    res.json({ success: true, overdueClasses: formattedResults });
   } catch (error) {
     console.error("Error fetching overdue classes:", error);
     res.status(500).json({ success: false, message: "Failed to fetch overdue classes" });
