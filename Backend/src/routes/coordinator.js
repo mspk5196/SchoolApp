@@ -146,6 +146,7 @@ router.get('/coordinator/enrollment/getPendingVenues', infraEnrollment.getPendin
 
 //StudentEnrollment
 router.get('/coordinator/getGrades', coordinatorController.getGrades);
+
 router.post(
   '/coordinator/enrollStudent',
   uploadStudentProfile.single('profilePhoto'), // matches FormData key
@@ -228,6 +229,7 @@ router.delete('/coordinator/calendar/events', coordinatorController.deleteCalend
 //Logs
 router.post('/coordinator/getOverdueClasses', coordinatorController.getOverdueClasses);
 router.post('/coordinator/getOverdueStudentLevels', coordinatorController.getOverdueStudentLevels);
+router.post('/coordinator/getScheduleAssessmentFailedStudents', coordinatorController.getScheduleAssessmentFailedStudents);
 router.post('/coordinator/assignTask', coordinatorController.assignTask);
 router.post('/coordinator/getRequestedAssessments', coordinatorController.getRequestedAssessments);
 router.post('/coordinator/processAssessmentRequest', coordinatorController.processAssessmentRequest);

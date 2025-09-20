@@ -24,7 +24,7 @@
     "date-fns": "^4.1.0",
     "events": "^3.3.0",
     "exceljs": "^4.4.0",
-    "lottie-react-native": "^7.3.2",
+    "lottie-react-native": "^7.3.4",
     "react": "18.3.1",
     "react-native": "0.75.5",
     "react-native-audio-recorder-player": "^2.6.2",

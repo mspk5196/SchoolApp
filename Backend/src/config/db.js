@@ -8,7 +8,7 @@ const connection = mysql.createPool({
   database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 20,
+  queueLimit: 10,
   port: 3306,
   // ssl: {
   //   ca: process.env.DB_CA_CERT

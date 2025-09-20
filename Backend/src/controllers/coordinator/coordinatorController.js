@@ -325,11 +325,11 @@ exports.getMentorSchedule = (req, res) => {
 
     // Group schedules by time, section_id, date, subject, and venue
     const groupedSchedules = {};
-    
+
     results.forEach(schedule => {
       // Create a unique key for grouping
       const groupKey = `${schedule.date}_${schedule.start_time}_${schedule.end_time}_${schedule.section_id}_${schedule.subject_id}_${schedule.venue_id}`;
-      
+
       if (!groupedSchedules[groupKey]) {
         groupedSchedules[groupKey] = {
           session_type: schedule.session_type,
@@ -352,7 +352,7 @@ exports.getMentorSchedule = (req, res) => {
           students: []
         };
       }
-      
+
       // Add student to the group
       groupedSchedules[groupKey].student_count++;
       groupedSchedules[groupKey].students.push({
@@ -1085,7 +1085,7 @@ exports.getGradeSections = (req, res) => {
       return res.status(500).json({ success: false, message: 'Database error' });
     }
     console.log(results);
-    
+
     res.json({ success: true, message: "Sections data fetched successfully", gradeSections: results });
   });
 };
@@ -2088,7 +2088,7 @@ exports.getAvailableMentorsForInvigilation = (req, res) => {
 exports.getSectionStudents = (req, res) => {
   const { sectionID } = req.body;
   console.log(sectionID);
-  
+
   const sql = `
     SELECT st.id, st.name, st.roll, st.profile_photo
     FROM Students st
@@ -2435,7 +2435,7 @@ exports.getGradeSubjects = (req, res) => {
       console.error("Error fetching grade subjects data:", err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
-console.log(results);
+    console.log(results);
 
     res.json({
       success: true,
@@ -2949,7 +2949,7 @@ exports.getEnroledGradeSubjectMentor = (req, res) => {
     }
 
     console.log(results);
-    
+
 
     res.json({
       success: true,
@@ -3251,78 +3251,83 @@ exports.deleteCalendarEvent = (req, res) => {
 // Get overdue classes (not started after scheduled time)
 exports.getOverdueClasses = async (req, res) => {
   try {
-    const { coordinatorId } = req.body;
+    const { coordinatorId, gradeId } = req.body;
 
     const query = `
       SELECT 
-        'Academic' AS session_type,
-        ac.pa_id,
-        ac.date,
-        ac.start_time,
-        ac.end_time,
-        ac.status,
-        s.subject_name,
-        sec.section_name,
-        g.grade_name,
-        u.name AS mentor_name,
-        m.roll AS mentor_roll,
-        m.phone AS mentor_phone,
-        sb.batch_name,
-        GROUP_CONCAT(DISTINCT CONCAT(ac.student_roll, ':', st.name) SEPARATOR '|') AS students_list
-      FROM academic_sessions ac
-      JOIN sections sec ON ac.section_id = sec.id
-      JOIN grades g ON sec.grade_id = g.id
-      JOIN subjects s ON ac.subject_id = s.id
-      JOIN mentors m ON ac.mentor_id = m.id
-      JOIN users u ON m.phone = u.phone
-      JOIN section_batches sb ON ac.batch_id = sb.id
-      JOIN students st ON ac.student_roll = st.roll
-      WHERE sec.grade_id IN (
-        SELECT grade_id FROM coordinator_grade_assignments WHERE coordinator_id = ?
+    'Academic' AS session_type,
+    ac.pa_id,
+    ac.date,
+    ac.start_time,
+    ac.end_time,
+    ac.status,
+    s.subject_name,
+    sec.section_name,
+    g.grade_name,
+    u.name AS mentor_name,
+    m.roll AS mentor_roll,
+    m.phone AS mentor_phone,
+    sb.batch_name,
+    GROUP_CONCAT(DISTINCT CONCAT(ac.student_roll, ':', st.name) SEPARATOR '|') AS students_list
+FROM academic_sessions ac
+JOIN sections sec ON ac.section_id = sec.id
+JOIN grades g ON sec.grade_id = g.id
+JOIN subjects s ON ac.subject_id = s.id
+JOIN mentors m ON ac.mentor_id = m.id
+JOIN users u ON m.phone = u.phone
+JOIN section_batches sb ON ac.batch_id = sb.id
+JOIN students st ON ac.student_roll = st.roll
+WHERE sec.grade_id = ?
+  AND (
+        ac.date < CURDATE() 
+        OR (ac.date = CURDATE() AND ac.start_time < CURTIME())
       )
-      AND ac.date = CURDATE()
-      AND ac.start_time < CURTIME()
-      AND ac.status IN ('Not Started', 'Time Over')
-      GROUP BY ac.pa_id, ac.date, ac.start_time, ac.end_time, ac.status, s.subject_name, sec.section_name, g.grade_name, u.name, m.roll, m.phone, sb.batch_name
-      
-      UNION ALL
-      
-      SELECT 
-        'Assessment' AS session_type,
-        asess.pa_id,
-        asess.date,
-        asess.start_time,
-        asess.end_time,
-        asess.status,
-        s.subject_name,
-        sec.section_name,
-        g.grade_name,
-        u.name AS mentor_name,
-        m.roll AS mentor_roll,
-        m.phone AS mentor_phone,
-        sb.batch_name,
-        GROUP_CONCAT(DISTINCT CONCAT(asess.student_roll, ':', st.name) SEPARATOR '|') AS students_list
-      FROM assessment_sessions asess
-      JOIN sections sec ON asess.section_id = sec.id
-      JOIN grades g ON sec.grade_id = g.id
-      JOIN subjects s ON asess.subject_id = s.id
-      JOIN mentors m ON asess.mentor_id = m.id
-      JOIN users u ON m.phone = u.phone
-      JOIN section_batches sb ON asess.batch_id = sb.id
-      JOIN students st ON asess.student_roll = st.roll
-      WHERE sec.grade_id IN (
-        SELECT grade_id FROM coordinator_grade_assignments WHERE coordinator_id = ?
+  AND ac.status IN ('Not Started', 'Time Over')
+GROUP BY ac.pa_id, ac.date, ac.start_time, ac.end_time, ac.status, 
+         s.subject_name, sec.section_name, g.grade_name, 
+         u.name, m.roll, m.phone, sb.batch_name
+
+UNION ALL
+
+SELECT 
+    'Assessment' AS session_type,
+    asess.pa_id,
+    asess.date,
+    asess.start_time,
+    asess.end_time,
+    asess.status,
+    s.subject_name,
+    sec.section_name,
+    g.grade_name,
+    u.name AS mentor_name,
+    m.roll AS mentor_roll,
+    m.phone AS mentor_phone,
+    sb.batch_name,
+    GROUP_CONCAT(DISTINCT CONCAT(asess.student_roll, ':', st.name) SEPARATOR '|') AS students_list
+FROM assessment_sessions asess
+JOIN sections sec ON asess.section_id = sec.id
+JOIN grades g ON sec.grade_id = g.id
+JOIN subjects s ON asess.subject_id = s.id
+JOIN mentors m ON asess.mentor_id = m.id
+JOIN users u ON m.phone = u.phone
+JOIN section_batches sb ON asess.batch_id = sb.id
+JOIN students st ON asess.student_roll = st.roll
+WHERE sec.grade_id = ?
+  AND (
+        asess.date < CURDATE() 
+        OR (asess.date = CURDATE() AND asess.start_time < CURTIME())
       )
-      AND asess.date = CURDATE()
-      AND asess.start_time < CURTIME()
-      AND asess.status IN ('Not Started', 'Time Over')
-      GROUP BY asess.pa_id, asess.date, asess.start_time, asess.end_time, asess.status, s.subject_name, sec.section_name, g.grade_name, u.name, m.roll, m.phone, sb.batch_name
-      
-      ORDER BY start_time
+  AND asess.status IN ('Not Started', 'Time Over')
+GROUP BY asess.pa_id, asess.date, asess.start_time, asess.end_time, asess.status, 
+         s.subject_name, sec.section_name, g.grade_name, 
+         u.name, m.roll, m.phone, sb.batch_name
+
+ORDER BY start_time;
+
     `;
 
-    const [results] = await db.promise().query(query, [coordinatorId, coordinatorId]);
-    
+    const [results] = await db.promise().query(query, [gradeId, gradeId]);
+
     // Parse students list for each result
     const formattedResults = results.map(result => ({
       ...result,
@@ -3331,7 +3336,7 @@ exports.getOverdueClasses = async (req, res) => {
         return { roll, name };
       }) : []
     }));
-    
+
     res.json({ success: true, overdueClasses: formattedResults });
   } catch (error) {
     console.error("Error fetching overdue classes:", error);
@@ -3339,55 +3344,263 @@ exports.getOverdueClasses = async (req, res) => {
   }
 };
 
-// Get overdue student levels
+// Get overdue student levels (students who haven't completed topics within expected date)
 exports.getOverdueStudentLevels = async (req, res) => {
   try {
-    const { coordinatorId } = req.body;
+    const { coordinatorId, gradeId } = req.body;
 
     const query = `
       SELECT 
-        ol.id,
-        ol.student_roll,
+        stch.id,
+        stch.student_roll,
         st.name AS student_name,
         st.profile_photo,
         sec.section_name,
         g.grade_name,
         sub.subject_name,
-        ol.level,
-        ol.updated_at,
+        th.topic_name AS level,
+        stch.expected_completion_date,
+        stch.days_late,
+        stch.created_at AS updated_at,
         m.roll AS mentor_roll,
         m.phone AS mentor_phone,
-        u.name AS mentor_name
-      FROM overdue_levels ol
-      JOIN students st ON ol.student_roll = st.roll
+        u.name AS mentor_name,
+        sb.batch_name,
+        sb.batch_level
+      FROM student_topic_completion_history stch
+      JOIN students st ON stch.student_roll = st.roll
       JOIN sections sec ON st.section_id = sec.id
       JOIN grades g ON sec.grade_id = g.id
-      JOIN subjects sub ON ol.subject_id = sub.id
+      JOIN subjects sub ON stch.subject_id = sub.id
+      JOIN topic_hierarchy th ON stch.topic_id = th.id
       LEFT JOIN mentors m ON st.mentor_id = m.id
       LEFT JOIN users u ON m.phone = u.phone
-      WHERE sec.grade_id IN (
-        SELECT grade_id FROM coordinator_grade_assignments WHERE coordinator_id = ?
-      )
-      AND ol.status = 'Requested'
-      ORDER BY ol.updated_at DESC
+      LEFT JOIN student_batch_assignments sba ON st.roll = sba.student_roll 
+        AND sba.subject_id = stch.subject_id AND sba.is_current = 1
+      LEFT JOIN section_batches sb ON sba.batch_id = sb.id
+      WHERE sec.grade_id = ?
+      AND stch.completion_status = 'Not Completed'
+      AND stch.expected_completion_date < CURDATE()
+      AND stch.days_late > 0
+      ORDER BY stch.days_late DESC, stch.expected_completion_date DESC
     `;
 
-    const [results] = await db.promise().query(query, [coordinatorId]);
+    const [results] = await db.promise().query(query, [gradeId]);
     res.json({ success: true, overdueLevels: results });
   } catch (error) {
     console.error("Error fetching overdue levels:", error);
     res.status(500).json({ success: false, message: "Failed to fetch overdue levels" });
   }
 };
+
+exports.getScheduleAssessmentFailedStudents = async (req, res) => {
+  try {
+    const { coordinatorId, gradeId } = req.body;
+
+    const query = `
+      SELECT 
+    spt.student_roll,
+    st.name AS student_name,
+    st.profile_photo,
+    sec.section_name,
+    sub.subject_name,
+    g.grade_name,
+    spt.penalty_type,
+    spt.subject_id,
+    spt.section_id,
+    CASE 
+        WHEN spt.penalty_type = 'Assessment_Failed' THEN spt.as_mark_id 
+        ELSE NULL 
+    END AS assessment_id,
+    spt.start_batch_id,
+    spt.coordinator_status,
+    asm.obtained_mark,
+    asm.total_marks,
+    asm.percentage,
+    asm.pass_status,
+    asm.rank,
+    asess.date AS assessment_date,
+    asess.start_time AS assessment_start_time,
+    asess.end_time AS assessment_end_time,
+    asess.topic_id,
+    asess.remarks,
+    th.topic_name,
+    th.topic_code,
+    th.level AS topic_level,
+    sb.batch_name,
+    sb.batch_level,
+    mentor_data.mentor_roll,
+    mentor_data.mentor_phone,
+    mentor_data.mentor_name
+FROM student_penalty_tracking spt
+JOIN students st 
+    ON spt.student_roll = st.roll
+JOIN sections sec 
+    ON spt.section_id = sec.id
+JOIN grades g 
+    ON sec.grade_id = g.id
+JOIN subjects sub 
+    ON spt.subject_id = sub.id
+LEFT JOIN section_batches sb 
+    ON spt.start_batch_id = sb.id
+LEFT JOIN assessment_session_marks asm 
+    ON spt.as_mark_id = asm.id
+LEFT JOIN assessment_sessions asess 
+    ON asm.as_id = asess.id
+LEFT JOIN topic_hierarchy th 
+    ON asess.topic_id = th.id
+LEFT JOIN (
+    SELECT 
+        msa.subject_id,
+        sms.section_id,
+        m.roll AS mentor_roll,
+        m.phone AS mentor_phone,
+        u.name AS mentor_name
+    FROM section_mentor_subject sms
+    JOIN mentor_section_assignments msa 
+        ON sms.msa_id = msa.id
+    JOIN mentors m 
+        ON msa.mentor_id = m.id
+    JOIN users u 
+        ON m.phone = u.phone
+) AS mentor_data 
+    ON mentor_data.section_id = spt.section_id 
+   AND mentor_data.subject_id = spt.subject_id
+WHERE sec.grade_id = ?
+  AND spt.penalty_type = 'Assessment_Failed'
+  AND spt.coordinator_status = 'Pending'
+ORDER BY asess.date DESC, asm.rank;
+
+    `;
+
+    const [results] = await db.promise().query(query, [gradeId]);
+
+    // Build topic hierarchy path for each result
+    const resultsWithHierarchy = await Promise.all(results.map(async (result) => {
+      if (result.topic_id) {
+        try {
+          // Get the complete topic hierarchy path from root to current topic
+          const hierarchyQuery = `
+            WITH RECURSIVE topic_path AS (
+              -- Start with the target topic
+              SELECT 
+                id, 
+                topic_name, 
+                parent_id, 
+                level,
+                subject_id,
+                topic_name as path
+              FROM topic_hierarchy 
+              WHERE id = ?
+              
+              UNION ALL
+              
+              -- Recursively find parents
+              SELECT 
+                th.id, 
+                th.topic_name, 
+                th.parent_id, 
+                th.level,
+                th.subject_id,
+                CONCAT(th.topic_name, ' > ', tp.path) as path
+              FROM topic_hierarchy th
+              INNER JOIN topic_path tp ON th.id = tp.parent_id
+            )
+            SELECT path as topic_hierarchy_path 
+            FROM topic_path 
+            WHERE parent_id IS NULL
+            ORDER BY level
+            LIMIT 1
+          `;
+
+          const [hierarchyResult] = await db.promise().query(hierarchyQuery, [result.topic_id]);
+
+          return {
+            ...result,
+            topic_hierarchy_path: hierarchyResult[0]?.topic_hierarchy_path || result.topic_name
+          };
+        } catch (error) {
+          console.error('Error building hierarchy for topic:', result.topic_id, error);
+          // Fallback: try a simpler approach without recursive CTE
+          try {
+            const simpleQuery = `
+              SELECT 
+                CASE 
+                  WHEN t3.topic_name IS NOT NULL THEN CONCAT(t3.topic_name, ' > ', t2.topic_name, ' > ', t1.topic_name)
+                  WHEN t2.topic_name IS NOT NULL THEN CONCAT(t2.topic_name, ' > ', t1.topic_name)
+                  ELSE t1.topic_name
+                END as topic_hierarchy_path
+              FROM topic_hierarchy t1
+              LEFT JOIN topic_hierarchy t2 ON t1.parent_id = t2.id
+              LEFT JOIN topic_hierarchy t3 ON t2.parent_id = t3.id
+              WHERE t1.id = ?
+            `;
+
+            const [simpleResult] = await db.promise().query(simpleQuery, [result.topic_id]);
+
+            return {
+              ...result,
+              topic_hierarchy_path: simpleResult[0]?.topic_hierarchy_path || result.topic_name
+            };
+          } catch (fallbackError) {
+            console.error('Fallback hierarchy query failed:', fallbackError);
+            return {
+              ...result,
+              topic_hierarchy_path: result.topic_name
+            };
+          }
+        }
+      }
+      return result;
+    }));
+
+    res.json({ success: true, failedStudents: resultsWithHierarchy });
+  }
+  catch (error) {
+    console.error("Error fetching failed assessments:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch failed assessments" });
+  }
+}
+
 exports.assignTask = async (req, res) => {
   try {
     const { overdueId } = req.body;
 
-    const query = `
-      UPDATE overdue_levels SET status = 'Assigned Task' WHERE id = ?;
+    // Instead of updating overdue_levels status, we'll create a task assignment record
+    // First get the overdue topic details
+    const getOverdueQuery = `
+      SELECT 
+        stch.student_roll, 
+        stch.topic_id, 
+        stch.subject_id,
+        st.section_id,
+        st.mentor_id
+      FROM student_topic_completion_history stch
+      JOIN students st ON stch.student_roll = st.roll
+      WHERE stch.id = ?
     `;
 
-    await db.promise().query(query, [overdueId]);
+    const [overdueDetails] = await db.promise().query(getOverdueQuery, [overdueId]);
+
+    if (overdueDetails.length === 0) {
+      return res.status(404).json({ success: false, message: 'Overdue record not found' });
+    }
+
+    const { student_roll, topic_id, subject_id, section_id, mentor_id } = overdueDetails[0];
+
+    // Create a task assignment record (you may need to create this table if it doesn't exist)
+    const insertTaskQuery = `
+      INSERT INTO coordinator_task_assignments 
+      (student_roll, topic_id, subject_id, section_id, mentor_id, assigned_date, status, overdue_history_id)
+      VALUES (?, ?, ?, ?, ?, CURDATE(), 'Assigned', ?)
+      ON DUPLICATE KEY UPDATE 
+      assigned_date = CURDATE(), status = 'Assigned'
+    `;
+
+    await db.promise().query(insertTaskQuery, [
+      student_roll, topic_id, subject_id, section_id, mentor_id, overdueId
+    ]);
+
     res.json({ success: true, message: 'Task assigned successfully' });
   } catch (error) {
     console.error("Error assigning task:", error);
@@ -3623,7 +3836,7 @@ exports.generateMentorTemplate = async (req, res) => {
   try {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Mentor Enrollment Template');
-    
+
     // Define columns based on mentor enrollment form
     worksheet.columns = [
       { header: 'Name*', key: 'name', width: 20 },
@@ -3817,8 +4030,8 @@ exports.generateStudentTemplate = async (req, res) => {
 
     // Write to response
     await workbook.xlsx.write(res);
-    
-    
+
+
     res.end();
 
   } catch (error) {
@@ -3969,7 +4182,7 @@ exports.bulkUploadMentors = async (req, res) => {
 
           await transaction.commit();
           transaction = null;
-          
+
           results.success++;
           results.successfulInserts.push({
             roll: newRoll,

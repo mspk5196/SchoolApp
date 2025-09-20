@@ -6,6 +6,7 @@ import HomeIcon from '../../../../assets/CoordinatorPage/MaterialHome/Home.svg';
 import LevelPromotionIcon from '../../../../assets/CoordinatorPage/MaterialHome/LevelPromotion.svg';
 import Nodata from '../../../../components/General/Nodata';
 import { API_URL } from "../../../../utils/env.js";
+import LottieView from 'lottie-react-native';
 
 const CoordinatorMaterialHome = ({ navigation, route }) => {
   const { coordinatorData, coordinatorGrades } = route.params || {};
@@ -94,7 +95,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
   useEffect(() => {
     fetchSections();
   }, [activeGrade]);
-   useEffect(() => {
+  useEffect(() => {
     if (sections.length > 0) {
       setSelectedSection(sections[0].id);
     }
@@ -131,6 +132,12 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         <View style={styles.loadingContent}>
           <ActivityIndicator size="large" color="#0C36FF" />
           <Text style={styles.loadingText}>Loading subjects...</Text>
+          <LottieView
+            source={require('../../../../assets/Genreal/lottie_loading.json')}
+            autoPlay
+            loop
+            speed={0.5}
+          />
         </View>
       </SafeAreaView>
     );
@@ -157,8 +164,6 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         />
         <Text style={styles.HeaderTxt}>Material</Text>
       </View>
-
-
 
       <ScrollView
         horizontal
@@ -239,23 +244,23 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
                     style={[styles.managementButton, { borderColor: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}
                     onPress={() => {
                       navigation.navigate('BatchManagementHome', {
-                      coordinatorData,
-                      coordinatorGrades,
-                      activeGrade,
-                      selectedSubjectId: item.subject_id,
-                      selectedSubjectName: item.subject_name,
-                      selectedSectionId: selectedSection
-                    })
-                    console.log('Navigated to BatchManagementHome with:', {
-                      coordinatorData,
-                      coordinatorGrades,
-                      activeGrade,
-                      selectedSubjectId: item.subject_id,
-                      selectedSubjectName: item.subject_name,
-                      selectedSectionId: selectedSection
-                    });
+                        coordinatorData,
+                        coordinatorGrades,
+                        activeGrade,
+                        selectedSubjectId: item.subject_id,
+                        selectedSubjectName: item.subject_name,
+                        selectedSectionId: selectedSection
+                      })
+                      console.log('Navigated to BatchManagementHome with:', {
+                        coordinatorData,
+                        coordinatorGrades,
+                        activeGrade,
+                        selectedSubjectId: item.subject_id,
+                        selectedSubjectName: item.subject_name,
+                        selectedSectionId: selectedSection
+                      });
 
-                  }}
+                    }}
                   >
                     <Text style={[styles.managementButtonText, { color: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}>👥 Batches</Text>
                   </TouchableOpacity>
