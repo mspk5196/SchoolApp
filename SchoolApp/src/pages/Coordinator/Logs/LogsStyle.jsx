@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   failedStudentActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    // marginTop: 16,
     gap: 8,
   },
 

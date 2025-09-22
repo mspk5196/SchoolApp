@@ -167,6 +167,7 @@ import CoordinatorStudentSchedule from '../../pages/Coordinator/Schedule/Student
 import MentorTopicHierarchy from '../../pages/Mentor/Materials/TopicHierarchy/MentorTopicHierarchy';
 import MentorBatchManagement from '../../pages/Mentor/Materials/BatchManagement/MentorBatchManagement';
 import MentorBatchDetails from '../../pages/Mentor/Materials/BatchManagement/MentorBatchDetails';
+import StudentTopicEnrollment from '../../pages/Coordinator/Enrollment/StudentTopicEnrollment/StudentTopicEnrollment';
 
 const Stack = createNativeStackNavigator();
 
@@ -231,12 +232,7 @@ const Routes = () => {
                         <Stack.Screen name="CoordinatorStudentProfile" component={CoordinatorStudentProfile} />
                         <Stack.Screen name="CoordinatorStudentProfileDetails" component={CoordinatorStudentProfileDetails} />
                         {/* CoordinatorMaterialHome */}
-                        <Stack.Screen name="LevelPromotion" component={LevelPromotion} />
-                        {/* <Stack.Screen name="SubjectPage" component={SubjectPage} />
-                        <Stack.Screen name="SubjectActivityPage" component={SubjectActivityPage} options={{ headerShown: false }} /> */}
-                        {/* <Stack.Screen name="TopicHierarchySubject" component={TopicHierarchySubject} options={{ headerShown: false }} /> */}
-                        {/* <Stack.Screen name="AddTopicPage" component={AddTopicPage} options={{ headerShown: false }} /> */}
-                        {/* <Stack.Screen name="TopicDetailsPage" component={TopicDetailsPage} options={{ headerShown: false }} /> */}
+                       
                         {/* CoordinatorLogs - Only one page*/}
                         {/* CoordinatorScheduleHome */}
                         <Stack.Screen name="CoordinatorAcademicSchedule" component={CoordinatorAcademicSchedule} />
@@ -256,6 +252,7 @@ const Routes = () => {
                         <Stack.Screen name="MentorEnrollment" component={MentorEnrollment} />
                         <Stack.Screen name="StudentEnrollment" component={StudentEnrollment} />
                         <Stack.Screen name="SubjectAllotment" component={SubjectAllotment} />
+                        <Stack.Screen name="StudentTopicEnrollment" component={StudentTopicEnrollment} />
 
                         {/* Enhanced Hierarchy System - Coordinator */}
                         <Stack.Screen name="TopicHierarchyManagement" component={TopicHierarchyManagement} options={{ headerShown: false }} />

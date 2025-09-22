@@ -6,6 +6,7 @@ import CollegeIcon from '../../../../assets/CoordinatorPage/EnrollmentHome/Colle
 import CollegeStudentIcon from '../../../../assets/CoordinatorPage/EnrollmentHome/CollegeStudent.svg';
 import ExamIcon from '../../../../assets/CoordinatorPage/EnrollmentHome/Exam.svg';
 import InfraStructureIcon from '../../../../assets/CoordinatorPage/EnrollmentHome/InfraStructure.svg';
+import LearningIcon from '../../../../assets/CoordinatorPage/EnrollmentHome/learning.svg';
 import styles from './EnrollmentHomeStyle';
 
 const CoordinatorEnrollmentHome = ({ navigation, route }) => {
@@ -26,6 +27,7 @@ const CoordinatorEnrollmentHome = ({ navigation, route }) => {
         { id: '2', title: 'Mentor Enrollment', bgColor: '#FFDAF0', iconColor: '#EEAA16', Icon: <CollegeIcon width={50} height={50} />, color: '#AD5191' },
         { id: '3', title: 'Subject & Activity Enrollment', bgColor: '#65558F12', iconColor: '#D81B60', Icon: <ExamIcon width={50} height={50} />, color: '#65558F' },
         { id: '4', title: 'InfraStructure Enrollment', bgColor: '#FFF3DC', iconColor: '#3557FF', Icon: <InfraStructureIcon width={50} height={50} />, color: '#EEAA16' },
+        { id: '5', title: 'Student Topic Enrollment', bgColor: '#ff7043', iconColor: '#3557FF', Icon: <LearningIcon width={50} height={50} />, color: '#ffffffff' },
       ],
     },
   ];
@@ -82,6 +84,9 @@ const CoordinatorEnrollmentHome = ({ navigation, route }) => {
               }
               else if (item.title === 'InfraStructure Enrollment') {
                 navigation.navigate('InfrastructureEnrollment', { coordinatorData, activeGrade });
+              }
+              else if (item.title === 'Student Topic Enrollment') {
+                navigation.navigate('StudentTopicEnrollment', { coordinatorData, activeGrade });
               }
 
             }}
