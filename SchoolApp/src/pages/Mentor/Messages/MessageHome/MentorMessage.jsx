@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, FlatList, Pressable, TextInput, Image, TouchableOpacity, ActivityIndicator } from "react-native";
 import styles from "./Messagesty";
@@ -26,7 +27,7 @@ const MentorMessage = ({ navigation }) => {
         if (!mentor) return;
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/mentor-inbox`, {
+            const res = await apiFetch(`/mentor-inbox`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mentor_id: mentor.id })
@@ -162,7 +163,7 @@ const MentorMessage = ({ navigation }) => {
             ) : (
                 // console.log(filteredInbox),
 
-                <FlatList
+                (<FlatList
                     data={filteredInbox}
                     // --- START OF CHANGE ---
                     // Use a more robust key that works for items with and without messages
@@ -230,7 +231,7 @@ const MentorMessage = ({ navigation }) => {
                             <Text style={{ color: '#888' }}>No messages found</Text>
                         </View>
                     }
-                />
+                />)
             )}
             <View>
                 <TouchableOpacity style={styles.addIcon} onPress={() => navigation.navigate("MentorSendMessage")}>
@@ -238,7 +239,7 @@ const MentorMessage = ({ navigation }) => {
                 </TouchableOpacity>
             </View>
         </View>
-    )
+    );
 };
 
 export default MentorMessage;

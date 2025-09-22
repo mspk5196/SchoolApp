@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -157,7 +158,7 @@ const AdminMessageBox = ({ route, navigation }) => {
       if (!myPrivateKey) {
         const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys(currentUser.id, 'admin');
         myPrivateKey = privateKeyHex;
-        await fetch(`${API_URL}/api/messages/keys/upload`, {
+        await apiFetch(`/messages/keys/upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -262,7 +263,7 @@ const AdminMessageBox = ({ route, navigation }) => {
     if (!adminData || !sharedSecretRef.current) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/messages/get`, {
+      const response = await apiFetch(`/messages/get`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -273,7 +274,7 @@ const AdminMessageBox = ({ route, navigation }) => {
           last_message_id: 0,
         }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         const decrypted = await decryptMessages(data.messages);
         console.log('📥 Admin - Fetched messages count:', decrypted.length);
@@ -329,7 +330,7 @@ const AdminMessageBox = ({ route, navigation }) => {
   // Delete selected messages
   const deleteSelectedMessages = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/messages/delete`, {
+      const response = await apiFetch(`/messages/delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -339,7 +340,7 @@ const AdminMessageBox = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setMessages(prev => prev.filter(msg => !selectedMessages.includes(msg.message_id)));
@@ -359,7 +360,7 @@ const AdminMessageBox = ({ route, navigation }) => {
     const encryptedMessage = encryptText(message, sharedSecretRef.current);
 
     try {
-      const response = await fetch(`${API_URL}/api/messages/send`, {
+      const response = await apiFetch(`/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -371,7 +372,7 @@ const AdminMessageBox = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setMessage('');
         

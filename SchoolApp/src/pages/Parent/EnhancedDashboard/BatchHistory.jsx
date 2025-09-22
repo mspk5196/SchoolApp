@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -42,7 +43,7 @@ const BatchHistory = () => {
       const phone = JSON.parse(storedPhone);
 
       const queryParam = selectedSubject !== 'all' ? `?subject_id=${selectedSubject}` : '';
-      const response = await fetch(`${API_URL}/student/batch-history${queryParam}`, {
+      const response = await apiFetch(`${API_URL}/student/batch-history${queryParam}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

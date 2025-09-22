@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from "react";
 import { Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, FlatList } from "react-native";
 import { API_URL } from "../../../../utils/env.js";
@@ -103,13 +104,13 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
     const fetchSections = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+            const response = await apiFetch(`/coordinator/getGradeSections`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ gradeID: activeGrade })
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 const sectionOptions = data.gradeSections.map(section => ({
                     label: `Grade ${section.grade_id} - ${section.section_name}`,
@@ -141,13 +142,13 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
         try {
             setStudents([]);
             setLoading(true);
-            const response = await fetch(`${API_URL}/api/coordinator/getStudentsBySection`, {
+            const response = await apiFetch(`/coordinator/getStudentsBySection`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sectionId })
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 const studentList = data.students.map(student => ({
                     id: student.roll,
@@ -174,13 +175,13 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
 
     const fetchSubjects = async (sectionId) => {
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/batches/getSectionSubjects`, {
+            const response = await apiFetch(`/coordinator/batches/getSectionSubjects`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sectionId })
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 const subjectOptions = data.sectionSubjects.map(subject => ({
                     label: subject.subject_name,
@@ -207,12 +208,12 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
     const fetchBatches = async (sectionId, subjectId) => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_URL}/api/coordinator/batches/${sectionId}/${subjectId}`, {
+            const response = await apiFetch(`/coordinator/batches/${sectionId}/${subjectId}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            const data = await response.json();
+            const data = response
             
             if (data.success) {
                 const batchOptions = data.data.map(batch => ({
@@ -242,12 +243,12 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
     const fetchActivities = async (subjectId) => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectActivities/${selectedSection}/${subjectId}`, {
+            const response = await apiFetch(`/coordinator/topics/getSectionSubjectActivities/${selectedSection}/${subjectId}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 const activityOptions = data.sectionSubjectActivity.map(activity => ({
                     label: activity.activity_name,
@@ -276,12 +277,12 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
     const fetchSubActivities = async (activityId) => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectSubActivities/${activityId}/${selectedSubject}`, {
+            const response = await apiFetch(`/coordinator/topics/getSectionSubjectSubActivities/${activityId}/${selectedSubject}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 const subActivityOptions = data.sectionSubjectSubActivity.map(subActivity => ({
                     label: subActivity.sub_act_name,
@@ -347,7 +348,7 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
 
         try {
             setIsProcessing(true);
-            const response = await fetch(`${API_URL}/api/coordinator/generateSectionWiseEnrollment`, {
+            const response = await apiFetch(`/coordinator/generateSectionWiseEnrollment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -357,7 +358,7 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
                 })
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 Alert.alert('Success', 'Section-wise enrollment generated successfully');
                 // Reset selected values
@@ -393,7 +394,7 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
 
         try {
             setIsProcessing(true);
-            const response = await fetch(`${API_URL}/api/coordinator/generateSubjectWiseEnrollment`, {
+            const response = await apiFetch(`/coordinator/generateSubjectWiseEnrollment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -407,7 +408,7 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
                 })
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 Alert.alert('Success', 'Subject-wise enrollment generated successfully');
                 // Reset selected values
@@ -443,7 +444,7 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
 
         try {
             setIsProcessing(true);
-            const response = await fetch(`${API_URL}/api/coordinator/generateAllEnrollments`, {
+            const response = await apiFetch(`/coordinator/generateAllEnrollments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -453,7 +454,7 @@ const StudentTopicEnrollment = ({ navigation, route }) => {
                 })
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 Alert.alert('Success', 'All enrollments generated successfully');
                 // Reset selected values

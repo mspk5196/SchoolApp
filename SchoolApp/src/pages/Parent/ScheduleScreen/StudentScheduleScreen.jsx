@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Text, View, TouchableOpacity, FlatList, ScrollView, Image, Modal, Dimensions, RefreshControl } from 'react-native';
@@ -122,12 +123,12 @@ const StudentScheduleScreen = () => {
     if (!studentData.grade_id) return;
     setExamLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/student/getExamScheduleBySection`, {
+      const response = await apiFetch(`/student/getExamScheduleBySection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ grade_id: studentData.grade_id })
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         // Format for frontend
         const formatted = data.schedules.map(s => ({
@@ -240,7 +241,7 @@ const StudentScheduleScreen = () => {
 
   const fetchScheduleData = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/student/getDetailedStudentSchedule`, {
+      const response = await apiFetch(`/student/getDetailedStudentSchedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -256,7 +257,7 @@ const StudentScheduleScreen = () => {
           includeSubjectDetails: true
         })
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         // Handle both old and new response formats
         let dayData = [];
@@ -318,7 +319,7 @@ const StudentScheduleScreen = () => {
       console.error("Error fetching detailed academic schedule:", error);
       // Fallback to original API if new one fails
       try {
-        const fallbackResponse = await fetch(`${API_URL}/api/student/getStudentScheduleByMonth`, {
+        const fallbackResponse = await apiFetch(`/student/getStudentScheduleByMonth`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

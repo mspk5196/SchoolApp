@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect } from 'react'
 import { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -112,7 +113,7 @@ const AdminScheduleHome = ({ navigation }) => {
   const fetchGrades = async () => {
     try {
       const response = await fetch(`${API_URL}/api/admin/grades`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);
         setGrades(sortedGrades);
@@ -130,7 +131,7 @@ const AdminScheduleHome = ({ navigation }) => {
   const fetchSections = async () => {
     try {
       const response = await fetch(`${API_URL}/api/admin/grades/${activeGrade}/sections`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         // console.log(data.gradeSections);
         const formattedSections = [
@@ -152,7 +153,7 @@ const AdminScheduleHome = ({ navigation }) => {
   // Update the handleCancelSchedule function in AdminScheduleHome.jsx
   const handleCancelSchedule = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/schedules/cancel`, {
+      const response = await apiFetch(`/admin/schedules/cancel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -163,7 +164,7 @@ const AdminScheduleHome = ({ navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         Alert.alert('Schedule cancelled successfully');

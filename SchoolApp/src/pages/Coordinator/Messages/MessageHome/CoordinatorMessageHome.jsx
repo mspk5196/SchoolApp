@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, FlatList, Pressable, TextInput, Image, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import styles from "./Messagesty";
@@ -26,7 +27,7 @@ const CoordinatorMessageHome = ({ navigation, route }) => {
     //         if (!myPrivateKey) {
     //             const { privateKeyHex, publicKeyHex } = await generateAndStoreKeys();
     //             myPrivateKey = privateKeyHex;
-    //             await fetch(`${API_URL}/api/messages/keys/upload`, {
+    //             await apiFetch(`/messages/keys/upload`, {
     //                 method: 'POST',
     //                 headers: { 'Content-Type': 'application/json' },
     //                 body: JSON.stringify({
@@ -75,7 +76,7 @@ const CoordinatorMessageHome = ({ navigation, route }) => {
         if (!currentCoordinator) return;
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/coordinator-inbox`, {
+            const res = await apiFetch(`/coordinator-inbox`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ coordinator_id: currentCoordinator.id, coordinatorGrades })

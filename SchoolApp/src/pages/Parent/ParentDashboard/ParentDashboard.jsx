@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useRef, useEffect } from "react";
 import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions, Alert, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -60,12 +61,12 @@ const ParentDashboard = () => {
         if (!phoneNumber) return;
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/api/getStudentData`, {
+            const response = await apiFetch(`/getStudentData`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ phoneNumber }),
             });
-            const data = await response.json();
+            const data = response
             if (data.success && data.student) {
                 setStudentData(data.student);
                 await AsyncStorage.setItem("studentData", JSON.stringify(data.student));
@@ -94,12 +95,12 @@ const ParentDashboard = () => {
     const fetchDailyAttendance = async () => {
         try {
             const today = format(new Date(), 'yyyy-MM-dd');
-            const response = await fetch(`${API_URL}/api/student/getSessionAttendance`, {
+            const response = await apiFetch(`/student/getSessionAttendance`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ studentId: selectedStudentData.student_id, date: today, sectionId: selectedStudentData.section_id }),
             });
-            const data = await response.json();
+            const data = response
             if (data.success) setDailyAttendance(data.attendance || "0/0");
         } catch (error) {
             console.error("Error fetching daily attendance:", error);
@@ -108,12 +109,12 @@ const ParentDashboard = () => {
 
     const fetchPendingHomework = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/student/getPendingHomework`, {
+            const response = await apiFetch(`/student/getPendingHomework`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ student_roll: selectedStudentData.roll }),
             });
-            const data = await response.json();
+            const data = response
             setPendingHomework(data.success ? data.homework : []);
         } catch (error) {
             console.error("Error fetching pending homework:", error);
@@ -125,7 +126,7 @@ const ParentDashboard = () => {
         setSurveysLoading(true);
         try {
             const response = await fetch(`${API_URL}/api/student/getStudentSurveys?studentId=${selectedStudentData.student_id}`);
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setSurveys(data.surveys);
             }
@@ -138,12 +139,12 @@ const ParentDashboard = () => {
 
     const handleMarkAsRead = async (surveyId) => {
         try {
-            const response = await fetch(`${API_URL}/api/student/markSurveyAsRead`, {
+            const response = await apiFetch(`/student/markSurveyAsRead`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ surveyId: surveyId, studentId: selectedStudentData.student_id }),
             });
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 Alert.alert("Success", "Marked as read.");
                 fetchSurveys(); // Refresh the list

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   Text,
@@ -64,12 +65,12 @@ const CoordinatorLeaveApproval = ({ navigation, route }) => {
 
   const fetchLeaveRequests = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getMentorLeaveRequests`, {
+      const response = await apiFetch(`/coordinator/getMentorLeaveRequests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeId: activeGrade })
       });
-      const data = await response.json();
+      const data = response
       setLeaveRequests(data.leaveRequests || []);
     } catch (error) {
       console.error('Error fetching leave requests:', error);
@@ -79,12 +80,12 @@ const CoordinatorLeaveApproval = ({ navigation, route }) => {
 
   const fetchMentorLeaveHistory = async (phone) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getMentorLeaveHistory`, {
+      const response = await apiFetch(`/coordinator/getMentorLeaveHistory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone })
       });
-      const data = await response.json();
+      const data = response
       return data.history || [];
     } catch (error) {
       console.error('Error fetching mentor leave history:', error);
@@ -94,12 +95,12 @@ const CoordinatorLeaveApproval = ({ navigation, route }) => {
 
   const fetchAllLeaveHistory = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getAllMentorLeaveHistory`, {
+      const response = await apiFetch(`/coordinator/getAllMentorLeaveHistory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeId: activeGrade })
       });
-      const data = await response.json();
+      const data = response
       setHistoryRecords(data.history || []);
     } catch (error) {
       console.error('Error fetching all leave history:', error);
@@ -118,7 +119,7 @@ const CoordinatorLeaveApproval = ({ navigation, route }) => {
   const handleApprove = async (leave) => {
     setSelectedLeave(leave);
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getAvailableMentorsForDate`, {
+      const response = await apiFetch(`/coordinator/getAvailableMentorsForDate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -127,7 +128,7 @@ const CoordinatorLeaveApproval = ({ navigation, route }) => {
           gradeId: activeGrade
         })
       });
-      const data = await response.json();
+      const data = response
       setAvailableSubstitutes(data.mentors || []);
       setSubstitutesModalVisible(true);
     } catch (error) {
@@ -145,7 +146,7 @@ const CoordinatorLeaveApproval = ({ navigation, route }) => {
     if (!selectedLeave || !rejectionReason) return;
 
     try {
-      await fetch(`${API_URL}/api/coordinator/rejectMentorLeave`, {
+      await apiFetch(`/coordinator/rejectMentorLeave`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -170,7 +171,7 @@ const CoordinatorLeaveApproval = ({ navigation, route }) => {
     if (!selectedLeave || !selectedSubstitute) return;
 
     try {
-      await fetch(`${API_URL}/api/coordinator/approveMentorLeave`, {
+      await apiFetch(`/coordinator/approveMentorLeave`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

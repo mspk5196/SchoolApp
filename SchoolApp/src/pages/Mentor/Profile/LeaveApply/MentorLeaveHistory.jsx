@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Image } from 'react-native';
 import styles from './leavehistorysty';
@@ -36,7 +37,7 @@ const MentorLeaveHistory = ({ navigation }) => {
     const fetchLeaveRequests = async () => {
       try {
 
-        const response = await fetch(`${API_URL}/api/mentor/getLeaveHistory`, {
+        const response = await apiFetch(`/mentor/getLeaveHistory`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

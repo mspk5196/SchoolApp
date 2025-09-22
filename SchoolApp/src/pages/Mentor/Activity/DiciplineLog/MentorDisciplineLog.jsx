@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from "react";
 import { 
   View, Text, TextInput, FlatList, TouchableOpacity, Image, Modal, 
@@ -51,7 +52,7 @@ const MentorDisciplineLog = ({ navigation, route }) => {
 
     try {
       setLoadingSubmit(true);
-      const response = await fetch(`${API_URL}/api/coordinator/student/addStudentComplaint`, {
+      const response = await apiFetch(`/coordinator/student/addStudentComplaint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,7 +64,7 @@ const MentorDisciplineLog = ({ navigation, route }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (response.ok) {
         Alert.alert(
@@ -97,7 +98,7 @@ const MentorDisciplineLog = ({ navigation, route }) => {
         throw new Error('Failed to fetch student list');
       }
       
-      const data = await response.json();
+      const data = response
       setStudentList(data.student);
     } catch (error) {
       console.error('Error fetching student:', error);
@@ -136,7 +137,7 @@ const MentorDisciplineLog = ({ navigation, route }) => {
         throw new Error('Failed to fetch discipline data');
       }
       
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setDisciplineData(data.issues || []);
       } else {

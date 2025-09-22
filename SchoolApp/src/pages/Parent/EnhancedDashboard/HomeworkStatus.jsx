@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -45,7 +46,7 @@ const HomeworkStatus = () => {
       const phone = JSON.parse(storedPhone);
 
       // Fetch all homework data
-      const response = await fetch(`${API_URL}/student/homework/status`, {
+      const response = await apiFetch(`${API_URL}/student/homework/status`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -78,7 +79,7 @@ const HomeworkStatus = () => {
       const storedPhone = await AsyncStorage.getItem('userPhone');
       const phone = JSON.parse(storedPhone);
 
-      const response = await fetch(`${API_URL}/student/homework/submit`, {
+      const response = await apiFetch(`${API_URL}/student/homework/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

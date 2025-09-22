@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -198,7 +199,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
     
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/messages/get`, {
+      const response = await apiFetch(`/messages/get`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -206,7 +207,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
           receiver_id: contact.receiver_id, receiver_type: contact.receiver_type,
         }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setMessages(data.messages);
 
@@ -261,7 +262,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
   // Delete selected messages
   const deleteSelectedMessages = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/messages/delete`, {
+      const response = await apiFetch(`/messages/delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -271,7 +272,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setMessages(prev => prev.filter(msg => !selectedMessages.includes(msg.message_id)));
@@ -288,7 +289,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
   const sendMessage = async () => {
 
     try {
-      const response = await fetch(`${API_URL}/api/messages/send`, {
+      const response = await apiFetch(`/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -300,7 +301,7 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setMessage('');
         

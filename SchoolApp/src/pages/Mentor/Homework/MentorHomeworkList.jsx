@@ -5,6 +5,7 @@ import Book from '../../../assets/MentorPage/book.svg';
 import Plus from '../../../assets/MentorPage/plus.svg';
 import styles from './homeworkliststy';
 import { API_URL } from '../../../utils/env.js';
+import { apiFetch } from '../../../utils/apiClient.js';
 
 const MentorHomeworkList = ({ navigation, route }) => {
   const { mentorData } = route.params;
@@ -15,22 +16,21 @@ const MentorHomeworkList = ({ navigation, route }) => {
   useEffect(() => {
     fetchHomeworkData();
     setRefreshing(true);
-   
+
   }, []);
 
   const fetchHomeworkData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/mentor/getHomeworkList?mentorId=${mentorData[0].id}`);
-      const data = await response.json();
+
+      // apiFetch already includes API_URL and parses JSON
+      const data = await apiFetch(`/mentor/getHomeworkList?mentorId=${mentorData[0].id}`);
 
       if (data.success) {
         // Group by date
         const groupedData = data.homeworkList.reduce((acc, item) => {
           const date = item.formatted_date;
-          if (!acc[date]) {
-            acc[date] = [];
-          }
+          if (!acc[date]) acc[date] = [];
 
           acc[date].push({
             title: item.grade_name,
@@ -39,13 +39,16 @@ const MentorHomeworkList = ({ navigation, route }) => {
               topic: item.topic_name || 'No Topic',
               batch: item.batch_name || 'No Batch',
               section: item.section_name,
-              status: item.notCom_count != 0 || item.redo_count != 0 ? 'Evaluate' : 'Evaluated',
+              status:
+                item.notCom_count !== 0 || item.redo_count !== 0
+                  ? 'Evaluate'
+                  : 'Evaluated',
               homeworkId: item.id,
               totalStudents: item.total_students,
               doneCount: item.done_count,
               redoCount: item.redo_count,
-              notComCount: item.notCom_count
-            }
+              notComCount: item.notCom_count,
+            },
           });
 
           return acc;
@@ -55,19 +58,19 @@ const MentorHomeworkList = ({ navigation, route }) => {
         const formattedData = Object.entries(groupedData).map(([date, grades]) => ({
           date,
           grades: grades.reduce((acc, grade) => {
-            const existingGrade = acc.find(g => g.title === grade.title);
+            const existingGrade = acc.find((g) => g.title === grade.title);
             if (existingGrade) {
               existingGrade.subjects.push(grade.subject);
             } else {
               acc.push({
                 title: grade.title,
-                subjects: [grade.subject]
+                subjects: [grade.subject],
               });
             }
             return acc;
-          }, [])
+          }, []),
         }));
-        
+
         setHomeworkData(formattedData);
         setRefreshing(false);
       }
@@ -77,6 +80,7 @@ const MentorHomeworkList = ({ navigation, route }) => {
       setLoading(false);
     }
   };
+
 
   const handleSubjectPress = (homeworkId, status) => {
     if (status === 'Evaluate') {

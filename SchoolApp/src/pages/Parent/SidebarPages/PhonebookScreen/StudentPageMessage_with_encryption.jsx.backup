@@ -155,7 +155,7 @@ const StudentPageMessage = ({ route, navigation }) => {
             public_key: publicKeyHex.substring(0, 20) + "..." // Log first 20 chars only
           });
           
-          const uploadResponse = await fetch(`${API_URL}/api/messages/keys/upload`, {
+          const uploadResponse = await apiFetch(`/messages/keys/upload`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -204,7 +204,7 @@ const StudentPageMessage = ({ route, navigation }) => {
                 public_key: ourPublicKey.substring(0, 20) + "..."
               });
               
-              const reUploadResponse = await fetch(`${API_URL}/api/messages/keys/upload`, {
+              const reUploadResponse = await apiFetch(`/messages/keys/upload`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -335,7 +335,7 @@ const StudentPageMessage = ({ route, navigation }) => {
       console.log('🔑 Generated new keys');
       
       // Upload new public key
-      const uploadResponse = await fetch(`${API_URL}/api/messages/keys/upload`, {
+      const uploadResponse = await apiFetch(`/messages/keys/upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -678,7 +678,7 @@ const StudentPageMessage = ({ route, navigation }) => {
               console.log("🔧 Test upload attempt...");
               console.log("🔧 CRITICAL CHECK - currentUser.student_id in test:", currentUser.student_id);
               console.log("🔧 CRITICAL CHECK - typeof currentUser.student_id in test:", typeof currentUser.student_id);
-              const testUpload = await fetch(`${API_URL}/api/messages/keys/upload`, {
+              const testUpload = await apiFetch(`/messages/keys/upload`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -776,7 +776,7 @@ const StudentPageMessage = ({ route, navigation }) => {
     if (!studentData.current) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/messages/get`, {
+      const response = await apiFetch(`/messages/get`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -787,7 +787,7 @@ const StudentPageMessage = ({ route, navigation }) => {
           last_message_id: 0,
         }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         console.log('📥 Raw messages from server:', data.messages.length);
         
@@ -882,7 +882,7 @@ const StudentPageMessage = ({ route, navigation }) => {
   // Delete selected messages
   const deleteSelectedMessages = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/messages/delete`, {
+      const response = await apiFetch(`/messages/delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -892,7 +892,7 @@ const StudentPageMessage = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setMessages(prev => prev.filter(msg => !selectedMessages.includes(msg.message_id)));
@@ -924,7 +924,7 @@ const StudentPageMessage = ({ route, navigation }) => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/messages/send`, {
+      const response = await apiFetch(`/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -936,7 +936,7 @@ const StudentPageMessage = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setMessage('');
         

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -138,13 +139,13 @@ const StudentPageEventRegister = ({ navigation, route }) => {
   const registerEvent = async () => {
     try {
       // console.log("API URL:", `${API_URL}/api/students/event/studentEventRegistration`);
-      const response = await fetch(`${API_URL}/api/students/event/studentEventRegistration`, {
+      const response = await apiFetch(`/students/event/studentEventRegistration`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ eventId: event.id, studentId: studentData.student_id }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         // Show confirmation

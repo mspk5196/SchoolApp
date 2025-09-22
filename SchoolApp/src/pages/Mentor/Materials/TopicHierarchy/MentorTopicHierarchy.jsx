@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -47,7 +48,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
     const fetchActivitiesForSubject = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_URL}/api/mentor/topic-hierarchy/activities`, {
+            const response = await apiFetch(`/mentor/topic-hierarchy/activities`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -77,7 +78,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
 
     const fetchSubActivitiesForActivity = async (activityId) => {
         try {
-            const response = await fetch(`${API_URL}/api/mentor/topic-hierarchy/sub-activities`, {
+            const response = await apiFetch(`/mentor/topic-hierarchy/sub-activities`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -114,7 +115,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
         setTopicHierarchy([]);
         try {
             setLoading(true);
-            const response = await fetch(`${API_URL}/api/mentor/topic-hierarchy/getByActivityId`, {
+            const response = await apiFetch(`/mentor/topic-hierarchy/getByActivityId`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -148,7 +149,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
             setMaterialsLoading(true);
             setSelectedTopicInfo(topicInfo);
 
-            const response = await fetch(`${API_URL}/api/mentor/topic-hierarchy/materials/${topicId}`, {
+            const response = await apiFetch(`/mentor/topic-hierarchy/materials/${topicId}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });

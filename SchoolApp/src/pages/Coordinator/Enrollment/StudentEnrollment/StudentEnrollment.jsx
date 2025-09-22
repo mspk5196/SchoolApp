@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Platform, Alert, Modal, FlatList, PermissionsAndroid } from 'react-native';
 import DocumentPicker from 'react-native-document-picker';
@@ -56,7 +57,7 @@ const StudentEnrollment = ({ navigation, route }) => {
   const fetchGrades = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/getGrades`);
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setGradeOptions(data.grades);
@@ -71,14 +72,14 @@ const StudentEnrollment = ({ navigation, route }) => {
 
   const fetchSections = async (gradeId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+      const response = await apiFetch(`/coordinator/getGradeSections`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ gradeID: gradeId })
       });
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setSectionOptions(data.gradeSections);
@@ -95,14 +96,14 @@ const StudentEnrollment = ({ navigation, route }) => {
   const fetchSectionMentor = async (sectionID) => {
     console.log("Fetching mentor...");
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getSpecificSectionMentor`, {
+      const response = await apiFetch(`/coordinator/getSpecificSectionMentor`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ sectionID })
       });
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setMentorID(data.sectionMentor);
@@ -268,7 +269,7 @@ const StudentEnrollment = ({ navigation, route }) => {
         // }
       }
 
-      const response = await fetch(`${API_URL}/api/coordinator/enrollment/generate-student-template`, {
+      const response = await apiFetch(`/coordinator/enrollment/generate-student-template`, {
         method: 'GET'
       });
 
@@ -323,7 +324,7 @@ const StudentEnrollment = ({ navigation, route }) => {
           type: result[0].type,
         });
 
-        const response = await fetch(`${API_URL}/api/coordinator/enrollment/bulk-upload-students`, {
+        const response = await apiFetch(`/coordinator/enrollment/bulk-upload-students`, {
           method: 'POST',
           body: formData,
         });
@@ -331,7 +332,7 @@ const StudentEnrollment = ({ navigation, route }) => {
         console.log('Upload response status:', response.status);
         console.log('Upload response headers:', response.headers);
 
-        const data = await response.json();
+        const data = response
         console.log('Upload response data:', data);
 
         if (response.ok) {
@@ -387,7 +388,7 @@ const StudentEnrollment = ({ navigation, route }) => {
       }
 
       // Submit to backend
-      const response = await fetch(`${API_URL}/api/coordinator/enrollStudent`, {
+      const response = await apiFetch(`/coordinator/enrollStudent`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -395,7 +396,7 @@ const StudentEnrollment = ({ navigation, route }) => {
         },
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         Alert.alert('Success', 'Student enrolled successfully!', [

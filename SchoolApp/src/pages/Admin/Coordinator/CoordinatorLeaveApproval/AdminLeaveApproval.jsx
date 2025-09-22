@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -33,7 +34,7 @@ const AdminLeaveApproval = ({ navigation }) => {
   }, []);
 
   const fetchPendingLeaveRequests = () => {
-    fetch(`${API_URL}/api/admin/getPendingLeaveRequests`, {
+    apiFetch(`/admin/getPendingLeaveRequests`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -58,7 +59,7 @@ const AdminLeaveApproval = ({ navigation }) => {
   const handleApprove = (requestId, phone, noOfDays) => {
     console.log(requestId, phone, noOfDays);
     
-    fetch(`${API_URL}/api/admin/updateLeaveRequestStatus`, {
+    apiFetch(`/admin/updateLeaveRequestStatus`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -91,7 +92,7 @@ const AdminLeaveApproval = ({ navigation }) => {
       return;
     }
 
-    fetch(`${API_URL}/api/admin/updateLeaveRequestStatus`, {
+    apiFetch(`/admin/updateLeaveRequestStatus`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

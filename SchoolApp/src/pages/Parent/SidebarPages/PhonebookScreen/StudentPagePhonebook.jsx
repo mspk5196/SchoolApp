@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -100,7 +101,7 @@ const StudentPagePhonebook = ({ navigation }) => {
         setRefreshing(true);
       }
       
-      const response = await fetch(`${API_URL}/api/student/fetchSectionSubjectMentors`, {
+      const response = await apiFetch(`/student/fetchSectionSubjectMentors`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +110,7 @@ const StudentPagePhonebook = ({ navigation }) => {
           sectionId: studentData.section_id
         }),
       }); // Replace with your API endpoint
-      const data = await response.json();
+      const data = response
       setContacts(data.subjectMentors || []);
     } catch (error) {
       console.error('Error fetching mentors:', error);

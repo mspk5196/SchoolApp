@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -93,7 +94,7 @@ const BatchManagementHome = ({route}) => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/coordinator/batches/${sectionId}/${subjectId}`, {
+      const response = await apiFetch(`/coordinator/batches/${sectionId}/${subjectId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -152,7 +153,7 @@ const BatchManagementHome = ({route}) => {
         return; 
       }
 
-      const response = await fetch(`${API_URL}/api/coordinator/batches/analytics/${sectionId}/${subjectId}`, {
+      const response = await apiFetch(`/coordinator/batches/analytics/${sectionId}/${subjectId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -216,7 +217,7 @@ const BatchManagementHome = ({route}) => {
               setLoading(true);
               setProcessingAction('Reallocating students...');
               
-              const response = await fetch(`${API_URL}/api/coordinator/batches/reallocate`, {
+              const response = await apiFetch(`/coordinator/batches/reallocate`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -276,7 +277,7 @@ const BatchManagementHome = ({route}) => {
         coordinatorData: coordinatorData.id
       });
 
-      const response = await fetch(`${API_URL}/api/coordinator/batches/configure`, {
+      const response = await apiFetch(`/coordinator/batches/configure`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -329,7 +330,7 @@ const BatchManagementHome = ({route}) => {
               setLoading(true);
               setProcessingAction('Initializing student assignments...');
               
-              const response = await fetch(`${API_URL}/api/coordinator/batches/initialize`, {
+              const response = await apiFetch(`/coordinator/batches/initialize`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -402,7 +403,7 @@ const BatchManagementHome = ({route}) => {
       setShowBatchSizeModal(false);
       setProcessingAction('Updating batch size...');
 
-      const response = await fetch(`${API_URL}/api/coordinator/batches/update-size`, {
+      const response = await apiFetch(`/coordinator/batches/update-size`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

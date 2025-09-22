@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -48,7 +49,7 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
   const fetchFaculty = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getFacultyList`);
-      const data = await response.json();
+      const data = response
       if (response.ok) {
         setFacultyList(data.faculty);
       } else {
@@ -63,7 +64,7 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
   const fetchDisciplineLogs = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/mentor/getDisciplineLogs`);
-      const data = await response.json();
+      const data = response
       if (response.ok) {
         setDisciplineData(data.logs);
         setFilteredData(data.logs);
@@ -110,7 +111,7 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
 
     try {
       console.log(coordinatorData.phone);
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/addFacultyComplaint`, {
+      const response = await apiFetch(`/coordinator/mentor/addFacultyComplaint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +123,7 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
 
 
       if (response.ok) {

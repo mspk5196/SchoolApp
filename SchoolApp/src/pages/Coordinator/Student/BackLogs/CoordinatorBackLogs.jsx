@@ -44,7 +44,7 @@ const CoordinatorBackLogs = ({ navigation, route }) => {
     try {
       setLoading(true);
       const response = await fetch(`${API_URL}/api/admin/grades/${activeGrade}/sections`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setSections(data.gradeSections);
         // console.log(data.gradeSections);
@@ -64,7 +64,7 @@ const CoordinatorBackLogs = ({ navigation, route }) => {
   const fetchBacklogs = async (sectionId) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/backlogs/${sectionId}`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setAssessmentData(data.overdueStudents);
         // console.log(data.overdueStudents);

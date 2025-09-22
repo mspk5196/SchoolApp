@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, View, ScrollView, Pressable, TouchableOpacity, FlatList, Alert, ActivityIndicator } from 'react-native';
@@ -22,7 +23,7 @@ const LevelPromotion = ({ navigation, route }) => {
     try {
       setLoading(true);
       const response = await fetch(`${API_URL}/api/coordinator/getLevelPassPercentages?gradeId=${gradeID}`);
-      const data = await response.json();
+      const data = response
       
       if (data.success) {
         // Initialize with 0% for all subjects
@@ -77,13 +78,13 @@ const LevelPromotion = ({ navigation, route }) => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/coordinator/updateLevelPassPercentages`, {
+      const response = await apiFetch(`/coordinator/updateLevelPassPercentages`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ updates }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert("Success", "Percentages updated successfully");
         navigation.goBack();

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, Image } from "react-native";
 import styles from "./LeaveApprovalHistorysty";
@@ -19,7 +20,7 @@ const AdminLeaveApprovalHistory = ({ navigation }) => {
   }, []);
 
   const fetchLeaveRequestHistory = () => {
-    fetch(`${API_URL}/api/admin/getLeaveRequestHistory`, {
+    apiFetch(`/admin/getLeaveRequestHistory`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

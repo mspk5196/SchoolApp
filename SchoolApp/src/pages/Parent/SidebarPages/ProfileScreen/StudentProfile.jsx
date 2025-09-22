@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect } from 'react';
 import {
   SafeAreaView,
@@ -79,7 +80,7 @@ const StudentProfile = ({ navigation }) => {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/admin/students/${studentId}`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setStudentDetails(data.student);
         setLoading(false);
@@ -93,7 +94,7 @@ const StudentProfile = ({ navigation }) => {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/admin/students/${roll}/attendance`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setAttendanceData(data.studentAttendance);
         // console.log(data.studentAttendance);
@@ -108,7 +109,7 @@ const StudentProfile = ({ navigation }) => {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/admin/students/getStudentIssueLogs/${roll}`);
-      const data = await response.json();
+      const data = response
       if (data.studentIssueCount || data.studentRedoCount) {
         setIssueLogData(data.studentIssueCount);
         setHomeworkIssue(data.studentRedoCount);
@@ -123,13 +124,13 @@ const StudentProfile = ({ navigation }) => {
   const fetchSubjectMentors = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/students/getSubjectMentors`, {
+      const response = await apiFetch(`/admin/students/getSubjectMentors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sectionID: studentData.section_id }),
       });
 
-      const data = await response.json();
+      const data = response
       // console.log('Subjects mentors Data API Response:', data);
 
       if (data.success) {

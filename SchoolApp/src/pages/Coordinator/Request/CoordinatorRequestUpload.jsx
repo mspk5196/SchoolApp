@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState } from 'react';
 import {
   SafeAreaView,
@@ -113,7 +114,7 @@ const CoordinatorRequestUpload = ({ route, navigation }) => {
       }); 
   
       
-      const response = await fetch(`${API_URL}/api/coordinator/uploadRequestDocuments`, {
+      const response = await apiFetch(`/coordinator/uploadRequestDocuments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -126,7 +127,7 @@ const CoordinatorRequestUpload = ({ route, navigation }) => {
         throw new Error(`Server error: ${response.status} - ${errorText}`);
       }
   
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', `${documentTitles.length} documents uploaded successfully!`);
         navigation.navigate('CoordinatorRequest', {

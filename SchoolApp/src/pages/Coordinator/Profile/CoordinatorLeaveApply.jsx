@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import {View, Text, TextInput, TouchableOpacity, Modal, FlatList, Alert, ActivityIndicator} from 'react-native';
 import BackIcon from '../../../assets/CoordinatorPage/Profile/Back.svg';
 import DropdownIcon from '../../../assets/CoordinatorPage/Profile/DropDown.svg';
@@ -185,7 +186,7 @@ const CoordinatorLeaveApply = ({ navigation, route }) => {
   const submitLeaveRequest = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/coordinator/submitLeaveRequest`, {
+      const response = await apiFetch(`/coordinator/submitLeaveRequest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -201,7 +202,7 @@ const CoordinatorLeaveApply = ({ navigation, route }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         Alert.alert(

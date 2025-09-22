@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
@@ -34,7 +35,7 @@ const AdminFreeHourAssign = ({ navigation, route }) => {
   const fetchActivities = async () => {
     try {
       const response = await fetch(`${API_URL}/api/admin/getActivity`);
-      const data = await response.json();
+      const data = response
       setActivities(data);
     } catch (error) {
       console.error('Error fetching activities:', error);
@@ -53,7 +54,7 @@ const AdminFreeHourAssign = ({ navigation, route }) => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/admin/assignFreeHour`, {
+      const response = await apiFetch(`/admin/assignFreeHour`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

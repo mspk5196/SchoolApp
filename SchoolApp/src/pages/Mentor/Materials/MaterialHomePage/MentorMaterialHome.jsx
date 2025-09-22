@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { Text, View, Pressable, SectionList, Alert, FlatList, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import styles from './MaterialHomeStyle';
@@ -27,12 +28,12 @@ const MentorMaterialHome = ({ navigation, route }) => {
   const fetchGradeSubjects = async (gradeID) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/mentor/getGradeSubject`, {
+      const response = await apiFetch(`/mentor/getGradeSubject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ gradeID }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         // Extract unique subjects from the activity-grouped data
         const uniqueSubjects = data.gradeSubjects.map((subject, index) => ({
@@ -62,11 +63,11 @@ const MentorMaterialHome = ({ navigation, route }) => {
   const fetchGrade = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/mentor/getGrades`, {
+      const response = await apiFetch(`/mentor/getGrades`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
-      const data = await response.json();
+      const data = response
       if (data.success && data.grades.length > 0) {
         setGrades(data.grades);
 
@@ -87,7 +88,7 @@ const MentorMaterialHome = ({ navigation, route }) => {
   };
   const fetchSections = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+      const response = await apiFetch(`/coordinator/getGradeSections`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

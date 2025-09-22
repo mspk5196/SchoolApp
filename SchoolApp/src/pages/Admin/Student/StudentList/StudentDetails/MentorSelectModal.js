@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
     Modal,
@@ -69,7 +70,7 @@ const MentorSelectModal = ({ visible, onClose, onSelect, gradeId, studentId }) =
     const updateMentor = async (mentorId) => {
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/api/admin/students/updateMentor`, {
+            const response = await apiFetch(`/admin/students/updateMentor`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -80,7 +81,7 @@ const MentorSelectModal = ({ visible, onClose, onSelect, gradeId, studentId }) =
                 }),
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setLoading(false);
                 onSelect();

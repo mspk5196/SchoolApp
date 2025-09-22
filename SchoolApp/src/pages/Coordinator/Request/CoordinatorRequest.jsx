@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute } from '@react-navigation/native';
@@ -123,13 +124,13 @@ const CoordinatorRequest = ({ navigation }) => {
     console.log(activeGrade);
 
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getStudentCoordinatorRequests`, {
+      const response = await apiFetch(`/coordinator/getStudentCoordinatorRequests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ gradeID: activeGrade }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log("Student Request Data API Response:", data);
 
       if (data.success) {

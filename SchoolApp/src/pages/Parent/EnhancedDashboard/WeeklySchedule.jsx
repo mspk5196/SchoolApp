@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -58,7 +59,7 @@ const WeeklySchedule = () => {
       const phone = JSON.parse(storedPhone);
       const weekStartStr = formatDate(weekStart);
 
-      const response = await fetch(`${API_URL}/student/schedule/weekly?weekStart=${weekStartStr}`, {
+      const response = await apiFetch(`${API_URL}/student/schedule/weekly?weekStart=${weekStartStr}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

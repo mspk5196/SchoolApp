@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
@@ -34,7 +35,7 @@ const AdminFreehour = ({ navigation, route }) => {
   useEffect(() => {
     fetchFreeHours();
     fetchTasks();
-    fetch(`${API_URL}/api/admin/generateDailyFreeSlots`, { menthod: 'GET' });
+    apiFetch(`/admin/generateDailyFreeSlots`, { menthod: 'GET' });
 
   }, []);
 
@@ -42,7 +43,7 @@ const AdminFreehour = ({ navigation, route }) => {
     try {
       setLoading(true);
       const response = await fetch(`${API_URL}/api/admin/getFreeHour?grade=${selectedGrade}`);
-      const data = await response.json();
+      const data = response
       setFaculties(data);
       setFilteredFaculties(data);
       if (data.length === 0) {
@@ -63,7 +64,7 @@ const AdminFreehour = ({ navigation, route }) => {
   const fetchTasks = async () => {
     try {
       const response = await fetch(`${API_URL}/api/admin/getFreeHourActivity`);
-      const data = await response.json();
+      const data = response
       setTasks(data);
       console.log(data);
 
@@ -112,7 +113,7 @@ const AdminFreehour = ({ navigation, route }) => {
   // Handle mark as completed
   const handleMarkAsCompleted = async (taskId) => {
     try {
-      await fetch(`${API_URL}/api/admin/tasks/${taskId}/complete`, {
+      await apiFetch(`/admin/tasks/${taskId}/complete`, {
         method: 'PUT'
       });
       fetchTasks(); // Refresh tasks

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView, View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar, Modal, ActivityIndicator,
@@ -97,7 +98,7 @@ const MentorSurveyDetails = ({ navigation, route }) => {
   );
 
   const handleEndSurvey = () => {
-    fetch(`${API_URL}/api/mentor/survey/end/${item.id}`, { method: 'PUT' })
+    apiFetch(`/mentor/survey/end/${item.id}`, { method: 'PUT' })
       .then(res => res.json())
       .then(data => {
         if (data.message) {

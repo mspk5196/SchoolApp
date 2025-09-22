@@ -33,7 +33,7 @@ const AdminFreehourDetail = ({ navigation, route }) => {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/admin/getSelectedFreeHourActivity?dsId=${faculty.id}`);
-      const data = await response.json();
+      const data = response
       setTaskDetails(data[0]);
       console.log('Task details:', data);
 

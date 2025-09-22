@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -14,7 +15,7 @@ import styles from './LeaveapplyStyles';
 
 import EventBus from "../../../../utils/EventBus";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from "../../../../utils/env.js"; 
+import { API_URL } from "../../../../utils/env.js";
 
 const StudentLeaveapply = ({ navigation }) => {
 
@@ -243,13 +244,13 @@ const StudentLeaveapply = ({ navigation }) => {
   const addLeaveDetails = async () => {
     try {
       console.log("API URL:", `${API_URL}/api/studentLeaveApply`);
-      const response = await fetch(`${API_URL}/api/studentLeaveApply`, {
+      const response = await apiFetch(`/studentLeaveApply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roll, name, sectionId, totalLeaveDays, leaveType, fromDate, toDate, fromTime, toTime, reason }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         // Show confirmation

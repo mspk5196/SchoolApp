@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, FlatList, Pressable, TextInput, Image, TouchableOpacity, ActivityIndicator } from "react-native";
 import styles from "./Messagesty";
@@ -26,7 +27,7 @@ const Profile = require('../../../../assets/MentorPage/profile.png');
 //     const fetchInbox = async (adminObj) => {
 //         setLoading(true);
 //         try {
-//             const res = await fetch(`${API_URL}/api/admin-inbox`, {
+//             const res = await apiFetch(`/admin-inbox`, {
 //                 method: 'POST',
 //                 headers: { 'Content-Type': 'application/json' },
 //                 body: JSON.stringify({ admin_id: adminObj.id })
@@ -244,7 +245,7 @@ const AdminMessageHome = ({ navigation, route }) => {
         if (!adminObj) return;
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/admin-inbox`, {
+            const res = await apiFetch(`/admin-inbox`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ admin_id: adminObj.id })

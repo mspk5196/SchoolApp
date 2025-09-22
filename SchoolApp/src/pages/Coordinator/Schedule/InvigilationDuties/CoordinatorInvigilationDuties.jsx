@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, {useState, useEffect} from 'react';
 import {
   View,
@@ -96,7 +97,7 @@ const CoordinatorInvigilationDuties = ({navigation, route}) => {
       const examId = exams[currentSessionIndex].id;
       const mentorIds = selectedFaculties;
       
-      fetch(`${API_URL}/api/coordinator/assignInvigilators`, {
+      apiFetch(`/coordinator/assignInvigilators`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

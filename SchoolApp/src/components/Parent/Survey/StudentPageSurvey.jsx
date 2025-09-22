@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient";
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator, Alert } from 'react-native';
 import { RadioButton } from 'react-native-paper';
@@ -103,7 +104,7 @@ const StudentPageSurvey = () => {
         }));
         
         setLoading(true);
-        fetch(`${API_URL}/api/student/submitSurveyResponse`, {
+        apiFetch(`/student/submitSurveyResponse`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, BackHandler, ToastAndroid } from 'react-native';
 import { CommonActions, useNavigation } from '@react-navigation/native';
@@ -61,14 +62,15 @@ const Redirect = ({ route }) => {
   // Key management function removed - using direct messaging
 
   const fetchStudentData = async () => {
+    
     try {
-      const response = await fetch(`${API_URL}/api/getStudentData`, {
+      const response = await apiFetch(`/coordinator/getStudentData`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success && data.student) {
         console.log('Student data fetched successfully:', data.student[0].student_id);
         
@@ -85,21 +87,24 @@ const Redirect = ({ route }) => {
   };
 
   const fetchCoordinatorData = async () => {
+    
+    // console.log(AsyncStorage.getItem('token'));
+    // console.log('Fetching coordinator data for phone number:', phoneNumber);
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getCoordinatorData`, {
+      const response = await apiFetch(`/coordinator/getCoordinatorData`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber }),
       });
-      const data = await response.json();
+      const data = response
       
       if (data.success && data.coordinatorData) {
-        const response2 = await fetch(`${API_URL}/api/coordinator/getCoordinatorGrades`, {
+        const response2 = await apiFetch(`/coordinator/getCoordinatorGrades`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ coordinatorId: data.coordinatorData.id }),
         });
-        const data2 = await response2.json();
+        const data2 = response2;
 
         // Key management removed - using direct messaging
         await AsyncStorage.setItem('coordinatorData', JSON.stringify(data.coordinatorData));
@@ -116,13 +121,13 @@ const Redirect = ({ route }) => {
 
   const fetchMentorData = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/getMentorData`, {
+      const response = await apiFetch(`/mentor/getMentorData`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success && data.mentorData) {
         // Key management removed - using direct messaging
         await AsyncStorage.setItem('mentorData', JSON.stringify(data.mentorData));
@@ -138,13 +143,13 @@ const Redirect = ({ route }) => {
 
   const fetchAdminData = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/getAdminData`, {
+      const response = await apiFetch(`/admin/getAdminData`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success && data.adminData) {
         // Key management removed - using direct messaging

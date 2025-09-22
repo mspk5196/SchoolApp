@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -43,7 +44,7 @@ const SubjectProgress = () => {
 
       const phone = JSON.parse(storedPhone);
 
-      const response = await fetch(`${API_URL}/student/progress/${subjectId}`, {
+      const response = await apiFetch(`${API_URL}/student/progress/${subjectId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -87,7 +88,7 @@ const SubjectProgress = () => {
       const storedPhone = await AsyncStorage.getItem('userPhone');
       const phone = JSON.parse(storedPhone);
 
-      const response = await fetch(`${API_URL}/student/assessment/request`, {
+      const response = await apiFetch(`${API_URL}/student/assessment/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

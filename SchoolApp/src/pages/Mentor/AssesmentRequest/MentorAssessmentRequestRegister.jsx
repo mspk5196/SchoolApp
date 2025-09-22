@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, Alert, FlatList } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
@@ -41,7 +42,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
 
   // Fetch grades on mount
   useEffect(() => {
-    fetch(`${API_URL}/api/mentor/grades`, {
+    apiFetch(`/mentor/grades`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -63,7 +64,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
   // Fetch sections when grade changes
   useEffect(() => {
     if (grade) {
-      fetch(`${API_URL}/api/mentor/sections/${grade}`, {
+      apiFetch(`/mentor/sections/${grade}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -86,7 +87,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
   // Fetch subjects when section changes
   useEffect(() => {
     if (grade && section) {
-      fetch(`${API_URL}/api/mentor/getSubjectsForGradeSection`, {
+      apiFetch(`/mentor/getSubjectsForGradeSection`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +111,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
   // Fetch time slots when date changes
   useEffect(() => {
     if (grade && section && date) {
-      fetch(`${API_URL}/api/mentor/getAvailableTimeSlots`, {
+      apiFetch(`/mentor/getAvailableTimeSlots`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +135,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
   // Fetch students when section changes
   useEffect(() => {
     if (grade && section) {
-      fetch(`${API_URL}/api/mentor/getStudentsForGradeSection`, {
+      apiFetch(`/mentor/getStudentsForGradeSection`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -201,7 +202,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
       studentLevels: selectedStudents.map(s => s.level),
     };
 
-    fetch(`${API_URL}/api/mentor/createAssessmentRequest`, {
+    apiFetch(`/mentor/createAssessmentRequest`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,7 +28,7 @@ const PerformanceDetailsScreen = ({ route }) => {
         // Only fetch if subject is selected (subject-wise tab)
         if (route.params.subject) {
           // 1. Try to fetch assessment details for this subject and date
-          const res = await fetch(`${API_URL}/api/student/getAssessmentDetails`, {
+          const res = await apiFetch(`/student/getAssessmentDetails`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -55,7 +56,7 @@ const PerformanceDetailsScreen = ({ route }) => {
             };
           } else {
             // 2. Else, fetch academic details for this subject and date
-            const res2 = await fetch(`${API_URL}/api/student/getAcademicDetails`, {
+            const res2 = await apiFetch(`/student/getAcademicDetails`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

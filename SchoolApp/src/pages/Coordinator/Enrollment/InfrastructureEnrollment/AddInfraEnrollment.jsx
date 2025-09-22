@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Alert, ActivityIndicator } from 'react-native';
 import BackIcon from '../../../../assets/CoordinatorPage/InfrastructureEnrollment/Back.svg';
@@ -116,12 +117,12 @@ const AddInfraEnrollment = ({ navigation, route }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/enrollment/getGrades`, {
+      const response = await apiFetch(`/coordinator/enrollment/getGrades`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setGrades(data.grades);
@@ -136,12 +137,12 @@ const AddInfraEnrollment = ({ navigation, route }) => {
 
   const fetchSubject = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/enrollment/getSubjects`, {
+      const response = await apiFetch(`/coordinator/enrollment/getSubjects`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setSubject(data.subjects);
       }
@@ -152,12 +153,12 @@ const AddInfraEnrollment = ({ navigation, route }) => {
 
   const fetchBlock = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/enrollment/getBlocks`, {
+      const response = await apiFetch(`/coordinator/enrollment/getBlocks`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setBlocks(data.blocks);
       }
@@ -267,7 +268,7 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       let response;
 
       if (isEditing) {
-        response = await fetch(`${API_URL}/api/coordinator/enrollment/updateVenue/${editVenue.id}`, {
+        response = await apiFetch(`/coordinator/enrollment/updateVenue/${editVenue.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -275,7 +276,7 @@ const AddInfraEnrollment = ({ navigation, route }) => {
           body: JSON.stringify(venueData)
         });
       } else {
-        response = await fetch(`${API_URL}/api/coordinator/enrollment/createVenue`, {
+        response = await apiFetch(`/coordinator/enrollment/createVenue`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

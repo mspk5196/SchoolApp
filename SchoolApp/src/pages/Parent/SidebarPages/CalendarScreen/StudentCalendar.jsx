@@ -16,9 +16,10 @@ import Holiday from '../../../../assets/ParentPage/Calendar/holiday.svg';
 import ChevronDown from '../../../../assets/ParentPage/Calendar/chevron-down.svg';
 import ChevronRight from '../../../../assets/ParentPage/Calendar/chevron-right.svg';
 import styles from './CalendarStyles';
-import {API_URL} from '../../../../utils/env.js' 
+import { API_URL } from '../../../../utils/env.js'
+import { apiFetch } from '../../../../utils/apiClient.js';
 
-const StudentCalendar = ({navigation}) => {
+const StudentCalendar = ({ navigation }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
@@ -60,14 +61,13 @@ const StudentCalendar = ({navigation}) => {
     const month = (currentMonth + 1).toString().padStart(2, '0');
     const year = currentYear;
 
-    fetch(`${API_URL}/api/coordinator/calendar/events?year=${year}&month=${month}`)
-      .then(response => response.json())
+    apiFetch(`/coordinator/calendar/events?year=${year}&month=${month}`)
       .then(data => {
         if (data.success) {
           // Convert date strings to Date objects
           const formattedEvents = data.events.map(event => ({
             ...event,
-            date: new Date(event.date)
+            date: new Date(event.date),
           }));
           setEvents(formattedEvents);
         }
@@ -75,6 +75,7 @@ const StudentCalendar = ({navigation}) => {
       .catch(error => {
         console.error('Error fetching events:', error);
       });
+
   };
 
   // Generate calendar days for the current month

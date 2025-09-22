@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -46,14 +47,14 @@ const StudentSubjectSelectionPage = ({ navigation }) => {
         setLoading(true);
       }
       
-      const response = await fetch(`${API_URL}/api/student/getSectionSubjects`, {
+      const response = await apiFetch(`/student/getSectionSubjects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ sectionId: studentData.section_id }),
       });
-      const data = await response.json();
+      const data = response
       setSectionSubjects(data.subjects || []);
 
     } catch (error) {

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Modal, FlatList, ScrollView, ActivityIndicator, Alert, TouchableWithoutFeedback, TextInput } from 'react-native';
 import BackIcon from "../../../../assets/CoordinatorPage/MentorList/leftarrow";
@@ -143,7 +144,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
     console.log('Fetching schedule for date:', date, 'mentor ID:', mentor.id);
     
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getMentorSchedule`, {
+      const response = await apiFetch(`/coordinator/mentor/getMentorSchedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -151,7 +152,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
           date: date
         }),
       });
-      const data = await response.json();
+      const data = response
       console.log('Schedule API response:', data);
       if (data.success) {
         setMentorSchedule(data.schedule);
@@ -170,7 +171,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
   const fetchMentorDetails = async () => {
     try {
       // Fetch subjects and grades handled by mentor
-      const assignmentsResponse = await fetch(`${API_URL}/api/coordinator/getMentorAssignments`, {
+      const assignmentsResponse = await apiFetch(`/coordinator/getMentorAssignments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mentorId: mentor.id }),
@@ -179,7 +180,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
       const assignmentsData = await assignmentsResponse.json();
 
       // Fetch section information
-      const sectionResponse = await fetch(`${API_URL}/api/coordinator/getMentorSection`, {
+      const sectionResponse = await apiFetch(`/coordinator/getMentorSection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mentorId: mentor.id }),
@@ -188,7 +189,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
       const sectionData = await sectionResponse.json();
 
       // Fetch issues count (you'll need to implement this endpoint)
-      const issuesResponse = await fetch(`${API_URL}/api/coordinator/getMentorIssues`, {
+      const issuesResponse = await apiFetch(`/coordinator/getMentorIssues`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: mentor.phone }),
@@ -223,13 +224,13 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
   };
   const fetchAttendanceData = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getAttendance`, {
+      const response = await apiFetch(`/coordinator/getAttendance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: mentor.phone }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setAttendanceData(data.attendanceData);
       }
@@ -264,7 +265,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
       const newMentorId = selectedFaculties[0];
 
       for (const session of selectedSessions) {
-        await fetch(`${API_URL}/api/coordinator/substitute-mentor`, {
+        await apiFetch(`/coordinator/substitute-mentor`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -304,7 +305,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
   // Add the fetchAvailableMentors function
   const fetchAvailableMentors = async (selectedSession) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/available-substitute-mentors`, {
+      const response = await apiFetch(`/coordinator/mentor/available-substitute-mentors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -316,7 +317,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setAvailableMentors(data.availableMentors);
       }

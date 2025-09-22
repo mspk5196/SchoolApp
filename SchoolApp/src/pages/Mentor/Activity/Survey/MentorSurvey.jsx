@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { API_URL } from '../../../../utils/env.js';
@@ -61,7 +62,7 @@ const MentorSurvey = ({ navigation, route }) => {
           text: "End Survey",
           style: "destructive",
           onPress: () => {
-            fetch(`${API_URL}/api/mentor/survey/end/${surveyId}`, {
+            apiFetch(`/mentor/survey/end/${surveyId}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json'

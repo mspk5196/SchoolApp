@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -239,7 +240,7 @@ const StudentPageMessage = ({ route, navigation }) => {
     if (!studentData.current) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/messages/get`, {
+      const response = await apiFetch(`/messages/get`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -250,7 +251,7 @@ const StudentPageMessage = ({ route, navigation }) => {
           last_message_id: 0,
         }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         console.log('📥 Raw messages from server:', data.messages.length);
         
@@ -333,7 +334,7 @@ const StudentPageMessage = ({ route, navigation }) => {
   // Delete selected messages
   const deleteSelectedMessages = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/messages/delete`, {
+      const response = await apiFetch(`/messages/delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -343,7 +344,7 @@ const StudentPageMessage = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setMessages(prev => prev.filter(msg => !selectedMessages.includes(msg.message_id)));
@@ -361,7 +362,7 @@ const StudentPageMessage = ({ route, navigation }) => {
     if (message.trim() === '') return;
 
     try {
-      const response = await fetch(`${API_URL}/api/messages/send`, {
+      const response = await apiFetch(`/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -373,7 +374,7 @@ const StudentPageMessage = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setMessage('');
         

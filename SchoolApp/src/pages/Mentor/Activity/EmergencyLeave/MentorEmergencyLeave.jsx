@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Modal, TouchableWithoutFeedback, Image } from 'react-native';
 import styles from './EmergencyLeavesty';
@@ -17,7 +18,7 @@ const MentorEmergencyLeave = ({ navigation, route }) => {
 
   // Fetch students under this mentor
   useEffect(() => {
-    fetch(`${API_URL}/api/mentor/getMentorStudentsForLeave`, {
+    apiFetch(`/mentor/getMentorStudentsForLeave`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -54,7 +55,7 @@ const MentorEmergencyLeave = ({ navigation, route }) => {
       return;
     }
 
-    fetch(`${API_URL}/api/mentor/createEmergencyLeave`, {
+    apiFetch(`/mentor/createEmergencyLeave`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

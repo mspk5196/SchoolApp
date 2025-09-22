@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, TextInput, FlatList, Alert, Linking, RefreshControl } from 'react-native';
 import PreviousIcon from '../../../../assets/ParentPage/LeaveIcon/PrevBtn.svg';
@@ -117,7 +118,7 @@ const StudentPageRequest = ({ navigation }) => {
   const fetchDocumnetTypes = async () => {
     try {
       const response = await fetch(`${API_URL}/api/fetchDocumentTypes`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setDocumentTypes(data.docTypes || []);
       } else {
@@ -131,7 +132,7 @@ const StudentPageRequest = ({ navigation }) => {
   const fetchDocumentPurpose = async () => {
     try {
       const response = await fetch(`${API_URL}/api/fetchDocumentPurpose`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setDocumentPurpose(data.docPurpose || []);
       } else {
@@ -152,13 +153,13 @@ const StudentPageRequest = ({ navigation }) => {
         setLoading(true);
       }
       
-      const response = await fetch(`${API_URL}/api/fetchStudentRequests`, {
+      const response = await apiFetch(`/fetchStudentRequests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roll }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log("Student Request Data API Response:", data);
 
       if (data.success) {
@@ -184,7 +185,7 @@ const StudentPageRequest = ({ navigation }) => {
       };
 
       try {
-        const response = await fetch(`${API_URL}/api/createStudentRequest`, {
+        const response = await apiFetch(`/createStudentRequest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -197,7 +198,7 @@ const StudentPageRequest = ({ navigation }) => {
           }),
         });
 
-        const data = await response.json();
+        const data = response
 
         if (data.success) {
           Alert.alert("Success", "Your request has been submitted.");
@@ -245,7 +246,7 @@ const StudentPageRequest = ({ navigation }) => {
         const apiUrl = `${API_URL}/api/fetchStudentDocument`;
         console.log('Fetching documents from:', apiUrl);
 
-        const response = await fetch(apiUrl, {
+        const response = await apiFetch(apiUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -262,7 +263,7 @@ const StudentPageRequest = ({ navigation }) => {
           throw new Error(`Server responded with ${response.status}: ${errorText}`);
         }
 
-        const data = await response.json();
+        const data = response
         console.log("API Response:", data);
 
         if (data.success) {

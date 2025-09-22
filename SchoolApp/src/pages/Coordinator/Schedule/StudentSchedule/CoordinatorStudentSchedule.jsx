@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, Alert, ActivityIndicator, SafeAreaView, FlatList, Switch } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -57,12 +58,12 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
 
             setLoading(true);
             try {
-                const response = await fetch(`${API_URL}/api/coordinator/schedule/getSectionStudents`, {
+                const response = await apiFetch(`/coordinator/schedule/getSectionStudents`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sectionId: activeSection })
                 });
-                const data = await response.json();
+                const data = response
                 if (data.success) {
                     setStudents(data.sectionStudent);
                 } else {
@@ -82,12 +83,12 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
         const fetchSections = async () => {
             setLoading(true);
             try {
-                const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/sections`, {
+                const response = await apiFetch(`/coordinator/weekly-schedule/sections`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ activeGrade })
                 });
-                const data = await response.json();
+                const data = response
                 if (data.success && data.gradeSections.length > 0) {
                     setSections(data.gradeSections);
                     setActiveSection(data.gradeSections[0].id);
@@ -109,7 +110,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
         try {
             const dateStr = selectedDate.toISOString().split('T')[0];
             const response = await fetch(`${API_URL}/api/coordinator/schedule/student/${dateStr}/${selectedStudent}`);
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setSchedule(data.schedule);
                 // setOverrides(data.overrides);
@@ -141,7 +142,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
     const fetchSubjects = async () => {
         try {
             const response = await fetch(`${API_URL}/api/coordinator/getSubjects`);
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setSubjects(data.subjects || []);
             }
@@ -156,12 +157,12 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getSubjectActivity`, {
+            const response = await apiFetch(`/coordinator/schedule/student/getSubjectActivity`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ subjectId })
             });
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setActivities(data.subjectActivities || []);
                 // console.log("Fetched subject activities:", data.subjectActivities);
@@ -178,12 +179,12 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getSectionSubjectSubActivities`, {
+            const response = await apiFetch(`/coordinator/schedule/student/getSectionSubjectSubActivities`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ activityId, subjectId })
             });
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setSubActivities(data.sectionSubjectSubActivity || []);
             }
@@ -199,7 +200,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getTopicHierarchyBySubActivity`, {
+            const response = await apiFetch(`/coordinator/schedule/student/getTopicHierarchyBySubActivity`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -209,7 +210,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                     activityId: overrideData.activity_type
                 })
             });
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setTopics(data.topics || []);
                 // console.log("Fetched topics:", data.topics);
@@ -223,12 +224,12 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
 
     const fetchMentors = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeMentors`, {
+            const response = await apiFetch(`/coordinator/mentor/getGradeMentors`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ gradeID: activeGrade })
             });
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setMentors(data.gradeMentors || []);
                 // console.log("Fetched mentors:", data.gradeMentors);
@@ -240,7 +241,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
 
     const fetchVenues = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/getAllVenuesByTime`, {
+            const response = await apiFetch(`/coordinator/schedule/student/getAllVenuesByTime`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -249,7 +250,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                     date: selectedDate.toISOString().split('T')[0]
                 })
             });
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setVenues(data.venues || []);
                 console.log("Fetched venues:", data.venues);
@@ -314,7 +315,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             if (overrideData.schedule_source === 'student_specific' && overrideData.session_id) {
                 // Use new endpoint for student-specific schedules
                 console.log("Using student-specific edit endpoint");
-                response = await fetch(`${API_URL}/api/coordinator/schedule/student/edit-specific`, {
+                response = await apiFetch(`/coordinator/schedule/student/edit-specific`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -339,7 +340,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
             } else {
                 // Use existing override endpoint for general schedules
                 console.log("Using general schedule override endpoint");
-                response = await fetch(`${API_URL}/api/coordinator/schedule/student/override`, {
+                response = await apiFetch(`/coordinator/schedule/student/override`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -350,7 +351,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                 });
             }
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 Alert.alert("Success", "Schedule updated successfully.");
                 setModalVisible(false);
@@ -414,7 +415,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
 
                 if (period.activity_type) {
                     // Find activity ID from activity type
-                    const activities = await fetch(`${API_URL}/api/coordinator/schedule/student/getSubjectActivity`, {
+                    const activities = await apiFetch(`/coordinator/schedule/student/getSubjectActivity`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ subjectId: period.subject_id })

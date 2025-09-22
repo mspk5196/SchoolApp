@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -34,7 +35,7 @@ const MentorBatchDetails = () => {
   const fetchBatchDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/mentor/batches/details`, {
+      const response = await apiFetch(`/mentor/batches/details`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

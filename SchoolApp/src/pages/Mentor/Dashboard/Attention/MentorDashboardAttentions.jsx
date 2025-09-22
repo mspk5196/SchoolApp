@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Arrow from '../../../../assets/MentorPage/arrow.svg';
@@ -23,13 +24,13 @@ const MentorDashboardAttentions = ({ navigation, route }) => {
   useEffect(() => {
     fetchOverdueStudents();
     fetchCoordinatorTasks();
-    fetch(`${API_URL}/api/mentor/checkOverdueLevels`, { method: 'POST' });
+    apiFetch(`/mentor/checkOverdueLevels`, { method: 'POST' });
   }, []);
 
   const fetchOverdueStudents = async () => {
     try {
       const response = await fetch(`${API_URL}/api/mentor/getOverdueStudents?mentorId=${mentorData[0].id}`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setOverdueStudents(data.overdueStudents);
         // console.log('Overdue Students:', data.overdueStudents);
@@ -42,7 +43,7 @@ const MentorDashboardAttentions = ({ navigation, route }) => {
   const fetchCoordinatorTasks = async () => {
     try {
       const response = await fetch(`${API_URL}/api/mentor/getCoordinatorTasks?mentorId=${mentorData[0].id}`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setCoordinatorTasks(data.tasks);
         console.log('Coordinator Tasks:', data.tasks);
@@ -55,7 +56,7 @@ const MentorDashboardAttentions = ({ navigation, route }) => {
 
   const handleAcceptTask = async (taskId) => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/accept-task`, {
+      const response = await apiFetch(`/mentor/accept-task`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +67,7 @@ const MentorDashboardAttentions = ({ navigation, route }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setAccepted(true);
         fetchCoordinatorTasks(); // Refresh the task list

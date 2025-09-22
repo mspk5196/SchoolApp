@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, FlatList, Alert, Image } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
@@ -55,7 +56,7 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
   };
 
   const fetchAssessmentRequests = () => {
-    fetch(`${API_URL}/api/mentor/getAssessmentRequests`, {
+    apiFetch(`/mentor/getAssessmentRequests`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -77,7 +78,7 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
   };
 
   const fetchStudentsForAssessment = (assessmentId, level) => {
-    fetch(`${API_URL}/api/mentor/getAssessmentRequestStudents`, {
+    apiFetch(`/mentor/getAssessmentRequestStudents`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

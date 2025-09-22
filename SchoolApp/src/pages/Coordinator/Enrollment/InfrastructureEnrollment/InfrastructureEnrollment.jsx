@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { Menu, MenuOptions, MenuOption, MenuTrigger, MenuProvider } from 'react-native-popup-menu';
@@ -184,7 +185,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
       }
       
       const response = await fetch(`${API_URL}/api/coordinator/enrollment/getAllVenues`);
-      const data = await response.json();
+      const data = response
       if (response.ok) {
         setVenues(data);
       } else {
@@ -276,7 +277,7 @@ const handleEdit = (venue) => {
   const handleToggleStatus = async (venue) => {
     try {
       const newStatus = venue.status === 'Active' ? 'InActive' : 'Active';
-    const response = await fetch(`${API_URL}/api/coordinator/enrollment/updateVenueStatus/${venue.id}`, {
+    const response = await apiFetch(`/coordinator/enrollment/updateVenueStatus/${venue.id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -311,7 +312,7 @@ const handleEdit = (venue) => {
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15 seconds
 
-              const response = await fetch(`${API_URL}/api/coordinator/enrollment/deleteVenue/${venue.id}`, {
+              const response = await apiFetch(`/coordinator/enrollment/deleteVenue/${venue.id}`, {
                 method: 'DELETE',
                 headers: {
                   'Content-Type': 'application/json',

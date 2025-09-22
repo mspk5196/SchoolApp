@@ -4,6 +4,10 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const authMiddleware = require('./middleware/authMiddleware');
+app.use(authMiddleware);
+
 app.use('/uploads', express.static('uploads'));
 
 // Health check endpoint
@@ -39,6 +43,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
+
 app.use('/api', require('./routes/auth'));
 
 app.use('/api', require('./routes/student'));

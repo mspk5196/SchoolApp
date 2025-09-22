@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, View, ScrollView, Pressable, SectionList, Alert, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
@@ -34,12 +35,12 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         setLoading(true);
       }
 
-      const response = await fetch(`${API_URL}/api/coordinator/getGradeSubject`, {
+      const response = await apiFetch(`/coordinator/getGradeSubject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ gradeID: activeGrade }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         // Transform the data to create a list of subjects with their activities
         const subjectsWithActivities = data.gradeSubjects.map((subject, index) => ({
@@ -70,7 +71,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
   const fetchSections = async () => {
     try {
 
-      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+      const response = await apiFetch(`/coordinator/getGradeSections`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

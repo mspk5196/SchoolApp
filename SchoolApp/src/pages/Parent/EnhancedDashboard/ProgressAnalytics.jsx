@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -44,7 +45,7 @@ const ProgressAnalytics = () => {
 
       const phone = JSON.parse(storedPhone);
 
-      const response = await fetch(`${API_URL}/student/analytics?timeframe=${selectedTimeframe}&subject=${selectedSubject}`, {
+      const response = await apiFetch(`${API_URL}/student/analytics?timeframe=${selectedTimeframe}&subject=${selectedSubject}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

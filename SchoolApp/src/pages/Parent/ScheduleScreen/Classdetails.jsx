@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import { Text, View, TouchableOpacity, FlatList, ScrollView, Image, Modal, SafeAreaView, Linking, Alert, Platform } from 'react-native';
 import PreviousIcon from '../../../assets/ParentPage/basic-img/Backicon.svg';
 import styles from './ScheduleScreenStyles';
@@ -37,7 +38,7 @@ const ClassDetailScreen = ({ selectedClass,
 
   const fetchAssessmentDetails = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/student/getAssessmentDetails`, {
+      const res = await apiFetch(`/student/getAssessmentDetails`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -83,7 +84,7 @@ const ClassDetailScreen = ({ selectedClass,
     });
     
     try {
-      const res2 = await fetch(`${API_URL}/api/student/getAcademicDetails`, {
+      const res2 = await apiFetch(`/student/getAcademicDetails`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

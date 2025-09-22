@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
     View,
@@ -67,8 +68,8 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
     const fetchHomeworkDetails = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_URL}/api/mentor/getHomeworkDetails?homeworkId=${homeworkId}`);
-            const data = await response.json();
+            const response = await apiFetch(`/mentor/getHomeworkDetails?homeworkId=${homeworkId}`);
+            const data = response
 
             if (data.success) {
                 setHomework({
@@ -158,7 +159,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                     return;
             }
 
-            const response = await fetch(`${API_URL}/api/mentor/updateHomeworkStatus`, {
+            const response = await apiFetch(`/mentor/updateHomeworkStatus`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -173,7 +174,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                 }),
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 // Update local state
                 setSubmissions(
@@ -213,7 +214,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
 
     const handleMarkAsDone = async (id) => {
         try {
-            const response = await fetch(`${API_URL}/api/mentor/updateHomeworkStatus`, {
+            const response = await apiFetch(`/mentor/updateHomeworkStatus`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -227,7 +228,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                 }),
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setSubmissions(
                     submissions.map(submission =>
@@ -268,7 +269,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
         }
 
         try {
-            const response = await fetch(`${API_URL}/api/mentor/updateHomeworkStatus`, {
+            const response = await apiFetch(`/mentor/updateHomeworkStatus`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -283,7 +284,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                 }),
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setSubmissions(
                     submissions.map(submission =>
@@ -318,7 +319,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
 
     const handleMarkAsIncomplete = async (id) => {
         try {
-            const response = await fetch(`${API_URL}/api/mentor/updateHomeworkStatus`, {
+            const response = await apiFetch(`/mentor/updateHomeworkStatus`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -332,7 +333,7 @@ const MentorHomeWorkDetail = ({ navigation, route }) => {
                 }),
             });
 
-            const data = await response.json();
+            const data = response
             if (data.success) {
                 setSubmissions(
                     submissions.map(submission =>

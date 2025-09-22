@@ -25,7 +25,7 @@ const PerformanceGraph = ({ student }) => {
       try {
         setLoading(true);
         const response = await fetch(`${API_URL}/api/admin/students/${student.roll}/performance`);
-        const data = await response.json();
+        const data = response
 
         if (data.success) {
           setGraphData(data.data);

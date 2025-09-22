@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, View, Text, FlatList, Pressable, ScrollView, Modal, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Calendar } from 'react-native-calendars';
@@ -14,7 +15,7 @@ import styles, { modalStyles, frequencyStyles } from './ExamScheduleStyle';
 import { ExamProvider, useExams } from './ExamContext';
 import ConflictResolutionModal from './ConflictResolutionModal';
 import { API_URL } from "../../../../utils/env.js";
-   
+
 const CoordinatorExamSchedule = ({ navigation, route }) => {
   const { activeGrade } = route.params;
   const { sessions, loading, addSession, updateSession, deleteSession, handleConflictResolution } = useExams();
@@ -53,12 +54,12 @@ const CoordinatorExamSchedule = ({ navigation, route }) => {
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/coordinator/getGradeSubject`, {
+        const response = await apiFetch(`/coordinator/getGradeSubject`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ gradeID: activeGrade }),
         });
-        const data = await response.json();
+        const data = response
         if (data.success) {
           setSubjects(data.gradeSubjects);
           if (data.gradeSubjects.length > 0) {

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, TextInput, Modal, Pressable, Alert } from 'react-native';
 import BackIcon from '../../../../assets/CoordinatorPage/SubjectActivityEnrollment/Back.svg';
@@ -49,12 +50,12 @@ const SubjectAllotment = ({ navigation, route }) => {
 
   const fetchGradeSections = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+      const response = await apiFetch(`/coordinator/getGradeSections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeID: activeGrade }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success && data.gradeSections.length > 0) {
         setSections(data.gradeSections);
         setActiveSection(data.gradeSections[0].id);
@@ -69,7 +70,7 @@ const SubjectAllotment = ({ navigation, route }) => {
   const fetchSubjectTitles = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/getSubjects`);
-      const data = await response.json();
+      const data = response
       if (data.success) setSubjectTitles(data.subjects);
     } catch (error) {
       console.error('Error fetching subject titles:', error);
@@ -79,7 +80,7 @@ const SubjectAllotment = ({ navigation, route }) => {
   const fetchActivities = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/getActivities`);
-      const data = await response.json();
+      const data = response
       if (data.success) setSubjectTypeOptions(data.activity_types);
     } catch (error) {
       console.error('Error fetching activities:', error);
@@ -89,7 +90,7 @@ const SubjectAllotment = ({ navigation, route }) => {
   const fetchSubActivities = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/getSubActivities`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setSubActivities(data.sub_activities);
       }
@@ -101,12 +102,12 @@ const SubjectAllotment = ({ navigation, route }) => {
   const fetchSubjectActivities = async () => {
     if (!activeSection) return;
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getSubjectActivities`, {
+      const response = await apiFetch(`/coordinator/getSubjectActivities`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sectionID: activeSection }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         // Group by subject, then by activity_id, collect sub activities
         const groupedData = [];
@@ -154,12 +155,12 @@ const SubjectAllotment = ({ navigation, route }) => {
 
   const handleRemoveCategory = async (activityRecordId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/removeSubjectActivity`, {
+      const response = await apiFetch(`/coordinator/removeSubjectActivity`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: activityRecordId }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         fetchSubjectActivities();
       } else {
@@ -172,7 +173,7 @@ const SubjectAllotment = ({ navigation, route }) => {
 
   const handleAddCategory = async (subjectId, activityTypeId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/addSubjectActivity`, {
+      const response = await apiFetch(`/coordinator/addSubjectActivity`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -181,7 +182,7 @@ const SubjectAllotment = ({ navigation, route }) => {
           activity_type: activityTypeId,
         }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         fetchSubjectActivities();
       } else {
@@ -195,7 +196,7 @@ const SubjectAllotment = ({ navigation, route }) => {
 
   const handleAddSubCategory = async (sectionSubjectActivityId, subActivityId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/addSubjectSubActivity`, {
+      const response = await apiFetch(`/coordinator/addSubjectSubActivity`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -203,7 +204,7 @@ const SubjectAllotment = ({ navigation, route }) => {
           subActivityId: subActivityId,
         }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         fetchSubjectActivities();
       } else {
@@ -217,12 +218,12 @@ const SubjectAllotment = ({ navigation, route }) => {
 
   const handleRemoveSubject = async (subjectId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/removeSubject`, {
+      const response = await apiFetch(`/coordinator/removeSubject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ section_id: activeSection, subject_id: subjectId }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         fetchSubjectActivities();
       } else {
@@ -235,12 +236,12 @@ const SubjectAllotment = ({ navigation, route }) => {
 
   const handleSelectSubjectTitle = async (subjectId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/addSubjectToSection`, {
+      const response = await apiFetch(`/coordinator/addSubjectToSection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ section_id: activeSection, subject_id: subjectId }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         fetchSubjectActivities();
       } else {
@@ -256,12 +257,12 @@ const SubjectAllotment = ({ navigation, route }) => {
   const handleRemoveSubActivity = async (subject_sub_activity_id) => {
     // This removes just the sub-activity link by setting it to null
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/removeSubjectSubActivity`, {
+      const response = await apiFetch(`/coordinator/removeSubjectSubActivity`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subject_sub_activity_id: subject_sub_activity_id}),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         fetchSubjectActivities();
       } else {
@@ -290,11 +291,11 @@ const SubjectAllotment = ({ navigation, route }) => {
     const validSubjects = subjectInputs.filter(input => input.trim() !== '');
     if (validSubjects.length === 0) return Alert.alert('Error', 'Please enter at least one subject');
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/addSubjects`, {
+      const response = await apiFetch(`/coordinator/addSubjects`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subjects: validSubjects.map(name => ({ name: name.trim() })) }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', 'Subjects added');
         fetchSubjectTitles();
@@ -312,11 +313,11 @@ const SubjectAllotment = ({ navigation, route }) => {
     const validActivities = activityInputs.filter(input => input.trim() !== '');
     if (validActivities.length === 0) return Alert.alert('Error', 'Please enter at least one activity');
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/addActivities`, {
+      const response = await apiFetch(`/coordinator/addActivities`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activities: validActivities.map(name => ({ name: name.trim() })) }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', 'Activities added');
         fetchActivities();
@@ -334,11 +335,11 @@ const SubjectAllotment = ({ navigation, route }) => {
     const validSubActivities = subActivityInputs.filter(input => input.trim() !== '');
     if (validSubActivities.length === 0) return Alert.alert('Error', 'Please enter at least one sub-activity');
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/addSubActivities`, {
+      const response = await apiFetch(`/coordinator/addSubActivities`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activities: validSubActivities.map(name => ({ name: name.trim() })) }),
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', 'Sub-activities added');
         fetchSubActivities();

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, SafeAreaView, Alert, Linking, ActivityIndicator } from 'react-native';
 import styles from './LogsStyles';
@@ -50,7 +51,7 @@ const AdminLogs = ({ route, navigation }) => {
 
   const handleVenueAction = async (venueId, action) => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/updateVenueStatus`, {
+      const res = await apiFetch(`/admin/updateVenueStatus`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ venueId, action })
@@ -69,13 +70,13 @@ const AdminLogs = ({ route, navigation }) => {
 
   const handleProcessAssessment = async (requestId, action) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/processAssessmentRequest`, {
+      const response = await apiFetch(`/coordinator/processAssessmentRequest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requestId, action })
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', data.message);
         fetchLogs(); // Refresh data

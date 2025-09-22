@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Pressable, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import { API_URL } from '../../../../utils/env.js'
@@ -26,13 +27,13 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
     const fetchSections = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+        const response = await apiFetch(`/coordinator/getGradeSections`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ gradeID: activeGrade }),
         });
 
-        const data = await response.json();
+        const data = response
         console.log('Grade Sections Data API Response:', data);
 
         if (data.success) {
@@ -58,13 +59,13 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
     if (!activeSection) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/student/getSectionStudents`, {
+      const response = await apiFetch(`/coordinator/student/getSectionStudents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sectionID: activeSection }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log('Section students Data API Response:', data);
 
       if (data.success) {

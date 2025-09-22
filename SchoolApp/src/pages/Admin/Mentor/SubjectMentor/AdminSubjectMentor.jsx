@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
@@ -66,13 +67,13 @@ const AdminSubjectMentor = ({ navigation, route }) => {
   // Mentors for that grade
   const fetchGradeMentor = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getSubjectGradeMentor`, {
+      const response = await apiFetch(`/coordinator/mentor/getSubjectGradeMentor`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeID: selectedGrade }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log('Grade Mentor Data API Response:', data);
 
       if (data.success) {
@@ -89,13 +90,13 @@ const AdminSubjectMentor = ({ navigation, route }) => {
   //For subject selection
   const getGradeSubject = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getMentorGradeSubject`, {
+      const response = await apiFetch(`/coordinator/mentor/getMentorGradeSubject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeID: selectedGrade }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log('Section students Data API Response:', data);
 
       if (data.success) {
@@ -114,7 +115,7 @@ const AdminSubjectMentor = ({ navigation, route }) => {
 
   // Fetch mentors assigned to a specific subject
   const fetchEnroledSubjectMentors = (subjectId) => {
-    fetch(`${API_URL}/api/coordinator/mentor/getEnroledSubjectMentors`, {
+    apiFetch(`/coordinator/mentor/getEnroledSubjectMentors`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -146,7 +147,7 @@ const AdminSubjectMentor = ({ navigation, route }) => {
     }
 
     const requests = selectedFaculties.map(mentorId => {
-      return fetch(`${API_URL}/api/coordinator/mentor/assignMentorToSubject`, {
+      return apiFetch(`/coordinator/mentor/assignMentorToSubject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

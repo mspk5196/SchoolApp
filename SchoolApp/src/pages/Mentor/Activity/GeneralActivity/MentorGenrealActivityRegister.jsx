@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import {
   View,
   Text,
@@ -44,7 +45,7 @@ const MentorGenrealActivityRegister = ({navigation, route}) => {
 
   useEffect(() => {
     // Fetch students under this mentor
-    fetch(`${API_URL}/api/mentor/getMentorStudents`, {
+    apiFetch(`/mentor/getMentorStudents`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -80,7 +81,7 @@ const MentorGenrealActivityRegister = ({navigation, route}) => {
       description: description
     };
 
-    fetch(`${API_URL}/api/mentor/createGeneralActivity`, {
+    apiFetch(`/mentor/createGeneralActivity`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

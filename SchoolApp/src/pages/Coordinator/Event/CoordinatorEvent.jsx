@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
@@ -312,7 +313,7 @@ const CoordinatorEvent = ({ navigation, route }) => {
 
       setRefreshing(true);
       const response = await fetch(`${API_URL}/api/coordinator/events/get?phone=${activeGrade}`);
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         // Group events by type
@@ -341,7 +342,7 @@ const CoordinatorEvent = ({ navigation, route }) => {
 
   const deleteEvent = async (eventId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/events/delete`, {
+      const response = await apiFetch(`/coordinator/events/delete`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -349,7 +350,7 @@ const CoordinatorEvent = ({ navigation, route }) => {
         body: JSON.stringify({ event_id: eventId }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', 'Event deleted successfully');
         fetchEvents(); // Refresh the list

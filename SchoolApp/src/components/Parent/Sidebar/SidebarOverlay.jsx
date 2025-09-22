@@ -197,8 +197,8 @@ const SidebarOverlay = ({ visible, onClose }) => {
     if (selectedStudent) {
       // Optionally, fetch fresh data from API here if needed
       // Example:
-      // const response = await fetch(`${API_URL}/api/getStudentData`, { ... });
-      // const data = await response.json();
+      // const response = await apiFetch(`/getStudentData`, { ... });
+      // const data = response
       // await AsyncStorage.setItem("studentData", JSON.stringify(data.student));
 
       // For now, just store the selected student as an array (to match your usage)

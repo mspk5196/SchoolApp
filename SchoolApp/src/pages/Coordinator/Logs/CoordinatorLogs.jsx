@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 // CoordinatorLogs.jsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Linking, RefreshControl, Modal, ActivityIndicator } from 'react-native';
@@ -273,22 +274,22 @@ const CoordinatorLogs = ({ navigation, route }) => {
       }
       // Fetch all data in parallel
       const [classesRes, levelsRes, assessmentsRes, failedStudentRes] = await Promise.all([
-        fetch(`${API_URL}/api/coordinator/getOverdueClasses`, {
+        apiFetch(`/coordinator/getOverdueClasses`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ coordinatorId: coordinatorData.id, gradeId: activeGrade })
         }),
-        fetch(`${API_URL}/api/coordinator/getOverdueStudentLevels`, {
+        apiFetch(`/coordinator/getOverdueStudentLevels`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ coordinatorId: coordinatorData.id, gradeId: activeGrade })
         }),
-        fetch(`${API_URL}/api/coordinator/getRequestedAssessments`, {
+        apiFetch(`/coordinator/getRequestedAssessments`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ coordinatorId: coordinatorData.id, gradeId: activeGrade })
         }),
-        fetch(`${API_URL}/api/coordinator/getScheduleAssessmentFailedStudents`, {
+        apiFetch(`/coordinator/getScheduleAssessmentFailedStudents`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ coordinatorId: coordinatorData.id, gradeId: activeGrade })
@@ -323,13 +324,13 @@ const CoordinatorLogs = ({ navigation, route }) => {
 
   const handleProcessAssessment = async (requestId, action) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/processAssessmentRequest`, {
+      const response = await apiFetch(`/coordinator/processAssessmentRequest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requestId, action })
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', data.message);
         fetchLogsData(); // Refresh data
@@ -343,13 +344,13 @@ const CoordinatorLogs = ({ navigation, route }) => {
   };
   const handleAssignTask = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/assignTask`, {
+      const response = await apiFetch(`/coordinator/assignTask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ overdueId: id })
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', data.message);
         fetchLogsData(); // Refresh data
@@ -408,13 +409,13 @@ const CoordinatorLogs = ({ navigation, route }) => {
   const fetchGrade = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getCoordinatorGrades`, {
+      const response = await apiFetch(`/coordinator/getCoordinatorGrades`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ coordinatorId: coordinatorData.id })
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setGrades(data.coordinatorGrades);
         if (data.coordinatorGrades.length > 0) {

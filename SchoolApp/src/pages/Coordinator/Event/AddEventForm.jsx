@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
@@ -54,7 +55,7 @@ const AddEventForm = ({ navigation, route }) => {
   const fetchGrades = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/getGrades`);
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setGradeOptions(data.grades);
@@ -115,7 +116,7 @@ const AddEventForm = ({ navigation, route }) => {
     });
 
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/events/upload`, {
+      const response = await apiFetch(`/coordinator/events/upload`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -123,7 +124,7 @@ const AddEventForm = ({ navigation, route }) => {
         },
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         return data.filePath;
       }
@@ -164,7 +165,7 @@ const AddEventForm = ({ navigation, route }) => {
         name: 'event_banner.jpg'
       });
 
-      const response = await fetch(`${API_URL}/api/coordinator/events/create`, {
+      const response = await apiFetch(`/coordinator/events/create`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -172,7 +173,7 @@ const AddEventForm = ({ navigation, route }) => {
         },
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', 'Event created successfully');
         navigation.goBack();

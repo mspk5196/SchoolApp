@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Platform, Alert, Modal, ActivityIndicator, PermissionsAndroid } from 'react-native';
 import DocumentPicker from 'react-native-document-picker';
@@ -50,7 +51,7 @@ const MentorEnrollment = ({ navigation, route }) => {
   const fetchGrades = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/getGrades`);
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setGradeOptions(data.grades);
@@ -65,14 +66,14 @@ const MentorEnrollment = ({ navigation, route }) => {
 
   const fetchSections = async (gradeId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+      const response = await apiFetch(`/coordinator/getGradeSections`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ gradeID: gradeId })
       });
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setSectionOptions(data.gradeSections);
@@ -88,7 +89,7 @@ const MentorEnrollment = ({ navigation, route }) => {
   const fetchSubjects = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/getSubjects`);
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setSubjectOptions(data.subjects);
@@ -264,7 +265,7 @@ const MentorEnrollment = ({ navigation, route }) => {
         // }
       }
 
-      const response = await fetch(`${API_URL}/api/coordinator/enrollment/generate-mentor-enroll-template`, {
+      const response = await apiFetch(`/coordinator/enrollment/generate-mentor-enroll-template`, {
         method: 'GET'
       });
 
@@ -322,7 +323,7 @@ const MentorEnrollment = ({ navigation, route }) => {
           type: result[0].type,
         });
 
-        const response = await fetch(`${API_URL}/api/coordinator/enrollment/bulk-upload-mentors`, {
+        const response = await apiFetch(`/coordinator/enrollment/bulk-upload-mentors`, {
           method: 'POST',
           body: formData,
           headers: {
@@ -350,7 +351,7 @@ const MentorEnrollment = ({ navigation, route }) => {
           return;
         }
 
-        const data = await response.json();
+        const data = response
         console.log('Upload response data:', data);
 
         if (data.success) {
@@ -422,7 +423,7 @@ const MentorEnrollment = ({ navigation, route }) => {
       }
 
       // Submit to backend
-      const response = await fetch(`${API_URL}/api/coordinator/enrollMentor`, {
+      const response = await apiFetch(`/coordinator/enrollMentor`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -430,7 +431,7 @@ const MentorEnrollment = ({ navigation, route }) => {
         },
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         Alert.alert('Success', 'Mentor enrolled successfully', [

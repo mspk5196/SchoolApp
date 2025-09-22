@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -64,7 +65,7 @@ const MentorDashboard = ({ route }) => {
   }, [selectedSchedule]);
 
   // useEffect(() => {
-  //   fetch(`${API_URL}/api/mentor/createTodayAssessmentSessions`, { method: 'POST' })
+  //   apiFetch(`/mentor/createTodayAssessmentSessions`, { method: 'POST' })
   //     .then(response => response.json())
   //     .then(data => {
   //       if (data.success) {
@@ -87,7 +88,7 @@ const MentorDashboard = ({ route }) => {
     try {
       setIsAttentionLoading(true);
       const response = await fetch(`${API_URL}/api/mentor/getOverdueStudents?mentorId=${mentorData[0].id}`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setOverdueStudents(data.overdueStudents);
       }
@@ -101,7 +102,7 @@ const MentorDashboard = ({ route }) => {
   const fetchCoordinatorTasks = async () => {
     try {
       const response = await fetch(`${API_URL}/api/mentor/getCoordinatorTasks?mentorId=${mentorData[0].id}`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setCoordinatorTasks(data.tasks);
       }
@@ -118,7 +119,7 @@ const MentorDashboard = ({ route }) => {
     setIsScheduleLoading(true);
     try {
       const formattedDate = formatDateForAPI(date);
-      const response = await fetch(`${API_URL}/api/mentor/daily-schedule`, {
+      const response = await apiFetch(`/mentor/daily-schedule`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ const MentorDashboard = ({ route }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setScheduleData(data.scheduleData);
         // console.log("Schedule Data:", data.scheduleData[0].students);
@@ -241,7 +242,7 @@ const MentorDashboard = ({ route }) => {
 
   const fetchSectionSubjects = async (sectionId) => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/getSectionSubjectsforSchedule`, {
+      const response = await apiFetch(`/mentor/getSectionSubjectsforSchedule`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -251,7 +252,7 @@ const MentorDashboard = ({ route }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setSubjects(data.subjects);
       } else {
@@ -266,7 +267,7 @@ const MentorDashboard = ({ route }) => {
 
   const fetchMentorForSubject = async (subjectId, sectionId) => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/getMentorForSubject`, {
+      const response = await apiFetch(`/mentor/getMentorForSubject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -277,7 +278,7 @@ const MentorDashboard = ({ route }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       return data.success ? data.mentor : null;
     } catch (error) {
       console.error('Error fetching mentor:', error);
@@ -314,7 +315,7 @@ const MentorDashboard = ({ route }) => {
       }
 
       // Update the schedule
-      const updateResponse = await fetch(`${API_URL}/api/mentor/updateDailySchedule`, {
+      const updateResponse = await apiFetch(`/mentor/updateDailySchedule`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -350,7 +351,7 @@ const MentorDashboard = ({ route }) => {
 
     try {
       // Update the activity
-      const updateResponse = await fetch(`${API_URL}/api/mentor/updateDailyScheduleActivity`, {
+      const updateResponse = await apiFetch(`/mentor/updateDailyScheduleActivity`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

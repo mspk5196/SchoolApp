@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -76,7 +77,7 @@ const AdminScheduleDetails = ({ navigation, route }) => {
         `${API_URL}/api/coordinator/weekly-schedule/getWeeklySchedule?sectionId=${sectionId}&day=${activeDay}`
       );
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setScheduleItems(data.scheduleItems.map(item => ({
@@ -105,12 +106,12 @@ const AdminScheduleDetails = ({ navigation, route }) => {
 
   const fetchSubjects = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/subjects`, {
+      const response = await apiFetch(`/coordinator/weekly-schedule/subjects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activeSection:sectionId })
       });
-      const data = await response.json();
+      const data = response
       if (response.ok) {
         setSubjects(data.subjects);
         // console.log(data.subjects); 
@@ -130,7 +131,7 @@ const AdminScheduleDetails = ({ navigation, route }) => {
       const response = await fetch(
         `${API_URL}/api/coordinator/enrollment/getVenuesByGrade?gradeId=${activeGrade}`
       );
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setVenues(data.venues);
       }
@@ -270,7 +271,7 @@ const AdminScheduleDetails = ({ navigation, route }) => {
         }
       );
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         fetchSchedule();
         setShowAddModal(false);
@@ -285,11 +286,11 @@ const AdminScheduleDetails = ({ navigation, route }) => {
 
   const deleteActivity = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/deleteWeeklySchedule/${id}`, {
+      const response = await apiFetch(`/coordinator/weekly-schedule/deleteWeeklySchedule/${id}`, {
         method: 'DELETE'
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         fetchSchedule(); // Refresh the schedule
@@ -308,7 +309,7 @@ const AdminScheduleDetails = ({ navigation, route }) => {
         `${API_URL}/api/coordinator/weekly-schedule/getAvailableMentors?subjectId=${subjectId}&activeSection=${sectionId}`
       );
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         setMentors(data.mentors);
@@ -322,12 +323,12 @@ const AdminScheduleDetails = ({ navigation, route }) => {
   const fetchActivities = async (subjectId) => {
     // const activeSection = sectionId;
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/getSectionSubjectActivities?subjectId=${subjectId}&activeSection=${sectionId}`, {
+      const response = await apiFetch(`/coordinator/weekly-schedule/getSectionSubjectActivities?subjectId=${subjectId}&activeSection=${sectionId}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setActivities(data.activity_types);
         console.log(data.activity_types);

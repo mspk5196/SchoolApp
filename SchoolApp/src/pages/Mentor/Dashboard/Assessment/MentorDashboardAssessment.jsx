@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -277,7 +278,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
       
       // console.log('Checking status with student schedule IDs:', studentScheduleIds);
       
-      const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/status`, {
+      const response = await apiFetch(`/mentor/activity/${sessionId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -290,7 +291,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data = await response.json();
+      const data = response
       // console.log('Status check response:', data);
       
       if (data.success && data.status !== activity?.status) {
@@ -355,7 +356,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
     try {
       const url = `${API_URL}/api/mentor/getTopicMaterials?section_subject_activity_id=${activity.section_subject_activity_id}${activity.topic_id ? `&topic_id=${activity.topic_id}${activity.batch_id ? `&batch_id=${activity.batch_id}` : ''}` : ''}`;
       const response = await fetch(url);
-      const data = await response.json();
+      const data = response
       
       if (data.success) {
         // console.log('Fetched materials:', data.materials);
@@ -422,13 +423,13 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
         return;
       }
       
-      const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/${activity.activity}/start`, {
+      const response = await apiFetch(`/mentor/activity/${sessionId}/${activity.activity}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentScheduleIds })
       });
       
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setActivity(prev => ({ ...prev, status: 'In Progress' }));
         setSessionTimestamps();
@@ -457,13 +458,13 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
         return;
       }
       
-      const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/assessment/finish`, {
+      const response = await apiFetch(`/mentor/activity/${sessionId}/assessment/finish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentScheduleIds })
       });
       
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setActivity(prev => ({ ...prev, status: 'Finished(need to update marks)' }));
         Alert.alert('Success', `Session has been finished for ${data.affectedRows} student(s).`);
@@ -617,7 +618,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
     
     try {
       const sessionId = activity?.id;
-      const response = await fetch(`${API_URL}/api/mentor/activity/${sessionId}/assessment/complete`, {
+      const response = await apiFetch(`/mentor/activity/${sessionId}/assessment/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -627,7 +628,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
         }),
       });
       
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setSessionEndTimestamp(new Date().toISOString());
         Alert.alert('Success', `Assessment completed successfully for ${studentScheduleIds.length} student(s).`, [
@@ -874,7 +875,6 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
 
         <Text style={styles.headerText}>Assessment Session</Text>
       </View>
-
       {/* Status Section */}
       <View style={{ 
         flexDirection: 'row', 
@@ -919,7 +919,6 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
           </Text>
         </View>
       </View>
-
       {/* Session Information Card */}
       <View style={styles.sessionCard}>
         <View style={styles.sessionHeader}>
@@ -987,7 +986,6 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
           </View>
         )}
       </View>
-
       {/* Students List */}
       <View style={styles.studentsContainer}>
         <View style={styles.sectionHeader}>
@@ -1009,7 +1007,7 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
             </View>
           ) : Object.keys(batches).length > 0 ? (
             // Render batch-wise if batches data is available
-            Object.entries(batches).map(([batchKey, batch]) => (
+            (Object.entries(batches).map(([batchKey, batch]) => (
               <View key={batchKey} style={styles.batchContainer}>
                 <TouchableOpacity 
                   style={styles.batchHeader}
@@ -1033,19 +1031,17 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
                   </View>
                 )}
               </View>
-            ))
+            )))
           ) : (
             // Fallback to flat list if no batch data
-            students.map((student, index) => renderStudentCard(student, index))
+            (students.map((student, index) => renderStudentCard(student, index)))
           )}
         </ScrollView>
       </View>
-
       {/* Action Button */}
       <View style={styles.actionButtonContainer}>
         {renderActionButton()}
       </View>
-
       {/* Mark Entry Modal */}
       <Modal
         visible={showMarkModal}
@@ -1109,7 +1105,6 @@ const MentorDashboardAssessment = ({ navigation, route }) => {
           </Animated.View>
         </Pressable>
       </Modal>
-
       {/* Materials Modal */}
       <Modal
         visible={showMaterials}

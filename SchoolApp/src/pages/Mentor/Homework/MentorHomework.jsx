@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, FlatList, Alert } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
@@ -85,7 +86,7 @@ const MentorHomework = ({ navigation, route }) => {
   const fetchGrades = async () => {
     try {
       const response = await fetch(`${API_URL}/api/mentor/getGrades`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         const formattedGrades = data.grades.map(g => ({
           name: g.grade_name,
@@ -100,7 +101,7 @@ const MentorHomework = ({ navigation, route }) => {
 
   const fetchSubjects = async (sectionId) => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/getSectionSubjects`, {
+      const response = await apiFetch(`/mentor/getSectionSubjects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +110,7 @@ const MentorHomework = ({ navigation, route }) => {
           sectionId
         }),
       });
-      const data = await response.json();
+      const data = response
       setTopicItems([]);
       setSelectedTopicName('');
       setBatch('');
@@ -131,7 +132,7 @@ const MentorHomework = ({ navigation, route }) => {
   const fetchSections = async (gradeId) => {
     try {
       const response = await fetch(`${API_URL}/api/mentor/sections/${gradeId}`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         const formattedSections = data.sections.map(s => ({
           name: s.section_name,
@@ -146,7 +147,7 @@ const MentorHomework = ({ navigation, route }) => {
 
   const fetchTopics = async (subjectId, gradeId) => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/topic-hierarchy/get`, {
+      const response = await apiFetch(`/mentor/topic-hierarchy/get`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,7 +157,7 @@ const MentorHomework = ({ navigation, route }) => {
           gradeId
         }),
       });
-      const data = await response.json();
+      const data = response
 
       if (data.success && data.data && data.data.hierarchy) {
         // console.log("Fetched Topics Hierarchy:", data.data.hierarchy);
@@ -208,7 +209,7 @@ const MentorHomework = ({ navigation, route }) => {
   const fetchBatches = async (subjectId, sectionId) => {
     try {
       const response = await fetch(`${API_URL}/api/mentor/batches/${sectionId}/${subjectId}`);
-      const data = await response.json();
+      const data = response
       // console.log("Fetched Batches Response:", data);
 
       if (data.success && data.data) {
@@ -232,7 +233,7 @@ const MentorHomework = ({ navigation, route }) => {
 
   const fetchBatchStudents = async (selectedBatchName) => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/batches/details`, {
+      const response = await apiFetch(`/mentor/batches/details`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -243,7 +244,7 @@ const MentorHomework = ({ navigation, route }) => {
           subject_id: subject
         }),
       });
-      const data = await response.json();
+      const data = response
       // console.log("Fetched Batch Students Response:", data);
 
       if (data.success && data.students) {
@@ -344,7 +345,7 @@ const MentorHomework = ({ navigation, route }) => {
 
     try {
       // Submit homework with selected students
-      const response = await fetch(`${API_URL}/api/mentor/addHomework`, {
+      const response = await apiFetch(`/mentor/addHomework`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -362,7 +363,7 @@ const MentorHomework = ({ navigation, route }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Homework assigned successfully');
         setStudentSelectionVisible(false);

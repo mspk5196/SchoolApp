@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -20,7 +21,7 @@ import { API_URL } from '../../../../utils/env.js';
 import styles from "./surveyfoldersty";
 
 // Import SVG components
-import BackArrow from '../../../../assets/MentorPage/backarrow.svg';  
+import BackArrow from '../../../../assets/MentorPage/backarrow.svg';
 import Home from '../../../../assets/MentorPage/Home2.svg';
 import Add from '../../../../assets/MentorPage/Add.svg';
 import Userlogo from '../../../../assets/MentorPage/userlogo.svg';
@@ -145,7 +146,7 @@ const MentorSurveyRegister = ({ navigation, route }) => {
       questions: task === 'Feedback' ? questions : null,
     };
 
-    fetch(`${API_URL}/api/mentor/survey/create`, {
+    apiFetch(`/mentor/survey/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(surveyData)

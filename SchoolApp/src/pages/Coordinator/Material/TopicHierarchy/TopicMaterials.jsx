@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -204,7 +205,7 @@ const TopicMaterials = ({ route, navigation }) => {
 
   const checkFileExists = async (url) => {
     try {
-      const response = await fetch(url, { method: 'HEAD' });
+      const response = await apiFetch(url, { method: 'HEAD' });
       return response.ok;
     } catch (error) {
       return false;
@@ -601,7 +602,7 @@ const TopicMaterials = ({ route, navigation }) => {
           }
         });
 
-        const response = await fetch(`${API_URL}/api/coordinator/topics/materials/upload`, {
+        const response = await apiFetch(`/coordinator/topics/materials/upload`, {
           method: 'POST',
           body: formDataToSend,
         });

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../utils/apiClient";
 import React, { useState, useEffect } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
@@ -81,8 +82,7 @@ const TimeBasedActivityCreator = ({
 
     const fetchBatches = async () => {
         try {
-            const response = await fetch(
-                `${API_URL}/api/coordinator/academic-schedule/batches/${selectedPeriod.section_id}/${selectedPeriod.subject_id}`);
+            const response = await fetch(`/coordinator/academic-schedule/batches/${selectedPeriod.section_id}/${selectedPeriod.subject_id}`);
             const result = await response.json();
             if (result.success) {
                 setBatches(result.data);
@@ -102,7 +102,7 @@ const TimeBasedActivityCreator = ({
 
     const fetchMentors = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeMentors`, {
+            const response = await apiFetch(`/coordinator/mentor/getGradeMentors`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ gradeID: activeGrade })
@@ -118,7 +118,7 @@ const TimeBasedActivityCreator = ({
 
     const fetchActivitiesForSubject = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectActivities/${selectedPeriod.section_id}/${selectedPeriod.subject_id}`, {
+            const response = await apiFetch(`/coordinator/topics/getSectionSubjectActivities/${selectedPeriod.section_id}/${selectedPeriod.subject_id}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -146,7 +146,7 @@ const TimeBasedActivityCreator = ({
 
     const fetchSubActivitiesForSubject = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectSubActivities/${selectedActivity}/${selectedPeriod.subject_id}`, {
+            const response = await apiFetch(`/coordinator/topics/getSectionSubjectSubActivities/${selectedActivity}/${selectedPeriod.subject_id}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });

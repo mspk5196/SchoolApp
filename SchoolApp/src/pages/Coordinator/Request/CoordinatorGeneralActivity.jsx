@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
@@ -88,11 +89,11 @@ const CoordinatorGeneralActivity = ({ navigation, route }) => {
 
   const fetchDocumnetTypes = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/fetchDocumentTypes`, {
+      const response = await apiFetch(`/fetchDocumentTypes`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setDocumentTypes(data.docTypes);
         // console.log(data.docTypes);   
@@ -106,11 +107,11 @@ const CoordinatorGeneralActivity = ({ navigation, route }) => {
   };
   const fetchDocumentPurpose = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/fetchDocumentPurpose`, {
+      const response = await apiFetch(`/fetchDocumentPurpose`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setDocumentPurpose(data.docPurpose);
         // console.log(data.docTypes);  
@@ -126,7 +127,7 @@ const CoordinatorGeneralActivity = ({ navigation, route }) => {
   const handleConfirmChanges = async () => {
     try {
       if (newRequests.length > 0) {
-        await fetch(`${API_URL}/api/coordinator/insertDocType`, {
+        await apiFetch(`/coordinator/insertDocType`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ names: newRequests })
@@ -134,7 +135,7 @@ const CoordinatorGeneralActivity = ({ navigation, route }) => {
       }
    
       if (newPurposes.length > 0) {
-        await fetch(`${API_URL}/api/coordinator/insertDocPurpose`, {
+        await apiFetch(`/coordinator/insertDocPurpose`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ names: newPurposes })

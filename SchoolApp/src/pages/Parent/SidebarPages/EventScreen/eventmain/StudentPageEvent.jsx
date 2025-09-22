@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { View, FlatList, SafeAreaView, StatusBar, TouchableOpacity, Text, Alert, RefreshControl, Pressable, Image, Modal, ScrollView } from 'react-native';
 import EventList from '../../../../../components/Parent/Event/EventList';
@@ -169,13 +170,13 @@ const StudentPageEvent = ({ navigation }) => {
     const isFav = favourites[eventId];
     try {
       if (isFav) {
-        await fetch(`${API_URL}/api/student/removeFavouriteEvent`, {
+        await apiFetch(`/student/removeFavouriteEvent`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ student_roll: studentData.roll, event_id: eventId }),
         });
       } else {
-        await fetch(`${API_URL}/api/student/addFavouriteEvent`, {
+        await apiFetch(`/student/addFavouriteEvent`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ student_roll: studentData.roll, event_id: eventId }),

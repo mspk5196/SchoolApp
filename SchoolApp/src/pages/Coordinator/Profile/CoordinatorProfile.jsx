@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, View, Text, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import BackIcon from '../../../assets/CoordinatorPage/Profile/Back.svg';
@@ -31,7 +32,7 @@ const CoordinatorProfile = ({ navigation, route }) => {
   const fetchCoordinatorDetails = async () => {
     try {
       // Fetch subjects and grades handled by mentor
-      const assignmentsResponse = await fetch(`${API_URL}/api/coordinator/getCoordinatorAssignments`, {
+      const assignmentsResponse = await apiFetch(`/coordinator/getCoordinatorAssignments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ coordinatorId: coordinatorData.id }),
@@ -40,7 +41,7 @@ const CoordinatorProfile = ({ navigation, route }) => {
       const assignmentsData = await assignmentsResponse.json();
 
       // Fetch section information
-      const sectionResponse = await fetch(`${API_URL}/api/coordinator/getCoordinatorSection`, {
+      const sectionResponse = await apiFetch(`/coordinator/getCoordinatorSection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mentorId: uniqueMentorData[0].id }),
@@ -49,7 +50,7 @@ const CoordinatorProfile = ({ navigation, route }) => {
       const sectionData = await sectionResponse.json();
 
       // Fetch issues count (you'll need to implement this endpoint)
-      const issuesResponse = await fetch(`${API_URL}/api/coordinator/getCoordinatorIssues`, {
+      const issuesResponse = await apiFetch(`/coordinator/getCoordinatorIssues`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ coordinatorId: coordinatorData.id }),
@@ -72,13 +73,13 @@ const CoordinatorProfile = ({ navigation, route }) => {
   }
   const fetchAttendanceData = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getAttendance`, {
+      const response = await apiFetch(`/coordinator/getAttendance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: coordinatorData.phone }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setAttendanceData(data.attendanceData);
       }

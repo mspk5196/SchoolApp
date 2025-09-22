@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Alert, Modal } from 'react-native';
 import DocumentPicker from 'react-native-document-picker';
@@ -150,7 +151,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
   const fetchGrades = async () => {
     try {
       const response = await fetch(`${API_URL}/api/admin/grades`);
-      const data = await response.json();
+      const data = response
       if (response.ok) {
         // Sort grades by id before setting state
         const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);
@@ -204,7 +205,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
       }
       console.log(formData);
 
-      const response = await fetch(`${API_URL}/api/admin/enrollCoordinator`, {
+      const response = await apiFetch(`/admin/enrollCoordinator`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -212,7 +213,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
         },
       });
 
-      const data = await response.json();
+      const data = response
 
       if (response.ok) {
         Alert.alert('Success', 'Coordinator enrolled successfully');

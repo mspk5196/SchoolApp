@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView, View, Text, Image, TouchableOpacity, Alert } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp, } from 'react-native-responsive-screen';
@@ -32,13 +33,13 @@ const MentorProfileDetails = ({ navigation, route }) => {
 
   const fetchAttendanceData = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/getMentorAttendance`, {
+      const response = await apiFetch(`/mentor/getMentorAttendance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: uniqueMentorData[0].phone }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log('Mentor Attendance Data API Response:', data);
 
       if (data.success && data.attendanceData) {
@@ -55,7 +56,7 @@ const MentorProfileDetails = ({ navigation, route }) => {
   const fetchMentorDetails = async () => {
     try {
       // Fetch subjects and grades handled by mentor
-      const assignmentsResponse = await fetch(`${API_URL}/api/mentor/getMentorAssignments`, {
+      const assignmentsResponse = await apiFetch(`/mentor/getMentorAssignments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mentorId: uniqueMentorData[0].id }),
@@ -64,7 +65,7 @@ const MentorProfileDetails = ({ navigation, route }) => {
       const assignmentsData = await assignmentsResponse.json();
 
       // Fetch section information
-      const sectionResponse = await fetch(`${API_URL}/api/mentor/getMentorSection`, {
+      const sectionResponse = await apiFetch(`/mentor/getMentorSection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mentorId: uniqueMentorData[0].id }),
@@ -73,7 +74,7 @@ const MentorProfileDetails = ({ navigation, route }) => {
       const sectionData = await sectionResponse.json();
 
       // Fetch issues count (you'll need to implement this endpoint)
-      const issuesResponse = await fetch(`${API_URL}/api/mentor/getMentorIssues`, {
+      const issuesResponse = await apiFetch(`/mentor/getMentorIssues`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mentorId: uniqueMentorData[0].id }),

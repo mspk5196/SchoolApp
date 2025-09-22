@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView, Modal, Alert } from 'react-native';
 import styles from './MentorDetailsStyles';
@@ -27,13 +28,13 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
 
   const fetchSectionStudents = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getMentorSectionStudents`, {
+      const response = await apiFetch(`/coordinator/mentor/getMentorSectionStudents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sectionID: mentor.section_id,mentorID:mentor.id }),
       });
 
-      const data = await response.json();
+      const data = response
       // console.log('Section students Data API Response:', data);
 
       if (data.success) {
@@ -49,13 +50,13 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
 
   const fetchMentorSubjects = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeSubjects`, {
+      const response = await apiFetch(`/coordinator/mentor/getGradeSubjects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sectionID: mentor.section_id }),  
       });
 
-      const data = await response.json();
+      const data = response
       // console.log('Section subjects Data API Response:', data);
 
       if (data.success) {
@@ -79,7 +80,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
 
   const fetchAddedSubjectMentor = async (subjectID) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getEnroledGradeSubjectMentor`, {
+      const response = await apiFetch(`/coordinator/mentor/getEnroledGradeSubjectMentor`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -88,7 +89,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       // console.log('Subject mentor Data API Response:', data);
 
       if (data.success) {
@@ -129,7 +130,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
 
   const assignSubjectToMentorSection = async (mentorId, subjectId, gradeId, sectionId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/assignSubjectToMentorSection`, {
+      const response = await apiFetch(`/coordinator/mentor/assignSubjectToMentorSection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -140,7 +141,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', 'Mentor assigned to subject successfully');
       } else {
@@ -156,7 +157,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
     // console.log(mentorId, studentId);
     
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/removeMentorStudents`, {
+      const response = await apiFetch(`/coordinator/mentor/removeMentorStudents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -165,7 +166,7 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', 'Mentor assigned to subject successfully');
       } else {

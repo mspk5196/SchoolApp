@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -247,7 +248,7 @@ const CoordinatorCalendar = ({ navigation }) => {
       date: eventDate.toISOString().split('T')[0]
     };
 
-    fetch(`${API_URL}/api/coordinator/calendar/events`, {
+    apiFetch(`/coordinator/calendar/events`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -273,7 +274,7 @@ const CoordinatorCalendar = ({ navigation }) => {
 
   // Delete event
   const deleteEvent = (eventId) => {
-    fetch(`${API_URL}/api/coordinator/calendar/events`, {
+    apiFetch(`/coordinator/calendar/events`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

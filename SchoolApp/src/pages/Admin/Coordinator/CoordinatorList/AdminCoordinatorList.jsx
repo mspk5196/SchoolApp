@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Animated, Alert } from 'react-native';
 import Leftarrow from "../../../../assets/AdminPage/Basicimg/PrevBtn.svg";
@@ -20,11 +21,11 @@ const AdminCoordinatorList = ({ navigation }) => {
 
   const fetchCoordinators = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/getAllCoordinators`, {
+      const response = await apiFetch(`/admin/getAllCoordinators`, {
         method: 'GET'
       });
 
-      const data = await response.json();
+      const data = response
       // console.log('Grade Coordinators Data API Response:', data);
 
       if (data.success) {
@@ -51,7 +52,7 @@ const AdminCoordinatorList = ({ navigation }) => {
 
   const fetchCoordinatorRoles = async (phoneNumber, coordinator) => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/getRoles`, {
+      const response = await apiFetch(`/admin/getRoles`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,7 +60,7 @@ const AdminCoordinatorList = ({ navigation }) => {
         body: JSON.stringify({ phoneNumber }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success && data.data.length > 0) {
         const coordinatorInfo = data.data[0]; // if only one entry expected

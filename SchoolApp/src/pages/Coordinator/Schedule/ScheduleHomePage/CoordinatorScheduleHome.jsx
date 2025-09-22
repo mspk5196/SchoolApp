@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { Text, View, Pressable, ScrollView, SectionList, TouchableOpacity, Alert, Linking, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,7 +34,7 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
   // Fetch sections for the selected grade
   const fetchSections = async (gradeId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+      const response = await apiFetch(`/coordinator/getGradeSections`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +99,7 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
         formData.append('sectionId', sectionId.toString());
 
         // Upload to backend
-        const response = await fetch(`${API_URL}/api/coordinator/schedule/process-schedule-sheet`, {
+        const response = await apiFetch(`/coordinator/schedule/process-schedule-sheet`, {
           method: 'POST',
           headers: {
             'Content-Type': 'multipart/form-data',

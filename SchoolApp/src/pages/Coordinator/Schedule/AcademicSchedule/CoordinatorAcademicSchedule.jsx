@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -47,12 +48,12 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
     const fetchSections = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/sections`, {
+        const response = await apiFetch(`/coordinator/weekly-schedule/sections`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ activeGrade })
         });
-        const data = await response.json();
+        const data = response
         if (data.success && data.gradeSections.length > 0) {
           setSections(data.gradeSections);
           // Set the first section as active by default, or remember previous
@@ -146,7 +147,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
             text: 'Generate',
             onPress: async () => {
               try {
-                const response = await fetch(`${API_URL}/api/coordinator/generate-student-wise-schedules-manual`, {
+                const response = await apiFetch(`/coordinator/generate-student-wise-schedules-manual`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({

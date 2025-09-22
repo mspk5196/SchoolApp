@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
@@ -55,13 +56,13 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
   const fetchGradeSections = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+      const response = await apiFetch(`/coordinator/getGradeSections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeID: activeGrade }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log('Grade Sections Data API Response:', data);
 
       if (data.success) {
@@ -82,13 +83,13 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
 
   const fetchSectionMentor = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getSectionMentor`, {
+      const response = await apiFetch(`/coordinator/mentor/getSectionMentor`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activeGrade: activeGrade }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log('Section mentor Data API Response:', data);
 
       if (data.success) {
@@ -104,13 +105,13 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
 
   const fetchGradeMentors = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeNonEnroledMentors`, {
+      const response = await apiFetch(`/coordinator/mentor/getGradeNonEnroledMentors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeID: activeGrade }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log('Grade Mentors not enroled Data API Response:', data);
 
       if (data.success) {
@@ -154,7 +155,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
       );
   
       // Get current sections for the grade
-      const sectionsResponse = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+      const sectionsResponse = await apiFetch(`/coordinator/getGradeSections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeID: activeGrade }),
@@ -194,7 +195,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
         
         try {
           // Create new section in DB
-          const newSectionRes = await fetch(`${API_URL}/api/coordinator/createSection`, {
+          const newSectionRes = await apiFetch(`/coordinator/createSection`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -214,7 +215,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
           console.log(`Successfully created section ${newSectionName} with ID ${sectionId}`);
           
           // Assign mentor to the newly created section
-          const assignResponse = await fetch(`${API_URL}/api/coordinator/mentor/assignMentorToSection`, {
+          const assignResponse = await apiFetch(`/coordinator/mentor/assignMentorToSection`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

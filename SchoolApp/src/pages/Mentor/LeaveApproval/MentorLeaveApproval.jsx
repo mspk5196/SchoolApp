@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, Modal, Alert, Image } from "react-native";
 import styles from "./LeaveApprovalsty";
@@ -24,7 +25,7 @@ const MentorLeaveApproval = ({ navigation, route }) => {
   }, []);
 
   const fetchPendingLeaveRequests = () => {
-    fetch(`${API_URL}/api/mentor/getPendingLeaveRequests`, {
+    apiFetch(`/mentor/getPendingLeaveRequests`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -48,7 +49,7 @@ const MentorLeaveApproval = ({ navigation, route }) => {
   };
 
   const handleApprove = (requestId, roll, noOfDays) => {
-    fetch(`${API_URL}/api/mentor/updateLeaveRequestStatus`, {
+    apiFetch(`/mentor/updateLeaveRequestStatus`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ const MentorLeaveApproval = ({ navigation, route }) => {
       return;
     }
 
-    fetch(`${API_URL}/api/mentor/updateLeaveRequestStatus`, {
+    apiFetch(`/mentor/updateLeaveRequestStatus`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

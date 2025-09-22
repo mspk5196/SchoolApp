@@ -50,7 +50,7 @@ const AdminStudentList = ({ navigation, route }) => {
   const fetchSections = async (gradeId) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/grades/${gradeId}/sections`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setSections(data.gradeSections);
         if (data.gradeSections) {
@@ -66,7 +66,7 @@ const AdminStudentList = ({ navigation, route }) => {
   const fetchStudents = async (sectionId) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/section/${sectionId}/students`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setStudents(data.students);
       }

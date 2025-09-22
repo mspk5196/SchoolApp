@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from "react";
 import { View, Text, FlatList, Pressable, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import styles from "./BufferActivitysty";
@@ -79,7 +80,7 @@ const MentorBufferActivity = ({ navigation, route }) => {
 
     const fetchActivities = () => {
         setRefreshing(true);
-        fetch(`${API_URL}/api/mentor/buffer-activities`, {
+        apiFetch(`/mentor/buffer-activities`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -116,7 +117,7 @@ const MentorBufferActivity = ({ navigation, route }) => {
     const updateActivityStatusInDB = (activityId, endTime = null) => {
         const endedTime = endTime || new Date().toTimeString().substr(0, 8);
 
-        fetch(`${API_URL}/api/mentor/end-buffer-activity`, {
+        apiFetch(`/mentor/end-buffer-activity`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -155,7 +156,7 @@ const MentorBufferActivity = ({ navigation, route }) => {
     }, []);
 
     const handleEndActivity = (activityId) => {
-        fetch(`${API_URL}/api/mentor/end-buffer-activity`, {
+        apiFetch(`/mentor/end-buffer-activity`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

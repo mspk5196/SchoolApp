@@ -51,7 +51,7 @@ const AdminStudentIssuelog = ({ navigation, route }) => {
   const fetchSections = async (gradeId) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/grades/${gradeId}/sections`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setSections(data.gradeSections);
         console.log(data.gradeSections);
@@ -69,7 +69,7 @@ const AdminStudentIssuelog = ({ navigation, route }) => {
   const fetchDisciplineData = async (sectionId) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/sections/${sectionId}/discipline-issues`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         console.log(data.issues);
 

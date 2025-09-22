@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   SafeAreaView,
@@ -46,13 +47,13 @@ const StudentPageLeavedetails = ({ navigation }) => {
     console.log('Cancelling leave with ID:', id);
 
     try {
-      const response = await fetch(`${API_URL}/api/cancelStudentLeave`, {
+      const response = await apiFetch(`/cancelStudentLeave`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leaveId: id }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log("Cancel Response:", data);
 
       if (data.success) {
@@ -135,13 +136,13 @@ const StudentPageLeavedetails = ({ navigation }) => {
         setRefreshing(true);
       }
       
-      const response = await fetch(`${API_URL}/api/getStudentLeaves`, {
+      const response = await apiFetch(`/getStudentLeaves`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roll }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log("Student Leave Data API Response:", data);
 
       if (data.success) {

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient";
 import React, {useState, useCallback, useEffect} from 'react';
 import {
   SafeAreaView,
@@ -245,7 +246,7 @@ const AdminCalendar = ({navigation}) => {
       date: eventDate.toISOString().split('T')[0]
     };
 
-    fetch(`${API_URL}/api/coordinator/calendar/events`, {
+    apiFetch(`/coordinator/calendar/events`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -271,7 +272,7 @@ const AdminCalendar = ({navigation}) => {
 
   // Delete event
   const deleteEvent = (eventId) => {
-    fetch(`${API_URL}/api/coordinator/calendar/events`, {
+    apiFetch(`/coordinator/calendar/events`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

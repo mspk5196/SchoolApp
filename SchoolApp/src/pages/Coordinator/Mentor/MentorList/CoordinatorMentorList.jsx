@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import BackIcon from "../../../../assets/CoordinatorPage/MentorList/leftarrow.svg";
@@ -22,7 +23,7 @@ const CoordinatorMentorList = ({ navigation, route }) => {
   const fetchGradeMentors = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getGradeMentors`, {
+      const response = await apiFetch(`/coordinator/mentor/getGradeMentors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -31,7 +32,7 @@ const CoordinatorMentorList = ({ navigation, route }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
       console.log('Grade mentors Data API Response:', data);
 
       if (data.success) {

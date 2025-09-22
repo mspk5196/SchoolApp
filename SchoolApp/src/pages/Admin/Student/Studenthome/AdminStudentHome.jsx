@@ -23,7 +23,7 @@ const AdminStudentHome = ({ navigation }) => {
   const fetchGrades = async () => {
     try {
       const response = await fetch(`${API_URL}/api/admin/grades`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);
         setGrades(sortedGrades);

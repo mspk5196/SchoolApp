@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -50,7 +51,7 @@ const EnhancedStudentDashboard = () => {
       const phone = JSON.parse(storedPhone);
       
       // Fetch enhanced dashboard data
-      const dashboardResponse = await fetch(`${API_URL}/student/dashboard`, {
+      const dashboardResponse = await apiFetch(`${API_URL}/student/dashboard`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +66,7 @@ const EnhancedStudentDashboard = () => {
       }
 
       // Fetch today's schedule
-      const scheduleResponse = await fetch(`${API_URL}/student/schedule/today`, {
+      const scheduleResponse = await apiFetch(`${API_URL}/student/schedule/today`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +80,7 @@ const EnhancedStudentDashboard = () => {
       }
 
       // Fetch performance analytics
-      const analyticsResponse = await fetch(`${API_URL}/student/analytics`, {
+      const analyticsResponse = await apiFetch(`${API_URL}/student/analytics`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +112,7 @@ const EnhancedStudentDashboard = () => {
       const storedPhone = await AsyncStorage.getItem('userPhone');
       const phone = JSON.parse(storedPhone);
 
-      const response = await fetch(`${API_URL}/student/assessment/request`, {
+      const response = await apiFetch(`${API_URL}/student/assessment/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { Text, View, Pressable, ScrollView, Alert, ActivityIndicator, SafeAreaView, TouchableOpacity } from 'react-native';
 import styles from './StudentSubjectActivityStyle.jsx';
@@ -36,7 +37,7 @@ const StudentSubjectActivityPage = ({ navigation, route }) => {
   const fetchActivities = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/api/student/getMaterialsAndCompletedLevels`, {
+      const response = await apiFetch(`/student/getMaterialsAndCompletedLevels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -45,7 +46,7 @@ const StudentSubjectActivityPage = ({ navigation, route }) => {
           student_roll: studentData.roll
         })
       });
-      const data = await response.json();
+      const data = response
       
       if (data.success && data.activities) {
         setActivities(data.activities);

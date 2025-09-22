@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -91,7 +92,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     // console.log('fetchActivitiesForSubject called with:', { selectedSubject, selectedSection });
     try {
 
-      const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectActivities/${selectedSection}/${selectedSubject}`, {
+      const response = await apiFetch(`/coordinator/topics/getSectionSubjectActivities/${selectedSection}/${selectedSubject}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -124,7 +125,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     // console.log('fetchSubActivitiesForSubject called with:', { selectedActivity, selectedSubject });
     try {
 
-      const response = await fetch(`${API_URL}/api/coordinator/topics/getSectionSubjectSubActivities/${selectedActivity}/${selectedSubject}`, {
+      const response = await apiFetch(`/coordinator/topics/getSectionSubjectSubActivities/${selectedActivity}/${selectedSubject}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -162,7 +163,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
     setLoading(true);
     try {
 
-      const response = await fetch(`${API_URL}/api/coordinator/topics/hierarchy/activity`, {
+      const response = await apiFetch(`/coordinator/topics/hierarchy/activity`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activityId: selectedActivity, subActivityId: selectedSubActivity })
@@ -237,7 +238,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
       // console.log('Request URL:', url);
 
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method: editingTopic ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',

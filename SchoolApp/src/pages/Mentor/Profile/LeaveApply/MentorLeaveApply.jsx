@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native'
 import Arrow from '../../../../assets/MentorPage/arrow.svg';
@@ -284,13 +285,13 @@ const MentorLeaveApply = ({ navigation, route }) => {
   const addLeaveDetails = async () => {
     try {
       console.log("API URL:", `${API_URL}/api/mentor/submitLeaveRequest`);
-      const response = await fetch(`${API_URL}/api/mentor/submitLeaveRequest`, {
+      const response = await apiFetch(`/mentor/submitLeaveRequest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: uniqueMentorData[0].phone, name, totalLeaveDays, leaveType, startDate, endDate, startTime, endTime, description }),
       });
 
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         // Show confirmation

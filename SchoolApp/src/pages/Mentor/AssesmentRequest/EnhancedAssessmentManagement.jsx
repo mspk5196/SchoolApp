@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -53,7 +54,7 @@ const EnhancedAssessmentManagement = () => {
 
   const fetchMentorSubjects = async () => {
     try {
-      const response = await fetch(`${API_URL}/mentor/getSubjects`, {
+      const response = await apiFetch(`${API_URL}/mentor/getSubjects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,7 +78,7 @@ const EnhancedAssessmentManagement = () => {
       if (mentorSubjects.length === 0) return;
 
       const promises = mentorSubjects.map(subject =>
-        fetch(`${API_URL}/mentor/assessment/requests/${subject.grade_id}/${subject.subject_id}`, {
+        apiFetch(`${API_URL}/mentor/assessment/requests/${subject.grade_id}/${subject.subject_id}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -97,7 +98,7 @@ const EnhancedAssessmentManagement = () => {
 
   const fetchScheduledAssessments = async () => {
     try {
-      const response = await fetch(`${API_URL}/mentor/assessment/scheduled/${mentorId}`, {
+      const response = await apiFetch(`${API_URL}/mentor/assessment/scheduled/${mentorId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -137,7 +138,7 @@ const EnhancedAssessmentManagement = () => {
       }
 
       setLoading(true);
-      const response = await fetch(`${API_URL}/mentor/assessment/approve/${selectedRequest.id}`, {
+      const response = await apiFetch(`${API_URL}/mentor/assessment/approve/${selectedRequest.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +196,7 @@ const EnhancedAssessmentManagement = () => {
       }
 
       setLoading(true);
-      const response = await fetch(`${API_URL}/mentor/assessment/score/${selectedAssessment.id}`, {
+      const response = await apiFetch(`${API_URL}/mentor/assessment/score/${selectedAssessment.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

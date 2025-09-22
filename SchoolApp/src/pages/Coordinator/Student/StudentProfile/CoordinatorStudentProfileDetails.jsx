@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect } from 'react';
 import {
   SafeAreaView,
@@ -67,7 +68,7 @@ const CoordinatorStudentProfileDetails = ({ navigation, route }) => {
   const fetchStudentDetails = async (studentId) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/students/${studentId}`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setStudentDetails(data.student);
       }
@@ -79,7 +80,7 @@ const CoordinatorStudentProfileDetails = ({ navigation, route }) => {
   const fetchAttendance = async (roll) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/students/${roll}/attendance`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setAttendanceData(data.studentAttendance);
         // console.log(data.studentAttendance);
@@ -92,7 +93,7 @@ const CoordinatorStudentProfileDetails = ({ navigation, route }) => {
   const fetchIssueLog = async (roll) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/students/getStudentIssueLogs/${roll}`);
-      const data = await response.json();
+      const data = response
       if (data.studentIssueCount || data.studentRedoCount) {
         setIssueLogData(data.studentIssueCount);
         setHomeworkIssue(data.studentRedoCount);
@@ -105,13 +106,13 @@ const CoordinatorStudentProfileDetails = ({ navigation, route }) => {
 
   const fetchSubjectMentors = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/students/getSubjectMentors`, {
+      const response = await apiFetch(`/admin/students/getSubjectMentors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sectionID: student.section_id }),
       });
 
-      const data = await response.json();
+      const data = response
       // console.log('Subjects mentors Data API Response:', data);
 
       if (data.success) {

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { API_URL } from "../../../../utils/env.js";
 
@@ -38,7 +39,7 @@ export const ExamProvider = ({ children, gradeId }) => {
     const fetchExamSchedules = async () => {
       try {
         const response = await fetch(`${API_URL}/api/coordinator/getExamSchedule?grade_id=${gradeId}`);
-        const data = await response.json();
+        const data = response
         if (data.success) {
           // Transform backend data to match frontend format
           const formattedSessions = data.schedules.map(schedule => ({
@@ -87,7 +88,7 @@ export const ExamProvider = ({ children, gradeId }) => {
       // Convert frontend format to backend format
       const [startTime, endTime] = newSession.time.split(' - ');
       
-      const response = await fetch(`${API_URL}/api/coordinator/createExamSchedule`, {
+      const response = await apiFetch(`/coordinator/createExamSchedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -100,7 +101,7 @@ export const ExamProvider = ({ children, gradeId }) => {
         }),
       });
       
-      const data = await response.json();
+      const data = response
       
       // Check if there are conflicts
       if (response.status === 409 && data.hasConflicts) {
@@ -136,7 +137,7 @@ export const ExamProvider = ({ children, gradeId }) => {
       
       // If user chose to delete conflicts, do that first
       if (deleteConflicts) {
-        const deleteResponse = await fetch(`${API_URL}/api/coordinator/deleteConflictingSchedules`, {
+        const deleteResponse = await apiFetch(`/coordinator/deleteConflictingSchedules`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -153,7 +154,7 @@ export const ExamProvider = ({ children, gradeId }) => {
       }
       
       // Now create the exam schedule with force flag
-      const response = await fetch(`${API_URL}/api/coordinator/createExamSchedule`, {
+      const response = await apiFetch(`/coordinator/createExamSchedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -167,7 +168,7 @@ export const ExamProvider = ({ children, gradeId }) => {
         }),
       });
       
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setSessions(prev => [...prev, { 
           ...sessionData,
@@ -189,7 +190,7 @@ export const ExamProvider = ({ children, gradeId }) => {
     try {
       const [startTime, endTime] = updatedSession.time.split(' - ');
       
-      const response = await fetch(`${API_URL}/api/coordinator/updateExamSchedule`, {
+      const response = await apiFetch(`/coordinator/updateExamSchedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -203,7 +204,7 @@ export const ExamProvider = ({ children, gradeId }) => {
         }),
       });
       
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setSessions(prev => prev.map(session => 
           session.id === id ? { ...updatedSession, id } : session
@@ -222,13 +223,13 @@ export const ExamProvider = ({ children, gradeId }) => {
   // Function to delete a session
   const deleteSession = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/deleteExamSchedule`, {
+      const response = await apiFetch(`/coordinator/deleteExamSchedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
       
-      const data = await response.json();
+      const data = response
       if (data.success) {
         setSessions(prev => prev.filter(session => session.id !== id));
         return true;

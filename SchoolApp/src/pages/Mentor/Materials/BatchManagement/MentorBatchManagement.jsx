@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -81,7 +82,7 @@ const MentorBatchManagement = ({route}) => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/mentor/batches/${sectionId}/${subjectId}`, {
+      const response = await apiFetch(`/mentor/batches/${sectionId}/${subjectId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -140,7 +141,7 @@ const MentorBatchManagement = ({route}) => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/mentor/batches/analytics/${sectionId}/${subjectId}`, {
+      const response = await apiFetch(`/mentor/batches/analytics/${sectionId}/${subjectId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

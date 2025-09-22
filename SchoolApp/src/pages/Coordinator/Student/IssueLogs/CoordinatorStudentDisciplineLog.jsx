@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -52,7 +53,7 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
   const fetchStudent = async () => {
     try {
       const response = await fetch(`${API_URL}/api/coordinator/student/getStudentList`);
-      const data = await response.json();
+      const data = response
       if (response.ok) {
         setStudentList(data.student);
         console.log(data.student);
@@ -70,7 +71,7 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/coordinator/student/getStudentDisciplineLogs?sectionId=${activeSection}`);
-      const data = await response.json();
+      const data = response
       if (response.ok) {
         setDisciplineData(data.logs);   
         setFilteredData(data.logs);
@@ -118,7 +119,7 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
 
     try {
       console.log(coordinatorData.phone);
-      const response = await fetch(`${API_URL}/api/coordinator/student/addStudentComplaint`, {
+      const response = await apiFetch(`/coordinator/student/addStudentComplaint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +131,7 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
         }),
       });
 
-      const data = await response.json();
+      const data = response
 
 
       if (response.ok) {
@@ -180,13 +181,13 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
   useEffect(() => {
     const fetchSections = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/coordinator/getGradeSections`, {
+        const response = await apiFetch(`/coordinator/getGradeSections`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ gradeID: activeGrade }),
         });
 
-        const data = await response.json();
+        const data = response
         console.log('Grade Sections Data API Response:', data);
 
         if (data.success) {

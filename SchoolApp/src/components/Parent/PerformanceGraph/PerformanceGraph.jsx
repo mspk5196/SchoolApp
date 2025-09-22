@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../utils/apiClient.js";
 import React, { useState, useEffect, act } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import styles from './PerformanceGraphStyles';
@@ -28,7 +29,7 @@ const PerformanceGraph = ({ studentData, showTitle = true }) => {
       try {
         setLoading(true);
         const response = await fetch(`${API_URL}/api/student/getStudentPerformance/${studentData.student_id}`);
-        const data = await response.json();
+        const data = response
         setPerformanceData(data);
         if (data.subjectList && (!sectionSubjects || sectionSubjects.length === 0)) {
           setSectionSubjects(data.subjectList.map(s => ({ subject_name: s })));
@@ -42,14 +43,14 @@ const PerformanceGraph = ({ studentData, showTitle = true }) => {
     const fetchSubjects = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/api/student/getSectionSubjects`, {
+        const response = await apiFetch(`/student/getSectionSubjects`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ sectionId: studentData.section_id }),
         });
-        const data = await response.json();
+        const data = response
         setSectionSubjects(data.subjects);
         // console.log('Fetched subjects:', data.subjects);
 

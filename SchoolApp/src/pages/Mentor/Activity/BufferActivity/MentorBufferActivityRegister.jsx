@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Modal, FlatList } from 'react-native';
 import Arrow from '../../../../assets/MentorPage/arrow.svg';
@@ -167,7 +168,7 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
 
     setLoading(true);
     
-    fetch(`${API_URL}/api/mentor/create-buffer-activity`, {
+    apiFetch(`/mentor/create-buffer-activity`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

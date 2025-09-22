@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -63,12 +64,12 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     const fetchSections = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/sections`, {
+        const response = await apiFetch(`/coordinator/weekly-schedule/sections`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ activeGrade })
         });
-        const data = await response.json();
+        const data = response
         if (data.success && data.gradeSections.length > 0) {
           setSections(data.gradeSections);
           setActiveSection(data.gradeSections[0].id);
@@ -99,7 +100,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/getWeeklySchedule?sectionId=${activeSection}&day=${activeDay}`);
-      const data = await response.json();
+      const data = response
       setScheduleItems(data.success ? data.scheduleItems.map(item => ({
         ...item,
         timeStart: formatTime(item.start_time),
@@ -118,12 +119,12 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
 
   const fetchSubjects = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/subjects`, {
+      const response = await apiFetch(`/coordinator/weekly-schedule/subjects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activeSection })
       });
-      const data = await response.json();
+      const data = response
       if (response.ok) setSubjects(data.subjects);
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch subjects.');
@@ -134,7 +135,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     if (!activeGrade) return;
     try {
       const response = await fetch(`${API_URL}/api/coordinator/enrollment/getVenuesByGrade?gradeId=${activeGrade}`);
-      const data = await response.json();
+      const data = response
       if (data.success) setVenues(data.venues);
     } catch (error) {
       console.error('Error fetching venues:', error);
@@ -250,10 +251,10 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
         console.log({ sectionId: activeSection, day: activeDay, startTime: payload.startTime, endTime: payload.endTime, excludeId: newActivity.id });
         return;
       }
-      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/addOrUpdateWeeklySchedule`, {
+      const response = await apiFetch(`/coordinator/weekly-schedule/addOrUpdateWeeklySchedule`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
-      const data = await response.json();
+      const data = response
       if (data.success) {
         fetchSchedule();
         setShowAddModal(false);
@@ -267,8 +268,8 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
 
   const deleteActivity = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/deleteWeeklySchedule/${id}`, { method: 'DELETE' });
-      const data = await response.json();
+      const response = await apiFetch(`/coordinator/weekly-schedule/deleteWeeklySchedule/${id}`, { method: 'DELETE' });
+      const data = response
       if (data.success) fetchSchedule();
       else Alert.alert('Error', data.message || 'Failed to delete activity.');
     } catch (error) {

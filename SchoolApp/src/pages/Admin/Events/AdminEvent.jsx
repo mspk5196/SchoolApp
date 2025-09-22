@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useState } from 'react';
 import { View, FlatList, SafeAreaView, StatusBar, TouchableOpacity, Text, Alert, ScrollView, RefreshControl, Image, Pressable, Modal } from 'react-native';
 import PreviousIcon from '../../../assets/AdminPage/Basicimg/PrevBtn.svg';
@@ -281,7 +282,7 @@ const AdminEvent = ({ navigation, route }) => {
   const fetchGrades = async () => {
     try {
       const response = await fetch(`${API_URL}/api/admin/grades`);
-      const data = await response.json();
+      const data = response
       if (data.success) {
         const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);
         setGrades(sortedGrades);
@@ -300,7 +301,7 @@ const AdminEvent = ({ navigation, route }) => {
 
       setRefreshing(true);
       const response = await fetch(`${API_URL}/api/coordinator/events/get?phone=${activeGrade}`);
-      const data = await response.json();
+      const data = response
 
       if (data.success) {
         // Group events by type
@@ -329,7 +330,7 @@ const AdminEvent = ({ navigation, route }) => {
 
   const deleteEvent = async (eventId) => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/events/delete`, {
+      const response = await apiFetch(`/coordinator/events/delete`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -337,7 +338,7 @@ const AdminEvent = ({ navigation, route }) => {
         body: JSON.stringify({ event_id: eventId }),
       });
 
-      const data = await response.json();
+      const data = response
       if (data.success) {
         Alert.alert('Success', 'Event deleted successfully');
         fetchEvents(); // Refresh the list
