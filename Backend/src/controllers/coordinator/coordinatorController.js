@@ -71,6 +71,22 @@ exports.coordinatorStudents = (req, res) => {
     res.json({ success: true, coordinatorStudents: results });
   });
 };
+
+exports.getStudentsBySection = (req, res) => {
+  const { sectionId } = req.body;
+  const sql = `
+    SELECT st.id, st.name, st.roll, st.profile_photo
+    FROM Students st
+    WHERE st.section_id = ?
+    ORDER BY st.roll;
+  `;
+  db.query(sql, [sectionId], (err, results) => {
+    if (err) return res.status(500).json({ success: false });
+    if (results.length === 0) return res.status(404).json({ success: false, noStudents: true });
+    res.json({ success: true, students: results });
+  });
+};
+
 //StudentIssueLogs
 exports.addStudentComplaint = async (req, res) => {
   const { roll, complaint, registeredBy } = req.body;
@@ -1208,13 +1224,13 @@ exports.enrollStudent = async (req, res) => {
         );
 
         // Insert into student_subjects table
-        for (const subjectID of subjectIDs) {
-          await trx.query(
-            `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
-           VALUES (?, ?, ?, ?, ?)`,
-            [rollNumber, subjectID, '1', section, 'OnGoing']
-          );
-        }
+        // for (const subjectID of subjectIDs) {
+        //   await trx.query(
+        //     `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
+        //    VALUES (?, ?, ?, ?, ?)`,
+        //     [rollNumber, subjectID, '1', section, 'OnGoing']
+        //   );
+        // }
       }
       else {
 
@@ -1238,13 +1254,13 @@ exports.enrollStudent = async (req, res) => {
           [rollNumber]
         );
 
-        for (const subjectID of subjectIDs) {
-          await trx.query(
-            `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
-           VALUES (?, ?, ?, ?, ?)`,
-            [rollNumber, subjectID, '1', section, 'OnGoing']
-          );
-        }
+        // for (const subjectID of subjectIDs) {
+        //   await trx.query(
+        //     `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
+        //    VALUES (?, ?, ?, ?, ?)`,
+        //     [rollNumber, subjectID, '1', section, 'OnGoing']
+        //   );
+        // }
       }
 
       await trx.commit();
@@ -3941,6 +3957,7 @@ exports.generateStudentTemplate = async (req, res) => {
       { header: 'Grade*', key: 'grade', width: 15 },
       { header: 'Section*', key: 'section', width: 15 },
       { header: 'Mobile Number*', key: 'mobileNumber', width: 20 },
+      { header: 'EEmail ID*', key: 'email', width: 20 },
       // { header: 'Aadhar Number', key: 'aadharNo', width: 20 },
       // { header: 'EMIS Number', key: 'emisNo', width: 20 },
       // { header: 'Blood Group', key: 'bloodGroup', width: 15 },
@@ -3968,6 +3985,7 @@ exports.generateStudentTemplate = async (req, res) => {
       grade: '10',
       section: 'A',
       mobileNumber: '9876543210',
+      email: 'name@bitsathy.ac.in',
       // aadharNo: '123456789012',
       // emisNo: 'EMIS123456',
       // bloodGroup: 'O+',
@@ -3997,6 +4015,7 @@ exports.generateStudentTemplate = async (req, res) => {
       '- Mobile Number: 10-digit mobile number',
       '- Mother Name: Mother\'s full name',
       '- Father Mobile: 10-digit mobile number',
+      '- Email ID: Valid email address',
       '',
       'OPTIONAL FIELDS:',
       '- Aadhar Number: 12-digit Aadhar number',
@@ -4263,6 +4282,7 @@ exports.bulkUploadStudents = async (req, res) => {
         grade: row.getCell(5).value,
         section: row.getCell(6).value,
         mobileNumber: row.getCell(7).value,
+        email: row.getCell(8).value,
         // aadharNo: row.getCell(8).value,
         // emisNo: row.getCell(9).value,
         // bloodGroup: row.getCell(10).value,
@@ -4292,6 +4312,9 @@ exports.bulkUploadStudents = async (req, res) => {
       }
       if (!rowData.section || typeof rowData.section !== 'string' || rowData.section.trim() === '') {
         validationErrors.push('Section is required');
+      }
+      if (!rowData.email || typeof rowData.email !== 'string' || rowData.email.trim() === '') {
+        validationErrors.push('Email is required');
       }
       // if (!rowData.mobileNumber || !/^\d{10}$/.test(rowData.mobileNumber.toString())) {
       //   validationErrors.push('Valid 10-digit mobile number is required');
@@ -4331,6 +4354,7 @@ exports.bulkUploadStudents = async (req, res) => {
           grade: parseInt(rowData.grade),
           section: rowData.section.trim(),
           mobileNumber: rowData.mobileNumber.toString(),
+          email: rowData.email.trim(),
           // aadharNo: rowData.aadharNo ? rowData.aadharNo.toString() : null,
           // emisNo: rowData.emisNo ? rowData.emisNo.toString() : null,
           // bloodGroup: rowData.bloodGroup ? rowData.bloodGroup.toString() : null,
@@ -4422,9 +4446,9 @@ exports.bulkUploadStudents = async (req, res) => {
               );
 
               await connection.query(
-                `INSERT INTO Students (name, dob, gender, section_id, father_mob, roll, mentor_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [student.name, student.dob, student.gender, sectionId, student.mobileNumber, rollNumber, mentorId]
+                `INSERT INTO Students (name, dob, gender, section_id, father_mob, roll, mentor_id, email)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [student.name, student.dob, student.gender, sectionId, student.mobileNumber, rollNumber, mentorId, student.email]
               );
 
               await connection.query(
@@ -4434,13 +4458,13 @@ exports.bulkUploadStudents = async (req, res) => {
               );
 
               // Insert into student_subjects table
-              for (const subjectID of subjectIDs) {
-                await connection.query(
-                  `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
-                 VALUES (?, ?, ?, ?, ?)`,
-                  [rollNumber, subjectID, '1', sectionId, 'OnGoing']
-                );
-              }
+              // for (const subjectID of subjectIDs) {
+              //   await connection.query(
+              //     `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
+              //    VALUES (?, ?, ?, ?, ?)`,
+              //     [rollNumber, subjectID, '1', sectionId, 'OnGoing']
+              //   );
+              // }
             } else {
               const hashedPassword = await bcrypt.hash(student.dob, 12);
 
@@ -4451,9 +4475,9 @@ exports.bulkUploadStudents = async (req, res) => {
               );
 
               await connection.query(
-                `INSERT INTO Students (name, dob, gender, section_id, father_mob, roll, mentor_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [student.name, student.dob, student.gender, sectionId, student.fatherMobile, rollNumber, mentorId]
+                `INSERT INTO Students (name, dob, gender, section_id, father_mob, roll, mentor_id, email)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [student.name, student.dob, student.gender, sectionId, student.fatherMobile, rollNumber, mentorId, student.email]
               );
 
               await connection.query(
@@ -4462,13 +4486,13 @@ exports.bulkUploadStudents = async (req, res) => {
                 [rollNumber]
               );
 
-              for (const subjectID of subjectIDs) {
-                await connection.query(
-                  `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
-                 VALUES (?, ?, ?, ?, ?)`,
-                  [rollNumber, subjectID, '1', sectionId, 'OnGoing']
-                );
-              }
+              // for (const subjectID of subjectIDs) {
+              //   await connection.query(
+              //     `INSERT INTO student_levels (student_roll, subject_id, level, section_id, status)
+              //    VALUES (?, ?, ?, ?, ?)`,
+              //     [rollNumber, subjectID, '1', sectionId, 'OnGoing']
+              //   );
+              // }
             }
 
             await connection.commit();
@@ -4476,7 +4500,8 @@ exports.bulkUploadStudents = async (req, res) => {
             results.successfulInserts.push({
               roll: rollNumber,
               name: student.name,
-              mobile: student.mobileNumber
+              mobile: student.mobileNumber,
+              email: student.email
             });
 
           } catch (dbError) {

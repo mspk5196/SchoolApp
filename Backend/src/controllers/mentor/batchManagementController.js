@@ -106,7 +106,6 @@ GROUP BY sb.id;
                     COALESCE(stp_summary.avg_score, 0) as current_performance,
                     COALESCE(spt.homework_miss_count, 0) as pending_homework,
                     COALESCE(spt.failed_assessment_count, 0) as penalty_count,
-                    spt.is_on_penalty,
                     sba.assigned_at as last_activity
                 FROM student_batch_assignments sba
                 JOIN students s ON sba.student_roll = s.roll
@@ -165,7 +164,7 @@ exports.getBatchAnalytics = async (req, res) => {
                     COUNT(sba.student_roll) as student_count,
                     AVG(COALESCE(stp.completion_percentage, 0)) as avg_completion,
                     AVG(COALESCE(stp.last_assessment_score, 0)) as avg_assessment_score,
-                    SUM(CASE WHEN spt.is_on_penalty = 1 THEN 1 ELSE 0 END) as students_on_penalty,
+                    0 as students_on_penalty,
                     0 as avg_homework_rate
                 FROM section_batches sb
                 LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id

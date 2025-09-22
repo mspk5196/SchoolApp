@@ -76,6 +76,7 @@ router.post('/coordinator/getCoordinatorData', coordinatorController.getCoordina
 router.post('/coordinator/getCoordinatorGrades', coordinatorController.getCoordinatorGrades);
 router.post('/coordinator/coordinatorMentors', coordinatorController.coordinatorMentors);
 router.post('/coordinator/coordinatorStudents', coordinatorController.coordinatorStudents);
+router.post('/coordinator/getStudentsBySection', coordinatorController.getStudentsBySection);
 
 //Profile
 router.post('/coordinator/getAttendance', coordinatorController.getAttendance);
