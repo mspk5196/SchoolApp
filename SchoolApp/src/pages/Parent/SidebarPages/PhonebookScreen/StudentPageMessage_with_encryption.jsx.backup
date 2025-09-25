@@ -166,7 +166,7 @@ const StudentPageMessage = ({ route, navigation }) => {
           });
           
           console.log("📤 Upload response status:", uploadResponse.status);
-          const uploadResult = await uploadResponse.json();
+          const uploadResult = await uploadResponse.;
           console.log("📤 Key upload response:", uploadResult);
           
           if (!uploadResponse.ok || !uploadResult.success) {
@@ -215,7 +215,7 @@ const StudentPageMessage = ({ route, navigation }) => {
               });
               
               console.log("📤 Re-upload response status:", reUploadResponse.status);
-              const reUploadResult = await reUploadResponse.json();
+              const reUploadResult = await reUploadResponse.;
               console.log("📤 Re-upload result:", reUploadResult);
               
               if (!reUploadResponse.ok || !reUploadResult.success) {
@@ -252,7 +252,7 @@ const StudentPageMessage = ({ route, navigation }) => {
         return false;
       }
       
-      const theirKeyData = await res.json();
+      const theirKeyData = await res;
       console.log("🔍 Mentor key data received:", theirKeyData);
       
       if (!theirKeyData.success || !theirKeyData.public_key) {
@@ -345,7 +345,7 @@ const StudentPageMessage = ({ route, navigation }) => {
         }),
       });
       
-      const uploadResult = await uploadResponse.json();
+      const uploadResult = await uploadResponse.;
       console.log('📤 New key upload result:', uploadResult);
       
       if (uploadResult.success) {
@@ -687,7 +687,7 @@ const StudentPageMessage = ({ route, navigation }) => {
                   public_key: testKeys.publicKeyHex,
                 }),
               });
-              const testResult = await testUpload.json();
+              const testResult = await testUpload.;
               console.log("🔧 Test upload result:", testResult);
             }
           } catch (testError) {

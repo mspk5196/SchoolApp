@@ -37,6 +37,7 @@ export async function apiFetch(endpoint, options = {}) {
     if (!response.ok) {
       throw new Error(data.message || 'Request failed');
     }
+// console.log('API Response Data:', data);
 
     return data;
   } catch (err) {

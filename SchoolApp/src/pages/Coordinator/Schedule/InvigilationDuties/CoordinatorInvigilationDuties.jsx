@@ -47,8 +47,8 @@ const CoordinatorInvigilationDuties = ({navigation, route}) => {
 
   const fetchExamSchedule = (gradeId) => {
     setLoading(true);
-    fetch(`${API_URL}/api/coordinator/getExamScheduleWithInvigilators?grade_id=${gradeId}`)
-      .then(response => response.json())
+    apiFetch(`/coordinator/getExamScheduleWithInvigilators?grade_id=${gradeId}`)
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setExams(data.exams);
@@ -66,8 +66,8 @@ const CoordinatorInvigilationDuties = ({navigation, route}) => {
   };
 
   const fetchAvailableMentors = (gradeId) => {
-    fetch(`${API_URL}/api/coordinator/getAvailableMentorsForInvigilation?grade_id=${gradeId}`)
-      .then(response => response.json())
+    apiFetch(`/coordinator/getAvailableMentorsForInvigilation?grade_id=${gradeId}`)
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setFaculties(data.mentors.map(mentor => ({
@@ -107,7 +107,7 @@ const CoordinatorInvigilationDuties = ({navigation, route}) => {
           mentor_ids: mentorIds
         }),
       })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           // Update local state to reflect changes

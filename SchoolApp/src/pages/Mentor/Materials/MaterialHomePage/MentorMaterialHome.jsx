@@ -98,8 +98,8 @@ const MentorMaterialHome = ({ navigation, route }) => {
         }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setSections(result.gradeSections || []);
         setSelectedSection(result.gradeSections[0]?.id || null);
       }

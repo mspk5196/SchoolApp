@@ -48,8 +48,8 @@ const StudentPageSurvey = () => {
 
     const fetchSurveyQuestions = () => {
         setLoading(true);
-        fetch(`${API_URL}/api/student/getSurveyQuestions?surveyId=${survey.id}`)
-            .then(res => res.json())
+        apiFetch(`/api/student/getSurveyQuestions?surveyId=${survey.id}`)
+            .then(res => res)
             .then(data => {
                 if (data.success) {
                     setQuestions(data.questions);
@@ -113,7 +113,7 @@ const StudentPageSurvey = () => {
                 responses: formattedResponses,
             }),
         })
-        .then(res => res.json())
+        .then(res => res)
         .then(data => {
             if (data.success) {
                 Alert.alert("Success", "Feedback submitted successfully!");

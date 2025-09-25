@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ import styles from './DisciplineLogStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL } from '../../../../utils/env.js'
 import Nodata from '../../../../components/General/Nodata';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const Staff = '../../../../assets/CoordinatorPage/DisciplineLog/staff.png';
 
 const CoordinatorDisciplineLog = ({ navigation, route }) => {
@@ -48,9 +49,9 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
   // Fetch faculty list
   const fetchFaculty = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getFacultyList`);
+      const response = await apiFetch(`/coordinator/mentor/getFacultyList`);
       const data = response
-      if (response.ok) {
+      if (response) {
         setFacultyList(data.faculty);
       } else {
         console.error('Failed to fetch faculty:', data.message);
@@ -63,9 +64,10 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
   // Fetch discipline logs
   const fetchDisciplineLogs = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/mentor/getDisciplineLogs`);
+      const response = await apiFetch(`/coordinator/mentor/getDisciplineLogs`);
       const data = response
-      if (response.ok) {
+      if (response) {
+        console.log('Discipline Logs:', data.logs); // Debugging log
         setDisciplineData(data.logs);
         setFilteredData(data.logs);
 
@@ -126,7 +128,7 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
       const data = response
 
 
-      if (response.ok) {
+      if (response) {
         fetchDisciplineLogs(); // Refresh the list
         setReason('');
         setSelectedFaculty(null);
@@ -145,13 +147,26 @@ const CoordinatorDisciplineLog = ({ navigation, route }) => {
     faculty.phone.toLowerCase().includes(facultySearch.toLowerCase())
   );
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

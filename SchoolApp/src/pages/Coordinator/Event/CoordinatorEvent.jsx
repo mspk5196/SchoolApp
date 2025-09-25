@@ -312,7 +312,7 @@ const CoordinatorEvent = ({ navigation, route }) => {
     try {
 
       setRefreshing(true);
-      const response = await fetch(`${API_URL}/api/coordinator/events/get?phone=${activeGrade}`);
+      const response = await apiFetch(`/coordinator/events/get?phone=${activeGrade}`);
       const data = response
 
       if (data.success) {

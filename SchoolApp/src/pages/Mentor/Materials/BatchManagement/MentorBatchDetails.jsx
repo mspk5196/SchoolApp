@@ -47,8 +47,8 @@ const MentorBatchDetails = () => {
         }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setStudents(result.students || []);
         setBatchInfo(result.batch_info);
       } else { 

@@ -59,16 +59,15 @@ const WeeklySchedule = () => {
       const phone = JSON.parse(storedPhone);
       const weekStartStr = formatDate(weekStart);
 
-      const response = await apiFetch(`${API_URL}/student/schedule/weekly?weekStart=${weekStartStr}`, {
+      const response = await apiFetch(`/student/schedule/weekly?weekStart=${weekStartStr}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setWeeklySchedule(result.schedule || {});
       } else {
         Alert.alert('Error', 'Failed to load weekly schedule');

@@ -26,12 +26,12 @@ const MentorSurvey = ({ navigation, route }) => {
 
   const fetchMentorSurveys = () => {
     setRefreshing(true);
-    fetch(`${API_URL}/api/mentor/survey/mentor/${mentorData[0].id}`)
+    apiFetch(`/mentor/survey/mentor/${mentorData[0].id}`)
       .then(response => {
-        if (!response.ok) {
+        if (!response) {
           throw new Error('Failed to fetch surveys');
         }
-        return response.json();
+        return response;
       })
       .then(data => {
         const formattedSurveys = data.map(survey => ({
@@ -69,7 +69,7 @@ const MentorSurvey = ({ navigation, route }) => {
               }
             })
               .then(response => {
-                if (!response.ok) {
+                if (!response) {
                   throw new Error('Failed to end survey');
                 }
                 fetchMentorSurveys();

@@ -122,7 +122,7 @@ const CoordinatorRequestUpload = ({ route, navigation }) => {
         body: formData,
       }); 
   
-      if (!response.ok) {
+      if (!response) {
         const errorText = await response.text();
         throw new Error(`Server error: ${response.status} - ${errorText}`);
       }

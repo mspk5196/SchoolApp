@@ -48,7 +48,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
         'Content-Type': 'application/json',
       },
     })
-    .then(response => response.json())
+    .then(response => response)
     .then(data => {
       if (data.success) {
         setGrades(data.grades.map(g => ({
@@ -70,7 +70,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
           'Content-Type': 'application/json',
         },
       })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setSections(data.sections.map(s => ({
@@ -94,7 +94,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
         },
         body: JSON.stringify({ gradeId: grade, sectionId: section }),
       })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setSubjects(data.subjects.map(s => ({
@@ -118,7 +118,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
         },
         body: JSON.stringify({ gradeId: grade, sectionId: section, date }),
       })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setTimeSlots(data.timeSlots.map((t, index) => ({
@@ -142,7 +142,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
         },
         body: JSON.stringify({ gradeId: grade, sectionId: section }),
       })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           // Make sure each student has a unique ID and filter out any duplicates
@@ -209,7 +209,7 @@ const MentorAssessmentRequestRegister = ({ navigation, route }) => {
       },
       body: JSON.stringify(requestData),
     })
-    .then(response => response.json())
+    .then(response => response)
     .then(data => {
       if (data.success) {
         Alert.alert('Success', 'Assessment request created successfully');

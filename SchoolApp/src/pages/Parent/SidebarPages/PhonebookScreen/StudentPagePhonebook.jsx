@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Image,
@@ -24,18 +24,30 @@ const ContactCard = ({ name, facultyId, subject, phoneNumber, onMessagePress, pr
     Linking.openURL(`tel:${phoneNumber}`);
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
-      return Profile;
+      return Staff;
     }
   };
-
   return (
     <View style={styles.card}>
       <View style={styles.accentBar} />

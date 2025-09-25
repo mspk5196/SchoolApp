@@ -145,8 +145,8 @@ const StudentPageEvent = ({ navigation }) => {
   // Fetch favourite events for this student
   const fetchFavourites = async (student_roll) => {
     try {
-      const res = await fetch(`${API_URL}/api/student/getFavouriteEvents?student_roll=${student_roll}`);
-      const data = await res.json();
+      const res = await apiFetch(`/student/getFavouriteEvents?student_roll=${student_roll}`);
+      const data = await res;
       if (data.success) {
         // Map event IDs to true
         const favMap = {};
@@ -204,11 +204,11 @@ const StudentPageEvent = ({ navigation }) => {
 
       // Fetch all events and registered events in parallel
       const [allRes, regRes] = await Promise.all([
-        fetch(`${API_URL}/api/coordinator/events/get?phone=${activeGrade}`),
-        fetch(`${API_URL}/api/student/events/getRegisteredEvents?studentId=${studentData.student_id}`)
+        apiFetch(`/coordinator/events/get?phone=${activeGrade}`),
+        apiFetch(`/student/events/getRegisteredEvents?studentId=${studentData.student_id}`)
       ]);
-      const allData = await allRes.json();
-      const regData = await regRes.json();
+      const allData = await allRes;
+      const regData = await regRes;
 
       if (allData.success && regData.success) {
         // Prepare registered events

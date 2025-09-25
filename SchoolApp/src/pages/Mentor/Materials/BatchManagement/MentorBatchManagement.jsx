@@ -89,8 +89,8 @@ const MentorBatchManagement = ({route}) => {
         },
       });
    
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         console.log('Batch data response:', result);
         const batches = result.data || [];
         
@@ -148,8 +148,8 @@ const MentorBatchManagement = ({route}) => {
         },
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         console.log('Analytics response:', result);
         const analyticsData = result.data;
         

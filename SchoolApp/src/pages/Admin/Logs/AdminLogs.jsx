@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, SafeAreaView, Alert, Linking, ActivityIndicator } from 'react-native';
 import styles from './LogsStyles';
 import Clock from '../../../assets/AdminPage/Logs/clock2.svg';
@@ -10,6 +10,7 @@ import Message from '../../../assets/AdminPage/Logs/msgicon.svg';
 import Home from '../../../assets/AdminPage/Logs/home.svg';
 import { API_URL } from '../../../utils/env.js';
 import Nodata from '../../../components/General/Nodata';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const Staff = require('../../../assets/AdminPage/Logs/staff.png');
 
 const AdminLogs = ({ route, navigation }) => {
@@ -29,14 +30,14 @@ const AdminLogs = ({ route, navigation }) => {
 
       // Fetch all data in parallel
       const [venuesRes, classesRes, assessmentsRes] = await Promise.all([
-        fetch(`${API_URL}/api/admin/getRequestedVenues`),
-        fetch(`${API_URL}/api/admin/getUnstartedClassesAdmin`),
-        fetch(`${API_URL}/api/admin/getAssessmentRequestsAdmin`)
+        apiFetch(`/admin/getRequestedVenues`),
+        apiFetch(`/admin/getUnstartedClassesAdmin`),
+        apiFetch(`/admin/getAssessmentRequestsAdmin`)
       ]);
 
-      const venuesData = await venuesRes.json();
-      const classesData = await classesRes.json();
-      const assessmentsData = await assessmentsRes.json();
+      const venuesData = await venuesres;
+      const classesData = await classesres;
+      const assessmentsData = await assessmentsres;
 
       setVenues(venuesData.venues || []);
       setClasses(classesData.classes || []);
@@ -57,7 +58,7 @@ const AdminLogs = ({ route, navigation }) => {
         body: JSON.stringify({ venueId, action })
       });
 
-      const data = await res.json();
+      const data = await res;
       if (data.success) {
         fetchLogs(); // Refresh the data
       } else {
@@ -102,13 +103,26 @@ const AdminLogs = ({ route, navigation }) => {
     Linking.openURL(`tel:${phone}`);
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

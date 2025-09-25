@@ -54,7 +54,7 @@ const EnhancedAssessmentManagement = () => {
 
   const fetchMentorSubjects = async () => {
     try {
-      const response = await apiFetch(`${API_URL}/mentor/getSubjects`, {
+      const response = await apiFetch(`/mentor/getSubjects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,8 +64,8 @@ const EnhancedAssessmentManagement = () => {
         }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setMentorSubjects(result.subjects || []);
       }
     } catch (error) {
@@ -78,7 +78,7 @@ const EnhancedAssessmentManagement = () => {
       if (mentorSubjects.length === 0) return;
 
       const promises = mentorSubjects.map(subject =>
-        apiFetch(`${API_URL}/mentor/assessment/requests/${subject.grade_id}/${subject.subject_id}`, {
+        apiFetch(`/mentor/assessment/requests/${subject.grade_id}/${subject.subject_id}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -87,7 +87,7 @@ const EnhancedAssessmentManagement = () => {
       );
 
       const responses = await Promise.all(promises);
-      const results = await Promise.all(responses.map(r => r.json()));
+      const results = await Promise.all(responses.map(r => r));
       
       const allRequests = results.flatMap(result => result.requests || []);
       setAssessmentRequests(allRequests);
@@ -98,15 +98,15 @@ const EnhancedAssessmentManagement = () => {
 
   const fetchScheduledAssessments = async () => {
     try {
-      const response = await apiFetch(`${API_URL}/mentor/assessment/scheduled/${mentorId}`, {
+      const response = await apiFetch(`/mentor/assessment/scheduled/${mentorId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setScheduledAssessments(result.assessments || []);
       }
     } catch (error) {
@@ -138,7 +138,7 @@ const EnhancedAssessmentManagement = () => {
       }
 
       setLoading(true);
-      const response = await apiFetch(`${API_URL}/mentor/assessment/approve/${selectedRequest.id}`, {
+      const response = await apiFetch(`/mentor/assessment/approve/${selectedRequest.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -152,9 +152,9 @@ const EnhancedAssessmentManagement = () => {
         }),
       });
 
-      const result = await response.json();
+      const result = response;
       
-      if (response.ok) {
+      if (response) {
         Alert.alert('Success', 'Assessment scheduled successfully');
         setScheduleModalVisible(false);
         fetchAssessmentRequests();
@@ -196,7 +196,7 @@ const EnhancedAssessmentManagement = () => {
       }
 
       setLoading(true);
-      const response = await apiFetch(`${API_URL}/mentor/assessment/score/${selectedAssessment.id}`, {
+      const response = await apiFetch(`/mentor/assessment/score/${selectedAssessment.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -207,9 +207,9 @@ const EnhancedAssessmentManagement = () => {
         }),
       });
 
-      const result = await response.json();
+      const result = response;
       
-      if (response.ok) {
+      if (response) {
         Alert.alert('Success', 'Scores submitted successfully');
         setScoreModalVisible(false);
         fetchScheduledAssessments();

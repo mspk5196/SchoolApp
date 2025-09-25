@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, TextInput, Pressable, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import { API_URL } from '../../../../utils/env.js'
 import BackIcon from "../../../../assets/CoordinatorPage/StudentProfile/leftarrow.svg";
@@ -7,6 +7,7 @@ import styles from './StudentProfileStyles';
 const Staff = require('../../../../assets/CoordinatorPage/StudentProfile/staff.png');
 import Search from '../../../../assets/CoordinatorPage/StudentProfile/search.svg';
 import Nodata from '../../../../components/General/Nodata';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CoordinatorStudentProfile = ({ navigation, route }) => {
   const { coordinatorData, activeGrade } = route.params;
@@ -79,13 +80,26 @@ const CoordinatorStudentProfile = ({ navigation, route }) => {
     }
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

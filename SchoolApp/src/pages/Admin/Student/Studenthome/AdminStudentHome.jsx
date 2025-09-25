@@ -10,6 +10,7 @@ import Gradcap from '../../../../assets/AdminPage/StudentHome/Gradcap.svg';
 import Homeicon from '../../../../assets/AdminPage/Basicimg/Home.svg';
 import styles from './StudentHomeStyles';
 import {API_URL} from '../../../../utils/env.js'
+import { apiFetch } from '../../../../utils/apiClient.js';
 
 const AdminStudentHome = ({ navigation }) => { 
   const [activeSection, setActiveSection] = useState(null);
@@ -22,7 +23,7 @@ const AdminStudentHome = ({ navigation }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/grades`);
+      const response = await apiFetch(`/admin/grades`);
       const data = response
       if (data.success) {
         const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);

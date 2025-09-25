@@ -112,7 +112,7 @@ const AdminScheduleDetails = ({ navigation, route }) => {
         body: JSON.stringify({ activeSection:sectionId })
       });
       const data = response
-      if (response.ok) {
+      if (response) {
         setSubjects(data.subjects);
         // console.log(data.subjects); 
         
@@ -245,7 +245,7 @@ const AdminScheduleDetails = ({ navigation, route }) => {
         })
       );
 
-      const conflictData = await conflictCheck.json();
+      const conflictData = await conflictCheck
 
       if (conflictData.hasConflict) {
         Alert.alert('Time Conflict', 'This time slot already has a scheduled activity');

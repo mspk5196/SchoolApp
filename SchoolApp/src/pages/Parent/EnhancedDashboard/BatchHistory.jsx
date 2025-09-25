@@ -43,16 +43,15 @@ const BatchHistory = () => {
       const phone = JSON.parse(storedPhone);
 
       const queryParam = selectedSubject !== 'all' ? `?subject_id=${selectedSubject}` : '';
-      const response = await apiFetch(`${API_URL}/student/batch-history${queryParam}`, {
+      const response = await apiFetch(`/student/batch-history${queryParam}`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
+          'Content-Type': 'application/json'
         },
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setBatchHistory(result.history || []);
         setCurrentBatches(result.currentBatches || []);
         setSubjects(result.subjects || []);

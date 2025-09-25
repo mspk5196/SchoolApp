@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -13,6 +13,8 @@ import HomeIcon from '../../../../assets/AdminPage/FreeHour/home.svg';
 import styles from './FreehourDetailStyle';
 import staff from '../../../../assets/AdminPage/SubjectMentor/staff.png';
 import { API_URL } from '../../../../utils/env.js';
+import { apiFetch } from '../../../../utils/apiClient.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AdminFreehourDetail = ({ navigation, route }) => {
   const { faculty, timeSlot } = route.params;
@@ -32,7 +34,7 @@ const AdminFreehourDetail = ({ navigation, route }) => {
   const fetchTaskDetails = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/getSelectedFreeHourActivity?dsId=${faculty.id}`);
+      const response = await apiFetch(`/admin/getSelectedFreeHourActivity?dsId=${faculty.id}`);
       const data = response
       setTaskDetails(data[0]);
       console.log('Task details:', data);
@@ -44,15 +46,28 @@ const AdminFreehourDetail = ({ navigation, route }) => {
     }
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
-      return staff;
+      return Staff;
     }
   };
 

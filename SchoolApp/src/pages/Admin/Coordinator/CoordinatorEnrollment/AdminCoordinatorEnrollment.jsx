@@ -150,9 +150,9 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/grades`);
+      const response = await apiFetch(`/admin/grades`);
       const data = response
-      if (response.ok) {
+      if (response) {
         // Sort grades by id before setting state
         const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);
         setGrades(sortedGrades);
@@ -215,7 +215,7 @@ const AdminCoordinatorEnrollment = ({ navigation }) => {
 
       const data = response
 
-      if (response.ok) {
+      if (response) {
         Alert.alert('Success', 'Coordinator enrolled successfully');
         navigation.goBack();
       } else {

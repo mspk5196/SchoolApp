@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiClient.js";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SafeAreaView, View, Text, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import BackIcon from '../../../assets/CoordinatorPage/Profile/Back.svg';
 import ProfileIcon from '../../../assets/CoordinatorPage/Profile/profile.png';
@@ -11,6 +11,7 @@ import Leave2 from '../../../assets/CoordinatorPage/Profile/leave2.svg';
 import Grade from '../../../assets/CoordinatorPage/Profile/grade.svg';
 import styles from './ProfileStyle';
 import { API_URL } from '../../../utils/env.js';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CoordinatorProfile = ({ navigation, route }) => {
   const { coordinatorData, coordinatorGrades } = route.params;
@@ -38,7 +39,7 @@ const CoordinatorProfile = ({ navigation, route }) => {
         body: JSON.stringify({ coordinatorId: coordinatorData.id }),
       });
 
-      const assignmentsData = await assignmentsResponse.json();
+      const assignmentsData = await assignmentsResponse
 
       // Fetch section information
       const sectionResponse = await apiFetch(`/coordinator/getCoordinatorSection`, {
@@ -47,7 +48,7 @@ const CoordinatorProfile = ({ navigation, route }) => {
         body: JSON.stringify({ mentorId: uniqueMentorData[0].id }),
       });
 
-      const sectionData = await sectionResponse.json();
+      const sectionData = await sectionResponse
 
       // Fetch issues count (you'll need to implement this endpoint)
       const issuesResponse = await apiFetch(`/coordinator/getCoordinatorIssues`, {
@@ -56,7 +57,7 @@ const CoordinatorProfile = ({ navigation, route }) => {
         body: JSON.stringify({ coordinatorId: coordinatorData.id }),
       });
 
-      const issuesData = await issuesResponse.json();
+      const issuesData = await issuesResponse
 
       setCoordinatorDetails({
         subjects: assignmentsData.subjects || [],
@@ -116,16 +117,28 @@ const CoordinatorProfile = ({ navigation, route }) => {
       </View>
     );
   }
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
 
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
-      return ProfileIcon;
+      return Staff;
     }
   };
 

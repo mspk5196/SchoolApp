@@ -103,22 +103,25 @@ const MentorSurveyRegister = ({ navigation, route }) => {
   useEffect(() => { if (section) fetchStudents(); }, [section]);
 
   const fetchGrades = () => {
-    fetch(`${API_URL}/api/mentor/survey/getGrades`)
-      .then(res => res.json()).then(data => {
+    apiFetch(`/mentor/survey/getGrades`)
+      .then(res => res)
+      .then(data => {
         if (data.success) setGradeItems(data.grades.map(g => ({ label: g.grade_name, value: g.id })));
       }).catch(err => Alert.alert("Error", "Failed to fetch grades"));
   };
 
   const fetchSections = () => {
-    fetch(`${API_URL}/api/mentor/survey/getGradeSections?gradeId=${grade}`)
-      .then(res => res.json()).then(data => {
+    apiFetch(`/mentor/survey/getGradeSections?gradeId=${grade}`)
+      .then(res => res)
+      .then(data => {
         if (data.success) setSectionItems(data.sections.map(s => ({ label: s.section_name, value: s.id })));
       }).catch(err => Alert.alert("Error", "Failed to fetch sections"));
   };
 
   const fetchStudents = () => {
-    fetch(`${API_URL}/api/mentor/survey/getMentorStudents?sectionId=${section}`)
-      .then(res => res.json()).then(data => {
+    apiFetch(`/mentor/survey/getMentorStudents?sectionId=${section}`)
+      .then(res => res)
+      .then(data => {
         if (data.success) setStudents(data.students.map(s => ({ name: s.name, id: s.id, roll: s.roll })));
       }).catch(err => Alert.alert("Error", "Failed to fetch students"));
   };
@@ -151,7 +154,7 @@ const MentorSurveyRegister = ({ navigation, route }) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(surveyData)
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           Alert.alert('Success', 'Survey created successfully');

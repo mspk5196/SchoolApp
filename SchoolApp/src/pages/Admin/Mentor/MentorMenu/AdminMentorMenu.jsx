@@ -9,6 +9,7 @@ import Freehour from '../../../../assets/AdminPage/MentorHome/Freehour.svg';
 import HomeIcon from '../../../../assets/AdminPage/MentorHome/home.svg';
 import {API_URL} from '../../../../utils/env.js'
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiFetch } from '../../../../utils/apiClient.js';
 
 const data = [
   {
@@ -71,7 +72,7 @@ const AdminMentorMenu = ({ navigation }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/grades`);
+      const response = await apiFetch(`/admin/grades`);
       const data = response
       if (data.success) {
         const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);

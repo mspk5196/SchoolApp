@@ -285,10 +285,10 @@ const AddInfraEnrollment = ({ navigation, route }) => {
         });
       }
 
-      const responseData = await response.json();
+      const responseData = response;
       console.log('Server response:', responseData); // Debug log
 
-      if (response.ok) {
+      if (response) {
         Alert.alert('Success', isEditing ? 'Venue updated successfully' : 'Venue added successfully');
         navigation.goBack();
       } else {

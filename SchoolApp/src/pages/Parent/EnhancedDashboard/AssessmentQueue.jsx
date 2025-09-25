@@ -45,16 +45,15 @@ const AssessmentQueue = () => {
       const phone = JSON.parse(storedPhone);
 
       // Fetch assessment queue data
-      const response = await apiFetch(`${API_URL}/student/assessments/queue`, {
+      const response = await apiFetch(`/student/assessments/queue`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setAssessmentRequests(result.requests || []);
         setAvailableAssessments(result.available || []);
       } else {
@@ -79,11 +78,10 @@ const AssessmentQueue = () => {
       const storedPhone = await AsyncStorage.getItem('userPhone');
       const phone = JSON.parse(storedPhone);
 
-      const response = await apiFetch(`${API_URL}/student/assessment/request`, {
+      const response = await apiFetch(`/student/assessment/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
         body: JSON.stringify({
           topic_id: assessment.topic_id,
@@ -92,9 +90,9 @@ const AssessmentQueue = () => {
         }),
       });
 
-      const result = await response.json();
+      const result = response;
       
-      if (response.ok) {
+      if (response) {
         Alert.alert('Success', 'Assessment request submitted successfully');
         setRequestModalVisible(false);
         fetchAssessmentData(); // Refresh data

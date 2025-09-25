@@ -81,8 +81,8 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setSections(result.gradeSections || []);
         console.log('Fetched Grade Sections:', result.gradeSections);
       }

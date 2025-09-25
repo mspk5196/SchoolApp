@@ -139,12 +139,12 @@ const CoordinatorMessageBox = ({ route, navigation }) => {
           }),
         });
       }
-      const res = await fetch(`${API_URL}/api/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
+      const res = await apiFetch(`/keys/${otherUser.receiver_type}/${otherUser.receiver_id}`);
       if (!res.ok) {
         Alert.alert('Encryption Error', "Could not get recipient's key.");
         return false;
       }
-      const theirKeyData = await res.json();
+      const theirKeyData = await res;
       sharedSecretRef.current = getSharedSecretAESKey(myPrivateKey, theirKeyData.public_key);
       return true;
     } catch (error) {

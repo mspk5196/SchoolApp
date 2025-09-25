@@ -32,7 +32,7 @@ const Profile = require('../../../../assets/MentorPage/profile.png');
 //                 headers: { 'Content-Type': 'application/json' },
 //                 body: JSON.stringify({ admin_id: adminObj.id })
 //             });
-//             const data = await res.json();
+//             const data = await res;
 //             if (data.success) {
 //                 setInbox(data.inbox);
 //             }
@@ -250,7 +250,7 @@ const AdminMessageHome = ({ navigation, route }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ admin_id: adminObj.id })
             });
-            const data = await res.json();
+            const data = await res;
             if (data.success) {
                 setInbox(data.inbox);
             }

@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiClient.js";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, Modal, Alert, Image } from "react-native";
 import styles from "./LeaveApprovalsty";
 import Back from "../../../assets/MentorPage/entypo_home.svg";
@@ -11,6 +11,7 @@ const Staff = require('../../../assets/CoordinatorPage/StudentProfile/staff.png'
 import Pending from '../../../assets/MentorPage/pendingstatus.svg';
 import { API_URL } from '../../../utils/env.js'
 import Nodata from "../../../components/General/Nodata";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const MentorLeaveApproval = ({ navigation, route }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,7 +33,7 @@ const MentorLeaveApproval = ({ navigation, route }) => {
       },
       body: JSON.stringify({ sectionId: mentor.section_id }),
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           console.log(data.leaveRequests);
@@ -61,7 +62,7 @@ const MentorLeaveApproval = ({ navigation, route }) => {
         status: 'Approved'
       }),
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           fetchPendingLeaveRequests();
@@ -95,7 +96,7 @@ const MentorLeaveApproval = ({ navigation, route }) => {
         rejectionReason
       }),
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setModalVisible(false);
@@ -127,13 +128,26 @@ const MentorLeaveApproval = ({ navigation, route }) => {
     return `${day}/${month}/${year}`;
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

@@ -55,8 +55,8 @@ const BatchDetails = () => {
         }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setStudents(result.students || []);
         setBatchInfo(result.batch_info);
       } else {
@@ -81,8 +81,8 @@ const BatchDetails = () => {
         },
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         // console.log('Backend response:', result);
         setAvailableBatches(result.data || result.batches || []);
         // console.log('Available batches set:', result.data || result.batches || []);
@@ -134,9 +134,9 @@ const BatchDetails = () => {
         }),
       });
 
-      const result = await response.json();
+      const result = response;
       
-      if (response.ok) {
+      if (response) {
         Alert.alert('Success', 'Student moved successfully');
         setMoveModalVisible(false);
         fetchBatchDetails();

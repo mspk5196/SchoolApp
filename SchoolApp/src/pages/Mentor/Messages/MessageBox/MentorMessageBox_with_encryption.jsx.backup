@@ -185,7 +185,7 @@ const MentorMessageBox = ({ route, navigation }) => {
         return false;
       }
       
-      const theirKeyData = await res.json();
+      const theirKeyData = await res;
       console.log("🔍 Student key data received:", theirKeyData);
       
       if (!theirKeyData.success || !theirKeyData.public_key) {

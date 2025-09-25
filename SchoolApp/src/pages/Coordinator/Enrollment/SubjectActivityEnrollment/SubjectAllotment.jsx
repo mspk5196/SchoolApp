@@ -69,7 +69,7 @@ const SubjectAllotment = ({ navigation, route }) => {
 
   const fetchSubjectTitles = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getSubjects`);
+      const response = await apiFetch(`/coordinator/getSubjects`);
       const data = response
       if (data.success) setSubjectTitles(data.subjects);
     } catch (error) {
@@ -79,7 +79,7 @@ const SubjectAllotment = ({ navigation, route }) => {
 
   const fetchActivities = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getActivities`);
+      const response = await apiFetch(`/coordinator/getActivities`);
       const data = response
       if (data.success) setSubjectTypeOptions(data.activity_types);
     } catch (error) {
@@ -89,7 +89,7 @@ const SubjectAllotment = ({ navigation, route }) => {
 
   const fetchSubActivities = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getSubActivities`);
+      const response = await apiFetch(`/coordinator/getSubActivities`);
       const data = response
       if (data.success) {
         setSubActivities(data.sub_activities);

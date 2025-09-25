@@ -117,7 +117,7 @@ const StudentPageRequest = ({ navigation }) => {
 
   const fetchDocumnetTypes = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/fetchDocumentTypes`);
+      const response = await apiFetch(`fetchDocumentTypes`);
       const data = response
       if (data.success) {
         setDocumentTypes(data.docTypes || []);
@@ -131,7 +131,7 @@ const StudentPageRequest = ({ navigation }) => {
 
   const fetchDocumentPurpose = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/fetchDocumentPurpose`);
+      const response = await apiFetch(`fetchDocumentPurpose`);
       const data = response
       if (data.success) {
         setDocumentPurpose(data.docPurpose || []);
@@ -258,7 +258,7 @@ const StudentPageRequest = ({ navigation }) => {
         });
 
         // Check if response is OK (status 200-299)
-        if (!response.ok) {
+        if (!response) {
           const errorText = await response.text();
           throw new Error(`Server responded with ${response.status}: ${errorText}`);
         }

@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import Pending from '../../../../assets/AdminPage/LeaveApproval/pending.svg';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
 import { API_URL } from '../../../../utils/env.js';
 import Nodata from '../../../../components/General/Nodata';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const AdminLeaveApproval = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,7 +41,7 @@ const AdminLeaveApproval = ({ navigation }) => {
         'Content-Type': 'application/json',
       }
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           console.log(data.leaveRequests);
@@ -71,7 +72,7 @@ const AdminLeaveApproval = ({ navigation }) => {
         status: 'Approved'
       }),
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           fetchPendingLeaveRequests();
@@ -105,7 +106,7 @@ const AdminLeaveApproval = ({ navigation }) => {
         rejectionReason
       }),
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setModalVisible(false);
@@ -135,17 +136,30 @@ const AdminLeaveApproval = ({ navigation }) => {
   };
 
 
-  const getProfileImageSource = (profilePath) => {
-    if (profilePath) {
-      // 1. Replace backslashes with forward slashes
-      const normalizedPath = profilePath.replace(/\\/g, '/');
-      // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
-    } else {
-      return Staff;
-    }
-  };
+  const authTokenRef = useRef(null);
+   useEffect(() => {
+     // Load token once (used for protected images if needed)
+     AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+   }, []);
+ 
+   const getProfileImageSource = (profilePath) => {
+     // console.log(authTokenRef.current);
+     
+     // console.log('Profile Path:', profilePath);
+     if (profilePath) {
+       // 1. Replace backslashes with forward slashes
+       const normalizedPath = profilePath.replace(/\\/g, '/');
+       // 2. Construct the full URL
+       const uri = `${API_URL}/${normalizedPath}`;
+       // return { uri: fullImageUrl };
+       if (authTokenRef.current) {
+         return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+       }
+       return { uri };
+     } else {
+       return Staff;
+     }
+   };
 
   return (
     <View style={styles.container}>

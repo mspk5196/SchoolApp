@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Linking, Image } from 'react-native';
 import styles from './EmergencyLeaveHistorysty';
 import Back from '../../../../assets/MentorPage/backarrow.svg';
@@ -6,6 +6,8 @@ import SearchIcon from '../../../../assets/MentorPage/search.svg';
 import CallParent from '../../../../assets/MentorPage/callparent.svg';
 import Clock from '../../../../assets/MentorPage/clock.svg';
 import { API_URL } from '../../../../utils/env.js'
+import { apiFetch } from '../../../../utils/apiClient.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MentorEmergencyLeaveHistory = ({ navigation, route }) => {
     const { mentorData } = route.params;
@@ -14,8 +16,8 @@ const MentorEmergencyLeaveHistory = ({ navigation, route }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch(`${API_URL}/api/mentor/getEmergencyLeaveHistory?mentorId=${mentorData[0].id}`)
-            .then(response => response.json())
+        apiFetch(`/mentor/getEmergencyLeaveHistory?mentorId=${mentorData[0].id}`)
+            .then(response => response)
             .then(data => {
                 if (data.success) {
                     setLeaves(data.leaves);
@@ -35,17 +37,30 @@ const MentorEmergencyLeaveHistory = ({ navigation, route }) => {
 
     };
 
-    const getProfileImageSource = (profilePath) => {
-        if (profilePath) {
-            // 1. Replace backslashes with forward slashes
-            const normalizedPath = profilePath.replace(/\\/g, '/');
-            // 2. Construct the full URL
-            const fullImageUrl = `${API_URL}/${normalizedPath}`;
-            return { uri: fullImageUrl };
-        } else {
-            return Staff;
-        }
-    };
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
+  const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
+    } else {
+      return Staff;
+    }
+  };
 
     return (
         <View style={styles.container}>

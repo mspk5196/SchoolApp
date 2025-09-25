@@ -52,7 +52,7 @@ const MentorGenrealActivityRegister = ({navigation, route}) => {
       },
       body: JSON.stringify({ mentorId: mentorData[0].id }),
     })
-    .then(response => response.json())
+    .then(response => response)
     .then(data => {
       if (data.success) {
         const studentItems = data.students.map(student => ({
@@ -88,7 +88,7 @@ const MentorGenrealActivityRegister = ({navigation, route}) => {
       },
       body: JSON.stringify(activityData),
     })
-    .then(response => response.json())
+    .then(response => response)
     .then(data => {
       setLoading(false);
       if (data.message) {

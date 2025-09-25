@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Text,
   View,
@@ -20,6 +20,7 @@ import DateIcon from '../../../../assets/CoordinatorPage/LeaveApproval/date.svg'
 import ReasonIcon from '../../../../assets/CoordinatorPage/LeaveApproval/reason.svg';
 import styles from './LeaveApprovalStyles';
 import { API_URL } from '../../../../utils/env.js';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CoordinatorLeaveApproval = ({ navigation, route }) => {
   const { activeGrade } = route.params;
@@ -197,13 +198,26 @@ const CoordinatorLeaveApproval = ({ navigation, route }) => {
     setHistoryModalVisible(true);
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

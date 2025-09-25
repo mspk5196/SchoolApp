@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { 
   View, Text, TextInput, FlatList, TouchableOpacity, Image, Modal, 
   TouchableWithoutFeedback, KeyboardAvoidingView, Keyboard, Alert, 
@@ -13,6 +13,7 @@ import Call from "../../../../assets/MentorPage/call.svg";
 import Message from "../../../../assets/MentorPage/text.svg";
 import { API_URL } from '../../../../utils/env.js';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const Staff = '../../../../assets/AdminPage/StudentHome/Issuelog/staff.png';
 
 const MentorDisciplineLog = ({ navigation, route }) => {
@@ -66,7 +67,7 @@ const MentorDisciplineLog = ({ navigation, route }) => {
 
       const data = response
 
-      if (response.ok) {
+      if (response) {
         Alert.alert(
           'Success', 
           'Discipline record has been added successfully',
@@ -92,9 +93,9 @@ const MentorDisciplineLog = ({ navigation, route }) => {
   const fetchStudent = async () => {
     try {
       setLoadingStudents(true);
-      const response = await fetch(`${API_URL}/api/coordinator/student/getStudentList`);
+      const response = await apiFetch(`/coordinator/student/getStudentList`);
       
-      if (!response.ok) {
+      if (!response) {
         throw new Error('Failed to fetch student list');
       }
       
@@ -131,9 +132,9 @@ const MentorDisciplineLog = ({ navigation, route }) => {
   const fetchDisciplineData = async (sectionId) => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/admin/sections/${sectionId}/discipline-issues`);
+      const response = await apiFetch(`/admin/sections/${sectionId}/discipline-issues`);
       
-      if (!response.ok) {
+      if (!response) {
         throw new Error('Failed to fetch discipline data');
       }
       
@@ -170,13 +171,26 @@ const MentorDisciplineLog = ({ navigation, route }) => {
     setSelectedSection(sectionId);
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

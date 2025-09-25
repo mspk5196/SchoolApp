@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView, View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar, Modal, ActivityIndicator,
 } from 'react-native';
@@ -7,6 +7,7 @@ import { API_URL } from '../../../../utils/env.js';
 import BackArrow from '../../../../assets/MentorPage/backarrow.svg';
 import Home from '../../../../assets/MentorPage/Home2.svg';
 import Profile from '../../../../assets/MentorPage/userlogo.svg';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const MentorSurveyDetails = ({ navigation, route }) => {
   const { mentorData, item } = route.params;
@@ -21,8 +22,8 @@ const MentorSurveyDetails = ({ navigation, route }) => {
   }, [item]);
 
   const fetchSurveyStudents = () => {
-    fetch(`${API_URL}/api/mentor/survey/${item.id}/students`)
-      .then((response) => response.json())
+    apiFetch(`/mentor/survey/${item.id}/students`)
+      .then((response) => response)
       .then((data) => setStudents(data))
       .catch((error) => console.error('Error fetching students:', error));
   };
@@ -32,8 +33,8 @@ const MentorSurveyDetails = ({ navigation, route }) => {
       setSelectedStudent(student);
       setLoadingResponses(true);
       setResponseModalVisible(true);
-      fetch(`${API_URL}/api/mentor/survey/response/${item.id}/${student.id}`)
-        .then(res => res.json())
+      apiFetch(`/mentor/survey/response/${item.id}/${student.id}`)
+        .then(res => res)
         .then(data => {
           if (data.success) {
             setStudentResponses(data.responses);
@@ -50,13 +51,29 @@ const MentorSurveyDetails = ({ navigation, route }) => {
     }
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
+      // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      // 2. Construct the full URL
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
+    } else {
+      return Staff;
     }
-    return Profile;
   };
 
   const renderResponseModal = () => (
@@ -99,7 +116,7 @@ const MentorSurveyDetails = ({ navigation, route }) => {
 
   const handleEndSurvey = () => {
     apiFetch(`/mentor/survey/end/${item.id}`, { method: 'PUT' })
-      .then(res => res.json())
+      .then(res => res)
       .then(data => {
         if (data.message) {
           Alert.alert('Success', 'Survey has been ended.');

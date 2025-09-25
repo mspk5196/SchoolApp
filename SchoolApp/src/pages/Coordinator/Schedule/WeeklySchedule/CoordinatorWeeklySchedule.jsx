@@ -99,7 +99,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
   const fetchSchedule = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/weekly-schedule/getWeeklySchedule?sectionId=${activeSection}&day=${activeDay}`);
+      const response = await apiFetch(`/coordinator/weekly-schedule/getWeeklySchedule?sectionId=${activeSection}&day=${activeDay}`);
       const data = response
       setScheduleItems(data.success ? data.scheduleItems.map(item => ({
         ...item,
@@ -125,7 +125,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
         body: JSON.stringify({ activeSection })
       });
       const data = response
-      if (response.ok) setSubjects(data.subjects);
+      if (response) setSubjects(data.subjects);
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch subjects.');
     }
@@ -134,7 +134,7 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
   const fetchVenues = async () => {
     if (!activeGrade) return;
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/enrollment/getVenuesByGrade?gradeId=${activeGrade}`);
+      const response = await apiFetch(`/coordinator/enrollment/getVenuesByGrade?gradeId=${activeGrade}`);
       const data = response
       if (data.success) setVenues(data.venues);
     } catch (error) {
@@ -243,9 +243,9 @@ const CoordinatorWeeklySchedule = ({ navigation, route }) => {
     };
 
     try {
-      const conflictCheck = await fetch(`${API_URL}/api/coordinator/weekly-schedule/checkTimeConflict?` +
+      const conflictCheck = await apiFetch(`/coordinator/weekly-schedule/checkTimeConflict?` +
         new URLSearchParams({ sectionId: activeSection, day: activeDay, startTime: payload.startTime, endTime: payload.endTime, excludeId: newActivity.id || '' }));
-      const conflictData = await conflictCheck.json();
+      const conflictData = await conflictCheck
       if (conflictData.hasConflict) {
         Alert.alert('Time Conflict', 'This time slot already has a scheduled activity.');
         console.log({ sectionId: activeSection, day: activeDay, startTime: payload.startTime, endTime: payload.endTime, excludeId: newActivity.id });

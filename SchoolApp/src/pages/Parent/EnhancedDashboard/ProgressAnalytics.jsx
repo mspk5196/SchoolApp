@@ -45,16 +45,15 @@ const ProgressAnalytics = () => {
 
       const phone = JSON.parse(storedPhone);
 
-      const response = await apiFetch(`${API_URL}/student/analytics?timeframe=${selectedTimeframe}&subject=${selectedSubject}`, {
+      const response = await apiFetch(`/student/analytics?timeframe=${selectedTimeframe}&subject=${selectedSubject}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setAnalyticsData(result);
       } else {
         Alert.alert('Error', 'Failed to load analytics data');

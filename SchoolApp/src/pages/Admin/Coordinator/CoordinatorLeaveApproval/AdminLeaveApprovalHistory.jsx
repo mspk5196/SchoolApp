@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, Image } from "react-native";
 import styles from "./LeaveApprovalHistorysty";
 import SearchIcon from "../../../../assets/AdminPage/LeaveApproval/search.svg";
@@ -10,6 +10,7 @@ import Approved from '../../../../assets/AdminPage/LeaveApproval/greentick.svg';
 const Staff = require('../../../../assets/AdminPage/Basicimg/staff.png');
 import { API_URL } from '../../../../utils/env.js';
 import Nodata from "../../../../components/General/Nodata";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const AdminLeaveApprovalHistory = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,7 +27,7 @@ const AdminLeaveApprovalHistory = ({ navigation }) => {
         'Content-Type': 'application/json',
       },
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setLeaveData(data.leaveRequests);
@@ -70,13 +71,26 @@ const AdminLeaveApprovalHistory = ({ navigation }) => {
     data: groupedData[date]
   }));
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

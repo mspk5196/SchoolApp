@@ -8,14 +8,20 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 const LogoutModal = ({ visible, onClose, navigation }) => {
     const handleLogout = async () => {
         try {
-            // Clear ALL AsyncStorage data for security
-            await AsyncStorage.clear();
-            // await GoogleSignin.signOut();
-            const isSignedIn = await GoogleSignin.isSignedIn();
-            if (isSignedIn) {
-                await GoogleSignin.signOut(); 
+            // Remove only auth-related keys (safer than clear if you store other app prefs)
+            await AsyncStorage.multiRemove([
+                'authToken',
+                'refreshToken',
+                'user',
+                // add any other keys you set for auth
+            ]);
+
+            // Google sign out (ignore if not signed in or not configured)
+            try {
+                await GoogleSignin.signOut();
+            } catch (e) {
+                console.log('Google signOut skipped:', e?.message);
             }
-            console.log('🚪 Complete logout: All data cleared');
 
             onClose && onClose();
             navigation.reset({

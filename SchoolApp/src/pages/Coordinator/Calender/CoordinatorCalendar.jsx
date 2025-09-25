@@ -72,8 +72,8 @@ const CoordinatorCalendar = ({ navigation }) => {
     const month = (currentMonth + 1).toString().padStart(2, '0');
     const year = currentYear;
 
-    fetch(`${API_URL}/api/coordinator/calendar/events?year=${year}&month=${month}`)
-      .then(response => response.json())
+    apiFetch(`/coordinator/calendar/events?year=${year}&month=${month}`)
+      .then(response => response)
       .then(data => {
         if (data.success) {
           // Convert date strings to Date objects
@@ -255,7 +255,7 @@ const CoordinatorCalendar = ({ navigation }) => {
       },
       body: JSON.stringify(eventData)
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           // Refresh events
@@ -281,7 +281,7 @@ const CoordinatorCalendar = ({ navigation }) => {
       },
       body: JSON.stringify({ id: eventId })
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           // Refresh events

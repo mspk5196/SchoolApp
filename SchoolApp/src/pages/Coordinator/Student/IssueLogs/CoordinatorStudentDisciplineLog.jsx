@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ import styles from './StudentDisciplineLogStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL } from '../../../../utils/env.js'
 import Nodata from '../../../../components/General/Nodata';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const Staff = '../../../../assets/CoordinatorPage/DisciplineLog/staff.png';
 
 const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
@@ -52,9 +53,9 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
   // Fetch student list
   const fetchStudent = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/student/getStudentList`);
+      const response = await apiFetch(`/coordinator/student/getStudentList`);
       const data = response
-      if (response.ok) {
+      if (response) {
         setStudentList(data.student);
         console.log(data.student);
         
@@ -70,9 +71,9 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
   const fetchDisciplineLogs = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/student/getStudentDisciplineLogs?sectionId=${activeSection}`);
-      const data = response
-      if (response.ok) {
+      const response = await apiFetch(`/coordinator/student/getStudentDisciplineLogs?sectionId=${activeSection}`);
+      const data = await response
+      if (response) {
         setDisciplineData(data.logs);   
         setFilteredData(data.logs);
         console.log('Discipline Logs API Response:', data.logs);
@@ -134,7 +135,7 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
       const data = response
 
 
-      if (response.ok) {
+      if (response) {
         fetchDisciplineLogs(); // Refresh the list
         setReason('');
         setSelectedStudent(null);
@@ -153,13 +154,26 @@ const CoordinatorStudentDisciplineLog = ({ navigation, route }) => {
     student.roll?.toLowerCase().includes(studentSearch.toLowerCase())
   );
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

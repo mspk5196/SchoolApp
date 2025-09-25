@@ -41,7 +41,7 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
         },
         body: JSON.stringify({ gradeID: gradeId }),
       });
-      const result = await response.json();
+      const result = response;
       if (result.success) {
         setSections(result.gradeSections);
       }
@@ -107,7 +107,7 @@ const CoordinatorScheduleHome = ({ navigation, route }) => {
           body: formData,
         });
 
-        const responseData = await response.json();
+        const responseData = response;
 
         if (responseData.success) {
           console.log("Uploaded successfully");

@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import FacultyIcon from "../../../../assets/MentorPage/faculty2.svg";
 import SubjectIcon from "../../../../assets/MentorPage/subject.svg";
 import ActivityIcon from "../../../../assets/MentorPage/activity2.svg";
 import { API_URL } from "../../../../utils/env.js";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const MentorDashboard = ({ route }) => {
   const { mentorData } = route.params;
@@ -66,7 +67,7 @@ const MentorDashboard = ({ route }) => {
 
   // useEffect(() => {
   //   apiFetch(`/mentor/createTodayAssessmentSessions`, { method: 'POST' })
-  //     .then(response => response.json())
+  //     .then(response => response)
   //     .then(data => {
   //       if (data.success) {
   //         console.log('✅ Today assessment sessions created successfully');
@@ -87,7 +88,7 @@ const MentorDashboard = ({ route }) => {
   const fetchOverdueStudents = async () => {
     try {
       setIsAttentionLoading(true);
-      const response = await fetch(`${API_URL}/api/mentor/getOverdueStudents?mentorId=${mentorData[0].id}`);
+      const response = await apiFetch(`/mentor/getOverdueStudents?mentorId=${mentorData[0].id}`);
       const data = response
       if (data.success) {
         setOverdueStudents(data.overdueStudents);
@@ -101,7 +102,7 @@ const MentorDashboard = ({ route }) => {
 
   const fetchCoordinatorTasks = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/getCoordinatorTasks?mentorId=${mentorData[0].id}`);
+      const response = await apiFetch(`/mentor/getCoordinatorTasks?mentorId=${mentorData[0].id}`);
       const data = response
       if (data.success) {
         setCoordinatorTasks(data.tasks);
@@ -329,7 +330,7 @@ const MentorDashboard = ({ route }) => {
         }),
       });
 
-      const updateData = await updateResponse.json();
+      const updateData = await updateResponse
       if (updateData.success) {
         Alert.alert('Schedule updated successfully');
         fetchScheduleData(); // Refresh the schedule
@@ -363,7 +364,7 @@ const MentorDashboard = ({ route }) => {
         }),
       });
 
-      const updateData = await updateResponse.json();
+      const updateData = await updateResponse
       if (updateData.success) {
         Alert.alert('Activity updated successfully');
         fetchScheduleData(); // Refresh the schedule
@@ -611,15 +612,28 @@ const MentorDashboard = ({ route }) => {
     );
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
-      return User;
+      return Staff;
     }
   };
 

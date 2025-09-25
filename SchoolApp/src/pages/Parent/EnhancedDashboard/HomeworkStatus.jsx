@@ -46,16 +46,15 @@ const HomeworkStatus = () => {
       const phone = JSON.parse(storedPhone);
 
       // Fetch all homework data
-      const response = await apiFetch(`${API_URL}/student/homework/status`, {
+      const response = await apiFetch(`/student/homework/status`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setHomeworkList(result.homework || []);
       } else {
         Alert.alert('Error', 'Failed to load homework data');
@@ -79,11 +78,10 @@ const HomeworkStatus = () => {
       const storedPhone = await AsyncStorage.getItem('userPhone');
       const phone = JSON.parse(storedPhone);
 
-      const response = await apiFetch(`${API_URL}/student/homework/submit`, {
+      const response = await apiFetch(`/student/homework/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
         body: JSON.stringify({
           homework_id: selectedHomework.id,
@@ -91,9 +89,9 @@ const HomeworkStatus = () => {
         }),
       });
 
-      const result = await response.json();
+      const result = response;
       
-      if (response.ok) {
+      if (response) {
         Alert.alert('Success', 'Homework submitted successfully');
         setSubmitModalVisible(false);
         setSubmissionNotes('');

@@ -183,10 +183,10 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
       } else {
         setLoading(true);
       }
-      
-      const response = await fetch(`${API_URL}/api/coordinator/enrollment/getAllVenues`);
+
+      const response = await apiFetch(`/coordinator/enrollment/getAllVenues`);
       const data = response
-      if (response.ok) {
+      if (response) {
         setVenues(data);
       } else {
         throw new Error(data.message || 'Failed to fetch venues');
@@ -285,11 +285,11 @@ const handleEdit = (venue) => {
       body: JSON.stringify({ status: newStatus })
     });
  
-      if (response.ok) {
+      if (response) {
         fetchVenues(false); // Refresh the list
         Alert.alert('Success', `Venue status updated to ${newStatus}`);
       } else {
-        const error = await response.json();
+        const error = response;
         throw new Error(error.message || 'Failed to update status');
       }
     } catch (error) {
@@ -323,9 +323,9 @@ const handleEdit = (venue) => {
               clearTimeout(timeoutId);
 
               // Check if response is ok (status 200-299)
-              if (response.ok) {
+              if (response) {
                 try {
-                  const responseData = await response.json();
+                  const responseData = response;
                   console.log('Delete response:', responseData);
                   
                   // Refresh the list immediately
@@ -341,7 +341,7 @@ const handleEdit = (venue) => {
                 // If response is not ok, try to get error message
                 let errorMessage = `Failed to delete venue (Status: ${response.status})`;
                 try {
-                  const errorData = await response.json();
+                  const errorData = response;
                   errorMessage = errorData.message || errorMessage;
                 } catch (jsonError) {
                   // Keep the default error message with status code

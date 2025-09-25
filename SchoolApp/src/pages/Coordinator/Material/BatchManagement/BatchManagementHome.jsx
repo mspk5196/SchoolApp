@@ -101,8 +101,8 @@ const BatchManagementHome = ({route}) => {
         },
       });
    
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         console.log('Batch data response:', result);
         const batches = result.data || [];
         
@@ -160,8 +160,8 @@ const BatchManagementHome = ({route}) => {
         },
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         console.log('Analytics response:', result);
         const analyticsData = result.data;
         
@@ -229,9 +229,9 @@ const BatchManagementHome = ({route}) => {
                 }),
               });
 
-              const result = await response.json();
+              const result = response;
               
-              if (response.ok) {
+              if (response) {
                 showSuccessMessage(`Reallocation completed successfully! ${result.moved_students || 0} students were moved.`);
                 fetchBatchData();
                 fetchAnalytics();
@@ -293,10 +293,10 @@ const BatchManagementHome = ({route}) => {
         }),
       });
 
-      const result = await response.json();
+      const result = response;
       console.log('Configure batches response:', result);
       
-      if (response.ok) {
+      if (response) {
         showSuccessMessage(`${numBatches} batches configured successfully! You can now initialize students.`);
         fetchBatchData();
         fetchAnalytics();
@@ -342,9 +342,9 @@ const BatchManagementHome = ({route}) => {
                 }),
               });
 
-              const result = await response.json();
+              const result = response;
               
-              if (response.ok) {
+              if (response) {
                 showSuccessMessage(`Initialization completed! ${result.assigned_students || 0} students were assigned to batches.`);
                 fetchBatchData();
                 fetchAnalytics();
@@ -415,9 +415,9 @@ const BatchManagementHome = ({route}) => {
         }),
       });
 
-      const result = await response.json();
+      const result = response;
       
-      if (response.ok) {
+      if (response) {
         showSuccessMessage(`Batch size updated successfully to ${size} students!`);
         fetchBatchData();
         fetchAnalytics();

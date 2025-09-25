@@ -85,7 +85,7 @@ const MentorHomework = ({ navigation, route }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/getGrades`);
+      const response = await apiFetch(`/mentor/getGrades`);
       const data = response
       if (data.success) {
         const formattedGrades = data.grades.map(g => ({
@@ -131,7 +131,7 @@ const MentorHomework = ({ navigation, route }) => {
 
   const fetchSections = async (gradeId) => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/sections/${gradeId}`);
+      const response = await apiFetch(`/mentor/sections/${gradeId}`);
       const data = response
       if (data.success) {
         const formattedSections = data.sections.map(s => ({
@@ -208,7 +208,7 @@ const MentorHomework = ({ navigation, route }) => {
 
   const fetchBatches = async (subjectId, sectionId) => {
     try {
-      const response = await fetch(`${API_URL}/api/mentor/batches/${sectionId}/${subjectId}`);
+      const response = await apiFetch(`/mentor/batches/${sectionId}/${subjectId}`);
       const data = response
       // console.log("Fetched Batches Response:", data);
 

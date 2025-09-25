@@ -18,8 +18,8 @@ const StudentPageLikedEvents = ({ navigation, route }) => {
     if (studentData) {
       try {
         setRefresh(true)
-        const res = await fetch(`${API_URL}/api/student/getFavouriteEvents?student_roll=${studentData.roll}`);
-        const data = await res.json();
+        const res = await apiFetch(`/student/getFavouriteEvents?student_roll=${studentData.roll}`);
+        const data = await res;
         if (data.success) {
           setEvents(data.favouriteEvents);
           // Set favorites mapping

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Image } from "react-native";
 import styles from "./GeneralActivitysty";
 import Back from "../../../../assets/MentorPage/backarrow.svg";
@@ -7,6 +7,8 @@ import Home from "../../../../assets/MentorPage/Home2.svg";
 import DownArrow from "../../../../assets/MentorPage/down.svg";
 import { API_URL } from '../../../../utils/env.js'
 import { widthPercentageToDP } from "react-native-responsive-screen";
+import { apiFetch } from "../../../../utils/apiClient.js";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const MentorGeneralActivity = ({ navigation, route }) => {
   const { mentorData } = route.params;
@@ -20,8 +22,8 @@ const MentorGeneralActivity = ({ navigation, route }) => {
   }, [mentorData]);
 
   const fetchData = () => {
-    fetch(`${API_URL}/api/mentor/getGeneralActivities?mentorId=${mentorData[0].id}`)
-    .then(response => response.json())
+    apiFetch(`/mentor/getGeneralActivities?mentorId=${mentorData[0].id}`)
+    .then(response => response)
     .then(data => {
       setActivities(data);
       setLoading(false);
@@ -36,15 +38,28 @@ const MentorGeneralActivity = ({ navigation, route }) => {
     setExpanded(expanded === id ? null : id);
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
-      return Profile;
+      return Staff;
     }
   };
 

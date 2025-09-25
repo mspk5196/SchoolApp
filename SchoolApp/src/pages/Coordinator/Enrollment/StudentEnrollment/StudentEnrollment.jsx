@@ -56,7 +56,7 @@ const StudentEnrollment = ({ navigation, route }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getGrades`);
+      const response = await apiFetch(`/coordinator/getGrades`);
       const data = response
 
       if (data.success) {
@@ -273,7 +273,7 @@ const StudentEnrollment = ({ navigation, route }) => {
         method: 'GET'
       });
 
-      if (response.ok) {
+      if (response) {
         // Get the blob data
         const blob = await response.blob();
         const base64Data = await new Promise((resolve) => {
@@ -296,7 +296,7 @@ const StudentEnrollment = ({ navigation, route }) => {
           [{ text: 'OK' }]
         );
       } else {
-        const errorData = await response.json();
+        const errorData = response;
         Alert.alert('Error', errorData.message || 'Failed to generate template');
       }
     } catch (error) {
@@ -335,7 +335,7 @@ const StudentEnrollment = ({ navigation, route }) => {
         const data = response
         console.log('Upload response data:', data);
 
-        if (response.ok) {
+        if (response) {
           Alert.alert('Success', `Successfully uploaded ${data.successfulUploads} students. ${data.failedUploads > 0 ? `${data.failedUploads} failed.` : ''}`);
           if (data.errors && data.errors.length > 0) {
             Alert.alert('Upload Details', data.errors.join('\n'));

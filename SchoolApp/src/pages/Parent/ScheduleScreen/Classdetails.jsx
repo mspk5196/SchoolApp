@@ -6,9 +6,10 @@ import ProfileImg from '../../../assets/ParentPage/ScheduleSvg/profile.png';
 import { API_URL } from '../../../utils/env.js';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Nodata from '../../../components/General/Nodata';
 import mime from 'react-native-mime-types';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const ClassDetailScreen = ({ selectedClass,
   setSelectedClass,
@@ -49,7 +50,7 @@ const ClassDetailScreen = ({ selectedClass,
           date: date
         })
       });
-      const assessment = await res.json();
+      const assessment = await res;
 
       if (assessment && assessment.success !== false) {
         let detailsData = {
@@ -94,7 +95,7 @@ const ClassDetailScreen = ({ selectedClass,
           date: date
         })
       });
-      const academic = await res2.json();
+      const academic = await res2
       
       console.log("Academic Details:", academic);
       if (academic && academic.success !== false) {
@@ -169,16 +170,28 @@ const ClassDetailScreen = ({ selectedClass,
       console.error('File open error:', err);
     }
   };
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
 
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
-      return ProfileImg;
+      return Staff;
     }
   };
   const getMaterialUrl = (fileUrl) => {

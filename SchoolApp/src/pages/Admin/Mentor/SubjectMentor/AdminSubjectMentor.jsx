@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -22,6 +22,7 @@ import Tick from '../../../../assets/AdminPage/SubjectMentor/tick.svg';
 import Oneperson from '../../../../assets/AdminPage/SubjectMentor/oneperson.svg';
 import Hat from '../../../../assets/AdminPage/SubjectMentor/hat.svg';
 import { API_URL } from '../../../../utils/env.js'
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const AdminSubjectMentor = ({ navigation, route }) => {
   const { selectedGrade } = route.params;
@@ -123,7 +124,7 @@ const AdminSubjectMentor = ({ navigation, route }) => {
         subjectID: subjectId
       }),
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setEnroledMentors(data.gradeEnroledMentor);
@@ -159,7 +160,7 @@ const AdminSubjectMentor = ({ navigation, route }) => {
     });
 
     Promise.all(requests)
-      .then(responses => Promise.all(responses.map(res => res.json())))
+      .then(responses => Promise.all(responses.map(res => res)))
       .then(results => {
         const allSuccess = results.every(result => result.success);
         if (allSuccess) {
@@ -270,15 +271,28 @@ const AdminSubjectMentor = ({ navigation, route }) => {
     </TouchableOpacity>
   );
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
-      return staff;
+      return Staff;
     }
   };
 

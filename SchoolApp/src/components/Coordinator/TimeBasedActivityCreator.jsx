@@ -82,8 +82,8 @@ const TimeBasedActivityCreator = ({
 
     const fetchBatches = async () => {
         try {
-            const response = await fetch(`/coordinator/academic-schedule/batches/${selectedPeriod.section_id}/${selectedPeriod.subject_id}`);
-            const result = await response.json();
+            const response = await apiFetch(`/coordinator/academic-schedule/batches/${selectedPeriod.section_id}/${selectedPeriod.subject_id}`);
+            const result = await response;
             if (result.success) {
                 setBatches(result.data);
                 // FIX: Initialize batch activities with consistent keys
@@ -107,7 +107,7 @@ const TimeBasedActivityCreator = ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ gradeID: activeGrade })
             });
-            const result = await response.json();
+            const result = response;
             if (result.success) {
                 setMentors(result.gradeMentors);
             }
@@ -123,7 +123,7 @@ const TimeBasedActivityCreator = ({
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            const result = await response.json();
+            const result = response;
 
             if (result.success) {
                 setActivities(result.sectionSubjectActivity || []);
@@ -151,7 +151,7 @@ const TimeBasedActivityCreator = ({
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            const result = await response.json();
+            const result = response;
 
             if (result.success) {
                 setSubActivities(result.sectionSubjectSubActivity || []);
@@ -174,8 +174,8 @@ const TimeBasedActivityCreator = ({
 
     const fetchTopics = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/topics/sectionSubject/${selectedActivity}/${selectedSubActivity}`);
-            const result = await response.json();
+            const response = await apiFetch(`/coordinator/topics/sectionSubject/${selectedActivity}/${selectedSubActivity}`);
+            const result = response;
             if (result.success) {
                 setTopics(result.data);
             }
@@ -348,7 +348,7 @@ const TimeBasedActivityCreator = ({
                 }
             );
 
-            const result = await response.json();
+            const result = response;
 
             if (result.success) {
                 Alert.alert('Success', result.message);
@@ -447,7 +447,7 @@ const TimeBasedActivityCreator = ({
                                     headers: { 'Content-Type': 'application/json' }
                                 }
                             );
-                            const result = await response.json();
+                            const result = response;
                             if (result.success) {
                                 Alert.alert('Success', 'Activity deleted successfully');
                                 if (onActivityCreated) onActivityCreated();
@@ -482,7 +482,7 @@ const TimeBasedActivityCreator = ({
                     body: JSON.stringify(activityToEdit)
                 }
             );
-            const result = await response.json();
+            const result = response;
             if (result.success) {
                 Alert.alert('Success', 'Activity updated successfully');
                 setEditModalVisible(false);

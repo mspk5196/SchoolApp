@@ -125,7 +125,7 @@ const ParentDashboard = () => {
         if (!selectedStudentData?.student_id) return;
         setSurveysLoading(true);
         try {
-            const response = await fetch(`${API_URL}/api/student/getStudentSurveys?studentId=${selectedStudentData.student_id}`);
+            const response = await fetch(`/api/student/getStudentSurveys?studentId=${selectedStudentData.student_id}`);
             const data = response
             if (data.success) {
                 setSurveys(data.surveys);
@@ -174,14 +174,30 @@ const ParentDashboard = () => {
         return (!isNaN(present) && !isNaN(total) && total > 0) ? (present / total) : 0;
     })();
 
-    const getProfileImageSource = (profilePath) => {
-        if (profilePath) {
-            const fullImageUrl = `${API_URL}/${profilePath.replace(/\\/g, '/')}`;
-            return { uri: fullImageUrl };
-        }
-        return Profile;
-    };
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
 
+  const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
+    if (profilePath) {
+      // 1. Replace backslashes with forward slashes
+      const normalizedPath = profilePath.replace(/\\/g, '/');
+      // 2. Construct the full URL
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
+    } else {
+      return Staff;
+    }
+  };
     if (loading) {
         return <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#0000ff" /></SafeAreaView>;
     }

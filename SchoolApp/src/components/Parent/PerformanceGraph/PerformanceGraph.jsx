@@ -16,8 +16,8 @@ const PerformanceGraph = ({ studentData, showTitle = true }) => {
     if (!studentData?.student_id) return;
 
     const fetchPerformance = async () => {
-      const res = await fetch(`${API_URL}/api/student/getStudentPerformance/${studentData.student_id}`);
-      const json = await res.json();
+      const res = await apiFetch(`/student/getStudentPerformance/${studentData.student_id}`);
+      const json = await res;
       setPerformanceData(json);
     };
 
@@ -28,7 +28,7 @@ const PerformanceGraph = ({ studentData, showTitle = true }) => {
     const fetchPerformanceData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/api/student/getStudentPerformance/${studentData.student_id}`);
+        const response = await apiFetch(`/student/getStudentPerformance/${studentData.student_id}`);
         const data = response
         setPerformanceData(data);
         if (data.subjectList && (!sectionSubjects || sectionSubjects.length === 0)) {

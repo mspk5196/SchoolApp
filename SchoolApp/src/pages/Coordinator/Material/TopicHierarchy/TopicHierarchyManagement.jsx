@@ -98,7 +98,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       });
 
       // console.log('Activities response status:', response.status);
-      const result = await response.json();
+      const result = response;
       // console.log('Activities result:', result);
 
       if (result.success) {
@@ -131,7 +131,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       });
 
       // console.log('Activities response status:', response.status);
-      const result = await response.json();
+      const result = response;
       // console.log('Activities result:', result);
 
       if (result.success) {
@@ -177,7 +177,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         return;
       }
 
-      const result = await response.json();
+      const result = response;
       // console.log('Topic hierarchy result:', result);
 
       if (result.success) {
@@ -249,7 +249,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       // console.log('Response status:', response.status);
       // console.log('Response headers:', response.headers);
 
-      const result = await response.json();
+      const result = response;
       // console.log('Response result:', result);
 
       if (result.success) {
@@ -284,7 +284,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
                   headers: { 'Content-Type': 'application/json' },
                 }
               );
-              const result = await response.json();
+              const result = response;
               if (result.success) {
                 Alert.alert('Success', 'Topic deleted successfully');
                 fetchTopicHierarchy();

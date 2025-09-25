@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Modal, FlatList, ScrollView, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native';
 import BackIcon from "../../../../assets/AdminPage/MentorList/leftarrow.svg";
 import Numdays from '../../../../assets/AdminPage/MentorList/numdays.svg';
@@ -20,6 +20,7 @@ import { Calendar } from 'react-native-calendars';
 import styles from './CoordinatorlistDetailsStyle';
 import Nodata from '../../../../components/General/Nodata';
 import { is } from 'date-fns/locale';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const AdminCoordinatorlistDetails = ({ route, navigation }) => {
   const { coordinator, roles, grades } = route.params;
@@ -173,7 +174,7 @@ const AdminCoordinatorlistDetails = ({ route, navigation }) => {
         body: JSON.stringify({ mentorId: mentor.id }),
       });
 
-      const assignmentsData = await assignmentsResponse.json();
+      const assignmentsData = await assignmentsResponse
 
       // Fetch section information
       const sectionResponse = await apiFetch(`/coordinator/getMentorSection`, {
@@ -182,7 +183,7 @@ const AdminCoordinatorlistDetails = ({ route, navigation }) => {
         body: JSON.stringify({ mentorId: mentor.id }),
       });
 
-      const sectionData = await sectionResponse.json();
+      const sectionData = await sectionResponse
 
       // Fetch issues count (you'll need to implement this endpoint)
       const issuesResponse = await apiFetch(`/coordinator/getMentorIssues`, {
@@ -191,7 +192,7 @@ const AdminCoordinatorlistDetails = ({ route, navigation }) => {
         body: JSON.stringify({ phone: mentor.phone }),
       });
 
-      const issuesData = await issuesResponse.json();
+      const issuesData = await issuesResponse
 
       // console.log("Assignments data", sectionData); 
 
@@ -353,13 +354,26 @@ const AdminCoordinatorlistDetails = ({ route, navigation }) => {
     return `${displayHour}:${minutes} ${period}`;
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

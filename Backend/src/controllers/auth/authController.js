@@ -64,7 +64,7 @@ exports.googleLogin = (req, res) => {
         SECRET_KEY,
         { expiresIn: '1h' }
       );
-      // console.log('Google login successful for user:', user.email);
+      // console.log('Google login successful for user:', user);
       
       return res.json({
         success: true,

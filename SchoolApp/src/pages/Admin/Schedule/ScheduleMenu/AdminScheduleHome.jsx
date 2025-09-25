@@ -112,7 +112,7 @@ const AdminScheduleHome = ({ navigation }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/grades`);
+      const response = await apiFetch(`/admin/grades`);
       const data = response
       if (data.success) {
         const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);
@@ -130,7 +130,7 @@ const AdminScheduleHome = ({ navigation }) => {
 
   const fetchSections = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/grades/${activeGrade}/sections`);
+      const response = await apiFetch(`/admin/grades/${activeGrade}/sections`);
       const data = response
       if (data.success) {
         // console.log(data.gradeSections);

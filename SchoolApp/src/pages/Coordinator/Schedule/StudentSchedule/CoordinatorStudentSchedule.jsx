@@ -109,7 +109,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
         setLoading(true);
         try {
             const dateStr = selectedDate.toISOString().split('T')[0];
-            const response = await fetch(`${API_URL}/api/coordinator/schedule/student/${dateStr}/${selectedStudent}`);
+            const response = await apiFetch(`/coordinator/schedule/student/${dateStr}/${selectedStudent}`);
             const data = response
             if (data.success) {
                 setSchedule(data.schedule);
@@ -141,7 +141,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
     // Fetch dropdown data functions
     const fetchSubjects = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/coordinator/getSubjects`);
+            const response = await apiFetch(`/coordinator/getSubjects`);
             const data = response
             if (data.success) {
                 setSubjects(data.subjects || []);
@@ -419,7 +419,7 @@ const CoordinatorStudentSchedule = ({ navigation, route }) => {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ subjectId: period.subject_id })
-                    }).then(res => res.json());
+                    }).then(res => res);
 
                     if (activities.success) {
                         const selectedActivity = activities.subjectActivities.find(act => act.activity_type === period.activity_type);

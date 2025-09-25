@@ -44,16 +44,15 @@ const SubjectProgress = () => {
 
       const phone = JSON.parse(storedPhone);
 
-      const response = await apiFetch(`${API_URL}/student/progress/${subjectId}`, {
+      const response = await apiFetch(`/student/progress/${subjectId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response) {
+        const result = response;
         setSubjectData(result.subjectData);
         setTopicHierarchy(result.topicHierarchy);
       } else {
@@ -88,11 +87,10 @@ const SubjectProgress = () => {
       const storedPhone = await AsyncStorage.getItem('userPhone');
       const phone = JSON.parse(storedPhone);
 
-      const response = await apiFetch(`${API_URL}/student/assessment/request`, {
+      const response = await apiFetch(`/student/assessment/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
         body: JSON.stringify({
           topic_id: topicId,
@@ -101,9 +99,9 @@ const SubjectProgress = () => {
         }),
       });
 
-      const result = await response.json();
+      const result = response;
       
-      if (response.ok) {
+      if (response) {
         Alert.alert('Success', 'Assessment request submitted successfully');
         fetchSubjectProgress(); // Refresh data
       } else {

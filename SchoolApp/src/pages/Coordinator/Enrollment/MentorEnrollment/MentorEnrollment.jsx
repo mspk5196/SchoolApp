@@ -50,7 +50,7 @@ const MentorEnrollment = ({ navigation, route }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getGrades`);
+      const response = await apiFetch(`/coordinator/getGrades`);
       const data = response
 
       if (data.success) {
@@ -88,7 +88,7 @@ const MentorEnrollment = ({ navigation, route }) => {
 
   const fetchSubjects = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getSubjects`);
+      const response = await apiFetch(`/coordinator/getSubjects`);
       const data = response
 
       if (data.success) {
@@ -272,7 +272,7 @@ const MentorEnrollment = ({ navigation, route }) => {
       console.log('Template response status:', response.status);
       console.log('Template response headers:', response.headers);
 
-      if (response.ok) {
+      if (response) {
         // Get the blob data
         const blob = await response.blob();
         const base64Data = await new Promise((resolve) => {
@@ -295,7 +295,7 @@ const MentorEnrollment = ({ navigation, route }) => {
           [{ text: 'OK' }]
         );
       } else {
-        const errorData = await response.json();
+        const errorData = response;
         Alert.alert('Error', errorData.message || 'Failed to generate template');
       }
     } catch (error) {
@@ -333,7 +333,7 @@ const MentorEnrollment = ({ navigation, route }) => {
 
         console.log('Upload response status:', response.status);
 
-        if (!response.ok) {
+        if (!response) {
           // Try to get error message from response
           const errorText = await response.text();
           console.log('Error response:', errorText);

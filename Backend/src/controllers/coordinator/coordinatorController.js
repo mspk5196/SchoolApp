@@ -2603,7 +2603,6 @@ ORDER BY fd.registered_at DESC;
 
 
     `);
-
     res.status(200).json({ success: true, logs: rows });
   } catch (error) {
     console.error("Error fetching discipline logs:", error);

@@ -51,45 +51,42 @@ const EnhancedStudentDashboard = () => {
       const phone = JSON.parse(storedPhone);
       
       // Fetch enhanced dashboard data
-      const dashboardResponse = await apiFetch(`${API_URL}/student/dashboard`, {
+      const dashboardResponse = await apiFetch(`/student/dashboard`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
       });
 
       if (dashboardResponse.ok) {
-        const dashboardResult = await dashboardResponse.json();
+        const dashboardResult = await dashboardResponse;
         setDashboardData(dashboardResult);
         setSubjectProgress(dashboardResult.subjectProgress || []);
       }
 
       // Fetch today's schedule
-      const scheduleResponse = await apiFetch(`${API_URL}/student/schedule/today`, {
+      const scheduleResponse = await apiFetch(`/student/schedule/today`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
       });
 
       if (scheduleResponse.ok) {
-        const scheduleResult = await scheduleResponse.json();
+        const scheduleResult = await scheduleResponse;
         setTodaySchedule(scheduleResult.schedule || []);
       }
 
       // Fetch performance analytics
-      const analyticsResponse = await apiFetch(`${API_URL}/student/analytics`, {
+      const analyticsResponse = await apiFetch(`/student/analytics`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
       });
 
       if (analyticsResponse.ok) {
-        const analyticsResult = await analyticsResponse.json();
+        const analyticsResult = await analyticsResponse;
         setPerformanceAnalytics(analyticsResult);
       }
 
@@ -112,11 +109,10 @@ const EnhancedStudentDashboard = () => {
       const storedPhone = await AsyncStorage.getItem('userPhone');
       const phone = JSON.parse(storedPhone);
 
-      const response = await apiFetch(`${API_URL}/student/assessment/request`, {
+      const response = await apiFetch(`/student/assessment/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${phone}`,
         },
         body: JSON.stringify({
           topic_id: topicId,
@@ -125,9 +121,9 @@ const EnhancedStudentDashboard = () => {
         }),
       });
 
-      const result = await response.json();
+      const result = response;
       
-      if (response.ok) {
+      if (response) {
         Alert.alert('Success', 'Assessment request submitted successfully');
         fetchDashboardData(); // Refresh data
       } else {

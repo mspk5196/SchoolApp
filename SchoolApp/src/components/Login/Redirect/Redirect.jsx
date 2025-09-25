@@ -88,8 +88,8 @@ const Redirect = ({ route }) => {
 
   const fetchCoordinatorData = async () => {
     
-    // console.log(AsyncStorage.getItem('token'));
-    // console.log('Fetching coordinator data for phone number:', phoneNumber);
+    console.log(AsyncStorage.getItem('token'));
+    console.log('Fetching coordinator data for phone number:', phoneNumber);
     try {
       const response = await apiFetch(`/coordinator/getCoordinatorData`, {
         method: 'POST',

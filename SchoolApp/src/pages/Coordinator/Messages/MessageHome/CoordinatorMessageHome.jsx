@@ -42,7 +42,7 @@ const CoordinatorMessageHome = ({ navigation, route }) => {
     //             Alert.alert('Encryption Error', "Could not get recipient's key.");
     //             return false;
     //         }
-    //         const theirKeyData = await res.json();
+    //         const theirKeyData = await res;
     //         sharedSecretRef.current = getSharedSecretAESKey(myPrivateKey, theirKeyData.public_key);
     //         return true;
     //     } catch (error) {
@@ -81,7 +81,7 @@ const CoordinatorMessageHome = ({ navigation, route }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ coordinator_id: currentCoordinator.id, coordinatorGrades })
             });
-            const data = await res.json();
+            const data = await res;
             if (data.success) {
                 console.log("Fetched inbox data:", data.inbox);
                 const decrypted = await decryptMessages(data.inbox);

@@ -66,7 +66,7 @@ const TopicMaterials = ({ route, navigation }) => {
           headers: { 'Content-Type': 'application/json' }
         }
       );
-      const result = await response.json();
+      const result = response;
       if (result.success) {
         setBatches(result.batches || []);
         // Initialize batch expected dates as empty strings
@@ -91,7 +91,7 @@ const TopicMaterials = ({ route, navigation }) => {
           headers: { 'Content-Type': 'application/json' }
         }
       );
-      const result = await response.json();
+      const result = response;
       if (result.success) {
         // Process materials to handle file_url JSON parsing
         const processedMaterials = result.data.map(material => {
@@ -206,7 +206,7 @@ const TopicMaterials = ({ route, navigation }) => {
   const checkFileExists = async (url) => {
     try {
       const response = await apiFetch(url, { method: 'HEAD' });
-      return response.ok;
+      return response;
     } catch (error) {
       return false;
     }
@@ -428,7 +428,7 @@ const TopicMaterials = ({ route, navigation }) => {
           headers: { 'Content-Type': 'application/json' }
         }
       );
-      const result = await response.json();
+      const result = response;
       if (result.success) {
         // Set the batch expected dates from the response
         const dates = {};
@@ -545,7 +545,7 @@ const TopicMaterials = ({ route, navigation }) => {
           }
         );
 
-        const result = await response.json();
+        const result = response;
         console.log('Update result:', result);
 
         if (result.success) {
@@ -607,7 +607,7 @@ const TopicMaterials = ({ route, navigation }) => {
           body: formDataToSend,
         });
 
-        const result = await response.json();
+        const result = response;
 
         if (result.success) {
           Alert.alert('Success', 'Material uploaded successfully');
@@ -642,7 +642,7 @@ const TopicMaterials = ({ route, navigation }) => {
                   headers: { 'Content-Type': 'application/json' },
                 }
               );
-              const result = await response.json();
+              const result = response;
               if (result.success) {
                 Alert.alert('Success', 'Material deleted successfully');
                 fetchMaterials();

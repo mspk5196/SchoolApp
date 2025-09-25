@@ -89,7 +89,7 @@ const MentorBufferActivity = ({ navigation, route }) => {
                 mentor_id: mentorData[0].id
             })
         })
-            .then(response => response.json())
+            .then(response => response)
             .then(data => {
                 const updatedActivities = data.activities
                     .map(checkActivityStatus)
@@ -166,7 +166,7 @@ const MentorBufferActivity = ({ navigation, route }) => {
                 ended_time: new Date().toTimeString().substr(0, 8)
             })
         })
-            .then(response => response.json())
+            .then(response => response)
             .then(() => {
                 fetchActivities(); // Refresh the list
             })

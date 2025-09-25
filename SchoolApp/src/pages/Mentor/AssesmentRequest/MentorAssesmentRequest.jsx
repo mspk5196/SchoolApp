@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiClient.js";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, FlatList, Alert, Image } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
 import styles from "./AssessmentRequeststy";
@@ -9,6 +9,7 @@ import Add from "../../../assets/MentorPage/plus.svg";
 import Clock from "../../../assets/MentorPage/formkit_time.svg";
 import { widthPercentageToDP } from "react-native-responsive-screen";
 import Nodata from "../../../components/General/Nodata.jsx";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const Staff = '../../../../assets/MentorPage/User.svg';
 
 const MentorAssesmentRequest = ({ navigation, route }) => {
@@ -63,7 +64,7 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
       },
       body: JSON.stringify({ mentorId: mentorData[0].id }),
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setAssessments(data.assessments);
@@ -85,7 +86,7 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
       },
       body: JSON.stringify({ assessmentId, level }),
     })
-      .then(response => response.json())
+      .then(response => response)
       .then(data => {
         if (data.success) {
           setStudents(data.students);
@@ -105,13 +106,26 @@ const MentorAssesmentRequest = ({ navigation, route }) => {
     }
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

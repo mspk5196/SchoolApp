@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import { API_URL } from '../../../../utils/env.js'
 import PreviousIcon from '../../../../assets/CoordinatorPage/BackLogs/Back.svg';
 import styles from './BackLogsStyle';
 import Nodata from '../../../../components/General/Nodata';
+import { apiFetch } from '../../../../utils/apiClient.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const Staff = require('../../../../assets/CoordinatorPage/BackLogs/staff.png');
 
 const CoordinatorBackLogs = ({ navigation, route }) => {
@@ -43,7 +45,7 @@ const CoordinatorBackLogs = ({ navigation, route }) => {
   const fetchSections = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/admin/grades/${activeGrade}/sections`);
+      const response = await apiFetch(`/admin/grades/${activeGrade}/sections`);
       const data = response
       if (data.success) {
         setSections(data.gradeSections);
@@ -63,7 +65,7 @@ const CoordinatorBackLogs = ({ navigation, route }) => {
 
   const fetchBacklogs = async (sectionId) => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/backlogs/${sectionId}`);
+      const response = await apiFetch(`/admin/backlogs/${sectionId}`);
       const data = response
       if (data.success) {
         setAssessmentData(data.overdueStudents);
@@ -75,13 +77,26 @@ const CoordinatorBackLogs = ({ navigation, route }) => {
     }
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Image } from 'react-native';
 import styles from './leavehistorysty';
 import SearchIcon from '../../../../assets/MentorPage/search.svg';
@@ -45,9 +45,9 @@ const MentorLeaveHistory = ({ navigation }) => {
           body: JSON.stringify({ phone }),
         });
 
-        if (!response.ok) throw new Error('Failed to fetch leave requests');
+        if (!response) throw new Error('Failed to fetch leave requests');
 
-        const result = await response.json();
+        const result = response;
 
         if (result.success) {
           setLeaveRequests(result.leaveRequests);
@@ -84,13 +84,26 @@ const MentorLeaveHistory = ({ navigation }) => {
     }
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

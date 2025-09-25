@@ -54,7 +54,7 @@ const AddEventForm = ({ navigation, route }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/coordinator/getGrades`);
+      const response = await apiFetch(`/coordinator/getGrades`);
       const data = response
 
       if (data.success) {

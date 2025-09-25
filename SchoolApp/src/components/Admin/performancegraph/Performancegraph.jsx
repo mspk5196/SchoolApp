@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import styles from './Performancegraphsty';
 import { API_URL } from '../../../utils/env.js'
+import { apiFetch } from '../../../utils/apiClient.js';
 
 const PerformanceGraph = ({ student }) => {
   const [loading, setLoading] = useState(true);
@@ -24,7 +25,7 @@ const PerformanceGraph = ({ student }) => {
     const fetchPerformanceData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/api/admin/students/${student.roll}/performance`);
+        const response = await apiFetch(`/admin/students/${student.roll}/performance`);
         const data = response
 
         if (data.success) {

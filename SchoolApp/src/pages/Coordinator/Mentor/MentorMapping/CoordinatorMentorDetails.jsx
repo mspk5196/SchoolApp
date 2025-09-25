@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView, Modal, Alert } from 'react-native';
 import styles from './MentorDetailsStyles';
 import { API_URL } from '../../../../utils/env.js';
@@ -7,6 +7,7 @@ import BackIcon from '../../../../assets/CoordinatorPage/MentorMapping/leftarrow
 import Person from '../../../../assets/CoordinatorPage/MentorMapping/person.svg';
 import Staff from '../../../../assets/CoordinatorPage/MentorMapping/staff.png';
 import Mentorimg from '../../../../assets/CoordinatorPage/MentorMapping/mentor.svg';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CoordinatorMentorDetails = ({ route, navigation }) => {
   // console.log("hi");
@@ -178,11 +179,26 @@ const CoordinatorMentorDetails = ({ route, navigation }) => {
     }
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
+      // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      // 2. Construct the full URL
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

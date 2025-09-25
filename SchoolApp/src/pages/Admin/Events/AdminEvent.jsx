@@ -281,7 +281,7 @@ const AdminEvent = ({ navigation, route }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/grades`);
+      const response = await apiFetch(`/admin/grades`);
       const data = response
       if (data.success) {
         const sortedGrades = (data.grades || []).sort((a, b) => a.id - b.id);
@@ -300,7 +300,7 @@ const AdminEvent = ({ navigation, route }) => {
     try {
 
       setRefreshing(true);
-      const response = await fetch(`${API_URL}/api/coordinator/events/get?phone=${activeGrade}`);
+      const response = await apiFetch(`/coordinator/events/get?phone=${activeGrade}`);
       const data = response
 
       if (data.success) {

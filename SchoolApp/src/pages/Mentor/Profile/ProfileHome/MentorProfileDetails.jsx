@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView, View, Text, Image, TouchableOpacity, Alert } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp, } from 'react-native-responsive-screen';
 import Arrow from '../../../../assets/MentorPage/arrow.svg';
@@ -12,6 +12,7 @@ import Leave2 from '../../../../assets/MentorPage/leave2.svg';
 import Grade from '../../../../assets/MentorPage/grade.svg';
 import styles from './mentordetailssty';
 import { API_URL } from '../../../../utils/env.js'
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const MentorProfileDetails = ({ navigation, route }) => {
   const { mentorData } = route.params;
@@ -62,7 +63,7 @@ const MentorProfileDetails = ({ navigation, route }) => {
         body: JSON.stringify({ mentorId: uniqueMentorData[0].id }),
       });
 
-      const assignmentsData = await assignmentsResponse.json();
+      const assignmentsData = await assignmentsResponse
 
       // Fetch section information
       const sectionResponse = await apiFetch(`/mentor/getMentorSection`, {
@@ -71,7 +72,7 @@ const MentorProfileDetails = ({ navigation, route }) => {
         body: JSON.stringify({ mentorId: uniqueMentorData[0].id }),
       });
 
-      const sectionData = await sectionResponse.json();
+      const sectionData = await sectionResponse
 
       // Fetch issues count (you'll need to implement this endpoint)
       const issuesResponse = await apiFetch(`/mentor/getMentorIssues`, {
@@ -80,7 +81,7 @@ const MentorProfileDetails = ({ navigation, route }) => {
         body: JSON.stringify({ mentorId: uniqueMentorData[0].id }),
       });
 
-      const issuesData = await issuesResponse.json();
+      const issuesData = await issuesResponse
 
       setMentorDetails({
         subjects: assignmentsData.subjects || [],
@@ -112,15 +113,28 @@ const MentorProfileDetails = ({ navigation, route }) => {
     return grades.map(grade => `Grade ${grade.grade_id}`).join(', ');
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
-      return Profile;
+      return Staff;
     }
   };
 

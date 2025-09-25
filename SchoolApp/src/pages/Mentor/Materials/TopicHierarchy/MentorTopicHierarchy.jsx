@@ -57,7 +57,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                 })
             });
 
-            const result = await response.json();
+            const result = response;
             if (result.success) {
                 setActivities(result.data);
                 // console.log('Fetched activities:', result.data);
@@ -88,7 +88,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                 })
             });
 
-            const result = await response.json();
+            const result = response;
             if (result.success) {
                 setSubActivities(result.data);
                 console.log('Fetched sub-activities:', result.data);
@@ -127,7 +127,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                 })
             });
 
-            const result = await response.json();
+            const result = response;
             if (result.success) {
                 setTopicHierarchy(result.data.hierarchy);
             } else {
@@ -154,7 +154,7 @@ const MentorTopicHierarchy = ({ navigation, route }) => {
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            const result = await response.json();
+            const result = response;
             if (result.success) {
                 // console.log('Fetched topic materials:', result.data.materials);
                 setSelectedTopicMaterials(result.data.materials);

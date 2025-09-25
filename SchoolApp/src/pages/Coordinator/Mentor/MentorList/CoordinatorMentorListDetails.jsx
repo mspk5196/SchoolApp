@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../../utils/apiClient.js";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Modal, FlatList, ScrollView, ActivityIndicator, Alert, TouchableWithoutFeedback, TextInput } from 'react-native';
 import BackIcon from "../../../../assets/CoordinatorPage/MentorList/leftarrow";
 import Numdays from '../../../../assets/CoordinatorPage/MentorList/numdays.svg';
@@ -16,6 +16,7 @@ import { API_URL } from '../../../../utils/env.js'
 import { Calendar } from 'react-native-calendars';
 import styles from './MentorListDetailsStyles';
 import Nodata from '../../../../components/General/Nodata';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const Staff = require('../../../../assets/CoordinatorPage/MentorList/staff.png');
 
 const CoordinatorMentorListDetails = ({ route, navigation }) => {
@@ -177,7 +178,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
         body: JSON.stringify({ mentorId: mentor.id }),
       });
 
-      const assignmentsData = await assignmentsResponse.json();
+      const assignmentsData = await assignmentsResponse
 
       // Fetch section information
       const sectionResponse = await apiFetch(`/coordinator/getMentorSection`, {
@@ -186,7 +187,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
         body: JSON.stringify({ mentorId: mentor.id }),
       });
 
-      const sectionData = await sectionResponse.json();
+      const sectionData = await sectionResponse
 
       // Fetch issues count (you'll need to implement this endpoint)
       const issuesResponse = await apiFetch(`/coordinator/getMentorIssues`, {
@@ -195,7 +196,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
         body: JSON.stringify({ phone: mentor.phone }),
       });
 
-      const issuesData = await issuesResponse.json();
+      const issuesData = await issuesResponse
 
       // console.log("Assignments data", sectionData); 
 
@@ -355,13 +356,26 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
     return `${displayHour}:${minutes} ${period}`;
   };
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

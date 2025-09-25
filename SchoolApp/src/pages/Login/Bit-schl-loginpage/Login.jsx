@@ -121,15 +121,17 @@ const Login = () => {
                 method: 'POST',
                 body: JSON.stringify({ email: googleEmail }),
             });
+            // console.log('data:', data);
 
             if (data.success && data.token) {
                 // Store token as string!
+                
                 await AsyncStorage.setItem('token', data.token);
                 await AsyncStorage.setItem('userRoles', JSON.stringify(data.user.roles));
                 await AsyncStorage.setItem('userPhone', data.user.phone);
 
                 const storedToken = await AsyncStorage.getItem('token');
-                console.log('Stored JWT token:', storedToken); // Should be your JWT string
+                // console.log('Stored JWT token:', storedToken); // Should be your JWT string
 
                 // Navigate to app
                 navigation.navigate('Redirect', { phoneNumber: data.user.phone, password: '' });

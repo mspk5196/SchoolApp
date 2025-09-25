@@ -81,7 +81,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         `${API_URL}/api/coordinator/academic-schedule/monthly/${activeGrade}/${activeSection}/${month}/${year}`
       );
 
-      const result = await response.json();
+      const result = response;
       if (result.success) {
         setMonthlySchedule(result.data);
       } else {
@@ -106,7 +106,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
         }
       );  
 
-      const result = await response.json();
+      const result = response;
       if (result.success && Array.isArray(result.data)) {
         console.log('Fetched activities:', result.data);
          
@@ -158,7 +158,7 @@ const CoordinatorAcademicSchedule = ({ navigation, route }) => {
                   })
                 });
 
-                const result = await response.json();
+                const result = response;
                 if (result.success) {
                   Alert.alert('Success', `Generated ${result.totalCreated} daily schedules from ${result.weeklySchedulesFound} weekly templates`);
                   fetchMonthlySchedule(); // Refresh the calendar

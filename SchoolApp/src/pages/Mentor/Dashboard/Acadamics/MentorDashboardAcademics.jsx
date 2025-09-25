@@ -301,7 +301,7 @@ const MentorDashboardAcademics = ({ navigation, route }) => {
         })
       });
       
-      if (!response.ok) {
+      if (!response) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       

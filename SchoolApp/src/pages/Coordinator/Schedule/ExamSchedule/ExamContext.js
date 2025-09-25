@@ -38,7 +38,7 @@ export const ExamProvider = ({ children, gradeId }) => {
   useEffect(() => {
     const fetchExamSchedules = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/coordinator/getExamSchedule?grade_id=${gradeId}`);
+        const response = await apiFetch(`/coordinator/getExamSchedule?grade_id=${gradeId}`);
         const data = response
         if (data.success) {
           // Transform backend data to match frontend format

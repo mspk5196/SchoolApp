@@ -38,7 +38,7 @@ const PerformanceDetailsScreen = ({ route }) => {
               date: data.date
             })
           });
-          const assessment = await res.json();
+          const assessment = await res;
 
           if (assessment && assessment.hasAssessment) {
             // When setting detailsData for Assessment:
@@ -66,7 +66,7 @@ const PerformanceDetailsScreen = ({ route }) => {
                 date: data.date
               })
             });
-            const academic = await res2.json();
+            const academic = await res2;
             // When setting detailsData for Academic:
             detailsData = {
               type: 'Academic',

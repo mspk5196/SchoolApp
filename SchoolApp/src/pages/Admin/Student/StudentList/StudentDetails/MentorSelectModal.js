@@ -34,8 +34,8 @@ const MentorSelectModal = ({ visible, onClose, onSelect, gradeId, studentId }) =
     const fetchMentors = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/admin/students/mentors?gradeId=${gradeId}`);
-            const data = await res.json();
+            const res = await apiFetch(`/admin/students/mentors?gradeId=${gradeId}`);
+            const data = await res;
             if (data.success) {
                 setAllMentors(data.mentors);
                 setFilteredMentors(data.mentors);

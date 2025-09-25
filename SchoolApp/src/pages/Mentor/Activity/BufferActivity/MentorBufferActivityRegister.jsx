@@ -41,12 +41,12 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
   useEffect(() => {
     const fetchGrades = () => {
       setLoading(true);
-      fetch(`${API_URL}/api/mentor/grades`)
+      apiFetch(`/mentor/grades`)
         .then(response => {
-          if (!response.ok) {
+          if (!response) {
             throw new Error('Network response was not ok');
           }
-          return response.json();
+          return response
         })
         .then(data => {
           setGradeItems(data.grades.map(grade => ({
@@ -68,12 +68,12 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
   useEffect(() => {
     if (grade) {
       const fetchSections = () => {
-        fetch(`${API_URL}/api/mentor/sections/${grade}`)
+        apiFetch(`/mentor/sections/${grade}`)
           .then(response => {
-            if (!response.ok) {
+            if (!response) {
               throw new Error('Network response was not ok');
             }
-            return response.json();
+            return response;
           })
           .then(data => {
             setSectionItems(data.sections.map(section => ({
@@ -93,12 +93,12 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
   // Fetch activities on mount
   useEffect(() => {
     const fetchActivities = () => {
-      fetch(`${API_URL}/api/mentor/activity-types`)
+      apiFetch(`/mentor/activity-types`)
         .then(response => {
-          if (!response.ok) {
+          if (!response) {
             throw new Error('Network response was not ok');
           }
-          return response.json();
+          return response;
         })
         .then(data => {
           setActivityItems(data.activityTypes.map(activity => ({
@@ -183,10 +183,10 @@ const MentorBufferActivityRegister = ({ navigation, route }) => {
       })
     })
     .then(response => {
-      if (!response.ok) {
+      if (!response) {
         throw new Error('Network response was not ok');
       }
-      return response.json();
+      return response
     })
     .then(() => {
       alert('Buffer activity created successfully');

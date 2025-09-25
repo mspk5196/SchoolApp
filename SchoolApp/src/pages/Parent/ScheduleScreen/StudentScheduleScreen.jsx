@@ -328,7 +328,7 @@ const StudentScheduleScreen = () => {
             year: selectedYear
           })
         });
-        const fallbackData = await fallbackResponse.json();
+        const fallbackData = await fallbackResponse;
         if (fallbackData.success) {
           const dayKey = String(Number(selectedDay));
           const dayData = Array.isArray(fallbackData.schedule[dayKey]) ? fallbackData.schedule[dayKey] : [];
@@ -351,13 +351,28 @@ const StudentScheduleScreen = () => {
     fetchScheduleData();
   }, [selectedDay]);
 
+ const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
+
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
+      // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      // 2. Construct the full URL
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
-      return ProfileImg;
+      return Staff;
     }
   };
 

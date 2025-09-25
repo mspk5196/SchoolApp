@@ -1,6 +1,6 @@
 import { apiFetch } from "../../../utils/apiClient.js";
 // CoordinatorLogs.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Linking, RefreshControl, Modal, ActivityIndicator } from 'react-native';
 import BackIcon from '../../../assets/CoordinatorPage/Logs/Back.svg';
 import Phone from '../../../assets/CoordinatorPage/Logs/Phone.svg';
@@ -13,6 +13,7 @@ import { formatDate } from 'date-fns';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import LottieView from 'lottie-react-native';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 // Add styles for the dropdown sections
@@ -255,6 +256,7 @@ const CoordinatorLogs = ({ navigation, route }) => {
     failedAssessments: true
   });
 
+  
   // Toggle function for expanding/collapsing sections
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -262,6 +264,12 @@ const CoordinatorLogs = ({ navigation, route }) => {
       [section]: !prev[section]
     }));
   };
+  
+  const authTokenRef = useRef(null);
+  useEffect(() => {
+    // Load token once (used for protected images if needed)
+    AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
+  }, []);
 
   useEffect(() => {
     fetchLogsData();
@@ -296,10 +304,10 @@ const CoordinatorLogs = ({ navigation, route }) => {
         })
       ]);
 
-      const classesData = await classesRes.json();
-      const levelsData = await levelsRes.json();
-      const assessmentsData = await assessmentsRes.json();
-      const failedStudentsData = await failedStudentRes.json();
+      const classesData = await classesRes;
+      const levelsData = await levelsRes;
+      const assessmentsData = await assessmentsRes;
+      const failedStudentsData = await failedStudentRes;
 
       if (classesData.success) setOverdueClasses(classesData.overdueClasses);
       if (levelsData.success) setOverdueLevels(levelsData.overdueLevels);
@@ -447,12 +455,19 @@ const CoordinatorLogs = ({ navigation, route }) => {
   };
 
   const getProfileImageSource = (profilePath) => {
+    // console.log(authTokenRef.current);
+    
+    // console.log('Profile Path:', profilePath);
     if (profilePath) {
       // 1. Replace backslashes with forward slashes
       const normalizedPath = profilePath.replace(/\\/g, '/');
       // 2. Construct the full URL
-      const fullImageUrl = `${API_URL}/${normalizedPath}`;
-      return { uri: fullImageUrl };
+      const uri = `${API_URL}/${normalizedPath}`;
+      // return { uri: fullImageUrl };
+      if (authTokenRef.current) {
+        return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
+      }
+      return { uri };
     } else {
       return Staff;
     }

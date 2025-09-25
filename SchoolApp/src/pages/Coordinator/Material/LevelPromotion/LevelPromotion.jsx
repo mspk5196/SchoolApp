@@ -22,7 +22,7 @@ const LevelPromotion = ({ navigation, route }) => {
   const fetchLevelPassPercentages = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/coordinator/getLevelPassPercentages?gradeId=${gradeID}`);
+      const response = await apiFetch(`/coordinator/getLevelPassPercentages?gradeId=${gradeID}`);
       const data = response
       
       if (data.success) {
