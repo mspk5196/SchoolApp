@@ -59,3 +59,30 @@ exports.getGeneralData = (req, res) => {
         });
     }
 };
+
+exports.getGrades = (req, res) => {
+    const sql = `SELECT g.id, g.grade_name
+                 FROM grades g
+                 ORDER BY g.id;`;
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error('Error fetching grades:', err);
+            return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        }
+        res.json({ success: true, data: results });
+    });
+};
+
+exports.getSections = (req, res) => {
+    const sql = `SELECT s.id as section_id, s.section_name, g.grade_name, s.grade_id
+                 FROM sections s
+                 JOIN grades g ON s.grade_id = g.id
+                 ORDER BY g.id;`;
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error('Error fetching sections:', err);
+            return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        }
+        res.json({ success: true, data: results });
+    });
+};

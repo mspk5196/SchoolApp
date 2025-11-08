@@ -13,6 +13,7 @@ app.use((req, res, next) => {
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/general', require('./routes/generalRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 
 module.exports = app;

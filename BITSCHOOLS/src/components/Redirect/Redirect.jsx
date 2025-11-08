@@ -76,7 +76,37 @@ const Redirect = ({ route }) => {
 
       if (data.success && data.data) {
         await AsyncStorage.setItem('userData', JSON.stringify(data.data));
-        await AsyncStorage.setItem('userRole', selectedRole)
+        await AsyncStorage.setItem('userRole', selectedRole);
+        
+        // Navigate to role-specific routes
+        switch (selectedRole) {
+          case 'Admin':
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'AdminRoutes' }],
+            });
+            break;
+          case 'Coordinator':
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'CoordinatorRoutes' }],
+            });
+            break;
+          case 'Mentor':
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'MentorRoutes' }],
+            });
+            break;
+          case 'Parent':
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'ParentRoutes' }],
+            });
+            break;
+          default:
+            Alert.alert('Error', 'Unknown role');
+        }
       } else {
         Alert.alert('No User Found', data.message || 'No User is associated with this number');
       }
