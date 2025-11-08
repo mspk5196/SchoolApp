@@ -14,7 +14,7 @@ const menuItems = [
     iconType: 'MaterialCommunityIcons',
     color: '#7C3AED',
     bgColor: '#E9D5FF',
-    route: 'FacultyEnrollment',
+    route: 'AdminFacultyEnrollment',
   },
   {
     id: '2',
@@ -70,7 +70,7 @@ const EnrollmentHome = ({ navigation }) => {
 
       <TouchableOpacity
         style={styles.homeButton}
-        onPress={() => navigation.navigate('AdminMain')}
+        onPress={() => navigation.navigate('AdminHome')}
         activeOpacity={0.8}
       >
         <Ionicons name="home" size={26} color="#FFFFFF" />

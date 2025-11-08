@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React, { Component } from 'react'
-import NodataImg from '../../assets/Genreal/nodata.svg'
+import NodataImg from '../../assets/General/nodata.svg'
 
 export class Nodata extends Component {
     render() {

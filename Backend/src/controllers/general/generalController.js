@@ -86,3 +86,36 @@ exports.getSections = (req, res) => {
         res.json({ success: true, data: results });
     });
 };
+
+exports.getCoordinatorGrades = (req, res) => {
+    const { facultyId } = req.body;
+
+    const sql = `SELECT cga.grade_id, g.grade_name
+                 FROM coordinator_grade_assignments cga
+                 JOIN grades g ON cga.grade_id = g.id
+                 JOIN coordinators c ON c.id = cga.coordinator_id
+                 WHERE c.faculty_id = ?`;
+
+    db.query(sql, [facultyId], (err, results) => {
+        if (err) {
+            console.error('Error fetching coordinator grades:', err);
+            return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        }
+        res.json({ success: true, data: results });
+    });
+};
+
+exports.getGradeSections = (req, res) => {
+    const { gradeID } = req.body;
+    const sql = `SELECT s.id as section_id, s.section_name
+                 FROM sections s
+                 WHERE s.grade_id = ?   
+    `;
+    db.query(sql, [gradeID], (err, results) => {
+        if (err) {
+            console.error("Error fetching grade sections:", err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        res.json({ success: true, data: results });
+    });
+};

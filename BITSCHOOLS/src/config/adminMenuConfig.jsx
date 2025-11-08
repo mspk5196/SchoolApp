@@ -56,7 +56,7 @@ export const adminMenuConfig = {
       {
         title: 'Enrollment',
         icon: <Icon name="account-plus-outline" size={50} color="#1E293B" />,
-        screen: 'EnrollmentHome',
+        screen: 'AdminEnrollmentHome',
       },
       {
         title: 'Messages',

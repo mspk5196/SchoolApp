@@ -1,6 +1,12 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CoordinatorHome from '../../pages/Coordinator/Home/CoordinatorHome';
+import CoordinatorEnrollmentHome from '../../pages/Coordinator/Enrollment/Home/EnrollmentHome';
+import CoordinatorMentorHome from '../../pages/Coordinator/Mentor/Home/CoordinatorMentorHome';
+import CoordinatorStudentEnrollment from '../../pages/Coordinator/Enrollment/StudentEnrollment/StudentEnrollment';
+import CoordinatorSectionEnrollment from '../../pages/Coordinator/Enrollment/SectionEnrollment/CoordinatorSectionEnrollment';
+import CoordinatorSubjectMentor from '../../pages/Coordinator/Mentor/SubjectMapping/CoordinatorSubjectMentor';
+import CoordinatorMentorMapping from '../../pages/Coordinator/Mentor/SectionMapping/CoordinatorMentorMapping';
 
 const Stack = createNativeStackNavigator();
 
@@ -8,6 +14,15 @@ const CoordinatorRoutes = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="CoordinatorHome" component={CoordinatorHome} />
+
+      <Stack.Screen name="CoordinatorEnrollmentHome" component={CoordinatorEnrollmentHome} />
+      <Stack.Screen name="CoordinatorStudentEnrollment" component={CoordinatorStudentEnrollment} />
+      <Stack.Screen name="CoordinatorSectionEnrollment" component={CoordinatorSectionEnrollment} />
+
+      <Stack.Screen name="CoordinatorMentorHome" component={CoordinatorMentorHome} />
+      <Stack.Screen name="CoordinatorSubjectMentor" component={CoordinatorSubjectMentor} />
+
+      <Stack.Screen name="CoordinatorMentorMapping" component={CoordinatorMentorMapping} />
     </Stack.Navigator>
   );
 };

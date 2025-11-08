@@ -77,7 +77,7 @@ exports.enrollFaculty = async (req, res) => {
 
             // Handle role-specific assignments
             if (role === 'Coordinator') {
-                // Create coordinator record regardless of grades
+                // Check if coordinator record exists
                 const [existingCoord] = await conn.query('SELECT id FROM coordinators WHERE faculty_id = ?', [facultyId]);
                 let coordinatorId;
 
@@ -86,7 +86,7 @@ exports.enrollFaculty = async (req, res) => {
                 } else {
                     const [coordResult] = await conn.query(
                         'INSERT INTO coordinators (faculty_id, is_active, assigned_by, created_at) VALUES (?, 1, ?, NOW())',
-                        [facultyId, facultyId]
+                        [facultyId, userId]
                     );
                     coordinatorId = coordResult.insertId;
                 }
@@ -96,12 +96,12 @@ exports.enrollFaculty = async (req, res) => {
                     for (const gradeId of grades) {
                         await conn.query(
                             'INSERT IGNORE INTO coordinator_grade_assignments (coordinator_id, grade_id, is_active, assigned_by, created_at) VALUES (?, ?, 1, ?, NOW())',
-                            [coordinatorId, gradeId, facultyId]
+                            [coordinatorId, gradeId, userId]
                         );
                     }
                 }
             } else if (role === 'Mentor') {
-                // Create mentor record regardless of sections
+                // Check if mentor record exists
                 const [existingMentor] = await conn.query('SELECT id FROM mentors WHERE faculty_id = ?', [facultyId]);
                 let mentorId;
 
@@ -110,7 +110,7 @@ exports.enrollFaculty = async (req, res) => {
                 } else {
                     const [mentorResult] = await conn.query(
                         'INSERT INTO mentors (faculty_id, assigned_by, is_active, created_at) VALUES (?, ?, 1, NOW())',
-                        [facultyId, facultyId]
+                        [facultyId, userId]
                     );
                     mentorId = mentorResult.insertId;
                 }
@@ -120,7 +120,7 @@ exports.enrollFaculty = async (req, res) => {
                     for (const sectionId of sections) {
                         await conn.query(
                             'INSERT IGNORE INTO mentor_section_assignments (mentor_id, section_id, is_active, assigned_by, created_at) VALUES (?, ?, 1, ?, NOW())',
-                            [mentorId, sectionId, facultyId]
+                            [mentorId, sectionId, userId]
                         );
                     }
                 }
@@ -330,7 +330,7 @@ exports.bulkUploadFaculty = async (req, res) => {
                             gradeIds.push(id);
                         } else {
                             results.failed.push({ row: i, message: `Unknown grade: ${token}` });
-                            // Don't continue here, just skip this invalid grade
+                            continue;
                         }
                     }
                 }
@@ -342,10 +342,9 @@ exports.bulkUploadFaculty = async (req, res) => {
                         const sid = parseInt(token);
                         if (isNaN(sid) || !sectionIds.has(sid)) {
                             results.failed.push({ row: i, message: `Unknown section ID: ${token}` });
-                            // Don't continue here, just skip this invalid section
-                        } else {
-                            sectionIdsArray.push(sid);
+                            continue;
                         }
+                        sectionIdsArray.push(sid);
                     }
                 }
 
@@ -362,8 +361,8 @@ exports.bulkUploadFaculty = async (req, res) => {
                     } else {
                         const hashedPassword = await bcrypt.hash(dobFormatted, 12);
                         const [userResult] = await conn.query(
-                            'INSERT INTO users (email, phone, password_hash) VALUES (?, ?, ?)',
-                            [email, mobileNumber, hashedPassword]
+                            'INSERT INTO users (email, phone, password_hash, created_by) VALUES (?, ?, ?, ?)',
+                            [email, mobileNumber, hashedPassword, 1]
                         );
                         userId = userResult.insertId;
                     }
@@ -399,7 +398,6 @@ exports.bulkUploadFaculty = async (req, res) => {
 
                     // Handle coordinator/mentor assignments
                     if (role === 'Coordinator') {
-                        // Create coordinator record regardless of grades
                         const [existingCoord] = await conn.query('SELECT id FROM coordinators WHERE faculty_id = ?', [facultyId]);
                         let coordinatorId;
 
@@ -408,22 +406,18 @@ exports.bulkUploadFaculty = async (req, res) => {
                         } else {
                             const [coordResult] = await conn.query(
                                 'INSERT INTO coordinators (faculty_id, is_active, assigned_by, created_at) VALUES (?, 1, ?, NOW())',
-                                [facultyId, facultyId]
+                                [facultyId, userId]
                             );
                             coordinatorId = coordResult.insertId;
                         }
 
-                        // Assign grades if provided
-                        if (gradeIds.length > 0) {
-                            for (const gid of gradeIds) {
-                                await conn.query(
-                                    'INSERT IGNORE INTO coordinator_grade_assignments (coordinator_id, grade_id, is_active, assigned_by, created_at) VALUES (?, ?, 1, ?, NOW())',
-                                    [coordinatorId, gid, facultyId]
-                                );
-                            }
+                        for (const gid of gradeIds) {
+                            await conn.query(
+                                'INSERT IGNORE INTO coordinator_grade_assignments (coordinator_id, grade_id, is_active, assigned_by, created_at) VALUES (?, ?, 1, ?, NOW())',
+                                [coordinatorId, gid, userId]
+                            );
                         }
                     } else if (role === 'Mentor') {
-                        // Create mentor record regardless of sections
                         const [existingMentor] = await conn.query('SELECT id FROM mentors WHERE faculty_id = ?', [facultyId]);
                         let mentorId;
 
@@ -432,19 +426,16 @@ exports.bulkUploadFaculty = async (req, res) => {
                         } else {
                             const [mentorResult] = await conn.query(
                                 'INSERT INTO mentors (faculty_id, assigned_by, is_active, created_at) VALUES (?, ?, 1, NOW())',
-                                [facultyId, facultyId]
+                                [facultyId, userId]
                             );
                             mentorId = mentorResult.insertId;
                         }
 
-                        // Assign sections if provided
-                        if (sectionIdsArray.length > 0) {
-                            for (const sid of sectionIdsArray) {
-                                await conn.query(
-                                    'INSERT IGNORE INTO mentor_section_assignments (mentor_id, section_id, is_active, assigned_by, created_at) VALUES (?, ?, 1, ?, NOW())',
-                                    [mentorId, sid, facultyId]
-                                );
-                            }
+                        for (const sid of sectionIdsArray) {
+                            await conn.query(
+                                'INSERT IGNORE INTO mentor_section_assignments (mentor_id, section_id, is_active, assigned_by, created_at) VALUES (?, ?, 1, ?, NOW())',
+                                [mentorId, sid, userId]
+                            );
                         }
                     }
 
@@ -471,4 +462,112 @@ exports.bulkUploadFaculty = async (req, res) => {
         // cleanup
         try { fs.unlinkSync(filePath); } catch (_) {}
     }
+};
+
+
+exports.createSection = (req, res) => {
+    const { gradeId, sectionName, createdBy } = req.body;
+
+    if (!gradeId || !sectionName) {
+        return res.status(400).json({ success: false, message: 'Grade ID and section name are required' });
+    }
+
+    // Check if section already exists for this grade
+    const checkSql = `SELECT id FROM sections WHERE grade_id = ? AND section_name = ?`;
+    
+    db.query(checkSql, [gradeId, sectionName], (err, results) => {
+        if (err) {
+            console.error('Error checking section:', err);
+            return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        }
+        
+        if (results.length > 0) {
+            return res.status(409).json({ success: false, message: 'Section already exists for this grade' });
+        }
+
+        // Insert new section
+        const insertSql = `INSERT INTO sections (grade_id, section_name, created_by) VALUES (?, ?, ?)`;
+        
+        db.query(insertSql, [gradeId, sectionName, createdBy], (err, result) => {
+            if (err) {
+                console.error('Error creating section:', err);
+                return res.status(500).json({ success: false, message: 'Internal Server Error' });
+            }
+            
+            res.json({ 
+                success: true, 
+                message: 'Section created successfully',
+                data: { id: result.insertId, grade_id: gradeId, section_name: sectionName }
+            });
+        });
+    });
+};
+
+exports.deleteSection = (req, res) => {
+    const { sectionId } = req.body;
+
+    if (!sectionId) {
+        return res.status(400).json({ success: false, message: 'Section ID is required' });
+    }
+
+    // Check if section has any students assigned
+    const checkStudentsSql = `SELECT COUNT(*) as student_count FROM student_mappings WHERE section_id = ?`;
+    
+    db.query(checkStudentsSql, [sectionId], (err, results) => {
+        if (err) {
+            console.error('Error checking students:', err);
+            return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        }
+        
+        if (results[0].student_count > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Cannot delete section with assigned students. Please reassign students first.' 
+            });
+        }
+
+        // Delete section
+        const deleteSql = `DELETE FROM sections WHERE id = ?`;
+        
+        db.query(deleteSql, [sectionId], (err, result) => {
+            if (err) {
+                console.error('Error deleting section:', err);
+                return res.status(500).json({ success: false, message: 'Internal Server Error' });
+            }
+            
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ success: false, message: 'Section not found' });
+            }
+            
+            res.json({ success: true, message: 'Section deleted successfully' });
+        });
+    });
+};
+
+exports.getSectionsByGrade = (req, res) => {
+    const { gradeId } = req.body;
+
+    if (!gradeId) {
+        return res.status(400).json({ success: false, message: 'Grade ID is required' });
+    }
+
+    const sql = `SELECT s.id as section_id, s.section_name, s.grade_id, 
+                        COUNT(DISTINCT st.id) as student_count
+                 FROM sections s
+                 LEFT JOIN student_mappings sm ON sm.section_id = s.id
+                 LEFT JOIN students st ON st.id = sm.student_id
+                 WHERE s.grade_id = ?
+                 GROUP BY s.id, s.section_name, s.grade_id
+                 ORDER BY s.section_name`;
+
+    db.query(sql, [gradeId], (err, results) => {
+        if (err) {
+            console.error('Error fetching sections by grade:', err);
+            return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        }
+        if(results.length === 0) {
+            return res.status(404).json({ success: true, message: 'No sections found for this grade' });
+        }
+        res.json({ success: true, message:'Success', data: results });
+    });
 };

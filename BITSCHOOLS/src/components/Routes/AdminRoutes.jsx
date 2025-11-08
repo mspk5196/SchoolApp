@@ -12,8 +12,8 @@ const AdminRoutes = () => {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="AdminHome" component={AdminHome}/>
 
-      <Stack.Screen name="EnrollmentHome" component={EnrollmentHome} />
-      <Stack.Screen name="FacultyEnrollment" component={FacultyEnrollment} />
+      <Stack.Screen name="AdminEnrollmentHome" component={EnrollmentHome} />
+      <Stack.Screen name="AdminFacultyEnrollment" component={FacultyEnrollment} />
     </Stack.Navigator>
   );
 };

@@ -8,7 +8,7 @@ export const coordinatorMenuConfig = {
       {
         title: 'Mentor',
         icon: <Icon name="account-tie" size={50} color="#1E293B" />,
-        screen: 'CoordinatorMentor',
+        screen: 'CoordinatorMentorHome',
       },
       {
         title: 'Student',
