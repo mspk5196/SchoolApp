@@ -990,7 +990,7 @@ exports.bulkUploadStudents = async (req, res) => {
                     if (existingUsers.length > 0) {
                         userId = existingUsers[0].id;
                     } else {
-                        const hashedPassword = await bcrypt.hash(studentData.dob, 12);
+                        const hashedPassword = await bcrypt.hash(dobFormatted, 12);
                         const [userResult] = await conn.query(
                             'INSERT INTO users (email, phone, password_hash) VALUES (?, ?, ?)',
                             [studentData.email, studentData.mobileNumber, hashedPassword]
@@ -1007,6 +1007,10 @@ exports.bulkUploadStudents = async (req, res) => {
                         }
                     }
 
+                    const [academicYearRow] = await conn.query(
+                        'SELECT id FROM academic_years WHERE academic_year = ? LIMIT 1',
+                        [studentData.academicYear]
+                    );
                     // Check if student exists
                     const [existingStudent] = await conn.query(
                         'SELECT id FROM students WHERE roll = ?',
@@ -1021,7 +1025,7 @@ exports.bulkUploadStudents = async (req, res) => {
                                 user_id = ?, name = ?, dob = ?, email = ?, mobile = ?, 
                                 father_name = ?, father_phone = ?, photo_url = ?, updated_at = NOW() 
                             WHERE id = ?`,
-                            [userId, studentData.name, studentData.dob, studentData.email, studentData.mobileNumber,
+                            [userId, studentData.name, dobFormatted, studentData.email, studentData.mobileNumber,
                              studentData.fatherName, studentData.fatherMobile, studentData.photoUrl, studentId]
                         );
                     } else {
@@ -1029,7 +1033,7 @@ exports.bulkUploadStudents = async (req, res) => {
                             `INSERT INTO students (
                                 user_id, roll, name, dob, email, mobile, father_name, father_phone, photo_url, created_at, updated_at
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-                            [userId, studentData.roll, studentData.name, studentData.dob, studentData.email,
+                            [userId, studentData.roll, studentData.name, dobFormatted, studentData.email,
                              studentData.mobileNumber, studentData.fatherName, studentData.fatherMobile, studentData.photoUrl]
                         );
                         studentId = studentResult.insertId;
@@ -1039,7 +1043,7 @@ exports.bulkUploadStudents = async (req, res) => {
                             `INSERT INTO student_attendence (
                                 student_id, total_days, present_days, leave_days, on_duty, academic_year, created_at
                             ) VALUES (?, 0, 0, 0, 0, ?, NOW())`,
-                            [studentId, studentData.academicYear]
+                            [studentId, academicYearRow.length > 0 ? academicYearRow[0].id : null]
                         );
                     }
 
@@ -1053,20 +1057,20 @@ exports.bulkUploadStudents = async (req, res) => {
                     // Student mapping
                     const [existingMapping] = await conn.query(
                         'SELECT id FROM student_mappings WHERE student_id = ? AND academic_year = ?',
-                        [studentId, studentData.academicYear]
+                        [studentId, academicYearRow.length > 0 ? academicYearRow[0].id : null]
                     );
 
                     if (existingMapping.length > 0) {
                         await conn.query(
                             'UPDATE student_mappings SET section_id = ?, mentor_id = ?, updated_at = NOW() WHERE student_id = ? AND academic_year = ?',
-                            [studentData.sectionId, mentorId, studentId, studentData.academicYear]
+                            [studentData.sectionId, mentorId, studentId, academicYearRow.length > 0 ? academicYearRow[0].id : null]
                         );
                     } else {
                         await conn.query(
                             `INSERT INTO student_mappings (
                                 student_id, section_id, mentor_id, academic_year, created_by, created_at, updated_at
                             ) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-                            [studentId, studentData.sectionId, mentorId, studentData.academicYear, userId]
+                            [studentId, studentData.sectionId, mentorId, academicYearRow.length > 0 ? academicYearRow[0].id : null, userId]
                         );
                     }
 

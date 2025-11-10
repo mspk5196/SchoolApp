@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const enrollmentController = require('../controllers/coordinator/enrollmentController');
 const coordinatorController = require('../controllers/coordinator/coordinatorController');
+const subjectAllotmentController = require('../controllers/coordinator/subjectAllotmentController');
 const { authenticateToken } = require('../middleware/auth');
 
 // Configure multer for file uploads
@@ -25,6 +26,29 @@ router.get('/getUnassignedMentors', authenticateToken, coordinatorController.get
 router.post('/assignMentorToSection', authenticateToken, coordinatorController.assignMentorToSection);
 router.post('/unassignMentorFromSection', authenticateToken, coordinatorController.unassignMentorFromSection);
 router.post('/getStudentsBySection', authenticateToken, coordinatorController.getStudentsBySection);
+
+// Subject-mentor mapping routes
+router.post('/mentor/getMentorGradeSubject', authenticateToken, coordinatorController.getMentorGradeSubject);
+router.post('/mentor/getSubjectGradeMentors', authenticateToken, coordinatorController.getSubjectGradeMentors);
+router.post('/mentor/getEnroledSubjectMentors', authenticateToken, coordinatorController.getEnroledSubjectMentors);
+router.post('/mentor/assignMentorToSubject', authenticateToken, coordinatorController.assignMentorToSubject);
+router.post('/mentor/removeEnroledSubjectMentor', authenticateToken, coordinatorController.removeEnroledSubjectMentor);
+
+// Subject allotment routes
+router.post('/getGradeSections', authenticateToken, subjectAllotmentController.getGradeSections);
+router.get('/getSubjects', authenticateToken, subjectAllotmentController.getSubjects);
+router.get('/getActivities', authenticateToken, subjectAllotmentController.getActivities);
+router.get('/getSubActivities', authenticateToken, subjectAllotmentController.getSubActivities);
+router.post('/getSubjectActivities', authenticateToken, subjectAllotmentController.getSubjectActivities);
+router.post('/addSubjectToSection', authenticateToken, subjectAllotmentController.addSubjectToSection);
+router.post('/removeSubject', authenticateToken, subjectAllotmentController.removeSubject);
+router.post('/addSubjectActivity', authenticateToken, subjectAllotmentController.addSubjectActivity);
+router.post('/removeSubjectActivity', authenticateToken, subjectAllotmentController.removeSubjectActivity);
+router.post('/addSubjectSubActivity', authenticateToken, subjectAllotmentController.addSubjectSubActivity);
+router.post('/removeSubjectSubActivity', authenticateToken, subjectAllotmentController.removeSubjectSubActivity);
+router.post('/addSubjects', authenticateToken, subjectAllotmentController.addSubjects);
+router.post('/addActivities', authenticateToken, subjectAllotmentController.addActivities);
+router.post('/addSubActivities', authenticateToken, subjectAllotmentController.addSubActivities);
 
 module.exports = router;
 

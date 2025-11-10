@@ -25,6 +25,15 @@ const EnrollmentHome = ({ navigation }) => {
     },
     {
       id: '3',
+      title: 'Subject Enrollment',
+      iconName: 'google-classroom',
+      iconType: 'MaterialCommunityIcons',
+      color: '#3B82F6',
+      bgColor: '#DBEAFE',
+      route: 'CoordinatorSubjectEnrollment',
+    },
+    {
+      id: '4',
       title: 'Infrastructure Management',
       iconName: 'calendar-check',
       iconType: 'MaterialCommunityIcons',

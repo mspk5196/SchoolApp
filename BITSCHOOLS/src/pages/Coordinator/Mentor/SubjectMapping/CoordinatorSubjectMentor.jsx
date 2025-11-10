@@ -23,7 +23,11 @@ import { Header } from '../../../../components/index.js';
 import ApiService from '../../../../utils/ApiService.js';
 
 const CoordinatorSubjectMentor = ({ navigation, route }) => {
-  const { userData, selectedGrade } = route.params;
+  const params = route.params && route.params.data ? route.params.data : (route.params || {});
+  const { userData, selectedGrade: initialGrade } = params;
+
+  const [selectedGrade, setSelectedGrade] = useState(initialGrade || null);
+
   const [activeSubject, setActiveSubject] = useState(null);
   const [mentors, setMentors] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -40,7 +44,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchGradeMentor(), getGradeSubject()]);
+      await Promise.all([fetchMentor(), getGradeSubject()]);
       setLoading(false);
     };
     loadData();
@@ -71,11 +75,10 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
     try {
       const response = await ApiService.makeRequest(`/coordinator/mentor/getSubjectGradeMentors`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: selectedGrade }),
+        body: JSON.stringify({ gradeID: selectedGrade.grade_id }),
       });
 
-      const data = response
+      const data = await response.json();
       console.log('Grade Mentor Data API Response:', data);
 
       if (data.success) {
@@ -92,14 +95,13 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
   //For subject selection
   const getGradeSubject = async () => {
     try {
-      const response = await apiFetch(`/coordinator/mentor/getMentorGradeSubject`, {
+      const response = await ApiService.makeRequest(`/coordinator/mentor/getMentorGradeSubject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gradeID: selectedGrade }),
+        body: JSON.stringify({ gradeID: selectedGrade.grade_id }),
       });
 
-      const data = response
-      console.log('Section students Data API Response:', data);
+      const data = await response.json();
+      console.log('Grade subjects API Response:', data);
 
       if (data.success) {
         setSubject(data.mentorGradeSubjects);
@@ -108,7 +110,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
           setActiveSubject(data.mentorGradeSubjects[0].subject_id);
         }
       } else {
-        Alert.alert('No Subject Found', 'No subject is associated with this section');
+        Alert.alert('No Subject Found', 'No subject is associated with this grade');
       }
     } catch (error) {
       console.error('Error fetching subjects data:', error);
@@ -117,67 +119,65 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
   };
 
   // Fetch mentors assigned to a specific subject
-  const fetchEnroledSubjectMentors = (subjectId) => {
-    apiFetch(`/coordinator/mentor/getEnroledSubjectMentors`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        gradeID: selectedGrade,
-        subjectID: subjectId
-      }),
-    })
-      .then(response => response)
-      .then(data => {
-        if (data.success) {
-          setEnroledMentors(data.gradeEnroledMentor);
-          console.log(data.gradeEnroledMentor);
-          
-        } else {
-          setEnroledMentors([]);
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching mentors:', error);
-        Alert.alert('Error', 'Failed to fetch mentors');
+  const fetchEnroledSubjectMentors = async (subjectId) => {
+    try {
+      const response = await ApiService.makeRequest(`/coordinator/mentor/getEnroledSubjectMentors`, {
+        method: 'POST',
+        body: JSON.stringify({
+          gradeID: selectedGrade.grade_id,
+          subjectID: subjectId
+        }),
       });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setEnroledMentors(data.gradeEnroledMentor);
+        console.log(data.gradeEnroledMentor);
+      } else {
+        setEnroledMentors([]);
+      }
+    } catch (error) {
+      console.error('Error fetching mentors:', error);
+      Alert.alert('Error', 'Failed to fetch mentors');
+    }
   };
 
   // Assign mentors to subject
-  const assignMentorsToSubject = () => {
+  const assignMentorsToSubject = async () => {
     if (selectedFaculties.length === 0) {
       Alert.alert('No Selection', 'Please select at least one mentor');
       return;
     }
 
-    const requests = selectedFaculties.map(mentorId => {
-      return apiFetch(`/coordinator/mentor/assignMentorToSubject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mentor_id: mentorId,
-          subject_id: activeSubject,
-          grade_id: selectedGrade
-        }),
+    try {
+      const requests = selectedFaculties.map(mentorId => {
+        return ApiService.makeRequest(`/coordinator/mentor/assignMentorToSubject`, {
+          method: 'POST',
+          body: JSON.stringify({
+            mentor_id: mentorId,
+            subject_id: activeSubject,
+            grade_id: selectedGrade.grade_id
+          }),
+        });
       });
-    });
 
-    Promise.all(requests)
-      .then(responses => Promise.all(responses.map(res => res)))
-      .then(results => {
-        const allSuccess = results.every(result => result.success);
-        if (allSuccess) {
-          Alert.alert('Success', 'Mentors assigned successfully');
-          fetchEnroledSubjectMentors(activeSubject);
-          setIsModalVisible(false);
-          setSelectedFaculties([]);
-        } else {
-          Alert.alert('Error', 'Some mentors could not be assigned');
-        }
-      })
-      .catch(error => {
-        console.error('Error assigning mentors:', error);
-        Alert.alert('Error', 'Failed to assign mentors');
-      });
+      const responses = await Promise.all(requests);
+      const results = await Promise.all(responses.map(res => res.json()));
+      
+      const allSuccess = results.every(result => result.success);
+      if (allSuccess) {
+        Alert.alert('Success', 'Mentors assigned successfully');
+        fetchEnroledSubjectMentors(activeSubject);
+        setIsModalVisible(false);
+        setSelectedFaculties([]);
+      } else {
+        Alert.alert('Error', 'Some mentors could not be assigned');
+      }
+    } catch (error) {
+      console.error('Error assigning mentors:', error);
+      Alert.alert('Error', 'Failed to assign mentors');
+    }
   };
 
   // Remove a mapped subject mentor
@@ -192,11 +192,12 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const result = await apiFetch(`/coordinator/mentor/removeEnroledSubjectMentor`, {
+              const response = await ApiService.makeRequest(`/coordinator/mentor/removeEnroledSubjectMentor`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ msaID }),
               });
+
+              const result = await response.json();
 
               if (result?.success) {
                 Alert.alert('Removed', 'Mentor removed from subject');
@@ -436,7 +437,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
                       <Text style={styles.facultyName}>{item.name}</Text>
                     </View>
                     <View style={styles.Hat}>
-                      <Hat />
+                      <MaterialCommunityIcons name="school" size={20} color="#666" />
                       <Text style={styles.facultySpec}>
                         Specification ({item.specification})
                       </Text>
