@@ -7,6 +7,7 @@ import CoordinatorStudentEnrollment from '../../pages/Coordinator/Enrollment/Stu
 import CoordinatorSectionEnrollment from '../../pages/Coordinator/Enrollment/SectionEnrollment/CoordinatorSectionEnrollment';
 import CoordinatorSubjectMentor from '../../pages/Coordinator/Mentor/SubjectMapping/CoordinatorSubjectMentor';
 import CoordinatorMentorMapping from '../../pages/Coordinator/Mentor/SectionMapping/CoordinatorMentorMapping';
+import CoordinatorSectionStudents from '../../pages/Coordinator/Mentor/SectionMapping/SectionStudents/CoordinatorSectionStudents';
 
 const Stack = createNativeStackNavigator();
 
@@ -21,8 +22,8 @@ const CoordinatorRoutes = () => {
 
       <Stack.Screen name="CoordinatorMentorHome" component={CoordinatorMentorHome} />
       <Stack.Screen name="CoordinatorSubjectMentor" component={CoordinatorSubjectMentor} />
-
       <Stack.Screen name="CoordinatorMentorMapping" component={CoordinatorMentorMapping} />
+      <Stack.Screen name="CoordinatorSectionStudents" component={CoordinatorSectionStudents} />
     </Stack.Navigator>
   );
 };

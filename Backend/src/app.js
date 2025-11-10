@@ -15,6 +15,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/general', require('./routes/generalRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/coordinator', require('./routes/coordinatorRoutes'));
+app.use('/api/mentor', require('./routes/mentorRoutes'));
 
 
 module.exports = app;

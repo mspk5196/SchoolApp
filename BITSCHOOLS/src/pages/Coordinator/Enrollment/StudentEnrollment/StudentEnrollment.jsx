@@ -15,24 +15,25 @@ const StudentEnrollment = ({ navigation }) => {
     gender: '',
     email: '',
     mobileNumber: '',
-    specification: '',
-    profileImage: '',
-    role: '',
-    selectedGrades: [],
-    selectedSections: [],
+    photoUrl: '',
+    fatherName: '',
+    fatherMobile: '',
+    gradeId: null,
+    sectionId: null,
+    academicYear: new Date().getFullYear(),
   });
 
   const [errors, setErrors] = useState({});
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
-  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showGradeModal, setShowGradeModal] = useState(false);
+  const [showSectionModal, setShowSectionModal] = useState(false);
 
   const genderOptions = ['Male', 'Female', 'Other'];
-  const roleOptions = ['Coordinator', 'Mentor'];
 
   const handleChange = (field, value) => {
-    setFaculty({ ...faculty, [field]: value });
-    if (value.trim !== undefined && value.trim() !== '') {
+    setStudent({ ...student, [field]: value });
+    if (value !== null && value !== undefined && value.toString().trim() !== '') {
       setErrors({ ...errors, [field]: null });
     }
   };
@@ -42,6 +43,19 @@ const StudentEnrollment = ({ navigation }) => {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
     return `${year}-${month}-${day}`;
+  };
+
+  // Normalize various DOB inputs to YYYY-MM-DD. If unable to normalize, returns original value.
+  const normalizeDob = (val) => {
+    if (!val) return val;
+    // already in correct format
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    // Date object
+    if (val instanceof Date && !isNaN(val)) return formatDate(val);
+    // Try parsing string-ish dates
+    const parsed = new Date(val);
+    if (!isNaN(parsed)) return formatDate(parsed);
+    return val;
   };
 
   const onDateChange = (event, selectedDate) => {
@@ -55,70 +69,96 @@ const StudentEnrollment = ({ navigation }) => {
     const newErrors = {};
     let isValid = true;
 
-    if (!faculty.name.trim()) {
+    if (!student.name.trim()) {
       newErrors.name = 'Name is required';
       isValid = false;
     }
 
-    if (!faculty.dob) {
+    if (!student.dob) {
       newErrors.dob = 'Date of Birth is required';
       isValid = false;
+    } else {
+      // Enforce YYYY-MM-DD format
+      const dobRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dobRegex.test(student.dob)) {
+        newErrors.dob = 'DOB must be in YYYY-MM-DD format';
+        isValid = false;
+      }
     }
 
-    if (!faculty.roll || !faculty.roll.trim()) {
+    if (!student.roll || !student.roll.trim()) {
       newErrors.roll = 'Roll number is required';
       isValid = false;
     }
 
-    if (!faculty.gender) {
+    if (!student.gender) {
       newErrors.gender = 'Gender is required';
       isValid = false;
     }
 
-    if (!faculty.role) {
-      newErrors.role = 'Role is required';
-      isValid = false;
-    }
-
-    if (!faculty.email || !faculty.email.trim()) {
+    if (!student.email || !student.email.trim()) {
       newErrors.email = 'Email is required';
       isValid = false;
     } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(faculty.email.trim())) {
+      if (!emailRegex.test(student.email.trim())) {
         newErrors.email = 'Please enter a valid email address';
         isValid = false;
       }
     }
 
-    if (!faculty.mobileNumber.trim()) {
+    if (!student.mobileNumber.trim()) {
       newErrors.mobileNumber = 'Mobile number is required';
       isValid = false;
-    } else if (!/^\d{10}$/.test(faculty.mobileNumber.trim())) {
+    } else if (!/^\d{10}$/.test(student.mobileNumber.trim())) {
       newErrors.mobileNumber = 'Please enter a valid 10-digit mobile number';
       isValid = false;
     }
 
-    if (!faculty.profileImage) {
-      newErrors.profileImage = 'Profile url is required';
+    if (!student.fatherName || !student.fatherName.trim()) {
+      newErrors.fatherName = 'Father\'s name is required';
       isValid = false;
     }
-    
+
+    if (!student.fatherMobile.trim()) {
+      newErrors.fatherMobile = 'Father\'s mobile is required';
+      isValid = false;
+    } else if (!/^\d{10}$/.test(student.fatherMobile.trim())) {
+      newErrors.fatherMobile = 'Please enter a valid 10-digit mobile number';
+      isValid = false;
+    }
+
+    if (!student.photoUrl) {
+      newErrors.photoUrl = 'Photo URL is required';
+      isValid = false;
+    }
+
+    if (!student.gradeId) {
+      newErrors.gradeId = 'Grade is required';
+      isValid = false;
+    }
+
+    if (!student.sectionId) {
+      newErrors.sectionId = 'Section is required';
+      isValid = false;
+    }
+
     setErrors(newErrors);
     return isValid;
   };
 
   const [grades, setGrades] = useState([]);
   const [sections, setSections] = useState([]);
+  const [filteredSections, setFilteredSections] = useState([]);
 
   const fetchGrades = async () => {
     try {
-      const response = await ApiService.makeRequest(`/general/getGrades`,{
+      const response = await ApiService.makeRequest(`/general/getGrades`, {
         method: 'GET'
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
         const sortedGrades = (data.data || []).sort((a, b) => a.id - b.id);
         setGrades(sortedGrades);
@@ -134,37 +174,72 @@ const StudentEnrollment = ({ navigation }) => {
 
   const fetchSections = async () => {
     try {
-      const response = await ApiService.makeRequest(`/general/getSections`,{
-        method: 'GET'
+      const response = await ApiService.makeRequest(`/general/getGradeSections`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gradeID: student.gradeId }),
       });
-      const data = await response.json();
-      if (response.ok) {
-        const sortedSections = (data.sections || []).sort((a, b) => a.id - b.id);
+
+      const data = await response.json().catch(() => ({}));
+
+      // Backend returns { success: true, data: [ { section_id, section_name }, ... ] }
+      if (response.ok && data && (data.data || data.result)) {
+        const rawSections = data.data || data.result || [];
+
+        // Normalize to the shape used by this component: { id, section, grade_id }
+        const mapped = rawSections.map(s => ({
+          id: s.section_id ?? s.id,
+          section: s.section_name ?? s.section ?? s.name,
+          grade_id: s.grade_id ?? student.gradeId ?? null,
+        }));
+
+        const sortedSections = mapped.sort((a, b) => (a.id || 0) - (b.id || 0));
         setSections(sortedSections);
       } else {
-        console.error('Failed to fetch sections:', data.message);
+        console.error('Failed to fetch sections:', data?.message || 'unexpected response');
         Alert.alert('Error', 'Failed to fetch sections. Please try again later.');
+        setSections([]);
       }
     } catch (error) {
       console.error('Fetch error:', error);
       Alert.alert('Error', 'Failed to fetch sections. Please check your internet connection.');
+      setSections([]);
     }
   };
 
   useEffect(() => {
     fetchGrades();
-    fetchSections();
   }, []);
+  useEffect(() => {
+    if (student.gradeId) {
+      fetchSections();
+    }
+  }, [student.gradeId]);
+
+  // Filter sections based on selected grade
+  useEffect(() => {
+    if (student.gradeId) {
+      const filtered = sections.filter(s => s.grade_id === student.gradeId);
+      setFilteredSections(filtered);
+
+      // Reset section if it doesn't belong to the selected grade
+      if (student.sectionId && !filtered.find(s => s.id === student.sectionId)) {
+        handleChange('sectionId', null);
+      }
+    } else {
+      setFilteredSections([]);
+    }
+  }, [student.gradeId, sections]);
 
   const handleGenerateTemplate = async () => {
     try {
       const result = await ApiService.downloadFile(
-        '/admin/enrollment/generate-faculty-enroll-template',
-        'faculty_enrollment_template.xlsx',
+        '/coordinator/enrollment/generate-student-enroll-template',
+        'student_enrollment_template.xlsx',
         {
           mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          title: 'Faculty Enrollment Template',
-          description: 'Faculty enrollment template',
+          title: 'Student Enrollment Template',
+          description: 'Student enrollment template',
         }
       );
 
@@ -186,7 +261,7 @@ const StudentEnrollment = ({ navigation }) => {
       const picked = result[0];
 
       const uploadResult = await ApiService.uploadFile(
-        '/admin/enrollment/bulk-upload-facultys',
+        '/coordinator/enrollment/bulk-upload-students',
         picked
       );
 
@@ -211,23 +286,32 @@ const StudentEnrollment = ({ navigation }) => {
       Alert.alert('Incomplete Form', 'Please fill all required fields before submitting.');
       return;
     }
+    // Ensure DOB is normalized to YYYY-MM-DD before sending
+    const dobToSend = normalizeDob(student.dob);
+    const dobRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dobRegex.test(dobToSend)) {
+      setErrors(prev => ({ ...prev, dob: 'DOB must be in YYYY-MM-DD format' }));
+      Alert.alert('Invalid DOB', 'Date of Birth must be in YYYY-MM-DD format before submitting.');
+      return;
+    }
 
     try {
       const payload = {
-        name: faculty.name,
-        dob: faculty.dob,
-        roll: faculty.roll,
-        gender: faculty.gender,
-        email: faculty.email,
-        mobileNumber: faculty.mobileNumber,
-        specification: faculty.specification,
-        profilePhoto: faculty.profileImage,
-        role: faculty.role,
-        grades: faculty.selectedGrades,
-        sections: faculty.selectedSections,
+        name: student.name,
+        dob: dobToSend,
+        roll: student.roll,
+        gender: student.gender,
+        email: student.email,
+        mobileNumber: student.mobileNumber,
+        photoUrl: student.photoUrl,
+        fatherName: student.fatherName,
+        fatherMobile: student.fatherMobile,
+        gradeId: student.gradeId,
+        sectionId: student.sectionId,
+        academicYear: student.academicYear,
       };
 
-      const resp = await ApiService.makeRequest(`/admin/enrollfaculty`, {
+      const resp = await ApiService.makeRequest(`/coordinator/enrollment/enrollStudent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -235,30 +319,32 @@ const StudentEnrollment = ({ navigation }) => {
 
       const data = await resp.json().catch(() => null);
       if (!resp.ok || !data?.success) {
-        Alert.alert('Error', data?.message || 'Failed to enroll faculty.');
+        Alert.alert('Error', data?.message || 'Failed to enroll student.');
         return;
       }
 
-      Alert.alert('Success', 'Faculty enrolled successfully.');
+      Alert.alert('Success', 'Student enrolled successfully.');
 
       // Reset form
-      setFaculty({
+      setStudent({
         name: '',
         dob: '',
         roll: '',
         gender: '',
         email: '',
         mobileNumber: '',
-        specification: '',
-        profileImage: '',
-        role: '',
-        selectedGrades: [],
-        selectedSections: [],
+        photoUrl: '',
+        fatherName: '',
+        fatherMobile: '',
+        gradeId: null,
+        sectionId: null,
+        academicYear: new Date().getFullYear(),
       });
       setErrors({});
       setShowDatePicker(false);
       setShowGenderModal(false);
-      setShowRoleModal(false);
+      setShowGradeModal(false);
+      setShowSectionModal(false);
     } catch (error) {
       console.error('Submit error:', error);
       Alert.alert('Error', 'Failed to submit form.');
@@ -271,44 +357,31 @@ const StudentEnrollment = ({ navigation }) => {
       return;
     }
 
-    setFaculty({
+    setStudent({
       name: '',
       dob: '',
       roll: '',
       gender: '',
       email: '',
       mobileNumber: '',
-      specification: '',
-      profileImage: '',
-      role: '',
-      selectedGrades: [],
-      selectedSections: [],
+      photoUrl: '',
+      fatherName: '',
+      fatherMobile: '',
+      gradeId: null,
+      sectionId: null,
+      academicYear: new Date().getFullYear(),
     });
     setErrors({});
   };
 
-  const handleGradeCheckbox = (gradeId) => {
-    setFaculty(prev => {
-      const selected = prev.selectedGrades.includes(gradeId)
-        ? prev.selectedGrades.filter(id => id !== gradeId)
-        : [...prev.selectedGrades, gradeId];
-      return { ...prev, selectedGrades: selected };
-    });
-    if (errors.grades) {
-      setErrors({ ...errors, grades: null });
-    }
+  const getGradeName = () => {
+    const grade = grades.find(g => g.id === student.gradeId);
+    return grade ? grade.grade_name : 'Select Grade';
   };
 
-  const handleSectionCheckbox = (sectionId) => {
-    setFaculty(prev => {
-      const selected = prev.selectedSections.includes(sectionId)
-        ? prev.selectedSections.filter(id => id !== sectionId)
-        : [...prev.selectedSections, sectionId];
-      return { ...prev, selectedSections: selected };
-    });
-    if (errors.sections) {
-      setErrors({ ...errors, sections: null });
-    }
+  const getSectionName = () => {
+    const section = filteredSections.find(s => s.id === student.sectionId);
+    return section ? section.section : 'Select Section';
   };
 
   return (
@@ -316,8 +389,8 @@ const StudentEnrollment = ({ navigation }) => {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* Header */}
-      <Header 
-        title="Faculty Enrollment" 
+      <Header
+        title="Student Enrollment"
         navigation={navigation}
       />
 
@@ -355,7 +428,7 @@ const StudentEnrollment = ({ navigation }) => {
               <Text style={{ fontSize: 17, fontWeight: '700', color: '#1E293B' }}>Bulk Upload</Text>
             </View>
             <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 14, lineHeight: 18 }}>
-              Download the template, fill in faculty details, and upload the Excel file for batch enrollment.
+              Download the template, fill in student details, and upload the Excel file for batch enrollment.
             </Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity
@@ -402,21 +475,21 @@ const StudentEnrollment = ({ navigation }) => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Profile Photo URL<Text style={styles.requiredAsterisk}>*</Text></Text>
             <TextInput
-              style={[styles.input, errors.profileImage ? styles.inputError : null]}
+              style={[styles.input, errors.photoUrl ? styles.inputError : null]}
               placeholder="Paste or enter profile photo link"
-              value={faculty.profileImage}
-              onChangeText={(text) => handleChange('profileImage', text)}
+              value={student.photoUrl}
+              onChangeText={(text) => handleChange('photoUrl', text)}
             />
-            {errors.profileImage && <Text style={styles.errorText}>{errors.profileImage}</Text>}
+            {errors.photoUrl && <Text style={styles.errorText}>{errors.photoUrl}</Text>}
           </View>
 
-          <Text style={styles.sectionTitle}>Details</Text>
+          <Text style={styles.sectionTitle}>Student Details</Text>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Name<Text style={styles.requiredAsterisk}>*</Text></Text>
             <TextInput
               style={[styles.input, errors.name ? styles.inputError : null]}
-              placeholder="Enter name"
-              value={faculty.name}
+              placeholder="Enter student name"
+              value={student.name}
               onChangeText={(text) => handleChange('name', text)}
             />
             {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
@@ -426,8 +499,8 @@ const StudentEnrollment = ({ navigation }) => {
             <Text style={styles.label}>Roll<Text style={styles.requiredAsterisk}>*</Text></Text>
             <TextInput
               style={[styles.input, errors.roll ? styles.inputError : null]}
-              placeholder="Enter roll number (e.g., FAC001)"
-              value={faculty.roll}
+              placeholder="Enter roll number (e.g., STU001)"
+              value={student.roll}
               onChangeText={(text) => handleChange('roll', text)}
             />
             {errors.roll && <Text style={styles.errorText}>{errors.roll}</Text>}
@@ -439,8 +512,8 @@ const StudentEnrollment = ({ navigation }) => {
               style={[styles.input, errors.dob ? styles.inputError : null]}
               onPress={() => setShowDatePicker(true)}
             >
-              <Text style={faculty.dob ? styles.inputText : styles.placeholderText}>
-                {faculty.dob || "Enter DOB"}
+              <Text style={student.dob ? styles.inputText : styles.placeholderText}>
+                {student.dob || "Enter DOB"}
               </Text>
               <Ionicons name="calendar-outline" size={18} color="#666" style={styles.inputIcon} />
             </TouchableOpacity>
@@ -464,7 +537,7 @@ const StudentEnrollment = ({ navigation }) => {
               onPress={() => setShowGenderModal(true)}
             >
               <Text style={styles.selectionText}>
-                {faculty.gender || "Select Gender"}
+                {student.gender || "Select Gender"}
               </Text>
             </TouchableOpacity>
             {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
@@ -498,7 +571,7 @@ const StudentEnrollment = ({ navigation }) => {
             </Modal>
           </View>
 
-          <Text style={styles.sectionTitle}>Contact</Text>
+          <Text style={styles.sectionTitle}>Contact Information</Text>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email ID<Text style={styles.requiredAsterisk}>*</Text></Text>
             <TextInput
@@ -507,70 +580,85 @@ const StudentEnrollment = ({ navigation }) => {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              value={faculty.email}
+              value={student.email}
               onChangeText={(text) => handleChange('email', text)}
             />
             {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mobile number<Text style={styles.requiredAsterisk}>*</Text></Text>
+            <Text style={styles.label}>Mobile Number<Text style={styles.requiredAsterisk}>*</Text></Text>
             <TextInput
               style={[styles.input, errors.mobileNumber ? styles.inputError : null]}
-              placeholder="Enter number"
+              placeholder="Enter student mobile number"
               keyboardType="phone-pad"
-              value={faculty.mobileNumber}
+              value={student.mobileNumber}
               onChangeText={(text) => handleChange('mobileNumber', text)}
               maxLength={10}
             />
             {errors.mobileNumber && <Text style={styles.errorText}>{errors.mobileNumber}</Text>}
           </View>
 
+          <Text style={styles.sectionTitle}>Father's Information</Text>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Specification</Text>
+            <Text style={styles.label}>Father's Name<Text style={styles.requiredAsterisk}>*</Text></Text>
             <TextInput
-              style={[styles.input, errors.specification ? styles.inputError : null]}
-              placeholder="Enter specification (e.g., Computer Science)"
-              value={faculty.specification}
-              onChangeText={(text) => handleChange('specification', text)}
+              style={[styles.input, errors.fatherName ? styles.inputError : null]}
+              placeholder="Enter father's name"
+              value={student.fatherName}
+              onChangeText={(text) => handleChange('fatherName', text)}
             />
-            {errors.specification && <Text style={styles.errorText}>{errors.specification}</Text>}
+            {errors.fatherName && <Text style={styles.errorText}>{errors.fatherName}</Text>}
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Role<Text style={styles.requiredAsterisk}>*</Text></Text>
+            <Text style={styles.label}>Father's Mobile<Text style={styles.requiredAsterisk}>*</Text></Text>
+            <TextInput
+              style={[styles.input, errors.fatherMobile ? styles.inputError : null]}
+              placeholder="Enter father's mobile number"
+              keyboardType="phone-pad"
+              value={student.fatherMobile}
+              onChangeText={(text) => handleChange('fatherMobile', text)}
+              maxLength={10}
+            />
+            {errors.fatherMobile && <Text style={styles.errorText}>{errors.fatherMobile}</Text>}
+          </View>
+
+          <Text style={styles.sectionTitle}>Academic Details</Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Grade<Text style={styles.requiredAsterisk}>*</Text></Text>
             <TouchableOpacity
-              style={[styles.selectionInput, errors.role ? styles.inputError : null]}
-              onPress={() => setShowRoleModal(true)}
+              style={[styles.selectionInput, errors.gradeId ? styles.inputError : null]}
+              onPress={() => setShowGradeModal(true)}
             >
               <Text style={styles.selectionText}>
-                {faculty.role || "Select Role"}
+                {getGradeName()}
               </Text>
             </TouchableOpacity>
-            {errors.role && <Text style={styles.errorText}>{errors.role}</Text>}
+            {errors.gradeId && <Text style={styles.errorText}>{errors.gradeId}</Text>}
 
             <Modal
               transparent={true}
-              visible={showRoleModal}
+              visible={showGradeModal}
               animationType="fade"
-              onRequestClose={() => setShowRoleModal(false)}
+              onRequestClose={() => setShowGradeModal(false)}
             >
               <TouchableOpacity
                 style={styles.modalOverlay}
                 activeOpacity={1}
-                onPress={() => setShowRoleModal(false)}
+                onPress={() => setShowGradeModal(false)}
               >
                 <View style={styles.listModalContainer}>
-                  {roleOptions.map(item => (
+                  {grades.map(grade => (
                     <TouchableOpacity
-                      key={item}
+                      key={grade.id}
                       style={styles.listModalItem}
                       onPress={() => {
-                        handleChange('role', item);
-                        setShowRoleModal(false);
+                        handleChange('gradeId', grade.id);
+                        setShowGradeModal(false);
                       }}
                     >
-                      <Text style={styles.listModalItemText}>{item}</Text>
+                      <Text style={styles.listModalItemText}>{grade.grade_name}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -578,63 +666,64 @@ const StudentEnrollment = ({ navigation }) => {
             </Modal>
           </View>
 
-          {faculty.role === 'Coordinator' && (
-            <>
-              <Text style={styles.sectionTitle}>Grades (Coordinator)</Text>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Select grade(s) (Optional)</Text>
-                <View style={[styles.checkboxContainer, errors.grades ? styles.inputError : null]}>
-                  {grades.map((grade) => (
-                    <View key={grade.id} style={styles.checkboxItem}>
-                      <TouchableOpacity
-                        style={[
-                          styles.checkbox,
-                          faculty.selectedGrades.includes(grade.id) && styles.checkboxChecked,
-                        ]}
-                        onPress={() => handleGradeCheckbox(grade.id)}
-                      >
-                        {faculty.selectedGrades.includes(grade.id) && (
-                          <Text style={styles.checkmark}>✓</Text>
-                        )}
-                      </TouchableOpacity>
-                      <Text style={styles.checkboxLabel}>{grade.grade_name}</Text>
-                    </View>
-                  ))}
-                </View>
-                {errors.grades && <Text style={styles.errorText}>{errors.grades}</Text>}
-              </View>
-            </>
-          )}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Section<Text style={styles.requiredAsterisk}>*</Text></Text>
+            <TouchableOpacity
+              style={[styles.selectionInput, errors.sectionId ? styles.inputError : null]}
+              onPress={() => {
+                if (!student.gradeId) {
+                  Alert.alert('Select Grade First', 'Please select a grade before choosing a section.');
+                } else if (filteredSections.length === 0) {
+                  Alert.alert('No Sections', 'No sections available for the selected grade.');
+                } else {
+                  setShowSectionModal(true);
+                }
+              }}
+            >
+              <Text style={styles.selectionText}>
+                {getSectionName()}
+              </Text>
+            </TouchableOpacity>
+            {errors.sectionId && <Text style={styles.errorText}>{errors.sectionId}</Text>}
 
-          {faculty.role === 'Mentor' && (
-            <>
-              <Text style={styles.sectionTitle}>Sections (Mentor)</Text>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Select section(s) (Optional)</Text>
-                <View style={[styles.checkboxContainer, errors.sections ? styles.inputError : null]}>
-                  {sections.map((section) => (
-                    <View key={section.id} style={styles.checkboxItem}>
-                      <TouchableOpacity
-                        style={[
-                          styles.checkbox,
-                          faculty.selectedSections.includes(section.id) && styles.checkboxChecked,
-                        ]}
-                        onPress={() => handleSectionCheckbox(section.id)}
-                      >
-                        {faculty.selectedSections.includes(section.id) && (
-                          <Text style={styles.checkmark}>✓</Text>
-                        )}
-                      </TouchableOpacity>
-                      <Text style={styles.checkboxLabel}>
-                        {section.section} {section.grade_name ? `(${section.grade_name})` : ''}
-                      </Text>
-                    </View>
+            <Modal
+              transparent={true}
+              visible={showSectionModal}
+              animationType="fade"
+              onRequestClose={() => setShowSectionModal(false)}
+            >
+              <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setShowSectionModal(false)}
+              >
+                <View style={styles.listModalContainer}>
+                  {filteredSections.map(section => (
+                    <TouchableOpacity
+                      key={section.id}
+                      style={styles.listModalItem}
+                      onPress={() => {
+                        handleChange('sectionId', section.id);
+                        setShowSectionModal(false);
+                      }}
+                    >
+                      <Text style={styles.listModalItemText}>{section.section}</Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
-                {errors.sections && <Text style={styles.errorText}>{errors.sections}</Text>}
-              </View>
-            </>
-          )}
+              </TouchableOpacity>
+            </Modal>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Academic Year<Text style={styles.requiredAsterisk}>*</Text></Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Academic Year"
+              value={student.academicYear.toString()}
+              editable={false}
+            />
+          </View>
         </ScrollView>
 
         {/* Footer */}
@@ -658,4 +747,4 @@ const StudentEnrollment = ({ navigation }) => {
   );
 };
 
-export default StudentEnrollment;
+export default StudentEnrollment; 

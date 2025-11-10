@@ -3,208 +3,243 @@ import { StyleSheet } from 'react-native';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F8FAFC',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E3E3E3',
-    backgroundColor: 'white',
+  content: {
+    flex: 1,
   },
-  headerTxt: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginLeft: 10,
-  },
-  BackIcon: {
-    width: 20,
-    height: 20,
-  },
-  selectedCard: {
-    backgroundColor: '#EBEEFF',
-  },
-
-  tabContainer: {
-    flexDirection: 'row',
-    marginVertical: 8,
-  },
-  tab: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginHorizontal: 5,
-    borderRadius: 20,
-  },
-  activeTab: {
-    backgroundColor: '#1e88e5',
-  },
-  tabText: {
-    fontSize: 16,
-    color: '#000',
-    fontWeight: '500',
-  },
-  activeTabText: {
-    color: '#fff',
-  },
-  addButton: {
-    marginVertical: 10,
-    alignItems: 'center',
-    padding: 10
-  },
-  addButtonText: {
-    fontWeight: '600',
-    fontSize: 16,
-    color: '#3557FF',
-
-  },
-  mentorList: {
-    paddingHorizontal: 10,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 15,
-    marginHorizontal: 10,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    borderLeftWidth: 4,
-    borderLeftColor: '#1857C0'
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: '#FFD700', // Gold border for better look
-  },
-  cardContent: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  name: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000'
-  },
-  specification: {
+  loadingText: {
+    marginTop: 12,
     fontSize: 14,
-    color: '#555',
+    color: '#64748B',
   },
-  facultyId: {
-    fontSize: 12,
-    color: '#000',
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
   },
-  moreIcon: {
-    display: 'flex',
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionHeader: {
     flexDirection: 'row',
-    padding: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  moreText: {
-    fontWeight: '500',
-    fontSize: 15,
-    color: '#000',
+  sectionInfo: {
+    flex: 1,
   },
-  modal: {
-    justifyContent: 'flex-end',
-    margin: 0,
+  sectionName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: '60%',
+  studentCount: {
+    fontSize: 14,
+    color: '#64748B',
   },
-  searchBox: {
-    backgroundColor: '#e8e8e8',
+  mentorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
     padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
   },
-  facultyItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-
+  mentorAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
   },
-  facultyDetails: {
-    flexDirection: 'column',
-    justifyContent: 'center',
+  mentorDetails: {
+    flex: 1,
   },
-  facultyName: {
+  mentorName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
-    color: "#000"
+    color: '#1E293B',
+    marginBottom: 2,
   },
-  facultySpec: {
-    fontSize: 14,
-    color: '#000',
+  mentorSpec: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 2,
   },
-  checkboxContainer: {
+  mentorRoll: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  unassignButton: {
+    padding: 8,
+  },
+  assignButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+  },
+  assignButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  emptyState: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 80,
   },
-  selectButton: {
-    marginTop: 15,
-    alignItems: 'center',
-    backgroundColor: '#3557FF',
-    paddingVertical: 12,
-    borderRadius: 20,
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#475569',
+    marginTop: 16,
+    marginBottom: 8,
   },
-  selectButtonText: {
-    color: '#fff',
-    fontSize: 18,
-  },
-  staffName:
-  {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: 6,
-    color: '#000',
-  },
-  Hat: {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: 6
-  },
-  // Section Tabs
-  sectionTabsContainer: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    marginTop: 10,
-  },
-  sectionTab: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 20,
-    marginRight: 10,
-    backgroundColor: '#FFFFFF',
-    width: 115,
-  },
-  activeSectionTab: {
-    backgroundColor: '#0C36FF',
-  },
-  sectionTabText: {
+  emptyStateText: {
     fontSize: 14,
-    color: '#333333',
-    fontWeight: '500',
+    color: '#94A3B8',
     textAlign: 'center',
+    paddingHorizontal: 40,
   },
-  activeSectionTabText: {
+  modal: {
+    margin: 0,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+    flex: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1E293B',
+  },
+  mentorListContent: {
+    padding: 20,
+    paddingBottom: 0,
+  },
+  mentorItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedMentorItem: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
+  },
+  mentorItemAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+  },
+  mentorItemInfo: {
+    flex: 1,
+  },
+  mentorItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  mentorItemSpec: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  mentorItemRoll: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  checkboxContainer: {
+    marginLeft: 8,
+  },
+  emptyMentorList: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyMentorText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginTop: 12,
+  },
+  modalAssignButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  modalAssignButtonDisabled: {
+    backgroundColor: '#CBD5E1',
+  },
+  modalAssignButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
 });
