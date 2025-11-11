@@ -27,7 +27,7 @@ exports.enrollFaculty = async (req, res) => {
                 // Update user roles if needed
                 const [userRoles] = await conn.query('SELECT role_id FROM user_roles WHERE user_id = ?', [userId]);
                 const existingRoleIds = userRoles.map(r => r.role_id);
-                
+
                 // Get role ID for the new role
                 const [roleData] = await conn.query('SELECT id FROM roles WHERE role = ?', [role]);
                 if (roleData.length > 0 && !existingRoleIds.includes(roleData[0].id)) {
@@ -147,7 +147,7 @@ exports.enrollFaculty = async (req, res) => {
 exports.generateFacultyEnrollTemplate = async (req, res) => {
     try {
         console.log("generating...");
-        
+
         const workbook = new ExcelJS.Workbook();
 
         // Instructions sheet
@@ -241,7 +241,7 @@ exports.generateFacultyEnrollTemplate = async (req, res) => {
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename="faculty_enrollment_template.xlsx"');
         console.log("File generated successfully!");
-        
+
         return res.send(Buffer.from(buffer));
     } catch (err) {
         console.error('Template generation error:', err);
@@ -337,6 +337,18 @@ exports.bulkUploadFaculty = async (req, res) => {
 
                 const sectionIdsArray = [];
                 if (sectionsStr && role === 'Mentor') {
+
+                    const gradeTokens = gradesStr.split(',').map(s => s.trim()).filter(Boolean);
+                    for (const token of gradeTokens) {
+                        const id = gradeMap.get(token) || gradeMap.get(token.toLowerCase());
+                        if (id) {
+                            gradeIds.push(id);
+                        } else {
+                            results.failed.push({ row: i, message: `Unknown grade: ${token}` });
+                            // Don't continue here, just skip this invalid grade
+                        }
+                    }
+
                     const sectionTokens = sectionsStr.split(',').map(s => s.trim()).filter(Boolean);
                     for (const token of sectionTokens) {
                         const sid = parseInt(token);
@@ -437,6 +449,16 @@ exports.bulkUploadFaculty = async (req, res) => {
                             mentorId = mentorResult.insertId;
                         }
 
+                        // Assign grades if provided
+                        if (gradeIds.length > 0) {
+                            for (const gid of gradeIds) {
+                                await conn.query(
+                                    'INSERT IGNORE INTO mentor_grade_assignments (mentor_id, grade_id, assigned_at) VALUES (?, ?, NOW())',
+                                    [mentorId, gid]
+                                );
+                            }
+                        }
+
                         // Assign sections if provided
                         if (sectionIdsArray.length > 0) {
                             for (const sid of sectionIdsArray) {
@@ -469,6 +491,6 @@ exports.bulkUploadFaculty = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Failed to process file' });
     } finally {
         // cleanup
-        try { fs.unlinkSync(filePath); } catch (_) {}
+        try { fs.unlinkSync(filePath); } catch (_) { }
     }
 };

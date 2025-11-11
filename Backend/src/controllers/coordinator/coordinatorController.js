@@ -238,10 +238,11 @@ exports.getSubjectGradeMentors = (req, res) => {
         SELECT m.id as id, m.faculty_id, f.name, f.roll, f.email, f.phone, f.specification, f.profile_photo
         FROM mentors m
         JOIN faculty f ON f.id = m.faculty_id
+        LEFT JOIN mentor_grade_assignments mga ON mga.mentor_id = m.id AND mga.grade_id = ?
         WHERE m.is_active = 1
         ORDER BY f.name`;
 
-    db.query(sql, (err, results) => {
+    db.query(sql, [gradeID], (err, results) => {
         if (err) {
             console.error('Error fetching mentors for grade:', err);
             return res.status(500).json({ success: false, message: 'Internal Server Error' });
