@@ -4,6 +4,7 @@ const multer = require('multer');
 const enrollmentController = require('../controllers/coordinator/enrollmentController');
 const coordinatorController = require('../controllers/coordinator/coordinatorController');
 const subjectAllotmentController = require('../controllers/coordinator/subjectAllotmentController');
+const materialController = require('../controllers/coordinator/materialController');
 const { authenticateToken } = require('../middleware/auth');
 
 // Configure multer for file uploads
@@ -49,6 +50,41 @@ router.post('/removeSubjectSubActivity', authenticateToken, subjectAllotmentCont
 router.post('/addSubjects', authenticateToken, subjectAllotmentController.addSubjects);
 router.post('/addActivities', authenticateToken, subjectAllotmentController.addActivities);
 router.post('/addSubActivities', authenticateToken, subjectAllotmentController.addSubActivities);
+
+// Batch management routes
+router.post('/batch/getBatches', authenticateToken, materialController.getBatches);
+router.post('/batch/getBatchAnalytics', authenticateToken, materialController.getBatchAnalytics);
+router.post('/batch/initializeBatches', authenticateToken, materialController.initializeBatches);
+router.post('/batch/reallocateBatches', authenticateToken, materialController.reallocateBatches);
+router.post('/batch/updateBatchSize', authenticateToken, materialController.updateBatchSize);
+router.post('/batch/getBatchDetails', authenticateToken, materialController.getBatchDetails);
+router.post('/batch/moveStudentBatch', authenticateToken, materialController.moveStudentBatch);
+router.post('/batch/getBatchStudents', authenticateToken, materialController.getBatchStudents);
+router.post('/batch/moveMultipleStudents', authenticateToken, materialController.moveMultipleStudents);
+
+// Topic hierarchy routes
+router.post('/topic/getTopicHierarchy', authenticateToken, materialController.getTopicHierarchy);
+router.post('/topic/createTopic', authenticateToken, materialController.createTopic);
+router.post('/topic/updateTopic', authenticateToken, materialController.updateTopic);
+router.post('/topic/deleteTopic', authenticateToken, materialController.deleteTopic);
+router.post('/topic/getActivitiesForSubject', authenticateToken, materialController.getActivitiesForSubject);
+router.post('/topic/getSubActivitiesForActivity', authenticateToken, materialController.getSubActivitiesForActivity);
+
+// Material management routes
+router.post('/material/getTopicMaterials', authenticateToken, materialController.getTopicMaterials);
+router.post('/material/addTopicMaterial', authenticateToken, materialController.addTopicMaterial);
+router.post('/material/updateTopicMaterial', authenticateToken, materialController.updateTopicMaterial);
+router.post('/material/deleteTopicMaterial', authenticateToken, materialController.deleteTopicMaterial);
+router.post('/material/setExpectedCompletionDate', authenticateToken, materialController.setExpectedCompletionDate);
+
+// Excel upload routes
+router.get('/batch/generate-batch-template', authenticateToken, materialController.generateBatchTemplate);
+router.post('/batch/upload-batches', authenticateToken, upload.single('file'), materialController.uploadBatchesFromExcel);
+router.get('/material/generate-materials-template', authenticateToken, materialController.generateMaterialsTemplate);
+router.post('/material/upload-materials', authenticateToken, upload.single('file'), materialController.uploadMaterialsFromExcel);
+
+// Utility routes
+router.post('/getGradeSubject', authenticateToken, materialController.getGradeSubjects);
 
 module.exports = router;
 

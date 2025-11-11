@@ -10,6 +10,13 @@ import CoordinatorMentorMapping from '../../pages/Coordinator/Mentor/SectionMapp
 import CoordinatorSectionStudents from '../../pages/Coordinator/Mentor/SectionMapping/SectionStudents/CoordinatorSectionStudents';
 import SubjectAllotment from '../../pages/Coordinator/Enrollment/SubjectActivityEnrollment/SubjectAllotment';
 
+// Material Management Imports
+import CoordinatorMaterialHome from '../../pages/Coordinator/Materials/MaterialHomePage/CoordinatorMaterialHome';
+import BatchManagementHome from '../../pages/Coordinator/Materials/BatchManagement/BatchManagementHome';
+import BatchDetails from '../../pages/Coordinator/Materials/BatchManagement/BatchDetails';
+import TopicHierarchyManagement from '../../pages/Coordinator/Materials/TopicHierarchy/TopicHierarchyManagement';
+import TopicMaterials from '../../pages/Coordinator/Materials/TopicHierarchy/TopicMaterials';
+
 const Stack = createNativeStackNavigator();
 
 const CoordinatorRoutes = () => {
@@ -26,6 +33,13 @@ const CoordinatorRoutes = () => {
       <Stack.Screen name="CoordinatorSubjectMentor" component={CoordinatorSubjectMentor} />
       <Stack.Screen name="CoordinatorMentorMapping" component={CoordinatorMentorMapping} />
       <Stack.Screen name="CoordinatorSectionStudents" component={CoordinatorSectionStudents} />
+
+      {/* Material Management Routes */}
+      <Stack.Screen name="CoordinatorMaterialHome" component={CoordinatorMaterialHome} />
+      <Stack.Screen name="BatchManagementHome" component={BatchManagementHome} />
+      <Stack.Screen name="BatchDetails" component={BatchDetails} />
+      <Stack.Screen name="TopicHierarchyManagement" component={TopicHierarchyManagement} />
+      <Stack.Screen name="TopicMaterials" component={TopicMaterials} />
     </Stack.Navigator>
   );
 };

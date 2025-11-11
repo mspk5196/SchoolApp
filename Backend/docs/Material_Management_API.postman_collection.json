@@ -1,0 +1,793 @@
+{
+  "info": {
+    "name": "Material Management API",
+    "description": "Complete API collection for Material Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "YOUR_JWT_TOKEN_HERE",
+      "type": "string"
+    },
+    {
+      "key": "sectionId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "subjectId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "batchId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "topicId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "contextActivityId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Batch Management",
+      "item": [
+        {
+          "name": "1. Initialize Batches",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": {{sectionId}},\n  \"subjectId\": {{subjectId}},\n  \"numberOfBatches\": 3,\n  \"maxStudentsPerBatch\": 30\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/initializeBatches",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "initializeBatches"]
+            },
+            "description": "Create initial batches and auto-distribute students"
+          }
+        },
+        {
+          "name": "2. Get Batches",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": {{sectionId}},\n  \"subjectId\": {{subjectId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/getBatches",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "getBatches"]
+            },
+            "description": "Get all batches with statistics"
+          }
+        },
+        {
+          "name": "3. Get Batch Analytics",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": {{sectionId}},\n  \"subjectId\": {{subjectId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/getBatchAnalytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "getBatchAnalytics"]
+            },
+            "description": "Get comprehensive batch analytics"
+          }
+        },
+        {
+          "name": "4. Get Batch Details",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batchId\": {{batchId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/getBatchDetails",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "getBatchDetails"]
+            },
+            "description": "Get batch details with student list"
+          }
+        },
+        {
+          "name": "5. Update Batch Size",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batchId\": {{batchId}},\n  \"newMaxSize\": 35\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/updateBatchSize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "updateBatchSize"]
+            },
+            "description": "Update batch maximum capacity"
+          }
+        },
+        {
+          "name": "6. Move Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentRoll\": \"ROLL001\",\n  \"fromBatchId\": 1,\n  \"toBatchId\": 2,\n  \"subjectId\": {{subjectId}},\n  \"reason\": \"Manual_Transfer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/moveStudentBatch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "moveStudentBatch"]
+            },
+            "description": "Move single student between batches"
+          }
+        },
+        {
+          "name": "7. Get Batch Students",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batchId\": {{batchId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/getBatchStudents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "getBatchStudents"]
+            },
+            "description": "Get all students in batch (for overflow)"
+          }
+        },
+        {
+          "name": "8. Move Multiple Students",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentRolls\": [\"ROLL001\", \"ROLL002\", \"ROLL003\"],\n  \"fromBatchId\": 1,\n  \"toBatchId\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/moveMultipleStudents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "moveMultipleStudents"]
+            },
+            "description": "Move multiple students (bulk operation)"
+          }
+        },
+        {
+          "name": "9. Reallocate Batches",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": {{sectionId}},\n  \"subjectId\": {{subjectId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/reallocateBatches",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "reallocateBatches"]
+            },
+            "description": "Redistribute students based on performance"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Topic Hierarchy",
+      "item": [
+        {
+          "name": "1. Get Activities for Subject",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": {{sectionId}},\n  \"subjectId\": {{subjectId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/topic/getActivitiesForSubject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "topic", "getActivitiesForSubject"]
+            }
+          }
+        },
+        {
+          "name": "2. Get Sub-Activities",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": {{sectionId}},\n  \"subjectId\": {{subjectId}},\n  \"contextActivityId\": {{contextActivityId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/topic/getSubActivitiesForActivity",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "topic", "getSubActivitiesForActivity"]
+            }
+          }
+        },
+        {
+          "name": "3. Get Topic Hierarchy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": {{sectionId}},\n  \"subjectId\": {{subjectId}},\n  \"contextActivityId\": {{contextActivityId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/topic/getTopicHierarchy",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "topic", "getTopicHierarchy"]
+            }
+          }
+        },
+        {
+          "name": "4. Create Root Topic",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contextActivityId\": {{contextActivityId}},\n  \"parentId\": null,\n  \"topicName\": \"Introduction to Mathematics\",\n  \"topicCode\": \"MATH-INTRO-01\",\n  \"level\": 1,\n  \"orderSequence\": 1,\n  \"hasAssessment\": true,\n  \"hasHomework\": true,\n  \"isBottomLevel\": false,\n  \"expectedCompletionDays\": 7,\n  \"passPercentage\": 60\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/topic/createTopic",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "topic", "createTopic"]
+            }
+          }
+        },
+        {
+          "name": "5. Create Child Topic",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contextActivityId\": {{contextActivityId}},\n  \"parentId\": {{topicId}},\n  \"topicName\": \"Algebra Basics\",\n  \"topicCode\": \"MATH-ALGEBRA-01\",\n  \"orderSequence\": 1,\n  \"hasAssessment\": true,\n  \"hasHomework\": false,\n  \"isBottomLevel\": true,\n  \"expectedCompletionDays\": 5,\n  \"passPercentage\": 65\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/topic/createTopic",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "topic", "createTopic"]
+            }
+          }
+        },
+        {
+          "name": "6. Update Topic",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topicId\": {{topicId}},\n  \"topicName\": \"Updated Topic Name\",\n  \"orderSequence\": 2,\n  \"expectedCompletionDays\": 10,\n  \"passPercentage\": 70\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/topic/updateTopic",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "topic", "updateTopic"]
+            }
+          }
+        },
+        {
+          "name": "7. Delete Topic",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topicId\": {{topicId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/topic/deleteTopic",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "topic", "deleteTopic"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Material Management",
+      "item": [
+        {
+          "name": "1. Get Topic Materials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topicId\": {{topicId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/material/getTopicMaterials",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "material", "getTopicMaterials"]
+            }
+          }
+        },
+        {
+          "name": "2. Add Video Material",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topicId\": {{topicId}},\n  \"materialType\": \"Video\",\n  \"fileName\": \"Introduction Video\",\n  \"fileUrl\": \"https://www.youtube.com/watch?v=example\",\n  \"estimatedDuration\": 30,\n  \"difficultyLevel\": \"Easy\",\n  \"instructions\": \"Watch the video and take notes\",\n  \"hasAssessment\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/material/addTopicMaterial",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "material", "addTopicMaterial"]
+            }
+          }
+        },
+        {
+          "name": "3. Add PDF Material",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topicId\": {{topicId}},\n  \"materialType\": \"PDF\",\n  \"fileName\": \"Textbook Chapter 1\",\n  \"fileUrl\": \"https://drive.google.com/file/d/example\",\n  \"estimatedDuration\": 60,\n  \"difficultyLevel\": \"Medium\",\n  \"instructions\": \"Read and complete exercises\",\n  \"hasAssessment\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/material/addTopicMaterial",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "material", "addTopicMaterial"]
+            }
+          }
+        },
+        {
+          "name": "4. Update Material",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materialId\": 1,\n  \"fileName\": \"Updated Material Title\",\n  \"estimatedDuration\": 45,\n  \"difficultyLevel\": \"Hard\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/material/updateTopicMaterial",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "material", "updateTopicMaterial"]
+            }
+          }
+        },
+        {
+          "name": "5. Delete Material",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materialId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/material/deleteTopicMaterial",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "material", "deleteTopicMaterial"]
+            }
+          }
+        },
+        {
+          "name": "6. Set Expected Completion Date",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topicId\": {{topicId}},\n  \"batchId\": {{batchId}},\n  \"expectedDate\": \"2025-12-31\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/material/setExpectedCompletionDate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "material", "setExpectedCompletionDate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Excel Upload",
+      "item": [
+        {
+          "name": "1. Download Batch Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/generate-batch-template",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "generate-batch-template"]
+            }
+          }
+        },
+        {
+          "name": "2. Download Materials Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/material/generate-materials-template",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "material", "generate-materials-template"]
+            }
+          }
+        },
+        {
+          "name": "3. Upload Batches",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/batch/upload-batches",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "batch", "upload-batches"]
+            }
+          }
+        },
+        {
+          "name": "4. Upload Materials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/material/upload-materials",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "material", "upload-materials"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Utilities",
+      "item": [
+        {
+          "name": "Get Grade Subjects",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gradeId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/coordinator/getGradeSubject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "coordinator", "getGradeSubject"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

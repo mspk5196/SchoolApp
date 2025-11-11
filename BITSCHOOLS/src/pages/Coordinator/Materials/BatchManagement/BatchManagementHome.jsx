@@ -1,0 +1,1333 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
+  TextInput,
+  Modal,
+  StatusBar,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import DocumentPicker from '@react-native-documents/picker';
+import styles from './BatchManagementStyles.jsx';
+import * as materialApi from '../../../../utils/materialApi';
+import ApiService from '../../../../utils/ApiService';
+
+const BatchManagementHome = ({route}) => {
+  const navigation = useNavigation();
+  const {activeGrade, coordinatorData, selectedSubjectId, selectedSectionId, selectedSubjectName} = route.params;
+  console.log('BatchManagementHome mounted with params:', route.params);
+
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false); 
+  const [sections, setSections] = useState([]);
+  const [selectedSection, setSelectedSection] = useState(selectedSectionId);
+  const [subjects, setSubjects] = useState([]);
+  const [selectedSubject, setSelectedSubject] = useState(selectedSubjectId);
+  const [batchData, setBatchData] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchInput, setBatchInput] = useState('3');
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [processingAction, setProcessingAction] = useState('');
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [showBatchSizeModal, setShowBatchSizeModal] = useState(false);
+  const [selectedBatchForResize, setSelectedBatchForResize] = useState(null);
+  const [newBatchSize, setNewBatchSize] = useState('');
+
+  // Overflow resolution state
+  const [showResolveOverflowModal, setShowResolveOverflowModal] = useState(false);
+  const [overflowBatch, setOverflowBatch] = useState(null);
+  const [overflowCount, setOverflowCount] = useState(0);
+  const [showMoveStudentsModal, setShowMoveStudentsModal] = useState(false);
+  const [studentsInOverflowBatch, setStudentsInOverflowBatch] = useState([]);
+  const [selectedStudentRolls, setSelectedStudentRolls] = useState([]);
+  const [targetBatchId, setTargetBatchId] = useState('');
+
+
+  useEffect(() => {
+    console.log('useEffect triggered - selectedSection:', selectedSection, 'selectedSubject:', selectedSubject);
+    if (selectedSection && selectedSubject) {
+      fetchBatchData();
+      fetchAnalytics();
+    }
+  }, [selectedSection, selectedSubject]);
+
+  useEffect(() => {
+    // Initialize data immediately if we have the values from route params
+    console.log('Component mounted with:', { selectedSectionId, selectedSubjectId });
+    if (selectedSectionId && selectedSubjectId) {
+      setLoading(true);
+      fetchBatchData();
+      fetchAnalytics();
+    }
+  }, []);
+
+  useEffect(() => {
+    // Auto-refresh every 30 seconds when data exists
+    let interval;
+    if (batchData.length > 0) {
+      interval = setInterval(() => {
+        if (!loading && !refreshing) {
+          fetchAnalytics(); // Light refresh of analytics only
+        }
+      }, 30000);
+    }
+    return () => clearInterval(interval); 
+  }, [batchData.length, loading, refreshing]);
+
+  const showSuccessMessage = (message) => {
+    setLastUpdateTime(new Date().toLocaleTimeString());
+    Alert.alert('Success', message);
+  };
+
+  const showErrorMessage = (message) => {
+    Alert.alert('Error', message);
+  };
+
+  const fetchBatchData = async () => {
+    try {
+      const sectionId = selectedSection || selectedSectionId;
+      const subjectId = selectedSubject || selectedSubjectId;
+      
+      console.log('fetchBatchData called with:', { sectionId, subjectId });
+      
+      if (!sectionId || !subjectId) {
+        console.log('Missing sectionId or subjectId, skipping fetch');
+        setLoading(false);
+        return null;
+      }
+
+      const result = await materialApi.getBatches(sectionId, subjectId);
+   
+      if (result && result.success) {
+        console.log('Batch data response:', result);
+        const batches = result.batches || [];
+        
+        // Add calculated fields for better display
+        const enhancedBatches = batches.map(batch => ({
+          ...batch,
+          student_count: batch.current_students_count || 0,
+          capacity_utilization: batch.capacity_utilization || 0,
+          performance_grade: batch.performance_grade || getPerformanceGrade(batch.avg_performance_score)
+        }));
+        
+        setBatchData(enhancedBatches);
+        setLastUpdateTime(new Date().toLocaleTimeString());
+        console.log('Enhanced batches set:', enhancedBatches);
+        
+        // Check for overflow
+        checkForOverflowAndPrompt(enhancedBatches);
+        
+        return enhancedBatches;
+      } else {
+        console.log('Failed to fetch batch data');
+        showErrorMessage(result?.message || 'Failed to fetch batch data');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching batch data:', error);
+      showErrorMessage('Network error while fetching batch data');
+      return null;
+    }
+    finally{
+      setLoading(false);
+    }
+  };
+
+  const checkForOverflowAndPrompt = (batches) => {
+    if (!Array.isArray(batches)) return;
+    const over = batches.find(b => (b.current_students_count || 0) > (b.max_students || 0));
+    if (over) {
+      setOverflowBatch(over);
+      setOverflowCount((over.current_students_count || 0) - (over.max_students || 0));
+      setShowResolveOverflowModal(true);
+    }
+  };
+
+  const openResizeForOverflow = () => {
+    if (!overflowBatch) return;
+    setSelectedBatchForResize(overflowBatch);
+    setNewBatchSize(String(overflowBatch.current_students_count || overflowCount));
+    setShowResolveOverflowModal(false);
+    setShowBatchSizeModal(true);
+  };
+
+  const fetchStudentsForOverflowBatch = async () => {
+    if (!overflowBatch) return;
+    try {
+      const result = await materialApi.getBatchStudents(overflowBatch.id);
+      if (result && result.success) {
+        setStudentsInOverflowBatch(result.students || []);
+      } else {
+        setStudentsInOverflowBatch([]);
+      }
+    } catch (e) {
+      console.error('Failed to fetch students for overflow batch', e);
+      setStudentsInOverflowBatch([]);
+    }
+  };
+
+  const openMoveStudentsForOverflow = async () => {
+    setShowResolveOverflowModal(false);
+    setSelectedStudentRolls([]);
+    setTargetBatchId('');
+    await fetchStudentsForOverflowBatch();
+    setShowMoveStudentsModal(true);
+  };
+
+  const toggleStudentSelection = (roll) => {
+    setSelectedStudentRolls(prev => {
+      const exists = prev.includes(roll);
+      if (exists) return prev.filter(r => r !== roll);
+      // limit to overflowCount
+      if (prev.length >= overflowCount) return prev; 
+      return [...prev, roll];
+    });
+  };
+
+  const moveSelectedStudents = async () => {
+    if (!overflowBatch) return;
+    if (!targetBatchId) {
+      Alert.alert('Select Target', 'Please select a target batch');
+      return;
+    }
+    if (selectedStudentRolls.length !== overflowCount) {
+      Alert.alert('Select Students', `Please select exactly ${overflowCount} student(s) to move`);
+      return;
+    }
+    try {
+      setLoading(true);
+      
+      // Get student IDs from rolls
+      const studentIds = studentsInOverflowBatch
+        .filter(s => selectedStudentRolls.includes(s.roll_no))
+        .map(s => s.student_id);
+      
+      // Move students in batch
+      const result = await materialApi.moveMultipleStudents(
+        overflowBatch.id,
+        targetBatchId,
+        studentIds
+      );
+      
+      if (result && result.success) {
+        setShowMoveStudentsModal(false);
+        const updated = await fetchBatchData();
+        await fetchAnalytics();
+        checkForOverflowAndPrompt(updated);
+        showSuccessMessage(result.message || 'Selected students moved successfully');
+      } else {
+        showErrorMessage(result?.message || 'Failed to move students');
+      }
+    } catch (e) {
+      console.error('Failed to move selected students', e);
+      showErrorMessage('Failed to move selected students');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPerformanceGrade = (performance) => {
+    if (!performance || performance === 0) return 'Not Available';
+    if (performance >= 90) return 'Excellent';
+    if (performance >= 80) return 'Good';
+    if (performance >= 70) return 'Average';
+    if (performance >= 60) return 'Below Average';
+    return 'Needs Attention';
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const sectionId = selectedSection || selectedSectionId;
+      const subjectId = selectedSubject || selectedSubjectId;
+      
+      console.log('fetchAnalytics called with:', { sectionId, subjectId });
+      
+      if (!sectionId || !subjectId) {
+        console.log('Missing sectionId or subjectId for analytics, skipping fetch');
+        return; 
+      }
+
+      const result = await materialApi.getBatchAnalytics(sectionId, subjectId);
+
+      if (result && result.success) {
+        console.log('Analytics response:', result);
+        const analyticsData = result.analytics;
+        
+        // Enhance analytics with calculated metrics
+        const enhancedAnalytics = {
+          ...analyticsData,
+          overall_grade: getPerformanceGrade(analyticsData.avg_performance),
+          students_per_batch: analyticsData.total_batches > 0 
+            ? (analyticsData.total_students / analyticsData.total_batches).toFixed(1)
+            : 0,
+          batch_efficiency: analyticsData.total_batches > 0 && analyticsData.total_students > 0
+            ? ((analyticsData.total_students / (analyticsData.total_batches * 15)) * 100).toFixed(1) // Assuming 15 as ideal batch size
+            : 0
+        };
+        
+        setAnalytics(enhancedAnalytics);
+        console.log('Enhanced analytics set:', enhancedAnalytics);
+      } else {
+        console.log('Failed to fetch analytics, response not ok');
+        showErrorMessage(result?.message || 'Failed to fetch analytics');
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      showErrorMessage('Network error while fetching analytics');
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    const sectionId = selectedSection || selectedSectionId;
+    const subjectId = selectedSubject || selectedSubjectId;
+    
+    if (sectionId && subjectId) {
+      Promise.all([fetchBatchData(), fetchAnalytics()]).finally(() => {
+        setRefreshing(false);
+      });
+    } else {
+      setRefreshing(false);
+    }
+  };
+
+  const handleRunReallocation = async () => {
+    Alert.alert(
+      'Confirm Reallocation',
+      'This will reallocate all students based on their current performance. This action cannot be undone. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Proceed',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              setProcessingAction('Reallocating students...');
+              
+              const result = await materialApi.reallocateBatches(
+                selectedSection || selectedSectionId,
+                selectedSubject || selectedSubjectId
+              );
+              
+              if (result && result.success) {
+                showSuccessMessage(`Reallocation completed successfully! ${result.moved_students || 0} students were moved.`);
+                fetchBatchData();
+                fetchAnalytics();
+              } else {
+                showErrorMessage(result?.message || 'Failed to run reallocation');
+              }
+            } catch (error) {
+              console.error('Error running reallocation:', error);
+              showErrorMessage('Network error during reallocation');
+            } finally {
+              setLoading(false);
+              setProcessingAction('');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleConfigureBatches = async () => {
+    // Show custom modal for input
+    setShowBatchModal(true);
+  };
+
+  const createBatches = async (numberOfBatches) => {
+    try {
+      // Validate input
+      const numBatches = parseInt(numberOfBatches);
+      if (isNaN(numBatches) || numBatches < 1 || numBatches > 10) {
+        Alert.alert('Error', 'Please enter a valid number between 1 and 10');
+        return;
+      }
+
+      setLoading(true);
+      setShowBatchModal(false); // Close modal 
+      setProcessingAction('Configuring batches...');
+      
+      console.log('Creating batches:', {
+        subjectId: selectedSubject || selectedSubjectId,
+        gradeId: activeGrade,
+        sectionId: selectedSection || selectedSectionId,
+        maxBatches: numBatches,
+        coordinatorData: coordinatorData.id
+      });
+
+      const response = await ApiService.makeRequest(`/coordinator/batches/configure`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subjectId: selectedSubject || selectedSubjectId,
+          gradeId: activeGrade,
+          sectionId: selectedSection || selectedSectionId,
+          maxBatches: numBatches,
+          batchSizeLimit: 30, 
+          autoAllocation: true,
+          coordinatorId: coordinatorData.id
+        }),
+      });
+
+      const result = await response.json();
+      console.log('Configure batches response:', result);
+      
+      if (response) {
+        showSuccessMessage(`${numBatches} batches configured successfully! You can now initialize students.`);
+        fetchBatchData();
+        fetchAnalytics();
+      } else {
+        showErrorMessage(result.message || 'Failed to configure batches');
+      }
+    } catch (error) {
+      console.error('Error configuring batches:', error);
+      showErrorMessage('Network error while configuring batches');
+    } finally {
+      setLoading(false);
+      setProcessingAction('');
+    }  
+  };
+
+  const handleInitializeBatches = async () => {
+    if (batchData.length === 0) {
+      Alert.alert('No Batches', 'Please configure batches first before initializing students.');
+      return;
+    }
+
+    Alert.alert(
+      'Initialize Batches',
+      'This will create initial batch assignments for all students based on their performance. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Initialize',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              setProcessingAction('Initializing student assignments...');
+              
+              const result = await materialApi.initializeBatches(
+                selectedSection || selectedSectionId,
+                selectedSubject || selectedSubjectId
+              );
+              
+              if (result && result.success) {
+                showSuccessMessage(`Initialization completed! ${result.assigned_students || 0} students were assigned to batches.`);
+                const batches = await fetchBatchData();
+                await fetchAnalytics();
+                checkForOverflowAndPrompt(batches);
+              } else {
+                showErrorMessage(result?.message || 'Failed to initialize batches');
+              }
+            } catch (error) {
+              console.error('Error initializing batches:', error);
+              showErrorMessage('Network error during initialization');
+            } finally {
+              setLoading(false);
+              setProcessingAction('');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleChangeBatchSize = (batch) => {
+    setSelectedBatchForResize(batch);
+    setNewBatchSize(batch.max_students?.toString() || '30');
+    setShowBatchSizeModal(true);
+  };
+
+  const updateBatchSize = async () => {
+    try {
+      const size = parseInt(newBatchSize);
+      if (isNaN(size) || size < 5 || size > 50) {
+        Alert.alert('Error', 'Please enter a valid batch size between 5 and 50');
+        return;
+      }
+
+      if (size < selectedBatchForResize.current_students) {
+        Alert.alert(
+          'Warning', 
+          `Current batch has ${selectedBatchForResize.current_students} students but you're setting size to ${size}. This may cause issues. Continue?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Continue', onPress: () => proceedWithBatchSizeUpdate(size) }
+          ]
+        );
+        return;
+      }
+
+      await proceedWithBatchSizeUpdate(size);
+    } catch (error) {
+      console.error('Error updating batch size:', error);
+      showErrorMessage('Network error while updating batch size');
+    }
+  };
+
+  const proceedWithBatchSizeUpdate = async (size) => {
+    try {
+      setLoading(true);
+      setShowBatchSizeModal(false);
+      setProcessingAction('Updating batch size...');
+
+      const result = await materialApi.updateBatchSize(
+        selectedBatchForResize.id,
+        size
+      );
+      
+      if (result && result.success) {
+        showSuccessMessage(`Batch size updated successfully to ${size} students!`);
+        fetchBatchData();
+        fetchAnalytics();
+      } else {
+        showErrorMessage(result?.message || 'Failed to update batch size');
+      }
+    } catch (error) {
+      console.error('Error updating batch size:', error);
+      showErrorMessage('Network error while updating batch size');
+    } finally {
+      setLoading(false);
+      setProcessingAction('');
+      setSelectedBatchForResize(null);
+    }
+  };
+
+  // Excel Upload/Download Functions
+  const handleDownloadBatchTemplate = async () => {
+    try {
+      setLoading(true);
+      setProcessingAction('Downloading template...');
+      
+      const sectionId = selectedSection || selectedSectionId;
+      const subjectId = selectedSubject || selectedSubjectId;
+      
+      if (!sectionId || !subjectId) {
+        Alert.alert('Error', 'Please select section and subject first');
+        return;
+      }
+      
+      const result = await materialApi.downloadBatchTemplate(sectionId, subjectId);
+      
+      if (result && result.success) {
+        showSuccessMessage('Batch template downloaded successfully!');
+      } else {
+        showErrorMessage(result?.message || 'Failed to download template');
+      }
+    } catch (error) {
+      console.error('Download template error:', error);
+      showErrorMessage('Failed to download template');
+    } finally {
+      setLoading(false);
+      setProcessingAction('');
+    }
+  };
+
+  const handleUploadBatchesExcel = async () => {
+    try {
+      const result = await DocumentPicker.pick({
+        type: [DocumentPicker.types.xlsx, DocumentPicker.types.xls],
+        copyTo: 'cachesDirectory',
+      });
+
+      if (result && result.length > 0) {
+        const file = result[0];
+        
+        setLoading(true);
+        setProcessingAction('Uploading batches...');
+        
+        const sectionId = selectedSection || selectedSectionId;
+        const subjectId = selectedSubject || selectedSubjectId;
+        
+        if (!sectionId || !subjectId) {
+          Alert.alert('Error', 'Please select section and subject first');
+          return;
+        }
+        
+        const uploadResult = await materialApi.uploadBatchesExcel(
+          sectionId,
+          subjectId,
+          file
+        );
+        
+        if (uploadResult && uploadResult.success) {
+          showSuccessMessage(
+            `Batches uploaded successfully!\n` +
+            `Created: ${uploadResult.created || 0}\n` +
+            `Updated: ${uploadResult.updated || 0}`
+          );
+          fetchBatchData();
+          fetchAnalytics();
+        } else {
+          showErrorMessage(uploadResult?.message || 'Failed to upload batches');
+        }
+      }
+    } catch (error) {
+      if (DocumentPicker.isCancel(error)) {
+        console.log('User cancelled file picker');
+      } else {
+        console.error('Upload error:', error);
+        showErrorMessage('Failed to upload batches');
+      }
+    } finally {
+      setLoading(false);
+      setProcessingAction('');
+    }
+  };
+
+  const renderBatchCard = (batch) => (
+    <TouchableOpacity
+      key={batch.batch_name}
+      style={[
+        styles.batchCard,
+        { 
+          borderLeftColor: getBatchStatusColor(batch),
+          borderLeftWidth: 4 
+        }
+      ]}
+      onPress={() => navigation.navigate('BatchDetails', { 
+        batchName: batch.batch_name,
+        batchId: batch.id,
+        sectionId: selectedSection || selectedSectionId,
+        subjectId: selectedSubject || selectedSubjectId,
+        coordinatorId: coordinatorData.id
+      })}
+    >
+      <View style={styles.batchHeader}>
+        <View style={styles.batchNameContainer}>
+          <Text style={styles.batchName}>{batch.batch_name}</Text>
+          <Text style={styles.batchLevel}>Level {batch.batch_level || 1}</Text>
+        </View>
+        <View style={styles.studentCount}>
+          <Icon name="account-group-outline" size={18} color="#64748B" />
+          <Text style={styles.countText}>
+            {batch.student_count}/{batch.max_students || 30}
+          </Text>
+        </View>
+      </View>
+      
+      <View style={styles.batchStats}>
+        <View style={styles.statItem}>
+          <Text style={[styles.statValue, { color: getPerformanceColor(batch.avg_performance) }]}>
+            {batch.avg_performance && typeof batch.avg_performance === 'number' 
+              ? batch.avg_performance.toFixed(1) + '%' 
+              : 'N/A'
+            }
+          </Text>
+          <Text style={styles.statLabel}>Performance</Text>
+          <Text style={styles.statSubLabel}>{batch.performance_grade}</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{batch.active_topics || 0}</Text>
+          <Text style={styles.statLabel}>Topics</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{batch.capacity_utilization}%</Text>
+          <Text style={styles.statLabel}>Capacity</Text>
+        </View>
+      </View>
+
+      {/* Quick Action Buttons */} 
+      <View style={styles.quickActions}>
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            // Quick view analytics for this batch
+            Alert.alert(
+              `${batch.batch_name} Details`,
+              `Students: ${batch.student_count}/${batch.max_students}\n` +
+              `Performance: ${batch.avg_performance && typeof batch.avg_performance === 'number' ? batch.avg_performance.toFixed(1) + '%' : 'N/A'}\n` +
+              `Grade: ${batch.performance_grade}\n` +
+              `Created: ${new Date(batch.created_at).toLocaleDateString()}`
+            );
+          }}
+        >
+          <Icon name="information-outline" size={18} color="#3B82F6" />
+          <Text style={styles.quickActionText}>Info</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleChangeBatchSize(batch);
+          }}
+        >
+          <Icon name="resize" size={18} color="#3B82F6" />
+          <Text style={styles.quickActionText}>Resize</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const getBatchStatusColor = (batch) => {
+    if (!batch.avg_performance) return '#ccc';
+    if (batch.avg_performance >= 80) return '#4CAF50';
+    if (batch.avg_performance >= 60) return '#FF9800';
+    return '#F44336';
+  };
+
+  const getPerformanceColor = (performance) => {
+    if (!performance) return '#999';
+    if (performance >= 80) return '#4CAF50';
+    if (performance >= 60) return '#FF9800';
+    return '#F44336';
+  };
+
+  console.log('Render - selectedSection:', selectedSection, 'selectedSubject:', selectedSubject, 'batchData length:', batchData.length, 'analytics:', !!analytics);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#3B82F6" />
+        <LinearGradient
+          colors={['#3B82F6', '#2563EB']}
+          style={styles.header}
+        >
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-left" size={24} color="white" />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Batch Management</Text>
+            {selectedSubjectName && (
+              <Text style={styles.headerSubtitle}>
+                {selectedSubjectName} - Grade {activeGrade}
+              </Text>
+            )}
+          </View>
+        </LinearGradient>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>
+            {processingAction || 'Loading batch management...'}
+          </Text>
+          {processingAction && (
+            <Text style={styles.loadingSubtext}>
+              Please wait, this may take a few moments
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#3B82F6" />
+      {/* Header */}
+      <LinearGradient
+        colors={['#3B82F6', '#2563EB']}
+        style={styles.header}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Icon name="arrow-left" size={24} color="white" />
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Batch Management</Text>
+          {selectedSubjectName && (
+            <Text style={styles.headerSubtitle}>
+              {selectedSubjectName} - Grade {activeGrade}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity onPress={handleRefresh}>
+          <Icon name="refresh" size={24} color="white" />
+        </TouchableOpacity>
+      </LinearGradient>
+
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
+
+        {/* Analytics Summary */}
+        {analytics && (
+          <TouchableOpacity 
+            style={styles.analyticsCard}
+            onPress={() => setShowAnalyticsModal(true)}
+          >
+            <View style={styles.analyticsHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Icon name="chart-box-outline" size={24} color="#3B82F6" style={{ marginRight: 8 }} />
+                <Text style={styles.cardTitle}>Analytics Overview</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.analyticsSubtitle}>Tap for details</Text>
+                <Icon name="chevron-right" size={20} color="#64748B" style={{ marginLeft: 4 }} />
+              </View>
+            </View>
+            <View style={styles.analyticsRow}>
+              <View style={styles.analyticsItem}>
+                <Text style={styles.analyticsValue}>{analytics.total_students}</Text>
+                <Text style={styles.analyticsLabel}>Total Students</Text>
+              </View>
+              <View style={styles.analyticsItem}>
+                <Text style={styles.analyticsValue}>{analytics.total_batches}</Text>
+                <Text style={styles.analyticsLabel}>Active Batches</Text>
+              </View>
+              <View style={styles.analyticsItem}>
+                <Text style={[styles.analyticsValue, { color: getPerformanceColor(analytics.avg_performance) }]}>
+                  {analytics.avg_performance && typeof analytics.avg_performance === 'number' 
+                    ? analytics.avg_performance.toFixed(1) + '%' 
+                    : 'N/A'
+                  }
+                </Text>
+                <Text style={styles.analyticsLabel}>Avg Performance</Text>
+                <Text style={styles.analyticsSubLabel}>{analytics.overall_grade}</Text>
+              </View>
+            </View>
+            {lastUpdateTime && (
+              <Text style={styles.lastUpdateText}>
+                Last updated: {lastUpdateTime}
+              </Text>
+            )}
+          </TouchableOpacity> 
+        )}
+
+        {/* Action Buttons */}
+        {((selectedSection && selectedSubject) || (selectedSectionId && selectedSubjectId)) && (
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.configureButton]}
+              onPress={handleConfigureBatches}
+            >
+              <Icon name="cog-outline" size={22} color="white" />
+              <Text style={styles.actionButtonText}>Configure Batches</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.reallocateButton]}
+              onPress={handleRunReallocation}
+            >
+              <Icon name="shuffle-variant" size={22} color="white" />
+              <Text style={styles.actionButtonText}>Run Reallocation</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.initializeButton]}
+              onPress={handleInitializeBatches}
+            >
+              <Icon name="account-multiple-plus-outline" size={22} color="white" />
+              <Text style={styles.actionButtonText}>Initialize Batches</Text>
+            </TouchableOpacity>
+            
+            {/* Excel Upload/Download Buttons */}
+            <View style={styles.excelActionsRow}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.downloadButton, { flex: 1, marginRight: 8 }]}
+                onPress={handleDownloadBatchTemplate}
+              >
+                <Icon name="download" size={20} color="white" />
+                <Text style={styles.actionButtonText}>Download Template</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.uploadButton, { flex: 1, marginLeft: 8 }]}
+                onPress={handleUploadBatchesExcel}
+              >
+                <Icon name="upload" size={20} color="white" />
+                <Text style={styles.actionButtonText}>Upload Excel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Batch List */}
+        {batchData.length > 0 && (
+          <View style={styles.batchesContainer}>
+            <Text style={styles.sectionTitle}>Current Batches</Text>
+            {batchData.map(renderBatchCard)}
+          </View>
+        )}
+
+        {/* Empty State */}
+        {((selectedSection && selectedSubject) || (selectedSectionId && selectedSubjectId)) && batchData.length === 0 && !loading && (
+          <View style={styles.emptyState}>
+            <Icon name="account-group-outline" size={80} color="#CBD5E1" />
+            <Text style={styles.emptyText}>No batches found</Text>
+            <Text style={styles.emptySubtext}>First configure batches, then initialize students</Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Resolve Overflow Modal */}
+      <Modal
+        visible={showResolveOverflowModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowResolveOverflowModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            padding: 20,
+            borderRadius: 12,
+            width: '85%',
+            maxWidth: 360
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Batch Overflow Detected</Text>
+            {overflowBatch && (
+              <Text style={{ color: '#555', marginBottom: 16 }}>
+                {overflowBatch.batch_name} has {overflowBatch.current_students}/{overflowBatch.max_students} students. Overflow: {overflowCount}.
+              </Text>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <TouchableOpacity
+                style={{ backgroundColor: '#2196F3', padding: 12, borderRadius: 8, flex: 0.48 }}
+                onPress={openResizeForOverflow}
+              >
+                <Text style={{ color: 'white', textAlign: 'center', fontWeight: '600' }}>Resize Batch</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ backgroundColor: '#10B981', padding: 12, borderRadius: 8, flex: 0.48 }}
+                onPress={openMoveStudentsForOverflow}
+              >
+                <Text style={{ color: 'white', textAlign: 'center', fontWeight: '600' }}>Move Students</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Move Students Modal */}
+      <Modal
+        visible={showMoveStudentsModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowMoveStudentsModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            padding: 20,
+            borderRadius: 12,
+            width: '90%',
+            maxWidth: 400,
+            maxHeight: '80%'
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Move {overflowCount} Student(s)</Text>
+              <TouchableOpacity onPress={() => setShowMoveStudentsModal(false)}>
+                <Icon name="close" size={22} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ marginBottom: 8, color: '#555' }}>Select exactly {overflowCount} student(s) from {overflowBatch?.batch_name} to move:</Text>
+            <ScrollView style={{ maxHeight: 260 }}>
+              {studentsInOverflowBatch.map(st => (
+                <TouchableOpacity
+                  key={st.student_roll}
+                  onPress={() => toggleStudentSelection(st.student_roll)}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8 }}
+                >
+                  <Icon
+                    name={selectedStudentRolls.includes(st.student_roll) ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                    size={22}
+                    color={selectedStudentRolls.includes(st.student_roll) ? '#3B82F6' : '#9CA3AF'}
+                    style={{ marginRight: 10 }}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, color: '#111827' }}>{st.student_name}</Text>
+                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Roll: {st.student_roll}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={{ marginTop: 12 }}>
+              <Text style={{ marginBottom: 6, color: '#555' }}>Target Batch</Text>
+              <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8 }}>
+                <ScrollView>
+                  {batchData
+                    .filter(b => b.id !== overflowBatch?.id)
+                    .map(b => (
+                      <TouchableOpacity
+                        key={b.id}
+                        style={{ padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                        onPress={() => setTargetBatchId(b.id)}
+                      >
+                        <Text style={{ fontSize: 15 }}>{b.batch_name}</Text>
+                        <Text style={{ fontSize: 12, color: '#6B7280' }}>{b.current_students}/{b.max_students}</Text>
+                        <Icon name={targetBatchId === b.id ? 'radiobox-marked' : 'radiobox-blank'} size={20} color={targetBatchId === b.id ? '#3B82F6' : '#9CA3AF'} />
+                      </TouchableOpacity>
+                    ))}
+                </ScrollView>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
+              <TouchableOpacity
+                style={{ backgroundColor: '#ccc', padding: 12, borderRadius: 8, flex: 0.48 }}
+                onPress={() => setShowMoveStudentsModal(false)}
+              >
+                <Text style={{ textAlign: 'center', color: '#555' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ backgroundColor: selectedStudentRolls.length === overflowCount && targetBatchId ? '#3B82F6' : '#93C5FD', padding: 12, borderRadius: 8, flex: 0.48 }}
+                onPress={moveSelectedStudents}
+                disabled={!(selectedStudentRolls.length === overflowCount && targetBatchId)}
+              >
+                <Text style={{ textAlign: 'center', color: 'white', fontWeight: '600' }}>Move Selected</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Configure Batches Modal */}
+      <Modal
+        visible={showBatchModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowBatchModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            padding: 20,
+            borderRadius: 10,
+            width: '80%',
+            maxWidth: 300
+          }}>
+            <Text style={{
+              fontSize: 18,
+              fontWeight: 'bold',
+              marginBottom: 10,
+              textAlign: 'center'
+            }}>Configure Batches</Text>
+            
+            <Text style={{
+              fontSize: 14,
+              marginBottom: 15,
+              textAlign: 'center',
+              color: '#666'
+            }}>Enter the number of batches to create (1-10):</Text>
+            
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#ddd',
+                borderRadius: 5,
+                padding: 10,
+                fontSize: 16,
+                textAlign: 'center',
+                marginBottom: 20
+              }}
+              value={batchInput}
+              onChangeText={setBatchInput}
+              keyboardType="numeric"
+              placeholder="Enter number (1-10)"
+              maxLength={2}
+              autoFocus={true}
+            />
+            
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between'
+            }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#ccc',
+                  padding: 10,
+                  borderRadius: 5,
+                  flex: 0.45
+                }}
+                onPress={() => {
+                  setShowBatchModal(false);
+                  setBatchInput('3'); // Reset to default
+                }}
+              >
+                <Text style={{
+                  textAlign: 'center',
+                  fontSize: 16,
+                  color: '#666'
+                }}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#2196F3',
+                  padding: 10,
+                  borderRadius: 5,
+                  flex: 0.45
+                }}
+                onPress={() => createBatches(batchInput)}
+              >
+                <Text style={{
+                  textAlign: 'center',
+                  fontSize: 16,
+                  color: 'white',
+                  fontWeight: 'bold'
+                }}>Create</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Change Batch Size Modal */}
+      <Modal
+        visible={showBatchSizeModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowBatchSizeModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            padding: 20,
+            borderRadius: 10,
+            width: '80%',
+            maxWidth: 300
+          }}>
+            <Text style={{
+              fontSize: 18,
+              fontWeight: 'bold',
+              marginBottom: 10,
+              textAlign: 'center'
+            }}>Change Batch Size</Text>
+            
+            {selectedBatchForResize && (
+              <>
+                <Text style={{
+                  fontSize: 16,
+                  marginBottom: 5,
+                  textAlign: 'center',
+                  color: '#333'
+                }}>{selectedBatchForResize.batch_name}</Text>
+                
+                <Text style={{
+                  fontSize: 14,
+                  marginBottom: 15,
+                  textAlign: 'center',
+                  color: '#666'
+                }}>
+                  Current: {selectedBatchForResize.current_students}/{selectedBatchForResize.max_students} students{'\n'}
+                  Enter new maximum batch size (5-50):
+                </Text>
+              </>
+            )}
+            
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#ddd',
+                borderRadius: 5,
+                padding: 10,
+                fontSize: 16,
+                textAlign: 'center',
+                marginBottom: 20
+              }}
+              value={newBatchSize}
+              onChangeText={setNewBatchSize}
+              keyboardType="numeric"
+              placeholder="Enter batch size (5-50)"
+              maxLength={2}
+              autoFocus={true}
+            />
+            
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between'
+            }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#ccc',
+                  padding: 10,
+                  borderRadius: 5,
+                  flex: 0.45
+                }}
+                onPress={() => {
+                  setShowBatchSizeModal(false);
+                  setSelectedBatchForResize(null);
+                  setNewBatchSize('');
+                }}
+              >
+                <Text style={{
+                  textAlign: 'center',
+                  fontSize: 16,
+                  color: '#666'
+                }}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#2196F3',
+                  padding: 10,
+                  borderRadius: 5,
+                  flex: 0.45
+                }}
+                onPress={updateBatchSize}
+              >
+                <Text style={{
+                  textAlign: 'center',
+                  fontSize: 16,
+                  color: 'white',
+                  fontWeight: 'bold'
+                }}>Update</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Detailed Analytics Modal */}
+      <Modal
+        visible={showAnalyticsModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAnalyticsModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            padding: 20,
+            borderRadius: 15,
+            width: '90%',
+            maxWidth: 400,
+            maxHeight: '80%'
+          }}>
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 20
+            }}>
+              <Text style={{
+                fontSize: 20,
+                fontWeight: 'bold',
+                color: '#333'
+              }}>Detailed Analytics</Text>
+              <TouchableOpacity
+                onPress={() => setShowAnalyticsModal(false)}
+                style={{
+                  padding: 5,
+                  borderRadius: 15,
+                  backgroundColor: '#f5f5f5'
+                }}
+              >
+                <Icon name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {analytics && (
+                <View>
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10, color: '#333' }}>
+                      Student Distribution
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Total Students:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{analytics.total_students}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Students per Batch:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{analytics.students_per_batch}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Batch Efficiency:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{analytics.batch_efficiency}%</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10, color: '#333' }}>
+                      Performance Overview
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Overall Performance:</Text>
+                      <Text style={{ 
+                        fontWeight: 'bold',
+                        color: getPerformanceColor(analytics.avg_performance)
+                      }}>
+                        {analytics.avg_performance && typeof analytics.avg_performance === 'number' 
+                          ? analytics.avg_performance.toFixed(1) + '%' 
+                          : 'N/A'
+                        }
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Performance Grade:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{analytics.overall_grade}</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10, color: '#333' }}>
+                      Batch Summary
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Active Batches:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{analytics.total_batches}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Subject:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{selectedSubjectName || 'N/A'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text>Grade:</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{activeGrade}</Text>
+                    </View>
+                  </View>
+
+                  {lastUpdateTime && (
+                    <Text style={{
+                      textAlign: 'center',
+                      fontSize: 12,
+                      color: '#666',
+                      fontStyle: 'italic'
+                    }}>
+                      Last updated: {lastUpdateTime}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+export default BatchManagementHome;
