@@ -571,7 +571,7 @@ const SubjectAllotment = ({ navigation, route }) => {
       <Header title="Subject Enrollment" navigation={navigation} />
 
       <HorizontalChipSelector
-        data={grades}
+        data={grades} 
         selectedItem={selectedGrade}
         onSelectItem={setSelectedGrade}
         idKey="grade_id"

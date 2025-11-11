@@ -192,7 +192,6 @@ exports.getSubjectActivities = (req, res) => {
                 // Step 3: Structure the data with recursive tree
                 const structuredData = subjects.map(subject => {
                     const rootActivities = buildTree(null, subject.subject_id);
-                    
                     return {
                         subject_id: subject.subject_id,
                         subject_name: subject.subject_name,
@@ -200,10 +199,7 @@ exports.getSubjectActivities = (req, res) => {
                     };
                 });
 
-                res.json({ 
-                    success: true, 
-                    subjects: structuredData 
-                });
+                return res.json({ success: true, subjects: structuredData });
             });
         });
     });

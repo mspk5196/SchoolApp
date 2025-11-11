@@ -1,6 +1,6 @@
 const db = require('../../config/db');
 
-exports.getUserRoles = (req, res) => {
+exports.getUserRoles = async (req, res) => {
     const { phoneNumber } = req.body;
 
     const sql = `SELECT u.id, GROUP_CONCAT(DISTINCT r.role SEPARATOR ', ') AS roles
@@ -10,24 +10,20 @@ exports.getUserRoles = (req, res) => {
                  WHERE phone = ?
                  GROUP BY u.id;`;
 
-    db.query(sql, [phoneNumber], (err, results) => {
-        if (err) {
-            console.error('Error fetching user roles:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        if (results.length === 0) {
+    try {
+        const [results] = await db.query(sql, [phoneNumber]);
+        if (!results || results.length === 0) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
-        console.log(results);
-
         const rolesArray = results[0].roles.split(', ').map(r => r.trim());
-        console.log(rolesArray);
-
-        res.json({ success: true, data: rolesArray });
-    });
+        return res.json({ success: true, data: rolesArray });
+    } catch (err) {
+        console.error('Error fetching user roles:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
-exports.getGeneralData = (req, res) => {
+exports.getGeneralData = async (req, res) => {
     const { phoneNumber, selectedRole } = req.body;
 
     const sql1 = `SELECT f.* 
@@ -38,56 +34,50 @@ exports.getGeneralData = (req, res) => {
                   FROM students s
                   WHERE s.mobile = ?`;
 
-    if (selectedRole != 'Parent') {
-        db.query(sql1, [phoneNumber], (err, results) => {
-            if (err) {
-                console.error('Error fetching faculty data:', err);
-                return res.status(500).json({ error: 'Internal Server Error' });
-            }
-            // console.log(results[0]);
-            
-            res.json({ success: true, message: 'User data fetched successfully', data: results[0] });
-        });
-    }
-    if(selectedRole === 'Parent') {
-        db.query(sql2, [phoneNumber], (err, results) => {
-            if (err) {
-                console.error('Error fetching student data:', err);
-                return res.status(500).json({ error: 'Internal Server Error' });
-            }
-            res.json({ success: true, message: 'Student data fetched successfully', data: results[0] });
-        });
+    try {
+        if (selectedRole != 'Parent') {
+            const [results] = await db.query(sql1, [phoneNumber]);
+            return res.json({ success: true, message: 'User data fetched successfully', data: results[0] });
+        }
+        if (selectedRole === 'Parent') {
+            const [results] = await db.query(sql2, [phoneNumber]);
+            return res.json({ success: true, message: 'Student data fetched successfully', data: results[0] });
+        }
+        return res.status(400).json({ success: false, message: 'Invalid role' });
+    } catch (err) {
+        console.error('Error fetching general data:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
     }
 };
 
-exports.getGrades = (req, res) => {
+exports.getGrades = async (req, res) => {
     const sql = `SELECT g.id, g.grade_name
                  FROM grades g
                  ORDER BY g.id;`;
-    db.query(sql, (err, results) => {
-        if (err) {
-            console.error('Error fetching grades:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        res.json({ success: true, data: results });
-    });
+    try {
+        const [results] = await db.query(sql);
+        return res.json({ success: true, data: results });
+    } catch (err) {
+        console.error('Error fetching grades:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
-exports.getSections = (req, res) => {
+exports.getSections = async (req, res) => {
     const sql = `SELECT s.id as section_id, s.section_name, g.grade_name, s.grade_id
                  FROM sections s
                  JOIN grades g ON s.grade_id = g.id
                  ORDER BY g.id;`;
-    db.query(sql, (err, results) => {
-        if (err) {
-            console.error('Error fetching sections:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        res.json({ success: true, data: results });
-    });
+    try {
+        const [results] = await db.query(sql);
+        return res.json({ success: true, data: results });
+    } catch (err) {
+        console.error('Error fetching sections:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
-exports.getCoordinatorGrades = (req, res) => {
+exports.getCoordinatorGrades = async (req, res) => {
     const { facultyId } = req.body;
 
     const sql = `SELECT cga.grade_id, g.grade_name
@@ -96,26 +86,26 @@ exports.getCoordinatorGrades = (req, res) => {
                  JOIN coordinators c ON c.id = cga.coordinator_id
                  WHERE c.faculty_id = ?`;
 
-    db.query(sql, [facultyId], (err, results) => {
-        if (err) {
-            console.error('Error fetching coordinator grades:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        res.json({ success: true, data: results });
-    });
+    try {
+        const [results] = await db.query(sql, [facultyId]);
+        return res.json({ success: true, data: results });
+    } catch (err) {
+        console.error('Error fetching coordinator grades:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
-exports.getGradeSections = (req, res) => {
+exports.getGradeSections = async (req, res) => {
     const { gradeID } = req.body;
     const sql = `SELECT s.id as section_id, s.section_name
                  FROM sections s
                  WHERE s.grade_id = ?   
     `;
-    db.query(sql, [gradeID], (err, results) => {
-        if (err) {
-            console.error("Error fetching grade sections:", err);
-            return res.status(500).json({ success: false, message: 'Database error' });
-        }
-        res.json({ success: true, data: results });
-    });
+    try {
+        const [results] = await db.query(sql, [gradeID]);
+        return res.json({ success: true, data: results });
+    } catch (err) {
+        console.error("Error fetching grade sections:", err);
+        return res.status(500).json({ success: false, message: 'Database error' });
+    }
 };

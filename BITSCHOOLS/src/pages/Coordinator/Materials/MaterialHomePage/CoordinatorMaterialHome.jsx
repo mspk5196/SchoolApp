@@ -7,24 +7,44 @@ import LottieView from 'lottie-react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as materialApi from '../../../../utils/materialApi';
 import ApiService from '../../../../utils/ApiService';
+import { HorizontalChipSelector } from '../../../../components';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CoordinatorMaterialHome = ({ navigation, route }) => {
-  const { coordinatorData, coordinatorGrades } = route.params || {};
+  const params = route.params && route.params.data ? route.params.data : (route.params || {});
+  const { userData } = params;
+
+  const [grades, setGrades] = useState([]);
   const [gradeSubject, setGradeSubject] = useState([]);
-  const [activeGrade, setActiveGrade] = useState();
+  const [selectedGrade, setSelectedGrade] = useState();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [sections, setSections] = useState([]);
   const [selectedSection, setSelectedSection] = useState();
 
+  const [activeSectionSelection, setActiveSectionSelection] = useState(null);
+
+  useEffect(() => {
+    fetchgrades()
+  }, [])
   useEffect(() => {
     fetchGradeSubjects();
-  }, [activeGrade]);
-  useEffect(() => {
-    if (coordinatorGrades) {
-      setActiveGrade(coordinatorGrades[0].grade_id)
+  }, [selectedGrade]);
+
+  const fetchgrades = async () => {
+    try {
+      const asyncGrades = await AsyncStorage.getItem('coordinatorGrades');
+      const parsedGrades = asyncGrades ? JSON.parse(asyncGrades) : [];
+      setGrades(parsedGrades);
+
+      if (parsedGrades.length > 0) {
+        setSelectedGrade(parsedGrades[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching coordinator grades:', error);
+      Alert.alert('Error', 'Failed to load grades');
     }
-  }, [coordinatorGrades])
+  };
 
   const fetchGradeSubjects = async (isRefreshing = false) => {
     try {
@@ -34,10 +54,10 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         setLoading(true);
       }
 
-      const result = await materialApi.getGradeSubjects(activeGrade);
-      
+      const result = await materialApi.getGradeSubjects(selectedGrade.grade_id);
+
       if (result && result.success) {
-        // Transform the data to create a list of subjects with their activities
+
         const subjectsWithActivities = result.gradeSubjects.map((subject, index) => ({
           ...subject,
           key: `${subject.subject_id}-${index}` // Create a unique key
@@ -65,32 +85,33 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
   };
   const fetchSections = async () => {
     try {
-
       const response = await ApiService.makeRequest(`/coordinator/getGradeSections`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          gradeID: activeGrade,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gradeID: selectedGrade.grade_id }),
       });
-
-      if (response) {
-        const result = await response.json();
-        setSections(result.gradeSections || []);
-        console.log('Fetched Grade Sections:', result.gradeSections);
+      const data = await response.json();
+      if (data.success && data.gradeSections.length > 0) {
+        setSections(data.gradeSections);
+        setActiveSection(data.gradeSections[0].id);
+      } else {
+        Alert.alert('No Sections Found', 'No section is associated with this grade');
       }
     } catch (error) {
-      console.error('Error fetching sections:', error);
-    } finally {
-      setLoading(false);
+      Alert.alert('Error', 'Failed to fetch sections data');
     }
+  };
+
+  const handleSectionChange = (sectionId) => {
+    console.log(sectionId.id);
+
+    setSelectedSection(sectionId.id);
+    setActiveSectionSelection(sectionId);
   };
 
   useEffect(() => {
     fetchSections();
-  }, [activeGrade]);
+  }, [selectedGrade]);
   useEffect(() => {
     if (sections.length > 0) {
       setSelectedSection(sections[0].id);
@@ -98,7 +119,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
   }, [sections]);
 
   const onRefresh = () => {
-    if (activeGrade) {
+    if (selectedGrade) {
       fetchGradeSubjects(true);
     }
   };
@@ -153,42 +174,20 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         <Text style={styles.HeaderTxt}>Material</Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.sectionTabsContainer}
-      >
-        {coordinatorGrades?.map(grade => (
-          <TouchableOpacity
-            key={grade.grade_id}
-            style={[styles.sectionTab, activeGrade === grade.grade_id && styles.activeSectionTab]}
-            onPress={() => setActiveGrade(grade.grade_id)}
-          >
-            <Text style={[styles.sectionTabText, activeGrade === grade.grade_id && styles.activeSectionTabText]}>
-              Grade {grade.grade_id}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-      {sections.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sectionTabsContainer}
-        >
-          {sections?.map(section => (
-            <TouchableOpacity
-              key={section.id}
-              style={[styles.sectionTab, activeGrade === section.id && styles.activeSectionTab]}
-              onPress={() => setSelectedSection(section.id)}
-            >
-              <Text style={[styles.sectionTabText, activeGrade === section.id && styles.activeSectionTabText]}>
-                Section {section.section_name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+      <HorizontalChipSelector
+        data={grades}
+        selectedItem={selectedGrade}
+        onSelectItem={setSelectedGrade}
+        idKey="grade_id"
+        nameKey="grade_name" />
+      {selectedGrade && sections.length > 0 &&
+        <HorizontalChipSelector
+          data={sections}
+          selectedItem={activeSectionSelection}
+          onSelectItem={handleSectionChange}
+          idKey="id"
+          nameKey="section_name" />
+      }
 
       {gradeSubject.length > 0 && gradeSubject[0].data.length > 0 ? (
         <SectionList
@@ -198,16 +197,6 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
             <View style={[styles.card, { backgroundColor: (item.subject_id % 2) ? '#C9F7F5' : '#65558F12' }]}>
               <Pressable
                 style={styles.centeredCardContent}
-              // onPress={() => {
-              //   navigation.navigate('TopicHierarchySubject', {
-              //     grade: `Grade ${activeGrade}`,
-              //     gradeID: activeGrade,
-              //     subject: item.subject_name,
-              //     subjectID: item.subject_id,
-              //     coordinatorData,
-              //     coordinatorGrades
-              //   });
-              // }}
               >
                 <Text style={[styles.cardText, styles.centeredText, { color: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}>
                   {item.subject_name}
@@ -217,9 +206,9 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
                   <TouchableOpacity
                     style={[styles.managementButton, { borderColor: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}
                     onPress={() => navigation.navigate('TopicHierarchyManagement', {
-                      coordinatorData,
-                      coordinatorGrades,
-                      activeGrade,
+                      userData,
+                      grades,
+                      selectedGrade,
                       selectedSubjectId: item.subject_id,
                       selectedSubjectName: item.subject_name,
                       selectedSectionId: selectedSection
@@ -232,17 +221,17 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
                     style={[styles.managementButton, { borderColor: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}
                     onPress={() => {
                       navigation.navigate('BatchManagementHome', {
-                        coordinatorData,
-                        coordinatorGrades,
-                        activeGrade,
+                        userData,
+                        grades,
+                        selectedGrade,
                         selectedSubjectId: item.subject_id,
                         selectedSubjectName: item.subject_name,
                         selectedSectionId: selectedSection
                       })
                       console.log('Navigated to BatchManagementHome with:', {
-                        coordinatorData,
-                        coordinatorGrades,
-                        activeGrade,
+                        userData,
+                        grades,
+                        selectedGrade,
                         selectedSubjectId: item.subject_id,
                         selectedSubjectName: item.subject_name,
                         selectedSectionId: selectedSection
@@ -268,12 +257,12 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         </View>
       )}
 
-      {/* {activeGrade && (
+      {/* {selectedGrade && (
         <Pressable
           onPress={() => {
             navigation.navigate('LevelPromotion', {
-              grade: `Grade ${activeGrade}`,
-              gradeID: activeGrade,
+              grade: `Grade ${selectedGrade}`,
+              gradeID: selectedGrade,
               gradeSubject: gradeSubject
             });
           }}

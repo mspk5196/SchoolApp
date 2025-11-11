@@ -14,7 +14,7 @@ exports.enrollFaculty = async (req, res) => {
             return res.status(400).json({ success: false, message: "All required fields must be provided" });
         }
 
-        const conn = await db.promise().getConnection();
+        const conn = await db.getConnection();
         await conn.beginTransaction();
 
         try {
@@ -166,7 +166,7 @@ exports.generateFacultyEnrollTemplate = async (req, res) => {
         info.getCell('A11').value = '- Leave Grades and Sections empty if not applicable';
 
         // Fetch grades for reference
-        const [gradesData] = await db.promise().query('SELECT id, grade_name FROM grades ORDER BY id');
+        const [gradesData] = await db.query('SELECT id, grade_name FROM grades ORDER BY id');
         if (gradesData.length > 0) {
             info.getCell('A13').value = 'Available Grades:';
             info.getCell('A13').font = { bold: true };
@@ -178,7 +178,7 @@ exports.generateFacultyEnrollTemplate = async (req, res) => {
         }
 
         // Fetch sections for reference
-        const [sectionsData] = await db.promise().query('SELECT s.id, s.section_name, g.grade_name FROM sections s LEFT JOIN grades g ON s.grade_id = g.id ORDER BY s.id');
+        const [sectionsData] = await db.query('SELECT s.id, s.section_name, g.grade_name FROM sections s LEFT JOIN grades g ON s.grade_id = g.id ORDER BY s.id');
         if (sectionsData.length > 0) {
             info.getCell('C13').value = 'Available Sections:';
             info.getCell('C13').font = { bold: true };
@@ -267,14 +267,14 @@ exports.bulkUploadFaculty = async (req, res) => {
         }
 
         // Preload grades and sections
-        const [gradesRows] = await db.promise().query('SELECT id, grade_name FROM grades');
+        const [gradesRows] = await db.query('SELECT id, grade_name FROM grades');
         const gradeMap = new Map();
         gradesRows.forEach(g => {
             gradeMap.set(String(g.id), g.id);
             gradeMap.set(String(g.grade_name).toLowerCase(), g.id);
         });
 
-        const [sectionsRows] = await db.promise().query('SELECT id FROM sections');
+        const [sectionsRows] = await db.query('SELECT id FROM sections');
         const sectionIds = new Set(sectionsRows.map(s => s.id));
 
         for (let i = 2; i <= sheet.rowCount; i++) {
@@ -361,7 +361,7 @@ exports.bulkUploadFaculty = async (req, res) => {
                     }
                 }
 
-                const conn = await db.promise().getConnection();
+                const conn = await db.getConnection();
                 await conn.beginTransaction();
 
                 try {

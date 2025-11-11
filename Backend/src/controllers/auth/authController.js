@@ -6,7 +6,6 @@ const { decryptAES, encryptAES } = require('../../utils/decryptAES');
 // User Login
 exports.login = async (req, res) => {
   const { phoneNumber, password } = req.body;
-  // console.log(phoneNumber);
 
   const query = `SELECT u.*, GROUP_CONCAT(DISTINCT r.role SEPARATOR ', ') AS roles
                  FROM Users u
@@ -15,70 +14,68 @@ exports.login = async (req, res) => {
                  WHERE phone = ?
                  GROUP BY u.id;`;
 
-  db.query(query, [phoneNumber], async (err, results) => {
-    if (err) return res.status(500).json({ success: false, message: 'Server error' });
-    if (results.length === 0) return res.status(401).json({ success: false, message: 'Invalid phone number or password' });
+  try {
+  // Using mysql2/promise pool directly (db.query already returns a promise)
+  const [results] = await db.query(query, [phoneNumber]);
+    if (!results || results.length === 0) return res.status(401).json({ success: false, message: 'Invalid phone number or password' });
 
     const user = results[0];
 
-    try {
-      if (user.roles.includes('Admin') && user.password_hash == '123456789') {
-        console.log('Admin login without password check');
-      } else {
-        const decryptedPassword = decryptAES(user.password_hash);
-        const passwordMatch = await bcrypt.compare(password, decryptedPassword);
-
-        if (!passwordMatch) {
-          return res.status(401).json({ success: false, message: 'Incorrect password' });
-        }
+    if (!(user.roles.includes('Admin') && user.password_hash == '123456789')) {
+      const decryptedPassword = decryptAES(user.password_hash);
+      const passwordMatch = await bcrypt.compare(password, decryptedPassword);
+      if (!passwordMatch) {
+        return res.status(401).json({ success: false, message: 'Incorrect password' });
       }
-
-      const tokenPayload = {
-        id: user.id,
-        name: user.name,
-        phone: user.phone,
-        role: user.roles,
-        email: user.email
-      };
-
-      const accessToken = generateToken(tokenPayload);
-      const refreshToken = generateRefreshToken({ userId: user.id });
-
-      // Store refresh token
-      const storeTokenSql = 'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))';
-      db.query(storeTokenSql, [user.id, refreshToken], (err) => {
-        if (err) {
-          console.error('Error storing refresh token:', err);
-        }
-      });
-
-       const loginHistorySql = 'INSERT INTO login_history (user_id, login_type, login_ip, login_at) VALUES (?, ?, ?, NOW())';
-      db.query(loginHistorySql, [user.id, 'Password', req.ip], (err) => {
-        if (err) {
-          console.error('Error storing login history:', err);
-        }
-      });
-
-      res.json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          user: {
-            id: user.id,
-            name: user.name,
-            phone: user.phone,
-            role: user.roles,
-            email: user.email
-          },
-          accessToken: accessToken,
-          refreshToken: refreshToken
-        }
-      });
-    } catch (error) {
-      console.error('Decryption or comparison error:', error);
-      return res.status(500).json({ success: false, message: 'Decryption error' });
+    } else {
+      console.log('Admin login without password check');
     }
-  });
+
+    const tokenPayload = {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      role: user.roles,
+      email: user.email
+    };
+
+    const accessToken = generateToken(tokenPayload);
+    const refreshToken = generateRefreshToken({ userId: user.id });
+
+    // Store refresh token (best-effort)
+    try {
+      const storeTokenSql = 'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))';
+  await db.query(storeTokenSql, [user.id, refreshToken]);
+    } catch (e) {
+      console.error('Error storing refresh token:', e);
+    }
+
+    try {
+      const loginHistorySql = 'INSERT INTO login_history (user_id, login_type, login_ip, login_at) VALUES (?, ?, ?, NOW())';
+  await db.query(loginHistorySql, [user.id, 'Password', req.ip]);
+    } catch (e) {
+      console.error('Error storing login history:', e);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          role: user.roles,
+          email: user.email
+        },
+        accessToken: accessToken,
+        refreshToken: refreshToken
+      }
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 };
 
 // Refresh Token
@@ -104,52 +101,27 @@ exports.refreshToken = async (req, res) => {
 
     // Check if refresh token exists in database
     const checkTokenSql = 'SELECT * FROM refresh_tokens WHERE token = ? AND user_id = ? AND expires_at > NOW()';
-    db.query(checkTokenSql, [refreshToken, decoded.userId], (err, results) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({
-          success: false,
-          message: 'Server error'
-        });
-      }
-
-      if (results.length === 0) {
-        return res.status(403).json({
-          success: false,
-          message: 'Invalid or expired refresh token'
-        });
+    try {
+  const [results] = await db.query(checkTokenSql, [refreshToken, decoded.userId]);
+      if (!results || results.length === 0) {
+        return res.status(403).json({ success: false, message: 'Invalid or expired refresh token' });
       }
 
       // Get user details
       const getUserSql = 'SELECT * FROM users WHERE id = ?';
-      db.query(getUserSql, [decoded.userId], (err, userResults) => {
-        if (err || userResults.length === 0) {
-          return res.status(500).json({
-            success: false,
-            message: 'User not found'
-          });
-        }
+  const [userResults] = await db.query(getUserSql, [decoded.userId]);
+      if (!userResults || userResults.length === 0) {
+        return res.status(500).json({ success: false, message: 'User not found' });
+      }
 
-        const user = userResults[0];
-
-        const tokenPayload = {
-          id: user.id,
-          name: user.name,
-          phone: user.phone,
-          role: user.role,
-          email: user.email
-        };
-
-        const accessToken = generateToken(tokenPayload);
-
-        res.json({
-          success: true,
-          data: {
-            accessToken: accessToken
-          }
-        });
-      });
-    });
+      const user = userResults[0];
+      const tokenPayload = { id: user.id, name: user.name, phone: user.phone, role: user.role, email: user.email };
+      const accessToken = generateToken(tokenPayload);
+      return res.json({ success: true, data: { accessToken } });
+    } catch (err) {
+      console.error('Database error (refresh token):', err);
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
 
   } catch (error) {
     console.error('Refresh token error:', error);
@@ -168,11 +140,11 @@ exports.logout = async (req, res) => {
     if (refreshToken) {
       // Remove refresh token from database
       const deleteTokenSql = 'DELETE FROM refresh_tokens WHERE token = ?';
-      db.query(deleteTokenSql, [refreshToken], (err) => {
-        if (err) {
-          console.error('Error deleting refresh token:', err);
-        }
-      });
+      try {
+  await db.query(deleteTokenSql, [refreshToken]);
+      } catch (e) {
+        console.error('Error deleting refresh token:', e);
+      }
     }
 
     res.json({
@@ -190,8 +162,7 @@ exports.logout = async (req, res) => {
 };
 
 
-exports.googleLogin = (req, res) => {
-
+exports.googleLogin = async (req, res) => {
   const { email } = req.body;
 
   const query = `SELECT u.*, GROUP_CONCAT(DISTINCT r.role SEPARATOR ', ') AS roles
@@ -201,57 +172,35 @@ exports.googleLogin = (req, res) => {
                  WHERE email = ?
                  GROUP BY u.id;`;
 
-  db.query(query, [email], (err, results) => {
-    if (err) return res.status(500).json({ success: false, message: 'Server error' });
-    // console.log(results);
-    
-    if (results.length === 0) {
-      res.json({ success: false, message: 'User does not exist. Please contact owner.' });
-    } else {
-      const user = results[0];
-      // console.log(user);
-      
-      const tokenPayload = {
-        id: user.id,
-        name: user.name,
-        phone: user.phone,
-        role: user.roles,
-        email: user.email
-      };
-
-      const accessToken = generateToken(tokenPayload);
-      const refreshToken = generateRefreshToken({ userId: user.id });
-
-      // Store refresh token
-      const storeTokenSql = 'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))';
-      db.query(storeTokenSql, [user.id, refreshToken], (err) => {
-        if (err) {
-          console.error('Error storing refresh token:', err);
-        }
-      });
-
-      const loginHistorySql = 'INSERT INTO login_history (user_id, login_type, login_ip, login_at) VALUES (?, ?, ?, NOW())';
-      db.query(loginHistorySql, [user.id, 'Google', req.ip], (err) => {
-        if (err) {
-          console.error('Error storing login history:', err);
-        }
-      });
-
-      res.json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          user: {
-            id: user.id,
-            name: user.name,
-            phone: user.phone,
-            role: user.roles,
-            email: user.email
-          },
-          accessToken: accessToken,
-          refreshToken: refreshToken
-        }
-      });
+  try {
+  const [results] = await db.query(query, [email]);
+    if (!results || results.length === 0) {
+      return res.json({ success: false, message: 'User does not exist. Please contact owner.' });
     }
-  });
+
+    const user = results[0];
+    const tokenPayload = { id: user.id, name: user.name, phone: user.phone, role: user.roles, email: user.email };
+
+    const accessToken = generateToken(tokenPayload);
+    const refreshToken = generateRefreshToken({ userId: user.id });
+
+    try {
+      const storeTokenSql = 'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))';
+  await db.query(storeTokenSql, [user.id, refreshToken]);
+    } catch (e) {
+      console.error('Error storing refresh token:', e);
+    }
+
+    try {
+      const loginHistorySql = 'INSERT INTO login_history (user_id, login_type, login_ip, login_at) VALUES (?, ?, ?, NOW())';
+  await db.query(loginHistorySql, [user.id, 'Google', req.ip]);
+    } catch (e) {
+      console.error('Error storing login history:', e);
+    }
+
+    return res.json({ success: true, message: 'Login successful', data: { user: { id: user.id, name: user.name, phone: user.phone, role: user.roles, email: user.email }, accessToken, refreshToken } });
+  } catch (err) {
+    console.error('Google login error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 };

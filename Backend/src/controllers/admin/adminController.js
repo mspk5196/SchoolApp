@@ -1,7 +1,6 @@
 const db = require('../../config/db');
 
-exports.getCoordinatorGrades = (req, res) => {
-
+exports.getCoordinatorGrades = async (req, res) => {
     const sql = `SELECT 
     f.id AS faculty_id,
     f.name AS faculty_name,
@@ -21,12 +20,11 @@ GROUP BY f.id
 ORDER BY f.id;
 `;
 
-    db.query(sql, (err, results) => {
-        if (err) {
-            console.error('Error fetching coordinator grades:', err);
-            return res.status(500).json({ success: false, message: 'Database error' });
-        }
-
-        res.json({ success: true, data: results });
-    });
+    try {
+        const [results] = await db.query(sql);
+        return res.json({ success: true, data: results });
+    } catch (err) {
+        console.error('Error fetching coordinator grades:', err);
+        return res.status(500).json({ success: false, message: 'Database error' });
+    }
 };

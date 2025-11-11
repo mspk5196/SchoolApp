@@ -1,7 +1,6 @@
 const db = require('../../config/db');
 
-
-exports.getSectionsWithMentors = (req, res) => {
+exports.getSectionsWithMentors = async (req, res) => {
     const { gradeId } = req.body;
 
     if (!gradeId) {
@@ -32,17 +31,17 @@ exports.getSectionsWithMentors = (req, res) => {
         GROUP BY s.id, s.section_name, s.grade_id, m.id, m.faculty_id, f.name, f.roll, f.specification, f.profile_photo
         ORDER BY s.section_name`;
 
-    db.query(sql, [gradeId], (err, results) => {
-        if (err) {
-            console.error('Error fetching sections with mentors:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        res.json({ success: true, data: results, message: 'Sections with mentors fetched successfully' });
-    });
+    try {
+        const [results] = await db.query(sql, [gradeId]);
+        return res.json({ success: true, data: results, message: 'Sections with mentors fetched successfully' });
+    } catch (err) {
+        console.error('Error fetching sections with mentors:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
 // Get all unassigned mentors (mentors not assigned to any section in any grade)
-exports.getUnassignedMentors = (req, res) => {
+exports.getUnassignedMentors = async (req, res) => {
     const sql = `
         SELECT 
             m.id as mentor_id,
@@ -63,37 +62,32 @@ exports.getUnassignedMentors = (req, res) => {
         )
         ORDER BY f.name`;
 
-    db.query(sql, (err, results) => {
-        if (err) {
-            console.error('Error fetching unassigned mentors:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        res.json({ success: true, data: results });
-    });
+    try {
+        const [results] = await db.query(sql);
+        return res.json({ success: true, data: results });
+    } catch (err) {
+        console.error('Error fetching unassigned mentors:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
 // Assign mentor to section
-exports.assignMentorToSection = (req, res) => {
+exports.assignMentorToSection = async (req, res) => {
     const { mentorId, sectionId, assignedBy } = req.body;
 
     if (!mentorId || !sectionId) {
         return res.status(400).json({ success: false, message: 'Mentor ID and Section ID are required' });
     }
 
-    // Check if mentor is already assigned to another section
-    const checkSql = `
-        SELECT msa.id, s.section_name, g.grade_name
-        FROM mentor_section_assignments msa
-        JOIN sections s ON s.id = msa.section_id
-        JOIN grades g ON g.id = s.grade_id
-        WHERE msa.mentor_id = ? AND msa.is_active = 1`;
+    try {
+        const checkSql = `
+            SELECT msa.id, s.section_name, g.grade_name
+            FROM mentor_section_assignments msa
+            JOIN sections s ON s.id = msa.section_id
+            JOIN grades g ON g.id = s.grade_id
+            WHERE msa.mentor_id = ? AND msa.is_active = 1`;
 
-    db.query(checkSql, [mentorId], (err, results) => {
-        if (err) {
-            console.error('Error checking mentor assignment:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-
+    const [results] = await db.query(checkSql, [mentorId]);
         if (results.length > 0) {
             return res.status(409).json({
                 success: false,
@@ -101,48 +95,30 @@ exports.assignMentorToSection = (req, res) => {
             });
         }
 
-        // Check if section already has a mentor
         const checkSectionSql = `
             SELECT msa.id 
             FROM mentor_section_assignments msa
             WHERE msa.section_id = ? AND msa.is_active = 1`;
 
-        db.query(checkSectionSql, [sectionId], (err, sectionResults) => {
-            if (err) {
-                console.error('Error checking section mentor:', err);
-                return res.status(500).json({ success: false, message: 'Internal Server Error' });
-            }
+    const [sectionResults] = await db.query(checkSectionSql, [sectionId]);
+        if (sectionResults.length > 0) {
+            return res.status(409).json({ success: false, message: 'This section already has a mentor assigned' });
+        }
 
-            if (sectionResults.length > 0) {
-                return res.status(409).json({
-                    success: false,
-                    message: 'This section already has a mentor assigned'
-                });
-            }
+        const insertSql = `
+            INSERT INTO mentor_section_assignments (mentor_id, section_id, is_active, assigned_by, created_at)
+            VALUES (?, ?, 1, ?, NOW())`;
 
-            // Assign mentor to section
-            const insertSql = `
-                INSERT INTO mentor_section_assignments (mentor_id, section_id, is_active, assigned_by, created_at)
-                VALUES (?, ?, 1, ?, NOW())`;
-
-            db.query(insertSql, [mentorId, sectionId, assignedBy], (err, result) => {
-                if (err) {
-                    console.error('Error assigning mentor:', err);
-                    return res.status(500).json({ success: false, message: 'Internal Server Error' });
-                }
-
-                res.json({
-                    success: true,
-                    message: 'Mentor assigned to section successfully',
-                    data: { assignment_id: result.insertId }
-                });
-            });
-        });
-    });
+    const [insertResult] = await db.query(insertSql, [mentorId, sectionId, assignedBy]);
+        return res.json({ success: true, message: 'Mentor assigned to section successfully', data: { assignment_id: insertResult.insertId } });
+    } catch (err) {
+        console.error('Error assigning mentor:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
 // Unassign mentor from section
-exports.unassignMentorFromSection = (req, res) => {
+exports.unassignMentorFromSection = async (req, res) => {
     const { mentorId, sectionId } = req.body;
 
     if (!mentorId || !sectionId) {
@@ -154,22 +130,20 @@ exports.unassignMentorFromSection = (req, res) => {
         SET is_active = 0 
         WHERE mentor_id = ? AND section_id = ? AND is_active = 1`;
 
-    db.query(sql, [mentorId, sectionId], (err, result) => {
-        if (err) {
-            console.error('Error unassigning mentor:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-
+    try {
+    const [result] = await db.query(sql, [mentorId, sectionId]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ success: false, message: 'Assignment not found' });
         }
-
-        res.json({ success: true, message: 'Mentor unassigned from section successfully' });
-    });
+        return res.json({ success: true, message: 'Mentor unassigned from section successfully' });
+    } catch (err) {
+        console.error('Error unassigning mentor:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
 // Get students by section
-exports.getStudentsBySection = (req, res) => {
+exports.getStudentsBySection = async (req, res) => {
     const { sectionId } = req.body;
 
     if (!sectionId) {
@@ -195,18 +169,17 @@ exports.getStudentsBySection = (req, res) => {
         AND sm.academic_year = (SELECT id FROM academic_years WHERE is_active = 1)
         ORDER BY st.roll`;
 
-    db.query(sql, [sectionId], (err, results) => {
-        if (err) {
-            console.error('Error fetching students:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        
-        res.json({ success: true, data: results });
-    });
+    try {
+        const [results] = await db.query(sql, [sectionId]);
+        return res.json({ success: true, data: results });
+    } catch (err) {
+        console.error('Error fetching students:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
 // Get subjects available for a grade (used to build subject tabs)
-exports.getMentorGradeSubject = (req, res) => {
+exports.getMentorGradeSubject = async (req, res) => {
     const { gradeID } = req.body;
 
     if (!gradeID) {
@@ -220,17 +193,17 @@ exports.getMentorGradeSubject = (req, res) => {
         WHERE ssa.grade_id = ? AND ssa.is_active = 1
         ORDER BY sub.subject_name`;
 
-    db.query(sql, [gradeID], (err, results) => {
-        if (err) {
-            console.error('Error fetching subjects for grade:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        res.json({ success: true, mentorGradeSubjects: results });
-    });
+    try {
+        const [results] = await db.query(sql, [gradeID]);
+        return res.json({ success: true, mentorGradeSubjects: results });
+    } catch (err) {
+        console.error('Error fetching subjects for grade:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
 // Get mentors list for a grade (available mentors pool)
-exports.getSubjectGradeMentors = (req, res) => {
+exports.getSubjectGradeMentors = async (req, res) => {
     const { gradeID } = req.body;
 
     // gradeID is optional here; we'll return all active mentors with faculty info
@@ -242,13 +215,13 @@ exports.getSubjectGradeMentors = (req, res) => {
         WHERE m.is_active = 1
         ORDER BY f.name`;
 
-    db.query(sql, [gradeID], (err, results) => {
-        if (err) {
-            console.error('Error fetching mentors for grade:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        res.json({ success: true, gradeMentor: results });
-    });
+    try {
+        const [results] = await db.query(sql, [gradeID]);
+        return res.json({ success: true, gradeMentor: results });
+    } catch (err) {
+        console.error('Error fetching mentors for grade:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
 // Get mentors enrolled for a specific grade + subject
@@ -258,7 +231,8 @@ exports.getEnroledSubjectMentors = (req, res) => {
     if (!gradeID || !subjectID) {
         return res.status(400).json({ success: false, message: 'Grade ID and Subject ID are required' });
     }
-
+    // console.log(gradeID, subjectID);
+    
     // Primary: use faculty_section_subject_assignments linking faculty_subject_assignments -> subject_section_assignments
     const sql = `
         SELECT fssa.id as id, m.id as mentor_id, f.id as faculty_id, f.name, f.roll, f.specification, f.profile_photo
@@ -277,6 +251,9 @@ exports.getEnroledSubjectMentors = (req, res) => {
             return res.status(500).json({ success: false, message: 'Internal Server Error' });
         }
 
+        console.log(results);
+        
+ 
         if (results && results.length > 0) {
             return res.json({ success: true, gradeEnroledMentor: results });
         }
