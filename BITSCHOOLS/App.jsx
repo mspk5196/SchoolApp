@@ -18,8 +18,9 @@ const App = () => {
       <StatusBar
         barStyle="dark-content"
         backgroundColor="#fff"
+        translucent={false}
       />
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
         <Routes />
       </SafeAreaView>
     </SafeAreaProvider>

@@ -7,7 +7,7 @@ import LottieView from 'lottie-react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as materialApi from '../../../../utils/materialApi';
 import ApiService from '../../../../utils/ApiService';
-import { HorizontalChipSelector } from '../../../../components';
+import { Header, HorizontalChipSelector } from '../../../../components';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CoordinatorMaterialHome = ({ navigation, route }) => {
@@ -87,10 +87,10 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
     try {
       const response = await ApiService.makeRequest(`/coordinator/getGradeSections`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeID: selectedGrade.grade_id }),
       });
       const data = await response.json();
+      
       if (data.success && data.gradeSections.length > 0) {
         setSections(data.gradeSections);
         setActiveSection(data.gradeSections[0].id);
@@ -138,10 +138,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <View style={styles.Header}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#000" onPress={() => navigation.goBack()} />
-          <Text style={styles.HeaderTxt}>Material</Text>
-        </View>
+        <Header title="Loading..." />
         <View style={styles.loadingContent}>
           <ActivityIndicator size="large" color="#0C36FF" />
           <Text style={styles.loadingText}>Loading subjects...</Text>
@@ -169,11 +166,11 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         />
       }
     >
-      <View style={styles.Header}>
-        <MaterialCommunityIcons name="arrow-left" size={24} color="#000" onPress={() => navigation.goBack()} />
-        <Text style={styles.HeaderTxt}>Material</Text>
-      </View>
-
+      <Header
+        title="Enrollment Home"
+        navigation={navigation}
+      />
+      
       <HorizontalChipSelector
         data={grades}
         selectedItem={selectedGrade}

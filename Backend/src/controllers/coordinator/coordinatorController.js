@@ -224,17 +224,14 @@ exports.getSubjectGradeMentors = async (req, res) => {
     }
 };
 
-// Get mentors enrolled for a specific grade + subject
-exports.getEnroledSubjectMentors = (req, res) => {
+// Get mentors enrolled for a specific grade + subject (promise-based)
+exports.getEnroledSubjectMentors = async (req, res) => {
     const { gradeID, subjectID } = req.body;
-
     if (!gradeID || !subjectID) {
         return res.status(400).json({ success: false, message: 'Grade ID and Subject ID are required' });
     }
-    // console.log(gradeID, subjectID);
-    
-    // Primary: use faculty_section_subject_assignments linking faculty_subject_assignments -> subject_section_assignments
-    const sql = `
+
+    const primarySql = `
         SELECT fssa.id as id, m.id as mentor_id, f.id as faculty_id, f.name, f.roll, f.specification, f.profile_photo
         FROM faculty_section_subject_assignments fssa
         JOIN faculty_subject_assignments fsa ON fsa.id = fssa.fsa_id AND fsa.is_active = 1
@@ -245,20 +242,12 @@ exports.getEnroledSubjectMentors = (req, res) => {
         GROUP BY fssa.id, m.id, f.id, f.name, f.roll, f.specification, f.profile_photo
         ORDER BY f.name`;
 
-    db.query(sql, [gradeID, subjectID], (err, results) => {
-        if (err) {
-            console.error('Error fetching enrolled subject mentors (by fssa):', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    try {
+        const [primaryRows] = await db.query(primarySql, [gradeID, subjectID]);
+        if (primaryRows && primaryRows.length > 0) {
+            return res.json({ success: true, gradeEnroledMentor: primaryRows });
         }
 
-        console.log(results);
-        
- 
-        if (results && results.length > 0) {
-            return res.json({ success: true, gradeEnroledMentor: results });
-        }
-
-        // Fallback: find faculty_subject_assignments directly for the subject (grade-agnostic)
         const fallbackSql = `
             SELECT fsa.id as fsa_id, m.id as mentor_id, f.id as faculty_id, f.name, f.roll, f.specification, f.profile_photo
             FROM faculty_subject_assignments fsa
@@ -266,126 +255,90 @@ exports.getEnroledSubjectMentors = (req, res) => {
             JOIN faculty f ON f.id = m.faculty_id
             WHERE fsa.subject_id = ? AND fsa.is_active = 1
             ORDER BY f.name`;
-
-        db.query(fallbackSql, [subjectID], (fbErr, fbResults) => {
-            if (fbErr) {
-                console.error('Error fetching enrolled subject mentors (fallback):', fbErr);
-                return res.status(500).json({ success: false, message: 'Internal Server Error' });
-            }
-            return res.json({ success: true, gradeEnroledMentor: fbResults || [] });
-        });
-    });
+        const [fallbackRows] = await db.query(fallbackSql, [subjectID]);
+        return res.json({ success: true, gradeEnroledMentor: fallbackRows || [] });
+    } catch (err) {
+        console.error('Error fetching enrolled subject mentors:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
-// Assign mentor to a subject for a grade (creates/uses faculty_subject_assignments and faculty_section_subject_assignments)
-exports.assignMentorToSubject = (req, res) => {
+// Assign mentor to a subject for a grade (promise-based)
+exports.assignMentorToSubject = async (req, res) => {
     const { mentor_id, subject_id, grade_id, created_by } = req.body;
-
     if (!mentor_id || !subject_id || !grade_id) {
         return res.status(400).json({ success: false, message: 'mentor_id, subject_id and grade_id are required' });
     }
 
-    // Resolve faculty_id from mentor
-    db.query('SELECT faculty_id FROM mentors WHERE id = ? AND is_active = 1', [mentor_id], (err, mentorRows) => {
-        if (err) {
-            console.error('Error resolving mentor:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
+    try {
+        // Resolve faculty_id from mentor
+        const [mentorRows] = await db.query('SELECT faculty_id FROM mentors WHERE id = ? AND is_active = 1', [mentor_id]);
         if (!mentorRows || mentorRows.length === 0) {
             return res.status(404).json({ success: false, message: 'Mentor not found or inactive' });
         }
-
         const facultyId = mentorRows[0].faculty_id;
 
         // Ensure faculty_subject_assignments exists
-        db.query('SELECT id FROM faculty_subject_assignments WHERE faculty_id = ? AND subject_id = ? LIMIT 1', [facultyId, subject_id], (fErr, fRows) => {
-            if (fErr) {
-                console.error('Error checking faculty_subject_assignments:', fErr);
-                return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        let fsaId;
+        const [existingFsa] = await db.query('SELECT id FROM faculty_subject_assignments WHERE faculty_id = ? AND subject_id = ? LIMIT 1', [facultyId, subject_id]);
+        if (existingFsa.length > 0) {
+            fsaId = existingFsa[0].id;
+        } else {
+            const [insertFsa] = await db.query(
+                'INSERT INTO faculty_subject_assignments (faculty_id, subject_id, is_active, created_by, created_at) VALUES (?, ?, 1, ?, NOW())',
+                [facultyId, subject_id, created_by || null]
+            );
+            fsaId = insertFsa.insertId;
+        }
+
+        // Fetch section-level subject assignments for grade+subject
+        const [ssaRows] = await db.query(
+            'SELECT id FROM subject_section_assignments WHERE grade_id = ? AND subject_id = ? AND is_active = 1',
+            [grade_id, subject_id]
+        );
+
+        if (!ssaRows || ssaRows.length === 0) {
+            return res.json({ success: true, message: 'Mentor linked to subject (no section mappings found for grade)', data: { fsa_id: fsaId } });
+        }
+
+        const linkResults = [];
+        for (const ssa of ssaRows) {
+            const [existingLink] = await db.query(
+                'SELECT id FROM faculty_section_subject_assignments WHERE fsa_id = ? AND ssa_id = ? LIMIT 1',
+                [fsaId, ssa.id]
+            );
+            if (existingLink.length > 0) {
+                linkResults.push({ existed: true, id: existingLink[0].id });
+                continue;
             }
+            const [newLink] = await db.query(
+                'INSERT INTO faculty_section_subject_assignments (fsa_id, ssa_id, is_active, created_by, created_at) VALUES (?, ?, 1, ?, NOW())',
+                [fsaId, ssa.id, created_by || null]
+            );
+            linkResults.push({ existed: false, id: newLink.insertId });
+        }
 
-            const createFsa = (callback) => {
-                db.query('INSERT INTO faculty_subject_assignments (faculty_id, subject_id, is_active, created_by, created_at) VALUES (?, ?, 1, ?, NOW())', [facultyId, subject_id, created_by || null], (insErr, insRes) => {
-                    if (insErr) return callback(insErr);
-                    return callback(null, insRes.insertId);
-                });
-            };
-
-            const ensureFsa = () => {
-                if (fRows && fRows.length > 0) {
-                    return Promise.resolve(fRows[0].id);
-                }
-                return new Promise((resolve, reject) => {
-                    createFsa((cErr, id) => {
-                        if (cErr) return reject(cErr);
-                        resolve(id);
-                    });
-                });
-            };
-
-            ensureFsa()
-            .then(fsaId => {
-                // Find subject_section_assignments for this grade+subject
-                db.query('SELECT id FROM subject_section_assignments WHERE grade_id = ? AND subject_id = ? AND is_active = 1', [grade_id, subject_id], (ssaErr, ssaRows) => {
-                    if (ssaErr) {
-                        console.error('Error finding subject_section_assignments:', ssaErr);
-                        return res.status(500).json({ success: false, message: 'Internal Server Error' });
-                    }
-
-                    if (!ssaRows || ssaRows.length === 0) {
-                        // If no subject-section entries exist for this grade, still return success (we created faculty_subject_assignments)
-                        return res.json({ success: true, message: 'Mentor linked to subject (grade mapping not found to create section-level links)', data: { fsa_id: fsaId } });
-                    }
-
-                    // Insert faculty_section_subject_assignments for each ssa id (avoid duplicates)
-                    const tasks = ssaRows.map(s => {
-                        return new Promise((resolve, reject) => {
-                            db.query('SELECT id FROM faculty_section_subject_assignments WHERE fsa_id = ? AND ssa_id = ? LIMIT 1', [fsaId, s.id], (checkErr, checkRows) => {
-                                if (checkErr) return reject(checkErr);
-                                if (checkRows && checkRows.length > 0) return resolve({ existed: true, id: checkRows[0].id });
-                                db.query('INSERT INTO faculty_section_subject_assignments (fsa_id, ssa_id, is_active, created_by, created_at) VALUES (?, ?, 1, ?, NOW())', [fsaId, s.id, created_by || null], (insErr, insRes) => {
-                                    if (insErr) return reject(insErr);
-                                    return resolve({ existed: false, id: insRes.insertId });
-                                });
-                            });
-                        });
-                    });
-
-                    Promise.all(tasks)
-                    .then(results => {
-                        return res.json({ success: true, message: 'Mentor assigned to subject for grade successfully', data: { fsa_id: fsaId, links: results } });
-                    })
-                    .catch(linkErr => {
-                        console.error('Error creating faculty_section_subject_assignments:', linkErr);
-                        return res.status(500).json({ success: false, message: 'Internal Server Error' });
-                    });
-                });
-            })
-            .catch(e => {
-                console.error('Error ensuring faculty_subject_assignments:', e);
-                return res.status(500).json({ success: false, message: 'Internal Server Error' });
-            });
-        });
-    });
+        return res.json({ success: true, message: 'Mentor assigned to subject for grade successfully', data: { fsa_id: fsaId, links: linkResults } });
+    } catch (err) {
+        console.error('Error assigning mentor to subject:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };
 
-// Remove enrolled subject-mentor mapping (soft-delete)
-exports.removeEnroledSubjectMentor = (req, res) => {
+// Remove enrolled subject-mentor mapping (soft-delete, promise-based)
+exports.removeEnroledSubjectMentor = async (req, res) => {
     const { msaID } = req.body;
-
     if (!msaID) {
         return res.status(400).json({ success: false, message: 'Mapping ID (msaID) is required' });
     }
-
-    const sql = 'UPDATE faculty_section_subject_assignments SET is_active = 0 WHERE id = ? AND is_active = 1';
-    db.query(sql, [msaID], (err, result) => {
-        if (err) {
-            console.error('Error removing enrolled subject mentor:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
+    try {
+        const [result] = await db.query('UPDATE faculty_section_subject_assignments SET is_active = 0 WHERE id = ? AND is_active = 1', [msaID]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ success: false, message: 'Mapping not found or already removed' });
         }
-        res.json({ success: true, message: 'Mentor removed from subject successfully' });
-    });
+        return res.json({ success: true, message: 'Mentor removed from subject successfully' });
+    } catch (err) {
+        console.error('Error removing enrolled subject mentor:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 };

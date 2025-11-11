@@ -1,4 +1,4 @@
-import { Image, ImageComponent, Pressable, ScrollView, Text, TouchableOpacity, View, Animated, StatusBar } from 'react-native';
+import { Image, ImageComponent, Pressable, ScrollView, Text, TouchableOpacity, View, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native'; 
 import styles from './Welcomesty';
 import React, { useEffect, useRef } from 'react';
@@ -75,7 +75,6 @@ const Welcome = () => {
       colors={['#E3F2FD', '#FFFFFF', '#F3E5F5']}
       style={styles.gradientContainer}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#E3F2FD" />
       <ScrollView 
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
