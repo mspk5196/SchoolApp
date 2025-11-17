@@ -88,6 +88,15 @@ export const moveMultipleStudents = async (studentRolls, fromBatchId, toBatchId)
   return response.json();
 };
 
+export const assignStudentsToBatches = async (assignments) => {
+  const response = await ApiService.makeRequest('/coordinator/batch/assignStudents', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assignments }),
+  });
+  return response.json();
+};
+
 // Excel Upload/Download for Batches
 export const downloadBatchTemplate = async () => {
   return await ApiService.downloadFile(

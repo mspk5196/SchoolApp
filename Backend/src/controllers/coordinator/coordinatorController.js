@@ -87,7 +87,7 @@ exports.assignMentorToSection = async (req, res) => {
             JOIN grades g ON g.id = s.grade_id
             WHERE msa.mentor_id = ? AND msa.is_active = 1`;
 
-    const [results] = await db.query(checkSql, [mentorId]);
+        const [results] = await db.query(checkSql, [mentorId]);
         if (results.length > 0) {
             return res.status(409).json({
                 success: false,
@@ -100,7 +100,7 @@ exports.assignMentorToSection = async (req, res) => {
             FROM mentor_section_assignments msa
             WHERE msa.section_id = ? AND msa.is_active = 1`;
 
-    const [sectionResults] = await db.query(checkSectionSql, [sectionId]);
+        const [sectionResults] = await db.query(checkSectionSql, [sectionId]);
         if (sectionResults.length > 0) {
             return res.status(409).json({ success: false, message: 'This section already has a mentor assigned' });
         }
@@ -109,7 +109,7 @@ exports.assignMentorToSection = async (req, res) => {
             INSERT INTO mentor_section_assignments (mentor_id, section_id, is_active, assigned_by, created_at)
             VALUES (?, ?, 1, ?, NOW())`;
 
-    const [insertResult] = await db.query(insertSql, [mentorId, sectionId, assignedBy]);
+        const [insertResult] = await db.query(insertSql, [mentorId, sectionId, assignedBy]);
         return res.json({ success: true, message: 'Mentor assigned to section successfully', data: { assignment_id: insertResult.insertId } });
     } catch (err) {
         console.error('Error assigning mentor:', err);
@@ -131,7 +131,7 @@ exports.unassignMentorFromSection = async (req, res) => {
         WHERE mentor_id = ? AND section_id = ? AND is_active = 1`;
 
     try {
-    const [result] = await db.query(sql, [mentorId, sectionId]);
+        const [result] = await db.query(sql, [mentorId, sectionId]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ success: false, message: 'Assignment not found' });
         }
@@ -160,13 +160,15 @@ exports.getStudentsBySection = async (req, res) => {
             st.photo_url,
             sm.academic_year,
             s.section_name,
-            g.grade_name
+            g.grade_name,
+            sba.batch_id
         FROM students st
         JOIN student_mappings sm ON sm.student_id = st.id
         JOIN sections s ON s.id = sm.section_id
         JOIN grades g ON g.id = s.grade_id
+        LEFT JOIN student_batch_assignments sba ON sba.student_id = st.id AND sba.academic_year = sm.academic_year
         WHERE sm.section_id = ? 
-        AND sm.academic_year = (SELECT id FROM academic_years WHERE is_active = 1)
+        AND sm.academic_year = (SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id WHERE ays.is_active = 1)
         ORDER BY st.roll`;
 
     try {

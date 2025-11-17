@@ -176,8 +176,8 @@ const initializeBatches = async (req, res) => {
       [subjectSectionId]
     );
 
-    if (existingBatches[0].count > 0) {
-      throw new Error('Batches already exist for this subject-section combination');
+    if (!existingBatches[0].count > 0) {
+      throw new Error('Batches does not exist for this subject-section combination');
     }
 
     // Create batches
@@ -195,20 +195,21 @@ const initializeBatches = async (req, res) => {
       ]);
     }
 
-    await connection.query(
-      `INSERT INTO section_batches 
-       (subject_section_id, batch_name, batch_level, max_students, 
-        current_students_count, avg_performance_score, is_active, updated_by)
-       VALUES ?`,
-      [batchInserts]
-    );
+    // await connection.query(
+    //   `INSERT INTO section_batches 
+    //    (subject_section_id, batch_name, batch_level, max_students, 
+    //     current_students_count, avg_performance_score, is_active, updated_by)
+    //    VALUES ?`,
+    //   [batchInserts]
+    // );
 
     // Get all students in the section
     const [students] = await connection.query(
       `SELECT s.id, s.roll 
        FROM students s
        JOIN student_mappings sm ON s.id = sm.student_id
-       WHERE sm.section_id = ? AND sm.academic_year = YEAR(CURDATE())
+       JOIN academic_years ay ON sm.academic_year = ay.id AND ay.is_active=1
+       WHERE sm.section_id = ?
        ORDER BY s.roll`,
       [sectionId]
     );
@@ -396,6 +397,151 @@ const reallocateBatches = async (req, res) => {
       message: error.message || 'Failed to reallocate batches',
       error: error.message
     });
+  } finally {
+    connection.release();
+  }
+};
+
+/**
+ * Configure (create) batches for a subject-section without assigning students
+ */
+const configureBatches = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    const { sectionId, subjectId, maxBatches, batchSizeLimit } = req.body;
+    const coordinatorId = req.user.id;
+
+    if (!sectionId || !subjectId || !maxBatches) {
+      return res.status(400).json({ success: false, message: 'sectionId, subjectId and maxBatches are required' });
+    }
+
+    await connection.beginTransaction();
+
+    // Get subject_section_assignments id
+    const [ssaRows] = await connection.query(
+      `SELECT id FROM subject_section_assignments 
+       WHERE section_id = ? AND subject_id = ? AND is_active = 1`,
+      [sectionId, subjectId]
+    );
+
+    if (ssaRows.length === 0) {
+      throw new Error('No active subject-section assignment found');
+    }
+
+    const subjectSectionId = ssaRows[0].id;
+
+    // Check if batches already exist
+    const [existingBatches] = await connection.query(
+      `SELECT COUNT(*) as count FROM section_batches WHERE subject_section_id = ?`,
+      [subjectSectionId]
+    );
+
+    if (existingBatches[0].count > 0) {
+      throw new Error('Batches already exist for this subject-section combination');
+    }
+
+    const inserts = [];
+    const limit = parseInt(batchSizeLimit, 10) || 30;
+    for (let i = 1; i <= parseInt(maxBatches, 10); i++) {
+      inserts.push([
+        subjectSectionId,
+        `Batch ${i}`,
+        1,
+        limit,
+        0,
+        null,
+        1,
+        coordinatorId
+      ]);
+    }
+
+    if (inserts.length > 0) {
+      await connection.query(
+        `INSERT INTO section_batches (subject_section_id, batch_name, batch_level, max_students, current_students_count, avg_performance_score, is_active, updated_by) VALUES ?`,
+        [inserts]
+      );
+    }
+
+    await connection.commit();
+
+    res.json({ success: true, message: `Configured ${inserts.length} batches`, batchesCreated: inserts.length });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error configuring batches:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to configure batches', error: error.message });
+  } finally {
+    connection.release();
+  }
+};
+
+/**
+ * Assign students to specific batches (manual assignment)
+ * Expects body: { assignments: [{ studentId, batchId }, ...] }
+ */
+const assignStudents = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    const { assignments } = req.body;
+    const coordinatorId = req.user.id;
+
+    if (!Array.isArray(assignments) || assignments.length === 0) {
+      return res.status(400).json({ success: false, message: 'assignments array is required' });
+    }
+
+    await connection.beginTransaction();
+
+    // Validate batch ids and student ids
+    const batchIds = [...new Set(assignments.map(a => a.batchId))];
+    const studentIds = [...new Set(assignments.map(a => a.studentId))];
+
+    // Ensure batches exist
+    const [batchRows] = await connection.query(
+      `SELECT id, subject_section_id, max_students FROM section_batches WHERE id IN (?)`,
+      [batchIds]
+    );
+    if (batchRows.length !== batchIds.length) {
+      throw new Error('One or more batches not found');
+    }
+
+    // Remove any existing assignments for these students (in their current batch)
+    if (studentIds.length > 0) {
+      await connection.query(
+        `DELETE sba FROM student_batch_assignments sba WHERE sba.student_id IN (?)`,
+        [studentIds]
+      );
+    }
+
+    // Insert new assignments
+    const values = assignments.map(a => [a.studentId, a.batchId, null, null]);
+    if (values.length > 0) {
+      await connection.query(
+        `INSERT INTO student_batch_assignments (student_id, batch_id, current_performance, last_activity) VALUES ?`,
+        [values]
+      );
+    }
+
+    // Recalculate and update batch counts
+    for (const batch of batchRows) {
+      const [countRes] = await connection.query(
+        `SELECT COUNT(*) as cnt FROM student_batch_assignments WHERE batch_id = ?`,
+        [batch.id]
+      );
+      const cnt = countRes[0].cnt || 0;
+      await connection.query(
+        `UPDATE section_batches SET current_students_count = ?, updated_by = ?, updated_at = NOW() WHERE id = ?`,
+        [cnt, coordinatorId, batch.id]
+      );
+      // Recalculate average performance
+      await recalculateBatchAverage(batch.id);
+    }
+
+    await connection.commit();
+
+    res.json({ success: true, message: 'Students assigned to batches successfully' });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error assigning students to batches:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to assign students', error: error.message });
   } finally {
     connection.release();
   }
@@ -1817,12 +1963,14 @@ module.exports = {
   getBatches,
   getBatchAnalytics,
   initializeBatches,
+  configureBatches,
   reallocateBatches,
   updateBatchSize,
   getBatchDetails,
   moveStudentBatch,
   getBatchStudents,
   moveMultipleStudents,
+  assignStudents,
   
   // Topic hierarchy
   getTopicHierarchy,

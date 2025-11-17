@@ -61,6 +61,10 @@ router.post('/batch/getBatchDetails', authenticateToken, materialController.getB
 router.post('/batch/moveStudentBatch', authenticateToken, materialController.moveStudentBatch);
 router.post('/batch/getBatchStudents', authenticateToken, materialController.getBatchStudents);
 router.post('/batch/moveMultipleStudents', authenticateToken, materialController.moveMultipleStudents);
+// New: configure batches (create batch records without assigning students)
+router.post('/batches/configure', authenticateToken, materialController.configureBatches);
+// Assign students to batches (manual assignment)
+router.post('/batch/assignStudents', authenticateToken, materialController.assignStudents);
 
 // Topic hierarchy routes
 router.post('/topic/getTopicHierarchy', authenticateToken, materialController.getTopicHierarchy);

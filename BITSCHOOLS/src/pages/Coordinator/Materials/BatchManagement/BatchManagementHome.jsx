@@ -21,8 +21,10 @@ import ApiService from '../../../../utils/ApiService';
 
 const BatchManagementHome = ({route}) => {
   const navigation = useNavigation();
-  const {activeGrade, coordinatorData, selectedSubjectId, selectedSectionId, selectedSubjectName} = route.params;
-  console.log('BatchManagementHome mounted with params:', route.params);
+  const { userData, grades, selectedGrade, selectedSubjectId, selectedSectionId, selectedSubjectName } = route.params || {};
+  const activeGradeId = selectedGrade?.grade_id;
+  const activeGradeName = selectedGrade?.grade_name;
+  console.log('BatchManagementHome mounted with params:', { userData, grades, selectedGrade, selectedSubjectId, selectedSectionId, selectedSubjectName });
 
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false); 
@@ -40,6 +42,10 @@ const BatchManagementHome = ({route}) => {
   const [showBatchSizeModal, setShowBatchSizeModal] = useState(false);
   const [selectedBatchForResize, setSelectedBatchForResize] = useState(null);
   const [newBatchSize, setNewBatchSize] = useState('');
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [allStudents, setAllStudents] = useState([]);
+  const [activeAssignBatchId, setActiveAssignBatchId] = useState(null);
+  const [studentAssignments, setStudentAssignments] = useState({}); // studentId -> batchId
 
   // Overflow resolution state
   const [showResolveOverflowModal, setShowResolveOverflowModal] = useState(false);
@@ -358,25 +364,22 @@ const BatchManagementHome = ({route}) => {
       
       console.log('Creating batches:', {
         subjectId: selectedSubject || selectedSubjectId,
-        gradeId: activeGrade,
+        gradeId: activeGradeId,
         sectionId: selectedSection || selectedSectionId,
         maxBatches: numBatches,
-        coordinatorData: coordinatorData.id
+        coordinatorId: userData?.id
       });
 
       const response = await ApiService.makeRequest(`/coordinator/batches/configure`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           subjectId: selectedSubject || selectedSubjectId,
-          gradeId: activeGrade,
+          gradeId: activeGradeId,
           sectionId: selectedSection || selectedSectionId,
           maxBatches: numBatches,
           batchSizeLimit: 30, 
           autoAllocation: true,
-          coordinatorId: coordinatorData.id
+          coordinatorId: userData?.id
         }),
       });
 
@@ -405,42 +408,34 @@ const BatchManagementHome = ({route}) => {
       return;
     }
 
-    Alert.alert(
-      'Initialize Batches',
-      'This will create initial batch assignments for all students based on their performance. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Initialize',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              setProcessingAction('Initializing student assignments...');
-              
-              const result = await materialApi.initializeBatches(
-                selectedSection || selectedSectionId,
-                selectedSubject || selectedSubjectId
-              );
-              
-              if (result && result.success) {
-                showSuccessMessage(`Initialization completed! ${result.assigned_students || 0} students were assigned to batches.`);
-                const batches = await fetchBatchData();
-                await fetchAnalytics();
-                checkForOverflowAndPrompt(batches);
-              } else {
-                showErrorMessage(result?.message || 'Failed to initialize batches');
-              }
-            } catch (error) {
-              console.error('Error initializing batches:', error);
-              showErrorMessage('Network error during initialization');
-            } finally {
-              setLoading(false);
-              setProcessingAction('');
-            }
-          },
-        },
-      ]
-    );
+    // Open assignment modal to manually assign students to batches
+    setShowAssignModal(true);
+    setActiveAssignBatchId(batchData[0]?.id || null);
+    // fetch students in section
+    try {
+      setLoading(true);
+      const sectionId = selectedSection || selectedSectionId;
+      const res = await ApiService.makeRequest('/coordinator/getStudentsBySection', {
+        method: 'POST',
+        body: JSON.stringify({ sectionId }),
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        // Only include students who are not yet assigned to any batch
+        const unassigned = (data.data || []).filter(s => s.batch_id == null);
+        setAllStudents(unassigned);
+        const initMap = {};
+        unassigned.forEach(s => { initMap[s.id] = null; });
+        setStudentAssignments(initMap);
+      } else {
+        showErrorMessage(data?.message || 'Failed to load students');
+      }
+    } catch (e) {
+      console.error('Error fetching students for assignment', e);
+      showErrorMessage('Failed to load students');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChangeBatchSize = (batch) => {
@@ -601,7 +596,7 @@ const BatchManagementHome = ({route}) => {
         batchId: batch.id,
         sectionId: selectedSection || selectedSectionId,
         subjectId: selectedSubject || selectedSubjectId,
-        coordinatorId: coordinatorData.id
+        coordinatorId: userData?.id
       })}
     >
       <View style={styles.batchHeader}>
@@ -672,6 +667,47 @@ const BatchManagementHome = ({route}) => {
     </TouchableOpacity>
   );
 
+  // Assignment modal controls
+  const toggleStudentAssign = (studentId, batchId) => {
+    setStudentAssignments(prev => {
+      const next = { ...prev };
+      // If student currently assigned to this batch, unassign; else assign to this batch
+      next[studentId] = next[studentId] === batchId ? null : batchId;
+      return next;
+    });
+  };
+
+  const confirmAssignments = async () => {
+    // Build assignments array [{ studentId, batchId }]
+    const assignments = Object.entries(studentAssignments)
+      .filter(([sid, bid]) => bid)
+      .map(([sid, bid]) => ({ studentId: parseInt(sid, 10), batchId: bid }));
+
+    if (assignments.length === 0) {
+      Alert.alert('No assignments', 'Please assign at least one student to a batch before confirming');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await materialApi.assignStudentsToBatches(assignments);
+      if (result && result.success) {
+        showSuccessMessage(result.message || 'Students assigned successfully');
+        setShowAssignModal(false);
+        // refresh data
+        await fetchBatchData();
+        await fetchAnalytics();
+      } else {
+        showErrorMessage(result?.message || 'Failed to assign students');
+      }
+    } catch (e) {
+      console.error('Error confirming assignments', e);
+      showErrorMessage('Failed to assign students');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getBatchStatusColor = (batch) => {
     if (!batch.avg_performance) return '#ccc';
     if (batch.avg_performance >= 80) return '#4CAF50';
@@ -703,7 +739,7 @@ const BatchManagementHome = ({route}) => {
             <Text style={styles.headerTitle}>Batch Management</Text>
             {selectedSubjectName && (
               <Text style={styles.headerSubtitle}>
-                {selectedSubjectName} - Grade {activeGrade}
+                {selectedSubjectName} - Grade {activeGradeName || activeGradeId}
               </Text>
             )}
           </View>
@@ -738,7 +774,7 @@ const BatchManagementHome = ({route}) => {
           <Text style={styles.headerTitle}>Batch Management</Text>
           {selectedSubjectName && (
             <Text style={styles.headerSubtitle}>
-              {selectedSubjectName} - Grade {activeGrade}
+              {selectedSubjectName} - Grade {activeGradeName || activeGradeId}
             </Text>
           )}
         </View>
@@ -753,6 +789,55 @@ const BatchManagementHome = ({route}) => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
+
+        {/* Assign Students Modal */}
+        <Modal
+          visible={showAssignModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowAssignModal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 }}>
+            <View style={{ backgroundColor: 'white', borderRadius: 8, maxHeight: '90%', padding: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>Assign Students to Batches</Text>
+              <View style={{ flexDirection: 'row', height: 360 }}>
+                <View style={{ width: 140, borderRightWidth: 1, borderColor: '#eee' }}>
+                  <ScrollView>
+                    {batchData.map(b => (
+                      <TouchableOpacity key={b.id} onPress={() => setActiveAssignBatchId(b.id)} style={{ padding: 10, backgroundColor: activeAssignBatchId === b.id ? '#eef2ff' : 'transparent' }}>
+                        <Text style={{ fontWeight: '600' }}>{b.batch_name}</Text>
+                        <Text style={{ fontSize: 12, color: '#666' }}>{b.current_students_count}/{b.max_students || 30}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+                <View style={{ flex: 1, paddingLeft: 12 }}>
+                  <Text style={{ marginBottom: 6 }}>Select students for <Text style={{ fontWeight: '700' }}>{batchData.find(b => b.id === activeAssignBatchId)?.batch_name || '...'}</Text></Text>
+                  <ScrollView>
+                    {allStudents.map(s => (
+                      <TouchableOpacity key={s.id} onPress={() => toggleStudentAssign(s.id, activeAssignBatchId)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}>
+                        <View style={{ width: 22, height: 22, borderRadius: 4, borderWidth: 1, borderColor: '#ccc', marginRight: 10, backgroundColor: studentAssignments[s.id] === activeAssignBatchId ? '#3B82F6' : 'white' }} />
+                        <View>
+                          <Text style={{ fontSize: 15 }}>{s.name}</Text>
+                          <Text style={{ fontSize: 12, color: '#666' }}>Roll: {s.roll}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
+                <TouchableOpacity onPress={() => setShowAssignModal(false)} style={{ padding: 10, marginRight: 8 }}>
+                  <Text>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={confirmAssignments} style={{ backgroundColor: '#3B82F6', padding: 10, borderRadius: 6 }}>
+                  <Text style={{ color: 'white' }}>Confirm Assignments</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Analytics Summary */}
         {analytics && (
@@ -809,13 +894,13 @@ const BatchManagementHome = ({route}) => {
               <Text style={styles.actionButtonText}>Configure Batches</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={[styles.actionButton, styles.reallocateButton]}
               onPress={handleRunReallocation}
             >
               <Icon name="shuffle-variant" size={22} color="white" />
               <Text style={styles.actionButtonText}>Run Reallocation</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             <TouchableOpacity
               style={[styles.actionButton, styles.initializeButton]}
@@ -1306,7 +1391,7 @@ const BatchManagementHome = ({route}) => {
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
                       <Text>Grade:</Text>
-                      <Text style={{ fontWeight: 'bold' }}>{activeGrade}</Text>
+                      <Text style={{ fontWeight: 'bold' }}>{activeGradeName || activeGradeId}</Text>
                     </View>
                   </View>
 

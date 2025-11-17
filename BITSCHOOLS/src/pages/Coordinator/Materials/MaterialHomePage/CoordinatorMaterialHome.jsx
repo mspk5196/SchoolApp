@@ -28,7 +28,9 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
     fetchgrades()
   }, [])
   useEffect(() => {
-    fetchGradeSubjects();
+    if (selectedGrade) {
+      fetchGradeSubjects();
+    }
   }, [selectedGrade]);
 
   const fetchgrades = async () => {
@@ -47,6 +49,9 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
   };
 
   const fetchGradeSubjects = async (isRefreshing = false) => {
+    // Guard: don't call API if selectedGrade is not set
+    if (!selectedGrade || !selectedGrade.grade_id) return;
+
     try {
       if (isRefreshing) {
         setRefreshing(true);
@@ -55,7 +60,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
       }
 
       const result = await materialApi.getGradeSubjects(selectedGrade.grade_id);
-
+      
       if (result && result.success) {
 
         const subjectsWithActivities = result.gradeSubjects.map((subject, index) => ({
@@ -84,6 +89,9 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
     }
   };
   const fetchSections = async () => {
+    // Guard: ensure selectedGrade exists before requesting sections
+    if (!selectedGrade || !selectedGrade.grade_id) return;
+
     try {
       const response = await ApiService.makeRequest(`/coordinator/getGradeSections`, {
         method: 'POST',
@@ -93,11 +101,14 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
       
       if (data.success && data.gradeSections.length > 0) {
         setSections(data.gradeSections);
-        setActiveSection(data.gradeSections[0].id);
+        setSelectedSection(data.gradeSections[0].id);
+        setActiveSectionSelection(data.gradeSections[0]);
+        
       } else {
         Alert.alert('No Sections Found', 'No section is associated with this grade');
       }
     } catch (error) {
+      console.error('Error fetching sections:', error);
       Alert.alert('Error', 'Failed to fetch sections data');
     }
   };
@@ -110,7 +121,9 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    fetchSections();
+    if (selectedGrade) {
+      fetchSections();
+    }
   }, [selectedGrade]);
   useEffect(() => {
     if (sections.length > 0) {
