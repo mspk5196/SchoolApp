@@ -156,6 +156,24 @@ const initializeBatches = async (req, res) => {
 
     await connection.beginTransaction();
 
+    // Build a composite -> batch mapping so uploads using the composite label
+    // "Grade / Section / Subject :: Batch Name" can be resolved uniquely.
+    const [allBatchRows] = await connection.query(
+      `SELECT sb.id as batch_id, sb.batch_name, sb.subject_section_id, sec.section_name as section_name, g.grade_name, sub.subject_name
+       FROM section_batches sb
+       JOIN subject_section_assignments ssa ON sb.subject_section_id = ssa.id
+       JOIN sections sec ON ssa.section_id = sec.id
+       JOIN grades g ON sec.grade_id = g.id
+       JOIN subjects sub ON ssa.subject_id = sub.id
+       WHERE sb.is_active = 1`
+    );
+
+    const compositeBatchMap = {};
+    for (const r of allBatchRows) {
+      const composite = `${r.grade_name} / ${r.section_name} / ${r.subject_name} :: ${r.batch_name}`;
+      compositeBatchMap[composite] = { batch_id: r.batch_id, subject_section_id: r.subject_section_id };
+    }
+
     // Get subject_section_assignments id
     const [ssaRows] = await connection.query(
       `SELECT id FROM subject_section_assignments 
@@ -205,7 +223,7 @@ const initializeBatches = async (req, res) => {
 
     // Get all students in the section
     const [students] = await connection.query(
-      `SELECT s.id, s.roll 
+      `SELECT sm.id, s.roll 
        FROM students s
        JOIN student_mappings sm ON s.id = sm.student_id
        JOIN academic_years ay ON sm.academic_year = ay.id AND ay.is_active=1
@@ -304,7 +322,7 @@ const reallocateBatches = async (req, res) => {
     // Get all students with their performance
     const [students] = await connection.query(
       `SELECT 
-        s.id as student_id,
+        sm.id as student_id,
         s.roll,
         sba.batch_id,
         sba.current_performance,
@@ -510,12 +528,15 @@ const assignStudents = async (req, res) => {
         [studentIds]
       );
     }
+    const [activeAcademicYearRows] = await connection.query(
+      `SELECT ay.id from academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id WHERE ays.is_active=1`,
+    );
 
     // Insert new assignments
-    const values = assignments.map(a => [a.studentId, a.batchId, null, null]);
+    const values = assignments.map(a => [a.studentId, a.batchId, null, null, activeAcademicYearRows[0].id]);
     if (values.length > 0) {
       await connection.query(
-        `INSERT INTO student_batch_assignments (student_id, batch_id, current_performance, last_activity) VALUES ?`,
+        `INSERT INTO student_batch_assignments (student_id, batch_id, current_performance, last_activity, academic_year) VALUES ?`,
         [values]
       );
     }
@@ -532,7 +553,7 @@ const assignStudents = async (req, res) => {
         [cnt, coordinatorId, batch.id]
       );
       // Recalculate average performance
-      await recalculateBatchAverage(batch.id);
+      await recalculateBatchAverage(batch.id, connection);
     }
 
     await connection.commit();
@@ -791,7 +812,7 @@ const getBatchStudents = async (req, res) => {
 
     const [students] = await db.query(
       `SELECT 
-        s.id,
+        sm.id,
         s.roll,
         s.name,
         sba.current_performance,
@@ -799,7 +820,10 @@ const getBatchStudents = async (req, res) => {
       FROM students s
       JOIN student_batch_assignments sba ON s.id = sba.student_id
       LEFT JOIN student_topic_completion stc ON s.id = stc.student_id
-      WHERE sba.batch_id = ?
+      JOIN student_mappings sm ON s.id = sm.student_id
+      JOIN academic_years ay ON sm.academic_year = ay.id
+      JOIN ay_status ays ON ay.id = ays.academic_year_id AND ays.is_active=1
+      WHERE sba.batch_id = ? AND ays.is_active = 1
       GROUP BY s.id
       ORDER BY sba.current_performance ASC, topics_completed ASC`,
       [batchId]
@@ -915,20 +939,38 @@ const moveMultipleStudents = async (req, res) => {
 };
 
 // Helper function to recalculate batch average
-async function recalculateBatchAverage(batchId) {
-  const [result] = await db.query(
-    `SELECT AVG(current_performance) as avg_performance
-     FROM student_batch_assignments
-     WHERE batch_id = ? AND current_performance IS NOT NULL`,
-    [batchId]
-  );
-  
-  await db.query(
-    `UPDATE section_batches 
-     SET avg_performance_score = ?
-     WHERE id = ?`,
-    [result[0].avg_performance || null, batchId]
-  );
+// If a `connection` (transaction) is provided, use it so the recalculation
+// runs within the same transaction and avoids lock waits.
+async function recalculateBatchAverage(batchId, connection = null) {
+  if (connection) {
+    const [result] = await connection.query(
+      `SELECT AVG(current_performance) as avg_performance
+       FROM student_batch_assignments
+       WHERE batch_id = ? AND current_performance IS NOT NULL`,
+      [batchId]
+    );
+
+    await connection.query(
+      `UPDATE section_batches 
+       SET avg_performance_score = ?
+       WHERE id = ?`,
+      [result[0].avg_performance || null, batchId]
+    );
+  } else {
+    const [result] = await db.query(
+      `SELECT AVG(current_performance) as avg_performance
+       FROM student_batch_assignments
+       WHERE batch_id = ? AND current_performance IS NOT NULL`,
+      [batchId]
+    );
+
+    await db.query(
+      `UPDATE section_batches 
+       SET avg_performance_score = ?
+       WHERE id = ?`,
+      [result[0].avg_performance || null, batchId]
+    );
+  }
 }
 
 // ==================== TOPIC HIERARCHY ====================
@@ -1590,14 +1632,13 @@ const generateBatchTemplate = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Batch Data');
 
-    // Define columns
+    // Define columns — use human readable dropdowns: Grade, Section, Subject, Batch, Student Roll
     worksheet.columns = [
-      { header: 'Section ID', key: 'section_id', width: 15 },
-      { header: 'Subject ID', key: 'subject_id', width: 15 },
-      { header: 'Batch Name', key: 'batch_name', width: 20 },
-      { header: 'Batch Level', key: 'batch_level', width: 15 },
-      { header: 'Max Students', key: 'max_students', width: 15 },
-      { header: 'Student Rolls (comma-separated)', key: 'student_rolls', width: 40 }
+      { header: 'Grade (choose from dropdown)', key: 'grade_name', width: 20 },
+      { header: 'Section (choose from dropdown)', key: 'section_name', width: 20 },
+      { header: 'Subject (choose from dropdown)', key: 'subject_name', width: 25 },
+      { header: 'Batch Name (choose from dropdown)', key: 'batch_name', width: 30 },
+      { header: 'Student Roll (choose from dropdown)', key: 'student_roll', width: 20 }
     ];
 
     // Style header
@@ -1609,15 +1650,150 @@ const generateBatchTemplate = async (req, res) => {
     };
     worksheet.getRow(1).font = { color: { argb: 'FFFFFFFF' }, bold: true };
 
-    // Add sample data
+    // Fetch existing batches for dropdown (format: [Grade -> Section -> Subject] BatchName)
+    const [batchLookupRows] = await db.query(
+      `SELECT sb.id as batch_id, sb.batch_name, sb.subject_section_id, sec.section_name as section_name, g.grade_name, sub.subject_name
+       FROM section_batches sb
+       JOIN subject_section_assignments ssa ON sb.subject_section_id = ssa.id
+       JOIN sections sec ON ssa.section_id = sec.id
+       JOIN grades g ON sec.grade_id = g.id
+       JOIN subjects sub ON ssa.subject_id = sub.id
+       WHERE sb.is_active = 1
+       ORDER BY g.grade_name, sec.section_name, sub.subject_name, sb.batch_name`
+    );
+
+    // Create lookup sheets for dropdowns: Grades, Sections, Subjects, Batches, Students
+    const gradesSheet = workbook.addWorksheet('Grades');
+    gradesSheet.state = 'hidden';
+    gradesSheet.getColumn(1).width = 30;
+    gradesSheet.addRow(['Grade']);
+
+    const sectionsSheet = workbook.addWorksheet('Sections');
+    sectionsSheet.state = 'hidden';
+    sectionsSheet.getColumn(1).width = 30;
+    sectionsSheet.addRow(['Section']);
+
+    const subjectsSheet = workbook.addWorksheet('Subjects');
+    subjectsSheet.state = 'hidden';
+    subjectsSheet.getColumn(1).width = 40;
+    subjectsSheet.addRow(['Subject']);
+
+    const batchesSheet = workbook.addWorksheet('Batches');
+    batchesSheet.state = 'hidden';
+    batchesSheet.getColumn(1).width = 60; // composite label
+    batchesSheet.getColumn(2).width = 40; // batch name
+    // Columns: CompositeLabel, Batch Name, subject_section_id, Section, Grade, Subject, BatchId
+    batchesSheet.addRow(['Composite', 'Batch Name', 'subject_section_id', 'Section', 'Grade', 'Subject', 'BatchId']);
+
+    // Populate Grades
+    const [grades] = await db.query(`SELECT grade_name FROM grades ORDER BY id`);
+    const gradeValues = [];
+    for (const g of grades) {
+      gradesSheet.addRow([g.grade_name]);
+      gradeValues.push(g.grade_name);
+    }
+
+    // Populate Sections
+    const [sections] = await db.query(`SELECT s.section_name, g.grade_name FROM sections s JOIN grades g ON s.grade_id = g.id ORDER BY g.grade_name, s.section_name`);
+    const sectionValues = [];
+    for (const s of sections) {
+      sectionsSheet.addRow([s.section_name]);
+      sectionValues.push(s.section_name);
+    }
+
+    // Populate Subjects
+    const [subjects] = await db.query(`SELECT subject_name FROM subjects ORDER BY subject_name`);
+    const subjectValues = [];
+    for (const su of subjects) {
+      subjectsSheet.addRow([su.subject_name]);
+      subjectValues.push(su.subject_name);
+    }
+
+    // Populate Batches — write a composite label so same batch names in different sections are unique
+    for (const r of batchLookupRows) {
+      const composite = `${r.grade_name} / ${r.section_name} / ${r.subject_name} :: ${r.batch_name}`;
+      batchesSheet.addRow([composite, r.batch_name, r.subject_section_id, r.section_name, r.grade_name, r.subject_name, r.batch_id]);
+    }
+
+    // Prepare a visible Students sheet to provide student roll dropdown
+    const [studentRows] = await db.query(
+      `SELECT s.roll, sm.id as mapping_id
+       FROM students s
+       JOIN student_mappings sm ON s.id = sm.student_id
+       JOIN academic_years ay ON sm.academic_year = ay.id
+       JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1
+       ORDER BY s.roll`
+    );
+
+    const studentsSheet = workbook.addWorksheet('Students');
+    studentsSheet.getColumn(1).width = 30; // roll
+    studentsSheet.addRow(['Student Roll']);
+    const studentLookupValues = [];
+    for (const s of studentRows) {
+      studentsSheet.addRow([s.roll]);
+      studentLookupValues.push(s.roll);
+    }
+
+    // Add a couple of sample rows in main sheet demonstrating one-student-per-row
+    // Use the human-readable column keys and pick the first available lookup values if present
     worksheet.addRow({
-      section_id: 1,
-      subject_id: 1,
-      batch_name: 'Batch 1',
-      batch_level: 1,
-      max_students: 30,
-      student_rolls: 'ROLL001,ROLL002,ROLL003'
+      grade_name: gradeValues.length > 0 ? gradeValues[0] : 'Grade 1',
+      section_name: sectionValues.length > 0 ? sectionValues[0] : 'A',
+      subject_name: subjectValues.length > 0 ? subjectValues[0] : 'Maths',
+      batch_name: batchLookupRows.length > 0 ? batchLookupRows[0].batch_name : 'Batch A',
+      student_roll: studentLookupValues.length > 0 ? studentLookupValues[0] : 'ROLL001'
     });
+    worksheet.addRow({
+      grade_name: gradeValues.length > 1 ? gradeValues[1] : (gradeValues.length > 0 ? gradeValues[0] : 'Grade 1'),
+      section_name: sectionValues.length > 1 ? sectionValues[1] : (sectionValues.length > 0 ? sectionValues[0] : 'A'),
+      subject_name: subjectValues.length > 1 ? subjectValues[1] : (subjectValues.length > 0 ? subjectValues[0] : 'Maths'),
+      batch_name: batchLookupRows.length > 1 ? batchLookupRows[1].batch_name : (batchLookupRows.length > 0 ? batchLookupRows[0].batch_name : 'Batch A'),
+      student_roll: studentLookupValues.length > 1 ? studentLookupValues[1] : (studentLookupValues.length > 0 ? studentLookupValues[0] : 'ROLL002')
+    });
+
+    // Add data validation to Grade (col 1), Section (col 2), Subject (col3), Batch (col4), Student Roll (col5)
+    if (gradeValues.length > 0) {
+      const lastG = gradeValues.length + 1;
+      worksheet.getColumn(1).eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+        if (rowNumber === 1) return;
+        cell.dataValidation = { type: 'list', allowBlank: true, formulae: [`'Grades'!$A$2:$A$${lastG}`] };
+      });
+    }
+
+    if (sectionValues.length > 0) {
+      const lastSec = sectionValues.length + 1;
+      worksheet.getColumn(2).eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+        if (rowNumber === 1) return;
+        cell.dataValidation = { type: 'list', allowBlank: true, formulae: [`'Sections'!$A$2:$A$${lastSec}`] };
+      });
+    }
+
+    if (subjectValues.length > 0) {
+      const lastSu = subjectValues.length + 1;
+      worksheet.getColumn(3).eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+        if (rowNumber === 1) return;
+        cell.dataValidation = { type: 'list', allowBlank: true, formulae: [`'Subjects'!$A$2:$A$${lastSu}`] };
+      });
+    }
+
+    // Batches (use composite labels in column A of Batches sheet)
+    const batchCount = batchLookupRows.length;
+    if (batchCount > 0) {
+      const lastB = batchCount + 1;
+      worksheet.getColumn(4).eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+        if (rowNumber === 1) return;
+        cell.dataValidation = { type: 'list', allowBlank: true, formulae: [`'Batches'!$A$2:$A$${lastB}`] };
+      });
+    }
+
+    // Students
+    if (studentLookupValues.length > 0) {
+      const lastS = studentLookupValues.length + 1;
+      worksheet.getColumn(5).eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+        if (rowNumber === 1) return;
+        cell.dataValidation = { type: 'list', allowBlank: true, formulae: [`'Students'!$A$2:$A$${lastS}`] };
+      });
+    }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=batch_template.xlsx');
@@ -1654,88 +1830,216 @@ const uploadBatchesFromExcel = async (req, res) => {
     await workbook.xlsx.load(req.file.buffer);
     
     const worksheet = workbook.getWorksheet(1);
-    const batches = [];
+    const rows = [];
     const errors = [];
 
     await connection.beginTransaction();
 
-    // Parse rows
+    // Parse rows: each row represents one student for a batch (one student per row)
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return; // Skip header
 
-      const batchData = {
-        sectionId: row.getCell(1).value,
-        subjectId: row.getCell(2).value,
-        batchName: row.getCell(3).value,
-        batchLevel: row.getCell(4).value,
-        maxStudents: row.getCell(5).value,
-        studentRolls: row.getCell(6).value ? String(row.getCell(6).value).split(',').map(r => r.trim()) : []
+      const rowData = {
+        gradeName: row.getCell(1).value ? String(row.getCell(1).value).trim() : null,
+        sectionName: row.getCell(2).value ? String(row.getCell(2).value).trim() : null,
+        subjectName: row.getCell(3).value ? String(row.getCell(3).value).trim() : null,
+        batchName: row.getCell(4).value ? String(row.getCell(4).value).trim() : null,
+        studentRoll: row.getCell(5).value ? String(row.getCell(5).value).trim() : null
       };
 
-      if (!batchData.sectionId || !batchData.subjectId || !batchData.batchName) {
-        errors.push(`Row ${rowNumber}: Missing required fields`);
+      if (!rowData.gradeName || !rowData.sectionName || !rowData.subjectName || !rowData.batchName || !rowData.studentRoll) {
+        errors.push(`Row ${rowNumber}: Missing required fields (grade/section/subject/batch/studentRoll)`);
         return;
       }
 
-      batches.push(batchData);
+      rows.push(rowData);
     });
 
     if (errors.length > 0) {
       throw new Error(errors.join('; '));
     }
 
+    // Group rows by batch key: gradeName|sectionName|subjectName|batchName
+    const groups = new Map();
+    for (const r of rows) {
+      const key = `${r.gradeName}||${r.sectionName}||${r.subjectName}||${r.batchName}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          gradeName: r.gradeName,
+          sectionName: r.sectionName,
+          subjectName: r.subjectName,
+          batchName: r.batchName,
+          studentRolls: []
+        });
+      }
+      if (r.studentRoll) groups.get(key).studentRolls.push(r.studentRoll);
+    }
+
     let createdCount = 0;
     let assignedStudentCount = 0;
 
-    for (const batch of batches) {
-      // Get subject_section_assignments id
-      const [ssaRows] = await connection.query(
-        `SELECT id FROM subject_section_assignments 
-         WHERE section_id = ? AND subject_id = ? AND is_active = 1`,
-        [batch.sectionId, batch.subjectId]
-      );
+    for (const [key, group] of groups) {
+      // Support composite batch labels produced by the template:
+      // "Grade / Section / Subject :: Batch Name". If a composite label
+      // is provided and matches our map, prefer that resolution because it
+      // uniquely identifies the batch even when batch names repeat across sections.
+      let sectionId = null;
+      let subjectId = null;
+      let subjectSectionId = null;
+      let batchId = null;
 
-      if (ssaRows.length === 0) {
-        errors.push(`No active assignment for section ${batch.sectionId}, subject ${batch.subjectId}`);
-        continue;
-      }
+      if (group.batchName && compositeBatchMap[group.batchName]) {
+        const mapped = compositeBatchMap[group.batchName];
+        batchId = mapped.batch_id;
+        subjectSectionId = mapped.subject_section_id;
 
-      const subjectSectionId = ssaRows[0].id;
+        // derive section and subject from the subject_section_assignments row
+        const [ssaInfo] = await connection.query(
+          `SELECT section_id, subject_id FROM subject_section_assignments WHERE id = ? LIMIT 1`,
+          [subjectSectionId]
+        );
+        if (ssaInfo.length === 0) {
+          errors.push(`Batch mapping found but subject-section record missing for batch "${group.batchName}"`);
+          continue;
+        }
+        sectionId = ssaInfo[0].section_id;
+        subjectId = ssaInfo[0].subject_id;
+      } else {
+        // Resolve section_id from sectionName + gradeName
+        const [sectionRows] = await connection.query(
+          `SELECT s.id FROM sections s JOIN grades g ON s.grade_id = g.id WHERE s.section_name = ? AND g.grade_name = ? LIMIT 1`,
+          [group.sectionName, group.gradeName]
+        );
+        if (sectionRows.length === 0) {
+          errors.push(`No section found matching Grade "${group.gradeName}" and Section "${group.sectionName}"`);
+          continue;
+        }
+        sectionId = sectionRows[0].id;
 
-      // Create batch
-      const [batchResult] = await connection.query(
-        `INSERT INTO section_batches 
-         (subject_section_id, batch_name, batch_level, max_students, 
-          current_students_count, is_active, updated_by)
-         VALUES (?, ?, ?, ?, 0, 1, ?)`,
-        [subjectSectionId, batch.batchName, batch.batchLevel || 1, batch.maxStudents || 30, coordinatorId]
-      );
+        // Resolve subject id
+        const [subjectRows] = await connection.query(
+          `SELECT id FROM subjects WHERE subject_name = ? LIMIT 1`,
+          [group.subjectName]
+        );
+        if (subjectRows.length === 0) {
+          errors.push(`No subject found with name "${group.subjectName}"`);
+          continue;
+        }
+        subjectId = subjectRows[0].id;
 
-      const batchId = batchResult.insertId;
-      createdCount++;
-
-      // Assign students if provided
-      if (batch.studentRolls.length > 0) {
-        const [students] = await connection.query(
-          `SELECT id FROM students WHERE roll IN (?)`,
-          [batch.studentRolls]
+        // Get subject_section_assignments id
+        const [ssaRows] = await connection.query(
+          `SELECT id FROM subject_section_assignments 
+           WHERE section_id = ? AND subject_id = ? AND is_active = 1`,
+          [sectionId, subjectId]
         );
 
-        if (students.length > 0) {
-          const assignments = students.map(s => [s.id, batchId, null, null]);
-          await connection.query(
-            `INSERT INTO student_batch_assignments 
-             (student_id, batch_id, current_performance, last_activity)
-             VALUES ?`,
-            [assignments]
-          );
+        if (ssaRows.length === 0) {
+          errors.push(`No active assignment for Grade "${group.gradeName}" Section "${group.sectionName}", Subject "${group.subjectName}"`);
+          continue;
+        }
 
-          await connection.query(
-            `UPDATE section_batches SET current_students_count = ? WHERE id = ?`,
-            [students.length, batchId]
-          );
+        subjectSectionId = ssaRows[0].id;
 
-          assignedStudentCount += students.length;
+        // Check if batch already exists (use existing if present)
+        const [existing] = await connection.query(
+          `SELECT id FROM section_batches WHERE subject_section_id = ? AND batch_name = ? AND is_active = 1`,
+          [subjectSectionId, group.batchName]
+        );
+
+        if (existing.length > 0) {
+          batchId = existing[0].id;
+        } else {
+          // Do NOT create batches during upload. Report and skip.
+          errors.push(`No existing batch named "${group.batchName}" for Grade "${group.gradeName}" Section "${group.sectionName}" Subject "${group.subjectName}"`);
+          continue;
+        }
+      }
+
+      // Resolve studentRolls to mapping IDs using student rolls only
+      const values = (group.studentRolls || []).map(v => String(v).trim()).filter(v => v !== '');
+      const rolls = values; // treat all values as rolls
+
+      let mappedIds = [];
+      const rollToId = {};
+      if (rolls.length > 0) {
+        const [rowsFound] = await connection.query(
+          `SELECT sm.id as mapping_id, s.roll FROM students s JOIN student_mappings sm ON s.id = sm.student_id JOIN academic_years ay ON sm.academic_year = ay.id JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 WHERE s.roll IN (?)`,
+          [rolls]
+        );
+        mappedIds = (rowsFound || []).map(r => r.mapping_id);
+        for (const r of (rowsFound || [])) {
+          rollToId[r.roll] = r.mapping_id;
+        }
+      }
+
+      // Report rolls not found
+      const foundRolls = Object.keys(rollToId);
+      const missingRolls = rolls.filter(r => !foundRolls.includes(r));
+      if (missingRolls.length > 0) {
+        errors.push(`Section ${group.sectionId} Subject ${group.subjectId} - student rolls not found: ${missingRolls.join(',')}`);
+      }
+
+      // Combine and dedupe mapping IDs
+      const finalIds = Array.from(new Set([...(mappedIds || [])]));
+
+      if (finalIds.length > 0) {
+        // Check if any of these students are already assigned to a batch
+        // for the same subject_section (to prevent duplicate assignments)
+        const [alreadyAssignedRows] = await connection.query(
+          `SELECT sba.student_id FROM student_batch_assignments sba
+           JOIN section_batches sb ON sba.batch_id = sb.id
+           WHERE sba.student_id IN (?) AND sb.subject_section_id = ?`,
+          [finalIds, subjectSectionId]
+        );
+
+        const alreadyAssignedIds = (alreadyAssignedRows || []).map(r => r.student_id);
+
+        // Map alreadyAssignedIds to rolls for clearer messages
+        const idToRoll = {};
+        for (const roll of Object.keys(rollToId)) {
+          idToRoll[rollToId[roll]] = roll;
+        }
+
+        if (alreadyAssignedIds.length > 0) {
+          const assignedRolls = alreadyAssignedIds.map(id => idToRoll[id] || id);
+          errors.push(`Section ${group.sectionId} Subject ${group.subjectId} - students already assigned: ${assignedRolls.join(',')}`);
+        }
+
+        // Filter out already assigned students
+        const idsToInsert = finalIds.filter(id => !alreadyAssignedIds.includes(id));
+
+        if (idsToInsert.length > 0) {
+          // Check batch capacity before inserting (do NOT update section_batches table)
+          const [batchInfoRows] = await connection.query(
+            `SELECT id, max_students, current_students_count FROM section_batches WHERE id = ?`,
+            [batchId]
+          );
+          const batchInfo = batchInfoRows[0];
+          const available = (batchInfo.max_students || 0) - (batchInfo.current_students_count || 0);
+
+          if (available <= 0) {
+            const skippedRolls = idsToInsert.map(id => idToRoll[id] || id);
+            errors.push(`Batch ${group.batchName} is full (max ${batchInfo.max_students}). Skipped students: ${skippedRolls.join(',')}`);
+          } else {
+            const idsAllowed = idsToInsert.slice(0, available);
+            const idsSkipped = idsToInsert.slice(available);
+
+            const assignments = idsAllowed.map(id => [id, batchId, null, null]);
+            await connection.query(
+              `INSERT INTO student_batch_assignments 
+               (student_id, batch_id, current_performance, last_activity)
+               VALUES ?`,
+              [assignments]
+            );
+
+            if (idsSkipped.length > 0) {
+              const skippedRolls = idsSkipped.map(id => idToRoll[id] || id);
+              errors.push(`Batch ${group.batchName} exceeded capacity; skipped students: ${skippedRolls.join(',')}`);
+            }
+
+            assignedStudentCount += idsAllowed.length;
+          }
         }
       }
     }

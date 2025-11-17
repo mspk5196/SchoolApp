@@ -14,7 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import DocumentPicker from '@react-native-documents/picker';
+import * as DocumentPicker from '@react-native-documents/picker';
 import styles from './BatchManagementStyles.jsx';
 import * as materialApi from '../../../../utils/materialApi';
 import ApiService from '../../../../utils/ApiService';
@@ -213,7 +213,7 @@ const BatchManagementHome = ({route}) => {
       
       // Get student IDs from rolls
       const studentIds = studentsInOverflowBatch
-        .filter(s => selectedStudentRolls.includes(s.roll_no))
+        .filter(s => selectedStudentRolls.includes(s.roll))
         .map(s => s.student_id);
       
       // Move students in batch
@@ -425,7 +425,7 @@ const BatchManagementHome = ({route}) => {
         const unassigned = (data.data || []).filter(s => s.batch_id == null);
         setAllStudents(unassigned);
         const initMap = {};
-        unassigned.forEach(s => { initMap[s.id] = null; });
+        unassigned.forEach(s => { initMap[s.student_id] = null; });
         setStudentAssignments(initMap);
       } else {
         showErrorMessage(data?.message || 'Failed to load students');
@@ -569,7 +569,12 @@ const BatchManagementHome = ({route}) => {
         }
       }
     } catch (error) {
-      if (DocumentPicker.isCancel(error)) {
+      // Some DocumentPicker builds don't expose `isCancel`. Fall back to a safe check.
+      const pickerIsCancel = (DocumentPicker && typeof DocumentPicker.isCancel === 'function')
+        ? DocumentPicker.isCancel(error)
+        : (error && (error.code === 'DOCUMENT_PICKER_CANCELED' || error.name === 'AbortError' || (typeof error.message === 'string' && error.message.toLowerCase().includes('cancel'))));
+
+      if (pickerIsCancel) {
         console.log('User cancelled file picker');
       } else {
         console.error('Upload error:', error);
@@ -669,10 +674,23 @@ const BatchManagementHome = ({route}) => {
 
   // Assignment modal controls
   const toggleStudentAssign = (studentId, batchId) => {
+    // Require a batch to be active for assignment
+    if (!batchId) {
+      Alert.alert('Select Batch', 'Please select a batch on the left before assigning students.');
+      return;
+    }
+
     setStudentAssignments(prev => {
       const next = { ...prev };
+      const currentAssignment = prev[studentId];
+      
       // If student currently assigned to this batch, unassign; else assign to this batch
-      next[studentId] = next[studentId] === batchId ? null : batchId;
+      if (currentAssignment === batchId) {
+        next[studentId] = null;
+      } else {
+        next[studentId] = batchId;
+      }
+      
       return next;
     });
   };
@@ -814,15 +832,58 @@ const BatchManagementHome = ({route}) => {
                 <View style={{ flex: 1, paddingLeft: 12 }}>
                   <Text style={{ marginBottom: 6 }}>Select students for <Text style={{ fontWeight: '700' }}>{batchData.find(b => b.id === activeAssignBatchId)?.batch_name || '...'}</Text></Text>
                   <ScrollView>
-                    {allStudents.map(s => (
-                      <TouchableOpacity key={s.id} onPress={() => toggleStudentAssign(s.id, activeAssignBatchId)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}>
-                        <View style={{ width: 22, height: 22, borderRadius: 4, borderWidth: 1, borderColor: '#ccc', marginRight: 10, backgroundColor: studentAssignments[s.id] === activeAssignBatchId ? '#3B82F6' : 'white' }} />
-                        <View>
-                          <Text style={{ fontSize: 15 }}>{s.name}</Text>
-                          <Text style={{ fontSize: 12, color: '#666' }}>Roll: {s.roll}</Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
+                    {allStudents.map(s => {
+                      // Get the batch ID this student is currently assigned to (in this session)
+                      const assignedBatchId = studentAssignments[s.student_id];
+                      // Check if assigned to the currently active/selected batch
+                      const isAssignedToActive = assignedBatchId !== null && assignedBatchId !== undefined && assignedBatchId === activeAssignBatchId;
+                      // Get batch name if assigned to a different batch
+                      const assignedBatchName = (assignedBatchId && assignedBatchId !== activeAssignBatchId) 
+                        ? batchData.find(b => b.id === assignedBatchId)?.batch_name 
+                        : null;
+                      
+                      return (
+                        <TouchableOpacity
+                          key={s.student_id}
+                          onPress={() => toggleStudentAssign(s.student_id, activeAssignBatchId)}
+                          style={{ 
+                            flexDirection: 'row', 
+                            alignItems: 'center', 
+                            paddingVertical: 6,
+                            paddingHorizontal: 8,
+                            borderRadius: 4,
+                            backgroundColor: assignedBatchName ? '#f9fafb' : 'transparent'
+                          }}
+                        >
+                          <View style={{ 
+                            width: 22, 
+                            height: 22, 
+                            borderRadius: 4, 
+                            borderWidth: 2, 
+                            borderColor: isAssignedToActive ? '#3B82F6' : '#ccc', 
+                            marginRight: 10, 
+                            backgroundColor: isAssignedToActive ? '#3B82F6' : 'white',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            {isAssignedToActive && (
+                              <Icon name="check" size={16} color="white" />
+                            )}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 15, color: '#111' }}>{s.name}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Text style={{ fontSize: 12, color: '#666' }}>Roll: {s.roll}</Text>
+                              {assignedBatchName && (
+                                <Text style={{ fontSize: 11, color: '#3B82F6', marginLeft: 8 }}>
+                                  → {assignedBatchName}
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </ScrollView>
                 </View>
               </View>

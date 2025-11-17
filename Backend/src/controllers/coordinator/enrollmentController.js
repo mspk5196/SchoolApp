@@ -14,7 +14,7 @@ exports.enrollFaculty = async (req, res) => {
             return res.status(400).json({ success: false, message: "All required fields must be provided" });
         }
 
-    const conn = await db.getConnection();
+        const conn = await db.getConnection();
         await conn.beginTransaction();
 
         try {
@@ -27,7 +27,7 @@ exports.enrollFaculty = async (req, res) => {
                 // Update user roles if needed
                 const [userRoles] = await conn.query('SELECT role_id FROM user_roles WHERE user_id = ?', [userId]);
                 const existingRoleIds = userRoles.map(r => r.role_id);
-                
+
                 // Get role ID for the new role
                 const [roleData] = await conn.query('SELECT id FROM roles WHERE role = ?', [role]);
                 if (roleData.length > 0 && !existingRoleIds.includes(roleData[0].id)) {
@@ -147,7 +147,7 @@ exports.enrollFaculty = async (req, res) => {
 exports.generateFacultyEnrollTemplate = async (req, res) => {
     try {
         console.log("generating...");
-        
+
         const workbook = new ExcelJS.Workbook();
 
         // Instructions sheet
@@ -166,7 +166,7 @@ exports.generateFacultyEnrollTemplate = async (req, res) => {
         info.getCell('A11').value = '- Leave Grades and Sections empty if not applicable';
 
         // Fetch grades for reference
-    const [gradesData] = await db.query('SELECT id, grade_name FROM grades ORDER BY id');
+        const [gradesData] = await db.query('SELECT id, grade_name FROM grades ORDER BY id');
         if (gradesData.length > 0) {
             info.getCell('A13').value = 'Available Grades:';
             info.getCell('A13').font = { bold: true };
@@ -178,7 +178,7 @@ exports.generateFacultyEnrollTemplate = async (req, res) => {
         }
 
         // Fetch sections for reference
-    const [sectionsData] = await db.query('SELECT s.id, s.section_name, g.grade_name FROM sections s LEFT JOIN grades g ON s.grade_id = g.id ORDER BY s.id');
+        const [sectionsData] = await db.query('SELECT s.id, s.section_name, g.grade_name FROM sections s LEFT JOIN grades g ON s.grade_id = g.id ORDER BY s.id');
         if (sectionsData.length > 0) {
             info.getCell('C13').value = 'Available Sections:';
             info.getCell('C13').font = { bold: true };
@@ -241,7 +241,7 @@ exports.generateFacultyEnrollTemplate = async (req, res) => {
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename="faculty_enrollment_template.xlsx"');
         console.log("File generated successfully!");
-        
+
         return res.send(Buffer.from(buffer));
     } catch (err) {
         console.error('Template generation error:', err);
@@ -267,14 +267,14 @@ exports.bulkUploadFaculty = async (req, res) => {
         }
 
         // Preload grades and sections
-    const [gradesRows] = await db.query('SELECT id, grade_name FROM grades');
+        const [gradesRows] = await db.query('SELECT id, grade_name FROM grades');
         const gradeMap = new Map();
         gradesRows.forEach(g => {
             gradeMap.set(String(g.id), g.id);
             gradeMap.set(String(g.grade_name).toLowerCase(), g.id);
         });
 
-    const [sectionsRows] = await db.query('SELECT id FROM sections');
+        const [sectionsRows] = await db.query('SELECT id FROM sections');
         const sectionIds = new Set(sectionsRows.map(s => s.id));
 
         for (let i = 2; i <= sheet.rowCount; i++) {
@@ -460,134 +460,124 @@ exports.bulkUploadFaculty = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Failed to process file' });
     } finally {
         // cleanup
-        try { fs.unlinkSync(filePath); } catch (_) {}
+        try { fs.unlinkSync(filePath); } catch (_) { }
     }
 };
 
 
-exports.createSection = (req, res) => {
+exports.createSection = async (req, res) => {
     const { gradeId, sectionName, createdBy } = req.body;
 
     if (!gradeId || !sectionName) {
         return res.status(400).json({ success: false, message: 'Grade ID and section name are required' });
     }
 
-    // Check if section already exists for this grade
-    const checkSql = `SELECT id FROM sections WHERE grade_id = ? AND section_name = ?`;
-    
-    db.query(checkSql, [gradeId, sectionName], (err, results) => {
-        if (err) {
-            console.error('Error checking section:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        
+    try {
+        // Check if section already exists for this grade
+        const checkSql = `SELECT id FROM sections WHERE grade_id = ? AND section_name = ?`;
+        const [results] = await db.query(checkSql, [gradeId, sectionName]);
+
         if (results.length > 0) {
             return res.status(409).json({ success: false, message: 'Section already exists for this grade' });
         }
 
         // Insert new section
         const insertSql = `INSERT INTO sections (grade_id, section_name, created_by) VALUES (?, ?, ?)`;
-        
-        db.query(insertSql, [gradeId, sectionName, createdBy], (err, result) => {
-            if (err) {
-                console.error('Error creating section:', err);
-                return res.status(500).json({ success: false, message: 'Internal Server Error' });
-            }
-            
-            res.json({ 
-                success: true, 
-                message: 'Section created successfully',
-                data: { id: result.insertId, grade_id: gradeId, section_name: sectionName }
-            });
+        const [result] = await db.query(insertSql, [gradeId, sectionName, createdBy]);
+
+        res.json({
+            success: true,
+            message: 'Section created successfully',
+            data: { id: result.insertId, grade_id: gradeId, section_name: sectionName }
         });
-    });
+    } catch (err) {
+        console.error('Error creating section:', err);
+        res.status(500).json({ success: false, message: 'Internal Server Error', error: err.message });
+    }
 };
 
-exports.deleteSection = (req, res) => {
+exports.deleteSection = async (req, res) => {
     const { sectionId } = req.body;
 
     if (!sectionId) {
         return res.status(400).json({ success: false, message: 'Section ID is required' });
     }
 
-    // Check if section has any students assigned
-    const checkStudentsSql = `SELECT COUNT(*) as student_count FROM student_mappings WHERE section_id = ?`;
-    
-    db.query(checkStudentsSql, [sectionId], (err, results) => {
-        if (err) {
-            console.error('Error checking students:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        
+    try {
+        // Check if section has any students assigned
+        const checkStudentsSql = `SELECT COUNT(*) as student_count FROM student_mappings WHERE section_id = ?`;
+        const [results] = await db.query(checkStudentsSql, [sectionId]);
+
         if (results[0].student_count > 0) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Cannot delete section with assigned students. Please reassign students first.' 
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot delete section with assigned students. Please reassign students first.'
             });
         }
 
         // Delete section
         const deleteSql = `DELETE FROM sections WHERE id = ?`;
-        
-        db.query(deleteSql, [sectionId], (err, result) => {
-            if (err) {
-                console.error('Error deleting section:', err);
-                return res.status(500).json({ success: false, message: 'Internal Server Error' });
-            }
-            
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ success: false, message: 'Section not found' });
-            }
-            
-            res.json({ success: true, message: 'Section deleted successfully' });
-        });
-    });
+        const [result] = await db.query(deleteSql, [sectionId]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Section not found' });
+        }
+
+        res.json({ success: true, message: 'Section deleted successfully' });
+    } catch (err) {
+        console.error('Error deleting section:', err);
+        res.status(500).json({ success: false, message: 'Internal Server Error', error: err.message });
+    }
 };
 
-exports.getSectionsByGrade = (req, res) => {
+exports.getSectionsByGrade = async (req, res) => {
     const { gradeId } = req.body;
 
     if (!gradeId) {
         return res.status(400).json({ success: false, message: 'Grade ID is required' });
     }
 
-    const sql = `SELECT s.id as section_id, s.section_name, s.grade_id, 
-                        COUNT(DISTINCT st.id) as student_count
-                 FROM sections s
-                 LEFT JOIN student_mappings sm ON sm.section_id = s.id
-                 LEFT JOIN students st ON st.id = sm.student_id
-                 WHERE s.grade_id = ?
-                 GROUP BY s.id, s.section_name, s.grade_id
-                 ORDER BY s.section_name`;
+    try {
+        const sql = `SELECT s.id as section_id, s.section_name, s.grade_id, 
+                            COUNT(DISTINCT sm.id) as student_count
+                     FROM sections s
+                     LEFT JOIN student_mappings sm ON sm.section_id = s.id
+                     LEFT JOIN students st ON st.id = sm.student_id
+                     LEFT JOIN academic_years ay ON ay.id = sm.academic_year
+                     LEFT JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active = 1
+                     WHERE s.grade_id = ?
+                     GROUP BY s.id, s.section_name, s.grade_id
+                     ORDER BY s.section_name`;
 
-    db.query(sql, [gradeId], (err, results) => {
-        if (err) {
-            console.error('Error fetching sections by grade:', err);
-            return res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-        if(results.length === 0) {
+        const [results] = await db.query(sql, [gradeId]);
+
+        if (results.length === 0) {
             return res.status(404).json({ success: true, message: 'No sections found for this grade' });
         }
-        res.json({ success: true, message:'Success', data: results });
-    });
+
+        res.json({ success: true, message: 'Success', data: results });
+    } catch (err) {
+        console.error('Error fetching sections by grade:', err);
+        res.status(500).json({ success: false, message: 'Internal Server Error', error: err.message });
+    }
 };
 
 // Single student enrollment
 exports.enrollStudent = async (req, res) => {
     try {
-        const { 
-            name, 
-            dob, 
-            roll, 
-            gender, 
-            mobileNumber, 
-            email, 
-            photoUrl, 
-            fatherName, 
+        const {
+            name,
+            dob,
+            roll,
+            gender,
+            mobileNumber,
+            email,
+            photoUrl,
+            fatherName,
             fatherMobile,
             gradeId,
             sectionId,
-            academicYear 
+            academicYear
         } = req.body;
 
         // Validation
@@ -609,12 +599,12 @@ exports.enrollStudent = async (req, res) => {
                 const [roleData] = await conn.query('SELECT id FROM roles WHERE role = ?', ['Student']);
                 if (roleData.length > 0) {
                     const [existingRole] = await conn.query(
-                        'SELECT id FROM user_roles WHERE user_id = ? AND role_id = ?', 
+                        'SELECT id FROM user_roles WHERE user_id = ? AND role_id = ?',
                         [userId, roleData[0].id]
                     );
                     if (existingRole.length === 0) {
                         await conn.query(
-                            'INSERT INTO user_roles (user_id, role_id, is_active) VALUES (?, ?, 1)', 
+                            'INSERT INTO user_roles (user_id, role_id, is_active) VALUES (?, ?, 1)',
                             [userId, roleData[0].id]
                         );
                     }
@@ -632,7 +622,7 @@ exports.enrollStudent = async (req, res) => {
                 const [roleData] = await conn.query('SELECT id FROM roles WHERE role = ?', ['Parent']);
                 if (roleData.length > 0) {
                     await conn.query(
-                        'INSERT INTO user_roles (user_id, role_id, is_active) VALUES (?, ?, 1)', 
+                        'INSERT INTO user_roles (user_id, role_id, is_active) VALUES (?, ?, 1)',
                         [userId, roleData[0].id]
                     );
                 }
@@ -640,7 +630,7 @@ exports.enrollStudent = async (req, res) => {
 
             // Check if student already exists
             const [existingStudent] = await conn.query(
-                'SELECT id FROM students WHERE roll = ? OR mobile = ?', 
+                'SELECT id FROM students WHERE roll = ? OR mobile = ?',
                 [roll, mobileNumber]
             );
             let studentId;
@@ -672,14 +662,6 @@ exports.enrollStudent = async (req, res) => {
                     [userId, roll, name, dob, email, mobileNumber, fatherName, fatherMobile, photoUrl]
                 );
                 studentId = studentResult.insertId;
-
-                // Initialize attendance record
-                await conn.query(
-                    `INSERT INTO student_attendence (
-                        student_id, total_days, present_days, leave_days, on_duty, academic_year, created_at
-                    ) VALUES (?, 0, 0, 0, 0, ?, NOW())`,
-                    [studentId, academicYear]
-                );
             }
 
             // Get mentor for the section
@@ -693,31 +675,43 @@ exports.enrollStudent = async (req, res) => {
             // Check if student mapping exists for this academic year
             const [existingMapping] = await conn.query(
                 `SELECT id FROM student_mappings 
-                WHERE student_id = ? AND academic_year = ?`,
-                [studentId, academicYear]
+                WHERE student_id = ?`,
+                [studentId]
             );
 
             if (existingMapping.length > 0) {
                 // Update existing mapping
-                await conn.query(
-                    `UPDATE student_mappings 
-                    SET section_id = ?, mentor_id = ?, updated_at = NOW() 
-                    WHERE student_id = ? AND academic_year = ?`,
-                    [sectionId, mentorId, studentId, academicYear]
-                );
+                // await conn.query(
+                //     `UPDATE student_mappings 
+                //     SET section_id = ?, mentor_id = ?, updated_at = NOW() 
+                //     WHERE student_id = ? AND academic_year = ?`,
+                //     [sectionId, mentorId, studentId, academicYear]
+                // );
+                await conn.rollback();
+                res.status(400).json({ success: false, message: "Student is already enrolled for the specified academic year" });
+                return;
             } else {
                 // Create new mapping
-                await conn.query(
+                const [studentMapResult] = await conn.query(
                     `INSERT INTO student_mappings (
-                        student_id, section_id, mentor_id, academic_year, created_by, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+                            student_id, section_id, mentor_id, academic_year, created_by, created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
                     [studentId, sectionId, mentorId, academicYear, userId]
                 );
+                const studentMappingId = studentMapResult.insertId;
+                await conn.query(
+                    `INSERT INTO student_attendence (
+                                student_id, total_days, present_days, leave_days, on_duty, academic_year, created_at
+                            ) VALUES (?, 0, 0, 0, 0, ?, NOW())`,
+                    [studentMappingId, academicYear]
+                );
+
             }
+            // Initialize attendance record
 
             await conn.commit();
-            res.json({ 
-                success: true, 
+            res.json({
+                success: true,
                 message: "Student enrolled successfully",
                 data: { studentId, userId }
             });
@@ -888,7 +882,7 @@ exports.bulkUploadStudents = async (req, res) => {
 
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(req.file.buffer);
-    const worksheet = workbook.getWorksheet('Students');
+        const worksheet = workbook.getWorksheet('Students');
 
         if (!worksheet) {
             return res.status(400).json({ success: false, message: "Invalid file format. 'Students' sheet not found." });
@@ -1008,7 +1002,7 @@ exports.bulkUploadStudents = async (req, res) => {
                     }
 
                     const [academicYearRow] = await conn.query(
-                        'SELECT id FROM academic_years WHERE academic_year = ? LIMIT 1',
+                        'SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id WHERE academic_year = ?',
                         [studentData.academicYear]
                     );
                     // Check if student exists
@@ -1026,7 +1020,7 @@ exports.bulkUploadStudents = async (req, res) => {
                                 father_name = ?, father_phone = ?, photo_url = ?, updated_at = NOW() 
                             WHERE id = ?`,
                             [userId, studentData.name, dobFormatted, studentData.email, studentData.mobileNumber,
-                             studentData.fatherName, studentData.fatherMobile, studentData.photoUrl, studentId]
+                                studentData.fatherName, studentData.fatherMobile, studentData.photoUrl, studentId]
                         );
                     } else {
                         const [studentResult] = await conn.query(
@@ -1034,17 +1028,10 @@ exports.bulkUploadStudents = async (req, res) => {
                                 user_id, roll, name, dob, email, mobile, father_name, father_phone, photo_url, created_at, updated_at
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
                             [userId, studentData.roll, studentData.name, dobFormatted, studentData.email,
-                             studentData.mobileNumber, studentData.fatherName, studentData.fatherMobile, studentData.photoUrl]
+                                studentData.mobileNumber, studentData.fatherName, studentData.fatherMobile, studentData.photoUrl]
                         );
                         studentId = studentResult.insertId;
 
-                        // Initialize attendance
-                        await conn.query(
-                            `INSERT INTO student_attendence (
-                                student_id, total_days, present_days, leave_days, on_duty, academic_year, created_at
-                            ) VALUES (?, 0, 0, 0, 0, ?, NOW())`,
-                            [studentId, academicYearRow.length > 0 ? academicYearRow[0].id : null]
-                        );
                     }
 
                     // Get mentor for section
@@ -1061,16 +1048,23 @@ exports.bulkUploadStudents = async (req, res) => {
                     );
 
                     if (existingMapping.length > 0) {
-                        await conn.query(
-                            'UPDATE student_mappings SET section_id = ?, mentor_id = ?, updated_at = NOW() WHERE student_id = ? AND academic_year = ?',
-                            [studentData.sectionId, mentorId, studentId, academicYearRow.length > 0 ? academicYearRow[0].id : null]
-                        );
+                        res.status(400).json({ success: false, message: `Student in row ${rowNumber} is already active for the specified academic year` });
+                        await conn.rollback();
+                        return;
                     } else {
-                        await conn.query(
+                        const [studentMapResult] = await conn.query(
                             `INSERT INTO student_mappings (
                                 student_id, section_id, mentor_id, academic_year, created_by, created_at, updated_at
-                            ) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+                                ) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
                             [studentId, studentData.sectionId, mentorId, academicYearRow.length > 0 ? academicYearRow[0].id : null, userId]
+                        );
+                        const studentMappingId = studentMapResult.insertId;
+                        // Initialize attendance
+                        await conn.query(
+                            `INSERT INTO student_attendence (
+                                    student_id, total_days, present_days, leave_days, on_duty, academic_year, created_at
+                                ) VALUES (?, 0, 0, 0, 0, ?, NOW())`,
+                            [studentMappingId, academicYearRow.length > 0 ? academicYearRow[0].id : null]
                         );
                     }
 

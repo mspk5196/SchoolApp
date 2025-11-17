@@ -25,7 +25,7 @@ exports.getSectionsWithMentors = async (req, res) => {
         LEFT JOIN faculty f ON f.id = m.faculty_id
         LEFT JOIN students st ON st.id IN (
             SELECT student_id FROM student_mappings 
-            WHERE section_id = s.id AND academic_year = (SELECT academic_year FROM academic_years WHERE is_active = 1)
+            WHERE section_id = s.id AND academic_year = (SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ay.id = ays.academic_year_id WHERE ays.is_active = 1)
         )
         WHERE s.grade_id = ? AND s.is_active = 1
         GROUP BY s.id, s.section_name, s.grade_id, m.id, m.faculty_id, f.name, f.roll, f.specification, f.profile_photo
@@ -152,7 +152,7 @@ exports.getStudentsBySection = async (req, res) => {
 
     const sql = `
         SELECT 
-            st.id as student_id,
+            sm.id as student_id,
             st.name,
             st.roll,
             st.email,
