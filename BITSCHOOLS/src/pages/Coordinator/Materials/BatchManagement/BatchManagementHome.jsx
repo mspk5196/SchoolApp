@@ -14,10 +14,10 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import * as DocumentPicker from '@react-native-documents/picker';
 import styles from './BatchManagementStyles.jsx';
 import * as materialApi from '../../../../utils/materialApi';
 import ApiService from '../../../../utils/ApiService';
+import { Nodata } from '../../../../components/index.js';
 
 const BatchManagementHome = ({route}) => {
   const navigation = useNavigation();
@@ -58,7 +58,7 @@ const BatchManagementHome = ({route}) => {
 
 
   useEffect(() => {
-    console.log('useEffect triggered - selectedSection:', selectedSection, 'selectedSubject:', selectedSubject);
+    // console.log('useEffect triggered - selectedSection:', selectedSection, 'selectedSubject:', selectedSubject);
     if (selectedSection && selectedSubject) {
       fetchBatchData();
       fetchAnalytics();
@@ -67,7 +67,7 @@ const BatchManagementHome = ({route}) => {
 
   useEffect(() => {
     // Initialize data immediately if we have the values from route params
-    console.log('Component mounted with:', { selectedSectionId, selectedSubjectId });
+    // console.log('Component mounted with:', { selectedSectionId, selectedSubjectId });
     if (selectedSectionId && selectedSubjectId) {
       setLoading(true);
       fetchBatchData();
@@ -102,7 +102,7 @@ const BatchManagementHome = ({route}) => {
       const sectionId = selectedSection || selectedSectionId;
       const subjectId = selectedSubject || selectedSubjectId;
       
-      console.log('fetchBatchData called with:', { sectionId, subjectId });
+      // console.log('fetchBatchData called with:', { sectionId, subjectId });
       
       if (!sectionId || !subjectId) {
         console.log('Missing sectionId or subjectId, skipping fetch');
@@ -113,7 +113,7 @@ const BatchManagementHome = ({route}) => {
       const result = await materialApi.getBatches(sectionId, subjectId);
    
       if (result && result.success) {
-        console.log('Batch data response:', result);
+        // console.log('Batch data response:', result);
         const batches = result.batches || [];
         
         // Add calculated fields for better display
@@ -126,7 +126,7 @@ const BatchManagementHome = ({route}) => {
         
         setBatchData(enhancedBatches);
         setLastUpdateTime(new Date().toLocaleTimeString());
-        console.log('Enhanced batches set:', enhancedBatches);
+        // console.log('Enhanced batches set:', enhancedBatches);
         
         // Check for overflow
         checkForOverflowAndPrompt(enhancedBatches);
@@ -254,7 +254,7 @@ const BatchManagementHome = ({route}) => {
       const sectionId = selectedSection || selectedSectionId;
       const subjectId = selectedSubject || selectedSubjectId;
       
-      console.log('fetchAnalytics called with:', { sectionId, subjectId });
+      // console.log('fetchAnalytics called with:', { sectionId, subjectId });
       
       if (!sectionId || !subjectId) {
         console.log('Missing sectionId or subjectId for analytics, skipping fetch');
@@ -262,15 +262,16 @@ const BatchManagementHome = ({route}) => {
       }
 
       const result = await materialApi.getBatchAnalytics(sectionId, subjectId);
-
+      console.log(result);
+      
       if (result && result.success) {
-        console.log('Analytics response:', result);
+        // console.log('Analytics response:', result);
         const analyticsData = result.analytics;
         
         // Enhance analytics with calculated metrics
         const enhancedAnalytics = {
           ...analyticsData,
-          overall_grade: getPerformanceGrade(analyticsData.avg_performance),
+          overall_grade: getPerformanceGrade(analyticsData.avg_performance || 0),
           students_per_batch: analyticsData.total_batches > 0 
             ? (analyticsData.total_students / analyticsData.total_batches).toFixed(1)
             : 0,
@@ -280,7 +281,7 @@ const BatchManagementHome = ({route}) => {
         };
         
         setAnalytics(enhancedAnalytics);
-        console.log('Enhanced analytics set:', enhancedAnalytics);
+        // console.log('Enhanced analytics set:', enhancedAnalytics);
       } else {
         console.log('Failed to fetch analytics, response not ok');
         showErrorMessage(result?.message || 'Failed to fetch analytics');
@@ -384,7 +385,7 @@ const BatchManagementHome = ({route}) => {
       });
 
       const result = await response.json();
-      console.log('Configure batches response:', result);
+      // console.log('Configure batches response:', result);
       
       if (response) {
         showSuccessMessage(`${numBatches} batches configured successfully! You can now initialize students.`);
@@ -421,8 +422,26 @@ const BatchManagementHome = ({route}) => {
       });
       const data = await res.json();
       if (data && data.success) {
-        // Only include students who are not yet assigned to any batch
-        const unassigned = (data.data || []).filter(s => s.batch_id == null);
+        // console.log(data.data);
+
+        // Only include students who are not yet assigned to THIS subject
+        const subjectIdForFilter = selectedSubject || selectedSubjectId;
+        const unassigned = (data.data || []).filter(s => {
+          // backend returns JSON_ARRAYAGG as either an array or a JSON string depending on driver
+          let pairs = s.batch_subject_pairs || [];
+          if (typeof pairs === 'string') {
+            try {
+              pairs = JSON.parse(pairs);
+            } catch (e) {
+              pairs = [];
+            }
+          }
+          if (!Array.isArray(pairs)) pairs = [];
+
+          // If any pair has the same subject_id, consider the student already assigned for that subject
+          return !pairs.some(p => p && Number(p.subject_id) === Number(subjectIdForFilter));
+        });
+
         setAllStudents(unassigned);
         const initMap = {};
         unassigned.forEach(s => { initMap[s.student_id] = null; });
@@ -496,93 +515,6 @@ const BatchManagementHome = ({route}) => {
       setLoading(false);
       setProcessingAction('');
       setSelectedBatchForResize(null);
-    }
-  };
-
-  // Excel Upload/Download Functions
-  const handleDownloadBatchTemplate = async () => {
-    try {
-      setLoading(true);
-      setProcessingAction('Downloading template...');
-      
-      const sectionId = selectedSection || selectedSectionId;
-      const subjectId = selectedSubject || selectedSubjectId;
-      
-      if (!sectionId || !subjectId) {
-        Alert.alert('Error', 'Please select section and subject first');
-        return;
-      }
-      
-      const result = await materialApi.downloadBatchTemplate(sectionId, subjectId);
-      
-      if (result && result.success) {
-        showSuccessMessage('Batch template downloaded successfully!');
-      } else {
-        showErrorMessage(result?.message || 'Failed to download template');
-      }
-    } catch (error) {
-      console.error('Download template error:', error);
-      showErrorMessage('Failed to download template');
-    } finally {
-      setLoading(false);
-      setProcessingAction('');
-    }
-  };
-
-  const handleUploadBatchesExcel = async () => {
-    try {
-      const result = await DocumentPicker.pick({
-        type: [DocumentPicker.types.xlsx, DocumentPicker.types.xls],
-        copyTo: 'cachesDirectory',
-      });
-
-      if (result && result.length > 0) {
-        const file = result[0];
-        
-        setLoading(true);
-        setProcessingAction('Uploading batches...');
-        
-        const sectionId = selectedSection || selectedSectionId;
-        const subjectId = selectedSubject || selectedSubjectId;
-        
-        if (!sectionId || !subjectId) {
-          Alert.alert('Error', 'Please select section and subject first');
-          return;
-        }
-        
-        const uploadResult = await materialApi.uploadBatchesExcel(
-          sectionId,
-          subjectId,
-          file
-        );
-        
-        if (uploadResult && uploadResult.success) {
-          showSuccessMessage(
-            `Batches uploaded successfully!\n` +
-            `Created: ${uploadResult.created || 0}\n` +
-            `Updated: ${uploadResult.updated || 0}`
-          );
-          fetchBatchData();
-          fetchAnalytics();
-        } else {
-          showErrorMessage(uploadResult?.message || 'Failed to upload batches');
-        }
-      }
-    } catch (error) {
-      // Some DocumentPicker builds don't expose `isCancel`. Fall back to a safe check.
-      const pickerIsCancel = (DocumentPicker && typeof DocumentPicker.isCancel === 'function')
-        ? DocumentPicker.isCancel(error)
-        : (error && (error.code === 'DOCUMENT_PICKER_CANCELED' || error.name === 'AbortError' || (typeof error.message === 'string' && error.message.toLowerCase().includes('cancel'))));
-
-      if (pickerIsCancel) {
-        console.log('User cancelled file picker');
-      } else {
-        console.error('Upload error:', error);
-        showErrorMessage('Failed to upload batches');
-      }
-    } finally {
-      setLoading(false);
-      setProcessingAction('');
     }
   };
 
@@ -740,7 +672,7 @@ const BatchManagementHome = ({route}) => {
     return '#F44336';
   };
 
-  console.log('Render - selectedSection:', selectedSection, 'selectedSubject:', selectedSubject, 'batchData length:', batchData.length, 'analytics:', !!analytics);
+  // console.log('Render - selectedSection:', selectedSection, 'selectedSubject:', selectedSubject, 'batchData length:', batchData.length, 'analytics:', !!analytics);
 
   if (loading) {
     return (
@@ -831,60 +763,67 @@ const BatchManagementHome = ({route}) => {
                 </View>
                 <View style={{ flex: 1, paddingLeft: 12 }}>
                   <Text style={{ marginBottom: 6 }}>Select students for <Text style={{ fontWeight: '700' }}>{batchData.find(b => b.id === activeAssignBatchId)?.batch_name || '...'}</Text></Text>
-                  <ScrollView>
-                    {allStudents.map(s => {
-                      // Get the batch ID this student is currently assigned to (in this session)
-                      const assignedBatchId = studentAssignments[s.student_id];
-                      // Check if assigned to the currently active/selected batch
-                      const isAssignedToActive = assignedBatchId !== null && assignedBatchId !== undefined && assignedBatchId === activeAssignBatchId;
-                      // Get batch name if assigned to a different batch
-                      const assignedBatchName = (assignedBatchId && assignedBatchId !== activeAssignBatchId) 
-                        ? batchData.find(b => b.id === assignedBatchId)?.batch_name 
-                        : null;
-                      
-                      return (
-                        <TouchableOpacity
-                          key={s.student_id}
-                          onPress={() => toggleStudentAssign(s.student_id, activeAssignBatchId)}
-                          style={{ 
-                            flexDirection: 'row', 
-                            alignItems: 'center', 
-                            paddingVertical: 6,
-                            paddingHorizontal: 8,
-                            borderRadius: 4,
-                            backgroundColor: assignedBatchName ? '#f9fafb' : 'transparent'
-                          }}
-                        >
-                          <View style={{ 
-                            width: 22, 
-                            height: 22, 
-                            borderRadius: 4, 
-                            borderWidth: 2, 
-                            borderColor: isAssignedToActive ? '#3B82F6' : '#ccc', 
-                            marginRight: 10, 
-                            backgroundColor: isAssignedToActive ? '#3B82F6' : 'white',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}>
-                            {isAssignedToActive && (
-                              <Icon name="check" size={16} color="white" />
-                            )}
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 15, color: '#111' }}>{s.name}</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <Text style={{ fontSize: 12, color: '#666' }}>Roll: {s.roll}</Text>
-                              {assignedBatchName && (
-                                <Text style={{ fontSize: 11, color: '#3B82F6', marginLeft: 8 }}>
-                                  → {assignedBatchName}
-                                </Text>
+
+                  {allStudents.length === 0 ? (
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 20 }}>
+                      <Nodata message='No students available/All students already mapped...' />
+                    </View>
+                  ) : (
+                    <ScrollView>
+                      {allStudents.map(s => {
+                        // Get the batch ID this student is currently assigned to (in this session)
+                        const assignedBatchId = studentAssignments[s.student_id];
+                        // Check if assigned to the currently active/selected batch
+                        const isAssignedToActive = assignedBatchId !== null && assignedBatchId !== undefined && assignedBatchId === activeAssignBatchId;
+                        // Get batch name if assigned to a different batch
+                        const assignedBatchName = (assignedBatchId && assignedBatchId !== activeAssignBatchId) 
+                          ? batchData.find(b => b.id === assignedBatchId)?.batch_name 
+                          : null;
+                        
+                        return (
+                          <TouchableOpacity
+                            key={s.student_id}
+                            onPress={() => toggleStudentAssign(s.student_id, activeAssignBatchId)}
+                            style={{ 
+                              flexDirection: 'row', 
+                              alignItems: 'center', 
+                              paddingVertical: 6,
+                              paddingHorizontal: 8,
+                              borderRadius: 4,
+                              backgroundColor: assignedBatchName ? '#f9fafb' : 'transparent'
+                            }}
+                          >
+                            <View style={{ 
+                              width: 22, 
+                              height: 22, 
+                              borderRadius: 4, 
+                              borderWidth: 2, 
+                              borderColor: isAssignedToActive ? '#3B82F6' : '#ccc', 
+                              marginRight: 10, 
+                              backgroundColor: isAssignedToActive ? '#3B82F6' : 'white',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              {isAssignedToActive && (
+                                <Icon name="check" size={16} color="white" />
                               )}
                             </View>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontSize: 15, color: '#111' }}>{s.name}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 12, color: '#666' }}>Roll: {s.roll}</Text>
+                                {assignedBatchName && (
+                                  <Text style={{ fontSize: 11, color: '#3B82F6', marginLeft: 8 }}>
+                                    → {assignedBatchName}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
                 </View>
               </View>
 
@@ -970,25 +909,6 @@ const BatchManagementHome = ({route}) => {
               <Icon name="account-multiple-plus-outline" size={22} color="white" />
               <Text style={styles.actionButtonText}>Initialize Batches</Text>
             </TouchableOpacity>
-            
-            {/* Excel Upload/Download Buttons */}
-            <View style={styles.excelActionsRow}>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.downloadButton, { flex: 1, marginRight: 8 }]}
-                onPress={handleDownloadBatchTemplate}
-              >
-                <Icon name="download" size={20} color="white" />
-                <Text style={styles.actionButtonText}>Download Template</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.actionButton, styles.uploadButton, { flex: 1, marginLeft: 8 }]}
-                onPress={handleUploadBatchesExcel}
-              >
-                <Icon name="upload" size={20} color="white" />
-                <Text style={styles.actionButtonText}>Upload Excel</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         )}
 

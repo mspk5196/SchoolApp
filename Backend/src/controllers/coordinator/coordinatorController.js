@@ -152,27 +152,58 @@ exports.getStudentsBySection = async (req, res) => {
 
     const sql = `
         SELECT 
-            sm.id as student_id,
-            st.name,
-            st.roll,
-            st.email,
-            st.mobile,
-            st.photo_url,
-            sm.academic_year,
-            s.section_name,
-            g.grade_name,
-            sba.batch_id
-        FROM students st
-        JOIN student_mappings sm ON sm.student_id = st.id
-        JOIN sections s ON s.id = sm.section_id
-        JOIN grades g ON g.id = s.grade_id
-        LEFT JOIN student_batch_assignments sba ON sba.student_id = st.id AND sba.academic_year = sm.academic_year
-        WHERE sm.section_id = ? 
-        AND sm.academic_year = (SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id WHERE ays.is_active = 1)
-        ORDER BY st.roll`;
+    sm.id AS student_id,
+    st.name,
+    st.roll,
+    st.email,
+    st.mobile,
+    st.photo_url,
+    sm.academic_year,
+    s.section_name,
+    g.grade_name,
+
+    JSON_ARRAYAGG(
+        JSON_OBJECT(
+            'batch_id', sba.batch_id,
+            'subject_id', ssa.subject_id
+        )
+    ) AS batch_subject_pairs
+
+FROM students st
+JOIN student_mappings sm 
+      ON sm.student_id = st.id
+JOIN sections s 
+      ON s.id = sm.section_id
+JOIN grades g 
+      ON g.id = s.grade_id
+
+LEFT JOIN student_batch_assignments sba 
+       ON sba.student_id = st.id
+      AND sba.academic_year = sm.academic_year
+
+LEFT JOIN section_batches sb 
+       ON sb.id = sba.batch_id
+
+LEFT JOIN subject_section_assignments ssa 
+       ON sb.subject_section_id = ssa.id
+      AND ssa.section_id = sm.section_id
+
+WHERE sm.section_id = ?
+  AND sm.academic_year = (
+        SELECT ay.id 
+        FROM academic_years ay
+        JOIN ay_status ays ON ays.academic_year_id = ay.id
+        WHERE ays.is_active = 1
+  )
+
+GROUP BY sm.id
+ORDER BY st.roll;
+`;
 
     try {
         const [results] = await db.query(sql, [sectionId]);
+        // console.log(results);
+        
         return res.json({ success: true, data: results });
     } catch (err) {
         console.error('Error fetching students:', err);

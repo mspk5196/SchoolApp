@@ -34,31 +34,36 @@ const getBatches = async (req, res) => {
 
     const subjectSectionId = ssaRows[0].id;
 
-    // Get all batches with statistics
+    // Active academic year
+    const [ayRows] = await db.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
+    const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+
+    // Get all batches with statistics (size from section_batch_size per active AY)
     const [batches] = await db.query(
       `SELECT 
         sb.id,
         sb.batch_name,
         sb.batch_level,
-        sb.max_students,
-        sb.current_students_count,
-        sb.avg_performance_score,
+        COALESCE(sbs.max_students, 0) as max_students,
+        COALESCE(sbs.current_students_count, 0) as current_students_count,
+        sbs.avg_performance_score,
         sb.is_active,
         COUNT(DISTINCT stc.section_activity_topic_id) as active_topics,
-        ROUND((sb.current_students_count / sb.max_students) * 100, 0) as capacity_utilization,
+        ROUND(CASE WHEN COALESCE(sbs.max_students,0) > 0 THEN (COALESCE(sbs.current_students_count,0) / sbs.max_students) * 100 ELSE 0 END, 0) as capacity_utilization,
         CASE
-          WHEN sb.avg_performance_score >= 80 THEN 'A'
-          WHEN sb.avg_performance_score >= 60 THEN 'B'
-          WHEN sb.avg_performance_score >= 40 THEN 'C'
+          WHEN sbs.avg_performance_score >= 80 THEN 'A'
+          WHEN sbs.avg_performance_score >= 60 THEN 'B'
+          WHEN sbs.avg_performance_score >= 40 THEN 'C'
           ELSE 'D'
         END as performance_grade
       FROM section_batches sb
+      LEFT JOIN section_batch_size sbs ON sbs.batch_id = sb.id ${activeAcademicYearId ? 'AND sbs.academic_year = ?' : ''}
       LEFT JOIN student_batch_assignments sba ON sb.id = sba.batch_id
       LEFT JOIN student_topic_completion stc ON sba.student_id = stc.student_id
       WHERE sb.subject_section_id = ?
-      GROUP BY sb.id
+      GROUP BY sb.id, sb.batch_name, sb.batch_level, sbs.max_students, sbs.current_students_count, sbs.avg_performance_score, sb.is_active
       ORDER BY sb.batch_level, sb.batch_name`,
-      [subjectSectionId]
+      activeAcademicYearId ? [activeAcademicYearId, subjectSectionId] : [subjectSectionId]
     );
 
     res.json({
@@ -108,18 +113,23 @@ const getBatchAnalytics = async (req, res) => {
 
     const subjectSectionId = ssaRows[0].id;
 
-    // Get comprehensive analytics
+    // Active academic year
+    const [ayRows2] = await db.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
+    const activeAcademicYearId2 = ayRows2.length > 0 ? ayRows2[0].id : null;
+
+    // Get comprehensive analytics (size from section_batch_size per active AY)
     const [analytics] = await db.query(
       `SELECT 
         COUNT(DISTINCT sb.id) as total_batches,
-        SUM(sb.current_students_count) as total_students,
-        AVG(sb.avg_performance_score) as overall_avg_performance,
-        SUM(CASE WHEN sb.current_students_count >= sb.max_students THEN 1 ELSE 0 END) as full_batches,
-        SUM(CASE WHEN sb.current_students_count < sb.max_students THEN 1 ELSE 0 END) as available_batches,
+        COALESCE(SUM(sbs.current_students_count), 0) as total_students,
+        AVG(sbs.avg_performance_score) as overall_avg_performance,
+        SUM(CASE WHEN COALESCE(sbs.max_students,0) > 0 AND COALESCE(sbs.current_students_count,0) >= sbs.max_students THEN 1 ELSE 0 END) as full_batches,
+        SUM(CASE WHEN COALESCE(sbs.current_students_count,0) < COALESCE(sbs.max_students,0) THEN 1 ELSE 0 END) as available_batches,
         MAX(sb.batch_level) as max_batch_level
       FROM section_batches sb
+      LEFT JOIN section_batch_size sbs ON sbs.batch_id = sb.id ${activeAcademicYearId2 ? 'AND sbs.academic_year = ?' : ''}
       WHERE sb.subject_section_id = ? AND sb.is_active = 1`,
-      [subjectSectionId]
+      activeAcademicYearId2 ? [activeAcademicYearId2, subjectSectionId] : [subjectSectionId]
     );
 
     res.json({
@@ -221,12 +231,21 @@ const initializeBatches = async (req, res) => {
     //   [batchInserts]
     // );
 
+    // Active academic year
+    const [ayRows] = await connection.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
+    const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+
+    if (!activeAcademicYearId) {
+      throw new Error('No active academic year found');
+    }
+
     // Get all students in the section
     const [students] = await connection.query(
       `SELECT sm.id, s.roll 
        FROM students s
        JOIN student_mappings sm ON s.id = sm.student_id
-       JOIN academic_years ay ON sm.academic_year = ay.id AND ay.is_active=1
+       JOIN academic_years ay ON sm.academic_year = ay.id
+       JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1
        WHERE sm.section_id = ?
        ORDER BY s.roll`,
       [sectionId]
@@ -249,17 +268,17 @@ const initializeBatches = async (req, res) => {
       if (studentAssignments.length > 0) {
         await connection.query(
           `INSERT INTO student_batch_assignments 
-           (student_id, batch_id, current_performance, last_activity)
+           (student_id, batch_id, current_performance, last_activity, academic_year)
            VALUES ?`,
-          [studentAssignments]
+          [studentAssignments.map(sa => [sa[0], sa[1], sa[2], sa[3], activeAcademicYearId])]
         );
 
-        // Update student counts
+        // Update student counts (per active academic year)
         for (const batch of createdBatches) {
           const count = studentAssignments.filter(sa => sa[1] === batch.id).length;
           await connection.query(
-            `UPDATE section_batches SET current_students_count = ? WHERE id = ?`,
-            [count, batch.id]
+            `UPDATE section_batch_size SET current_students_count = ?, updated_by = ?, updated_at = NOW() WHERE batch_id = ? AND academic_year = ?`,
+            [count, coordinatorId, batch.id, activeAcademicYearId]
           );
         }
       }
@@ -342,9 +361,9 @@ const reallocateBatches = async (req, res) => {
       throw new Error('No students found for reallocation');
     }
 
-    // Get batch information
+    // Get batch information (no size fields here; sizes live in section_batch_size)
     const [batches] = await connection.query(
-      `SELECT id, batch_name, batch_level, max_students 
+      `SELECT id, batch_name, batch_level 
        FROM section_batches 
        WHERE subject_section_id = ? 
        ORDER BY batch_level, id`,
@@ -375,26 +394,39 @@ const reallocateBatches = async (req, res) => {
       ]);
     });
 
-    // Insert new assignments
+    // Active academic year
+    const [ayRows2] = await connection.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
+    const activeAcademicYearId2 = ayRows2.length > 0 ? ayRows2[0].id : null;
+
+    if (!activeAcademicYearId2) {
+      throw new Error('No active academic year found');
+    }
+
+    // Insert new assignments with academic year
     await connection.query(
       `INSERT INTO student_batch_assignments 
-       (student_id, batch_id, current_performance, last_activity)
+       (student_id, batch_id, current_performance, last_activity, academic_year)
        VALUES ?`,
-      [newAssignments]
+      [newAssignments.map(sa => [sa[0], sa[1], sa[2], sa[3], activeAcademicYearId2])]
     );
 
-    // Update batch statistics
+    // Update batch statistics (avg in section_batches; counts in section_batch_size for active AY)
     for (const batch of batches) {
       const batchStudents = newAssignments.filter(sa => sa[1] === batch.id);
-      const avgPerformance = batchStudents.reduce((sum, sa) => sum + (sa[2] || 0), 0) / batchStudents.length;
-      
+      const avgPerformance = batchStudents.reduce((sum, sa) => sum + (sa[2] || 0), 0) / (batchStudents.length || 1);
+
       await connection.query(
         `UPDATE section_batches 
-         SET current_students_count = ?, 
-             avg_performance_score = ?,
-             updated_by = ?
+         SET avg_performance_score = ?, updated_by = ?, updated_at = NOW()
          WHERE id = ?`,
-        [batchStudents.length, avgPerformance || null, coordinatorId, batch.id]
+        [avgPerformance || null, coordinatorId, batch.id]
+      );
+
+      await connection.query(
+        `UPDATE section_batch_size 
+         SET current_students_count = ?, updated_by = ?, updated_at = NOW()
+         WHERE batch_id = ? AND academic_year = ?`,
+        [batchStudents.length, coordinatorId, batch.id, activeAcademicYearId2]
       );
     }
 
@@ -464,20 +496,33 @@ const configureBatches = async (req, res) => {
       inserts.push([
         subjectSectionId,
         `Batch ${i}`,
-        1,
-        limit,
-        0,
-        null,
-        1,
+         i,
+         1,
         coordinatorId
       ]);
     }
 
     if (inserts.length > 0) {
-      await connection.query(
-        `INSERT INTO section_batches (subject_section_id, batch_name, batch_level, max_students, current_students_count, avg_performance_score, is_active, updated_by) VALUES ?`,
+      const [res] = await connection.query(
+        `INSERT INTO section_batches (subject_section_id, batch_name, batch_level, is_active, updated_by) VALUES ?`,
         [inserts]
       );
+      // Initialize section_batch_size rows for the active academic year
+      const [ayRows] = await connection.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
+      const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+      if (activeAcademicYearId) {
+        const [created] = await connection.query(
+          `SELECT id FROM section_batches WHERE subject_section_id = ?`,
+          [subjectSectionId]
+        );
+        const sbsValues = created.map(r => [r.id, activeAcademicYearId, limit, 0, coordinatorId]);
+        if (sbsValues.length > 0) {
+          await connection.query(
+            `INSERT INTO section_batch_size (batch_id, academic_year, max_students, current_students_count, updated_by) VALUES ?`,
+            [sbsValues]
+          );
+        }
+      }
     }
 
     await connection.commit();
@@ -514,7 +559,7 @@ const assignStudents = async (req, res) => {
 
     // Ensure batches exist
     const [batchRows] = await connection.query(
-      `SELECT id, subject_section_id, max_students FROM section_batches WHERE id IN (?)`,
+      `SELECT id, subject_section_id FROM section_batches WHERE id IN (?)`,
       [batchIds]
     );
     if (batchRows.length !== batchIds.length) {
@@ -522,12 +567,12 @@ const assignStudents = async (req, res) => {
     }
 
     // Remove any existing assignments for these students (in their current batch)
-    if (studentIds.length > 0) {
-      await connection.query(
-        `DELETE sba FROM student_batch_assignments sba WHERE sba.student_id IN (?)`,
-        [studentIds]
-      );
-    }
+    // if (studentIds.length > 0) {
+    //   await connection.query(
+    //     `DELETE sba FROM student_batch_assignments sba WHERE sba.student_id IN (?)`,
+    //     [studentIds]
+    //   );
+    // }
     const [activeAcademicYearRows] = await connection.query(
       `SELECT ay.id from academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id WHERE ays.is_active=1`,
     );
@@ -541,16 +586,18 @@ const assignStudents = async (req, res) => {
       );
     }
 
-    // Recalculate and update batch counts
+    // Recalculate and update batch counts (per active academic year)
     for (const batch of batchRows) {
       const [countRes] = await connection.query(
-        `SELECT COUNT(*) as cnt FROM student_batch_assignments WHERE batch_id = ?`,
-        [batch.id]
+        `SELECT COUNT(*) as cnt FROM student_batch_assignments WHERE batch_id = ? AND academic_year = ?`,
+        [batch.id, activeAcademicYearRows[0].id]
       );
       const cnt = countRes[0].cnt || 0;
       await connection.query(
-        `UPDATE section_batches SET current_students_count = ?, updated_by = ?, updated_at = NOW() WHERE id = ?`,
-        [cnt, coordinatorId, batch.id]
+        `UPDATE section_batch_size 
+         SET current_students_count = ?, updated_by = ?, updated_at = NOW()
+         WHERE batch_id = ? AND academic_year = ?`,
+        [cnt, coordinatorId, batch.id, activeAcademicYearRows[0].id]
       );
       // Recalculate average performance
       await recalculateBatchAverage(batch.id, connection);
@@ -583,10 +630,18 @@ const updateBatchSize = async (req, res) => {
       });
     }
 
-    // Check current student count
+    // Active academic year
+    const [ayRows] = await db.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
+    const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+
+    if (!activeAcademicYearId) {
+      return res.status(400).json({ success: false, message: 'No active academic year found' });
+    }
+
+    // Check current student count (per active academic year)
     const [batchInfo] = await db.query(
-      `SELECT current_students_count, max_students FROM section_batches WHERE id = ?`,
-      [batchId]
+      `SELECT current_students_count, max_students FROM section_batch_size WHERE batch_id = ? AND academic_year = ?`,
+      [batchId, activeAcademicYearId]
     );
 
     if (batchInfo.length === 0) {
@@ -606,12 +661,12 @@ const updateBatchSize = async (req, res) => {
       });
     }
 
-    // Update batch size
+    // Update batch size (per active academic year)
     await db.query(
-      `UPDATE section_batches 
+      `UPDATE section_batch_size 
        SET max_students = ?, updated_by = ?, updated_at = NOW()
-       WHERE id = ?`,
-      [newMaxSize, coordinatorId, batchId]
+       WHERE batch_id = ? AND academic_year = ?`,
+      [newMaxSize, coordinatorId, batchId, activeAcademicYearId]
     );
 
     res.json({
@@ -730,10 +785,18 @@ const moveStudentBatch = async (req, res) => {
 
     const studentId = studentRows[0].id;
 
-    // Check target batch capacity
+    // Active academic year
+    const [ayRows] = await db.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
+    const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+
+    if (!activeAcademicYearId) {
+      return res.status(400).json({ success: false, message: 'No active academic year found' });
+    }
+
+    // Check target batch capacity (per active academic year)
     const [targetBatch] = await db.query(
-      `SELECT current_students_count, max_students FROM section_batches WHERE id = ?`,
-      [toBatchId]
+      `SELECT current_students_count, max_students FROM section_batch_size WHERE batch_id = ? AND academic_year = ?`,
+      [toBatchId, activeAcademicYearId]
     );
 
     if (targetBatch.length === 0) {
@@ -758,23 +821,23 @@ const moveStudentBatch = async (req, res) => {
       [toBatchId, studentId, fromBatchId]
     );
 
-    // Update batch counts
+    // Update batch counts (per active academic year)
     await db.query(
-      `UPDATE section_batches 
+      `UPDATE section_batch_size 
        SET current_students_count = current_students_count - 1,
            updated_by = ?,
            updated_at = NOW()
-       WHERE id = ?`,
-      [coordinatorId, fromBatchId]
+       WHERE batch_id = ? AND academic_year = ?`,
+      [coordinatorId, fromBatchId, activeAcademicYearId]
     );
 
     await db.query(
-      `UPDATE section_batches 
+      `UPDATE section_batch_size 
        SET current_students_count = current_students_count + 1,
            updated_by = ?,
            updated_at = NOW()
-       WHERE id = ?`,
-      [coordinatorId, toBatchId]
+       WHERE batch_id = ? AND academic_year = ?`,
+      [coordinatorId, toBatchId, activeAcademicYearId]
     );
 
     // Recalculate batch averages
@@ -875,11 +938,22 @@ const moveMultipleStudents = async (req, res) => {
 
     const studentIds = students.map(s => s.id);
 
-    // Check target batch capacity
+    // Active academic year
+    const [ayRows] = await connection.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
+    const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+    if (!activeAcademicYearId) {
+      throw new Error('No active academic year found');
+    }
+
+    // Check target batch capacity (per active academic year)
     const [targetBatch] = await connection.query(
-      `SELECT current_students_count, max_students FROM section_batches WHERE id = ?`,
-      [toBatchId]
+      `SELECT current_students_count, max_students FROM section_batch_size WHERE batch_id = ? AND academic_year = ?`,
+      [toBatchId, activeAcademicYearId]
     );
+
+    if (targetBatch.length === 0) {
+      throw new Error('Target batch size not configured for active academic year');
+    }
 
     const availableSpace = targetBatch[0].max_students - targetBatch[0].current_students_count;
     if (availableSpace < studentIds.length) {
@@ -894,23 +968,23 @@ const moveMultipleStudents = async (req, res) => {
       [toBatchId, studentIds, fromBatchId]
     );
 
-    // Update batch counts
+    // Update batch counts (per active academic year)
     await connection.query(
-      `UPDATE section_batches 
+      `UPDATE section_batch_size 
        SET current_students_count = current_students_count - ?,
            updated_by = ?,
            updated_at = NOW()
-       WHERE id = ?`,
-      [studentIds.length, coordinatorId, fromBatchId]
+       WHERE batch_id = ? AND academic_year = ?`,
+      [studentIds.length, coordinatorId, fromBatchId, activeAcademicYearId]
     );
 
     await connection.query(
-      `UPDATE section_batches 
+      `UPDATE section_batch_size 
        SET current_students_count = current_students_count + ?,
            updated_by = ?,
            updated_at = NOW()
-       WHERE id = ?`,
-      [studentIds.length, coordinatorId, toBatchId]
+       WHERE batch_id = ? AND academic_year = ?`,
+      [studentIds.length, coordinatorId, toBatchId, activeAcademicYearId]
     );
 
     await connection.commit();
@@ -951,7 +1025,7 @@ async function recalculateBatchAverage(batchId, connection = null) {
     );
 
     await connection.query(
-      `UPDATE section_batches 
+      `UPDATE section_batch_size
        SET avg_performance_score = ?
        WHERE id = ?`,
       [result[0].avg_performance || null, batchId]
@@ -965,7 +1039,7 @@ async function recalculateBatchAverage(batchId, connection = null) {
     );
 
     await db.query(
-      `UPDATE section_batches 
+      `UPDATE section_batch_size 
        SET avg_performance_score = ?
        WHERE id = ?`,
       [result[0].avg_performance || null, batchId]
@@ -1816,7 +1890,7 @@ const generateBatchTemplate = async (req, res) => {
  */
 const uploadBatchesFromExcel = async (req, res) => {
   const connection = await db.getConnection();
-  
+  console.log("hi");
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -1834,6 +1908,24 @@ const uploadBatchesFromExcel = async (req, res) => {
     const errors = [];
 
     await connection.beginTransaction();
+
+    // Build a composite -> batch mapping so uploads using the composite label
+    // "Grade / Section / Subject :: Batch Name" can be resolved uniquely.
+    const [allBatchRows] = await connection.query(
+      `SELECT sb.id as batch_id, sb.batch_name, sb.subject_section_id, sec.section_name as section_name, g.grade_name, sub.subject_name
+       FROM section_batches sb
+       JOIN subject_section_assignments ssa ON sb.subject_section_id = ssa.id
+       JOIN sections sec ON ssa.section_id = sec.id
+       JOIN grades g ON sec.grade_id = g.id
+       JOIN subjects sub ON ssa.subject_id = sub.id
+       WHERE sb.is_active = 1`
+    );
+
+    const compositeBatchMap = {};
+    for (const r of allBatchRows) {
+      const composite = `${r.grade_name} / ${r.section_name} / ${r.subject_name} :: ${r.batch_name}`;
+      compositeBatchMap[composite] = { batch_id: r.batch_id, subject_section_id: r.subject_section_id };
+    }
 
     // Parse rows: each row represents one student for a batch (one student per row)
     worksheet.eachRow((row, rowNumber) => {
@@ -1977,12 +2069,19 @@ const uploadBatchesFromExcel = async (req, res) => {
       const foundRolls = Object.keys(rollToId);
       const missingRolls = rolls.filter(r => !foundRolls.includes(r));
       if (missingRolls.length > 0) {
-        errors.push(`Section ${group.sectionId} Subject ${group.subjectId} - student rolls not found: ${missingRolls.join(',')}`);
+        errors.push(`Grade "${group.gradeName}" Section "${group.sectionName}" Subject "${group.subjectName}" - student rolls not found: ${missingRolls.join(',')}`);
       }
 
       // Combine and dedupe mapping IDs
       const finalIds = Array.from(new Set([...(mappedIds || [])]));
 
+      const [activeAcademicYearRows] = await connection.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
+
+      if (activeAcademicYearRows.length === 0) {
+        throw new Error('No active academic year found');
+      }
+      const activeAcademicYearId = activeAcademicYearRows[0].id;
+      
       if (finalIds.length > 0) {
         // Check if any of these students are already assigned to a batch
         // for the same subject_section (to prevent duplicate assignments)
@@ -2003,19 +2102,19 @@ const uploadBatchesFromExcel = async (req, res) => {
 
         if (alreadyAssignedIds.length > 0) {
           const assignedRolls = alreadyAssignedIds.map(id => idToRoll[id] || id);
-          errors.push(`Section ${group.sectionId} Subject ${group.subjectId} - students already assigned: ${assignedRolls.join(',')}`);
+          errors.push(`Grade "${group.gradeName}" Section "${group.sectionName}" Subject "${group.subjectName}" - students already assigned: ${assignedRolls.join(',')}`);
         }
 
         // Filter out already assigned students
         const idsToInsert = finalIds.filter(id => !alreadyAssignedIds.includes(id));
 
         if (idsToInsert.length > 0) {
-          // Check batch capacity before inserting (do NOT update section_batches table)
+          // Check batch capacity before inserting (per active academic year)
           const [batchInfoRows] = await connection.query(
-            `SELECT id, max_students, current_students_count FROM section_batches WHERE id = ?`,
-            [batchId]
+            `SELECT max_students, current_students_count FROM section_batch_size WHERE batch_id = ? AND academic_year = ?`,
+            [batchId, activeAcademicYearId]
           );
-          const batchInfo = batchInfoRows[0];
+          const batchInfo = batchInfoRows[0] || { max_students: 0, current_students_count: 0 };
           const available = (batchInfo.max_students || 0) - (batchInfo.current_students_count || 0);
 
           if (available <= 0) {
@@ -2024,13 +2123,20 @@ const uploadBatchesFromExcel = async (req, res) => {
           } else {
             const idsAllowed = idsToInsert.slice(0, available);
             const idsSkipped = idsToInsert.slice(available);
-
-            const assignments = idsAllowed.map(id => [id, batchId, null, null]);
+            
+            
+            const assignments = idsAllowed.map(id => [id, batchId, null, null, activeAcademicYearId]);
             await connection.query(
               `INSERT INTO student_batch_assignments 
-               (student_id, batch_id, current_performance, last_activity)
+               (student_id, batch_id, current_performance, last_activity, academic_year)
                VALUES ?`,
               [assignments]
+            );
+
+            // Update current count in section_batch_size (incremental)
+            await connection.query(
+              `UPDATE section_batch_size SET current_students_count = current_students_count + ?, updated_at = NOW() WHERE batch_id = ? AND academic_year = ?`,
+              [idsAllowed.length, batchId, activeAcademicYearId]
             );
 
             if (idsSkipped.length > 0) {
