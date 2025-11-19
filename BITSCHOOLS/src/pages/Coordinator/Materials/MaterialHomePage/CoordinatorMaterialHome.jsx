@@ -169,6 +169,21 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
     );
   };
 
+  const showAcademicYearUploadSummary = (res) => {
+    const topics = res?.topicsCreated || 0;
+    const materials = res?.materialsCreated || 0;
+    const batchDates = res?.batchDatesSet || 0;
+    const errors = Array.isArray(res?.errors) ? res.errors : [];
+    if (!errors.length) {
+      Alert.alert('Upload Complete', `Academic year data imported.\nTopics: ${topics}\nMaterials: ${materials}\nBatch Dates: ${batchDates}`);
+      return;
+    }
+    const maxToShow = 10;
+    const visible = errors.slice(0, maxToShow).join('\n');
+    const more = errors.length - maxToShow;
+    Alert.alert('Upload Completed With Errors', `Topics: ${topics}\nMaterials: ${materials}\nBatch Dates: ${batchDates}\nErrors (${errors.length}):\n${visible}${more>0?`\n...and ${more} more`:''}`);
+  };
+
   const handleDownloadBatchTemplate = async () => {
     try {
       setLoading(true);
@@ -220,6 +235,56 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
       } else {
         console.error('Upload error:', error);
         showErrorMessage('Failed to upload batches');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadAcademicYearTemplate = async () => {
+    try {
+      setLoading(true);
+      const result = await materialApi.downloadAcademicYearTemplate(selectedGrade?.grade_id);
+      if (result && result.success) {
+        showSuccessMessage('Academic year template downloaded successfully!');
+      } else {
+        showErrorMessage(result?.message || 'Failed to download academic year template');
+      }
+    } catch (e) {
+      console.error('Download academic year template error:', e);
+      showErrorMessage('Failed to download academic year template');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUploadAcademicYearExcel = async () => {
+    try {
+      const result = await DocumentPicker.pick({
+        type: [DocumentPicker.types.xlsx, DocumentPicker.types.xls],
+        copyTo: 'cachesDirectory',
+      });
+      if (result && result.length > 0) {
+        const file = result[0];
+        setLoading(true);
+        const uploadResult = await materialApi.uploadAcademicYearExcel(file);
+        if (uploadResult && uploadResult.success) {
+          showAcademicYearUploadSummary(uploadResult);
+          // Refresh subjects (new topics/materials won't change subjects but safe to refresh)
+          if (selectedGrade) fetchGradeSubjects(true);
+        } else {
+          showErrorMessage(uploadResult?.message || 'Failed to upload academic year data');
+        }
+      }
+    } catch (error) {
+      const pickerIsCancel = (DocumentPicker && typeof DocumentPicker.isCancel === 'function')
+        ? DocumentPicker.isCancel(error)
+        : (error && (error.code === 'DOCUMENT_PICKER_CANCELED' || error.name === 'AbortError' || (typeof error.message === 'string' && error.message.toLowerCase().includes('cancel'))));
+      if (pickerIsCancel) {
+        console.log('User cancelled academic year file picker');
+      } else {
+        console.error('Academic year upload error:', error);
+        showErrorMessage('Failed to upload academic year data');
       }
     } finally {
       setLoading(false);
@@ -300,6 +365,26 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
               >
                 <MaterialCommunityIcons name="upload" size={20} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Upload Batches</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {selectedGrade && selectedSection && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', marginHorizontal: 16, marginTop: 8, borderRadius: 12, elevation: 2 }}>
+              <TouchableOpacity
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#6366F1', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, marginRight: 8 }}
+                onPress={handleDownloadAcademicYearTemplate}
+                disabled={loading}
+              >
+                <MaterialCommunityIcons name="download" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Academic Year Template</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#D97706', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, marginLeft: 8 }}
+                onPress={handleUploadAcademicYearExcel}
+                disabled={loading}
+              >
+                <MaterialCommunityIcons name="upload" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Upload Academic Year</Text>
               </TouchableOpacity>
             </View>
           )}

@@ -242,6 +242,24 @@ export const uploadMaterialsExcel = async (file) => {
   );
 };
 
+// ==================== ACADEMIC YEAR BULK ====================
+
+export const downloadAcademicYearTemplate = async (gradeId) => {
+  const url = gradeId ? `/coordinator/academic-year/generate-template?gradeId=${encodeURIComponent(gradeId)}` : '/coordinator/academic-year/generate-template';
+  return await ApiService.downloadFile(
+    url,
+    'academic_year_template.xlsx'
+  );
+};
+
+export const uploadAcademicYearExcel = async (file) => {
+  return await ApiService.uploadFile(
+    '/coordinator/academic-year/upload',
+    file,
+    'file'
+  );
+};
+
 // ==================== UTILITIES ====================
 
 export const getGradeSubjects = async (gradeId) => {

@@ -90,6 +90,9 @@ router.get('/batch/generate-batch-template',  materialController.generateBatchTe
 router.post('/batch/upload-batches',  upload.single('file'), materialController.uploadBatchesFromExcel);
 router.get('/material/generate-materials-template',  materialController.generateMaterialsTemplate);
 router.post('/material/upload-materials',  upload.single('file'), materialController.uploadMaterialsFromExcel);
+// Academic year bulk import/export
+router.get('/academic-year/generate-template', materialController.generateAcademicYearTemplate);
+router.post('/academic-year/upload', upload.single('file'), materialController.uploadAcademicYearData);
 
 // Utility routes
 router.post('/getGradeSubject',  materialController.getGradeSubjects);
