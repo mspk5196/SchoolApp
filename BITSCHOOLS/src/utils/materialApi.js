@@ -216,6 +216,16 @@ export const setExpectedCompletionDate = async (topicId, batchId, expectedDate) 
   return response.json();
 };
 
+// Fetch batch-wise expected completion dates for a topic
+export const getBatchExpectedDates = async (topicId) => {
+  const response = await ApiService.makeRequest('/coordinator/material/getBatchExpectedDates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ topicId }),
+  });
+  return response.json();
+};
+
 // Excel Upload/Download for Materials
 export const downloadMaterialsTemplate = async () => {
   return await ApiService.downloadFile(

@@ -13,15 +13,16 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import Entypo  from 'react-native-vector-icons/Entypo';
+import Entypo from 'react-native-vector-icons/Entypo';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Foundation from 'react-native-vector-icons/Foundation';
-import DocumentPicker from '@react-native-documents/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as materialApi from '../../../../utils/materialApi';
 import ApiService from '../../../../utils/ApiService';
+import { Nodata } from '../../../../components';
 
 const TopicHierarchyManagement = ({ navigation, route }) => {
   const { coordinatorData, coordinatorGrades, activeGrade, selectedSubjectId, selectedSectionId, selectedSubjectName } = route.params || {};
@@ -51,6 +52,8 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
   const [expectedDate, setExpectedDate] = useState(null);
   const [subjectBatches, setSubjectBatches] = useState([]);
+  const [batchExpectedDates, setBatchExpectedDates] = useState({});
+  const [showBatchDatePickers, setShowBatchDatePickers] = useState({});
 
   // New/Edit Topic Form State
   const [formData, setFormData] = useState({
@@ -81,39 +84,31 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
   useEffect(() => {
     // console.log('useEffect for hierarchy triggered:', { selectedActivity, selectedSubActivity });
-    if (selectedActivity && selectedSubActivity) {
+    // Fetch hierarchy when an activity is selected; prefer sub-activity when available
+    if (selectedActivity) {
       fetchTopicHierarchy();
     } else {
-      console.warn('Cannot fetch hierarchy: missing selectedActivity or selectedSubActivity');
+      console.warn('Cannot fetch hierarchy: missing selectedActivity');
     }
   }, [selectedActivity, selectedSubActivity]);
 
   const fetchActivitiesForSubject = async () => {
     // console.log('fetchActivitiesForSubject called with:', { selectedSubject, selectedSection });
     try {
+      // Use backend Topic APIs (POST) that return { activities: [...] }
+      const result = await materialApi.getActivitiesForSubject(selectedSection, selectedSubject);
 
-      const response = await ApiService.makeRequest(`/coordinator/topics/getSectionSubjectActivities/${selectedSection}/${selectedSubject}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      // console.log('Activities response status:', response.status);
-      const result = await response.json();
-      // console.log('Activities result:', result);
-
-      if (result.success) {
-        // console.log('Fetched activities:', result.sectionSubjectActivity);
-        setActivities(result.sectionSubjectActivity || []);
-        if (result.sectionSubjectActivity.length > 0) {
-          setSelectedActivity(result.sectionSubjectActivity[0].id);
-          if (selectedActivity) {
-            fetchSubActivitiesForSubject();
-          }
+      if (result && result.success) {
+        const list = result.activities || [];
+        setActivities(list);
+        if (list.length > 0) {
+          // Store selected context_activity_id
+          setSelectedActivity(list[0].context_activity_id);
         } else {
           setSelectedActivity(null);
         }
       } else {
-        console.error('Failed to fetch activities:', result.message);
+        console.error('Failed to fetch activities:', result?.message);
       }
     } catch (error) {
       console.error('Fetch activities error:', error);
@@ -124,26 +119,29 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   const fetchSubActivitiesForSubject = async () => {
     // console.log('fetchSubActivitiesForSubject called with:', { selectedActivity, selectedSubject });
     try {
+      if (!selectedActivity) {
+        setSubActivities([]);
+        setSelectedSubActivity(null);
+        return;
+      }
 
-      const response = await ApiService.makeRequest(`/coordinator/topics/getSectionSubjectSubActivities/${selectedActivity}/${selectedSubject}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      // Use backend Topic APIs (POST) that return { subActivities: [...] }
+      const result = await materialApi.getSubActivitiesForActivity(
+        selectedSection,
+        selectedSubject,
+        selectedActivity
+      );
 
-      // console.log('Activities response status:', response.status);
-      const result = await response.json();
-      // console.log('Activities result:', result);
-
-      if (result.success) {
-        // console.log('Fetched activities:', result.sectionSubjectActivity);
-        setSubActivities(result.sectionSubjectSubActivity || []);
-        if (result.sectionSubjectSubActivity.length > 0) {
-          setSelectedSubActivity(result.sectionSubjectSubActivity[0].id);
+      if (result && result.success) {
+        const list = result.subActivities || [];
+        setSubActivities(list);
+        if (list.length > 0) {
+          setSelectedSubActivity(list[0].context_activity_id);
         } else {
           setSelectedSubActivity(null);
         }
       } else {
-        console.error('Failed to fetch activities:', result.message);
+        console.error('Failed to fetch sub-activities:', result?.message);
       }
     } catch (error) {
       console.error('Fetch activities error:', error);
@@ -162,17 +160,19 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
     setLoading(true);
     try {
-      const result = await materialApi.getTopicHierarchy(selectedSubject, selectedSection);
+      // API expects (sectionId, subjectId, contextActivityId)
+      const contextActivityId = selectedSubActivity || selectedActivity;
+      const result = await materialApi.getTopicHierarchy(
+        selectedSection,
+        selectedSubject,
+        contextActivityId
+      );
 
-      // console.log('Topic hierarchy response:', result);
 
       if (result && result.success) {
-        // console.log(
-        //   `Fetched topic hierarchy for subject ${selectedSubject}:`,
-        //   result.hierarchy
-        // );
-
-        setTopicHierarchy(result.hierarchy || []);
+        // console.log(result.topics);
+        
+        setTopicHierarchy(result.topics || []);
       } else {
         console.error('Failed to fetch topic hierarchy:', result?.message);
         setTopicHierarchy([]);
@@ -200,36 +200,58 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         Alert.alert('Error', 'Please select a subject and section first');
         return;
       }
+      const contextActivityId = selectedSubActivity || selectedActivity;
+      if (!contextActivityId) {
+        Alert.alert('Error', 'Please select an activity/sub-activity');
+        return;
+      }
 
+      // Map to backend's expected field names (camelCase)
       const topicData = {
-        subject_id: selectedSubject,
-        section_id: selectedSection,
-        parent_id: formData.parent_id,
-        topic_name: formData.topic_name,
-        topic_code: formData.topic_code,
-        order_sequence: formData.order_sequence,
-        has_assessment: formData.has_assessment,
-        has_homework: formData.has_homework,
-        is_bottom_level: formData.is_bottom_level,
-        expected_completion_days: formData.expected_completion_days,
-        pass_percentage: formData.pass_percentage,
+        contextActivityId,
+        parentId: formData.parent_id,
+        topicName: formData.topic_name,
+        topicCode: formData.topic_code,
+        orderSequence: parseInt(formData.order_sequence, 10) || 1,
+        hasAssessment: !!formData.has_assessment,
+        hasHomework: !!formData.has_homework,
+        isBottomLevel: !!formData.is_bottom_level,
+        expectedCompletionDays: parseInt(formData.expected_completion_days, 10) || 7,
+        passPercentage: parseFloat(formData.pass_percentage) || 60,
       };
 
       console.log('Sending topic data:', topicData);
 
+      const payload = editingTopic ? { topicId: editingTopic.id, ...topicData } : topicData;
       const result = editingTopic
-        ? await materialApi.updateTopic(editingTopic.id, topicData)
-        : await materialApi.createTopic(topicData);
+        ? await materialApi.updateTopic(payload)
+        : await materialApi.createTopic(payload);
 
       // console.log('Response result:', result);
 
       if (result && result.success) {
+        // After create/update, persist batch-wise expected dates
+        const topicIdToUse = editingTopic ? editingTopic.id : result.topicId;
+        const entries = Object.entries(batchExpectedDates || {}).filter(([, v]) => !!v);
+        if (topicIdToUse && entries.length > 0) {
+          try {
+            await Promise.all(
+              entries.map(([bid, date]) =>
+                materialApi.setExpectedCompletionDate(topicIdToUse, Number(bid), date)
+              )
+            );
+          } catch (e) {
+            console.error('Failed to save batch expected dates:', e);
+          }
+        }
+
         Alert.alert('Success', `Topic ${editingTopic ? 'updated' : 'created'} successfully`);
         setModalVisible(false);
         resetForm();
         fetchTopicHierarchy();
       } else {
         Alert.alert('Error', result?.message || result?.error || 'Unknown error occurred');
+        console.error('Create/update topic failed:', result);
       }
     } catch (error) {
       console.error('Create topic error:', error);
@@ -265,7 +287,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       ]
     );
   };
-        
+
   const resetForm = () => {
     setFormData({
       topic_name: '',
@@ -297,12 +319,29 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       pass_percentage: topic.pass_percentage,
     });
     setModalVisible(true);
+    // Load batches and pre-fill batch dates
+    fetchBatchesForSubject();
+    // Prefer batchDates provided in the topic object (from getTopicHierarchy)
+    if (topic.batchDates && Array.isArray(topic.batchDates) && topic.batchDates.length > 0) {
+      const map = {};
+      topic.batchDates.forEach((r) => {
+        // r: { batch_id, expected_completion_date }
+        map[r.batch_id] = r.expected_completion_date ? r.expected_completion_date.slice(0, 10) : null;
+      });
+      setBatchExpectedDates(map);
+    } else {
+      // Fallback to individual API call
+      loadBatchExpectedDates(topic.id);
+    }
   };
 
   const openCreateModal = (parentId = null) => {
     resetForm();
     setFormData(prev => ({ ...prev, parent_id: parentId }));
+    setBatchExpectedDates({});
+    setShowBatchDatePickers({});
     setModalVisible(true);
+    fetchBatchesForSubject();
   };
 
   const toggleExpanded = (topicId) => {
@@ -319,14 +358,14 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   const handleDownloadMaterialsTemplate = async () => {
     try {
       setLoading(true);
-      
+
       if (!selectedSubject || !selectedSection) {
         Alert.alert('Error', 'Please select subject and section first');
         return;
       }
-      
+
       const result = await materialApi.downloadMaterialsTemplate(selectedSubject, selectedSection);
-      
+
       if (result && result.success) {
         Alert.alert('Success', 'Materials template downloaded successfully!');
       } else {
@@ -341,50 +380,75 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   };
 
   const handleUploadMaterialsExcel = async () => {
-    try {
-      const result = await DocumentPicker.pick({
-        type: [DocumentPicker.types.xlsx, DocumentPicker.types.xls],
-        copyTo: 'cachesDirectory',
-      });
+    Alert.alert('Disabled', 'Excel upload for materials is disabled. Use the material editor to add materials via URL.');
+  };
 
-      if (result && result.length > 0) {
-        const file = result[0];
-        
-        setLoading(true);
-        
-        if (!selectedSubject || !selectedSection) {
-          Alert.alert('Error', 'Please select subject and section first');
-          return;
-        }
-        
-        const uploadResult = await materialApi.uploadMaterialsExcel(
-          selectedSubject,
-          selectedSection,
-          file
-        );
-        
-        if (uploadResult && uploadResult.success) {
-          Alert.alert(
-            'Success',
-            `Materials uploaded successfully!\n` +
-            `Created: ${uploadResult.created || 0}\n` +
-            `Updated: ${uploadResult.updated || 0}`
-          );
-          fetchTopicHierarchy();
-        } else {
-          Alert.alert('Error', uploadResult?.message || 'Failed to upload materials');
-        }
-      }
-    } catch (error) {
-      if (DocumentPicker.isCancel(error)) {
-        console.log('User cancelled file picker');
+  // ---------------- Batch expected dates (for Topic creation/edit) ----------------
+  const fetchBatchesForSubject = async () => {
+    try {
+      if (!selectedSection || !selectedSubject) return;
+      const resp = await materialApi.getBatches(selectedSection, selectedSubject);
+      if (resp && resp.success) {
+        setSubjectBatches(resp.batches || []);
       } else {
-        console.error('Upload error:', error);
-        Alert.alert('Error', 'Failed to upload materials');
+        setSubjectBatches([]);
       }
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      console.error('Failed to fetch batches:', e);
+      setSubjectBatches([]);
     }
+  };
+
+  const loadBatchExpectedDates = async (topicId) => {
+    try {
+      const resp = await materialApi.getBatchExpectedDates(topicId);
+      if (resp && resp.success) {
+        const map = {};
+        (resp.batchDates || []).forEach((r) => {
+          map[r.batch_id] = r.expected_completion_date?.slice(0, 10);
+        });
+        setBatchExpectedDates(map);
+      } else {
+        setBatchExpectedDates({});
+      }
+    } catch (e) {
+      console.error('Failed to load batch expected dates:', e);
+      setBatchExpectedDates({});
+    }
+  };
+
+  const formatDateForApi = (d) => {
+    if (!d) return '';
+    const date = d instanceof Date ? d : new Date(d);
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return 'Select date';
+    const d = new Date(dateString);
+    return d.toDateString();
+  };
+
+  const showBatchDatePickerModal = (batchId) => {
+    setShowBatchDatePickers((prev) => ({ ...prev, [batchId]: true }));
+  };
+
+  const handleBatchDateChange = (batchId, event, selected) => {
+    setShowBatchDatePickers((prev) => ({ ...prev, [batchId]: false }));
+    if (event?.type === 'dismissed') return;
+    const value = formatDateForApi(selected || new Date());
+    setBatchExpectedDates((prev) => ({ ...prev, [batchId]: value }));
+  };
+
+  const clearBatchDate = (batchId) => {
+    setBatchExpectedDates((prev) => {
+      const copy = { ...prev };
+      delete copy[batchId];
+      return copy;
+    });
   };
 
   const renderTopicItem = ({ item, level = 0 }) => {
@@ -441,8 +505,8 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               onPress={() => navigation.navigate('TopicMaterials', { topicId: item.id, topicName: item.topic_name, selectedSubjectId, selectedSectionId, selectedSubject })}
             >
               {/* <Text style={styles.actionButtonText}>📁</Text> */}
-              <Entypo  name="folder-video" size={24} color="#ffbb00ff" />  
-              
+              <Entypo name="folder-video" size={24} color="#ffbb00ff" />
+
             </TouchableOpacity>
           </View>
         </View>
@@ -569,9 +633,9 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               <Picker.Item label="Select an activity..." value="" />
               {activities.map(activity => (
                 <Picker.Item
-                  key={activity.id}
+                  key={activity.context_activity_id}
                   label={activity.activity_name}
-                  value={activity.id}
+                  value={activity.context_activity_id}
                 />
               ))}
             </Picker>
@@ -588,9 +652,9 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
                 <Picker.Item label="Select an activity..." value="" />
                 {subActivities.map(activity => (
                   <Picker.Item
-                    key={activity.id}
-                    label={activity.sub_act_name}
-                    value={activity.id}
+                    key={activity.context_activity_id}
+                    label={activity.activity_name}
+                    value={activity.context_activity_id}
                   />
                 ))}
               </Picker>
@@ -605,25 +669,8 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               >
                 <Text style={styles.addButtonText}>+ Add Root Topic</Text>
               </TouchableOpacity>
-              
-              {/* Excel Upload/Download Buttons */}
-              <View style={styles.excelButtonsRow}>
-                <TouchableOpacity
-                  style={[styles.excelButton, styles.downloadButton]}
-                  onPress={handleDownloadMaterialsTemplate}
-                >
-                  <MaterialCommunityIcons name="download" size={18} color="#fff" />
-                  <Text style={styles.excelButtonText}>Download Template</Text>
-                </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.excelButton, styles.uploadButton]}
-                  onPress={handleUploadMaterialsExcel}
-                >
-                  <MaterialCommunityIcons name="upload" size={18} color="#fff" />
-                  <Text style={styles.excelButtonText}>Upload Excel</Text>
-                </TouchableOpacity>
-              </View>
+              {/* Material template upload/download removed — materials are added via URL in material editor */}
             </View>
           )}
 
@@ -639,8 +686,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
         <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
       ) : selectedActivity && topicHierarchy.length === 0 ? (
         <View style={styles.noDataSection}>
-          <Text style={styles.noDataText}>No topics found for this activity</Text>
-          <Text style={styles.noDataSubtext}>Click "Add Root Topic" to create the first topic</Text>
+          <Nodata message={`No topics found for this activity\nClick "Add Root Topic" to create the first topic`} />
         </View>
       ) : (
         <FlatList
@@ -747,6 +793,39 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
               />
             </View>
 
+            {/* Batch-wise Expected Completion Dates */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Batch-wise Expected Completion Dates</Text>
+              {subjectBatches.length === 0 ? (
+                <Text style={styles.noDataSubtext}>No batches configured for this subject-section.</Text>
+              ) : (
+                subjectBatches.map((b) => (
+                  <View key={b.id} style={styles.batchRow}>
+                    <Text style={styles.batchNameSmall}>{b.batch_name}</Text>
+                    <TouchableOpacity
+                      style={styles.dateButton}
+                      onPress={() => showBatchDatePickerModal(b.id)}
+                    >
+                      <Text style={styles.dateButtonText}>
+                        {formatDateForDisplay(batchExpectedDates[b.id])}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => clearBatchDate(b.id)}>
+                      <Text style={styles.clearDateLink}>Clear</Text>
+                    </TouchableOpacity>
+                    {showBatchDatePickers[b.id] && (
+                      <DateTimePicker
+                        value={batchExpectedDates[b.id] ? new Date(batchExpectedDates[b.id]) : new Date()}
+                        mode="date"
+                        display="default"
+                        onChange={(event, date) => handleBatchDateChange(b.id, event, date)}
+                      />
+                    )}
+                  </View>
+                ))
+              )}
+            </View>
+
             <TouchableOpacity style={styles.saveButton} onPress={createTopic}>
               <Text style={styles.saveButtonText}>
                 {editingTopic ? 'Update Topic' : 'Create Topic'}
@@ -767,7 +846,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     // justifyContent: 'space-between',
-    gap:20,
+    gap: 20,
     alignItems: 'center',
     padding: 16,
     backgroundColor: '#fff',
@@ -810,7 +889,7 @@ const styles = StyleSheet.create({
   expectedDateButtonText: {
     color: '#fff',
     fontWeight: '600',
-    marginHorizontal:'auto' 
+    marginHorizontal: 'auto'
   },
   subjectSelector: {
     backgroundColor: '#fff',
@@ -949,6 +1028,38 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  batchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  batchNameSmall: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+  },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: '#f8f9fa',
+  },
+  dateButtonText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  clearDateLink: {
+  noDataSubtext: {
+    fontSize: 13,
+    color: '#666',
+  },
+    color: '#ff3b30',
+    fontWeight: '600',
+    marginLeft: 8,
   },
   excelButtonsRow: {
     flexDirection: 'row',

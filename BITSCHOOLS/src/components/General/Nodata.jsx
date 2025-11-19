@@ -7,7 +7,7 @@ export class Nodata extends Component {
         const { message, style } = this.props;
         return (
             <View style={[styles.img, style]}>
-                <NodataImg width={100} height={100} />
+                <NodataImg width={140} height={120}/>
                 <Text style={styles.imgtext}>{message || "No data found"}</Text>
             </View>
         )
@@ -23,10 +23,10 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     imgtext: {
-        fontSize: 18,
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: '500',
         color: '#555',
-        marginTop: 15,
+        marginTop: 8,
         textAlign: 'center',
     },
 })

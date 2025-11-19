@@ -35,8 +35,7 @@ const getBatches = async (req, res) => {
     const subjectSectionId = ssaRows[0].id;
 
     // Active academic year
-    const [ayRows] = await db.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
-    const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+    const activeAcademicYearId = req.activeAcademicYearId;
 
     // Get all batches with statistics (size from section_batch_size per active AY)
     const [batches] = await db.query(
@@ -113,9 +112,8 @@ const getBatchAnalytics = async (req, res) => {
 
     const subjectSectionId = ssaRows[0].id;
 
-    // Active academic year
-    const [ayRows2] = await db.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
-    const activeAcademicYearId2 = ayRows2.length > 0 ? ayRows2[0].id : null;
+    
+    const activeAcademicYearId2 = req.activeAcademicYearId;
 
     // Get comprehensive analytics (size from section_batch_size per active AY)
     const [analytics] = await db.query(
@@ -232,8 +230,7 @@ const initializeBatches = async (req, res) => {
     // );
 
     // Active academic year
-    const [ayRows] = await connection.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
-    const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+    const activeAcademicYearId = req.activeAcademicYearId;
 
     if (!activeAcademicYearId) {
       throw new Error('No active academic year found');
@@ -394,9 +391,7 @@ const reallocateBatches = async (req, res) => {
       ]);
     });
 
-    // Active academic year
-    const [ayRows2] = await connection.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
-    const activeAcademicYearId2 = ayRows2.length > 0 ? ayRows2[0].id : null;
+    const activeAcademicYearId2 = req.activeAcademicYearId;
 
     if (!activeAcademicYearId2) {
       throw new Error('No active academic year found');
@@ -507,9 +502,7 @@ const configureBatches = async (req, res) => {
         `INSERT INTO section_batches (subject_section_id, batch_name, batch_level, is_active, updated_by) VALUES ?`,
         [inserts]
       );
-      // Initialize section_batch_size rows for the active academic year
-      const [ayRows] = await connection.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
-      const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+      const activeAcademicYearId = req.activeAcademicYearId;
       if (activeAcademicYearId) {
         const [created] = await connection.query(
           `SELECT id FROM section_batches WHERE subject_section_id = ?`,
@@ -631,8 +624,7 @@ const updateBatchSize = async (req, res) => {
     }
 
     // Active academic year
-    const [ayRows] = await db.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
-    const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+    const activeAcademicYearId = req.activeAcademicYearId;
 
     if (!activeAcademicYearId) {
       return res.status(400).json({ success: false, message: 'No active academic year found' });
@@ -786,8 +778,7 @@ const moveStudentBatch = async (req, res) => {
     const studentId = studentRows[0].id;
 
     // Active academic year
-    const [ayRows] = await db.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
-    const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+    const activeAcademicYearId = req.activeAcademicYearId;
 
     if (!activeAcademicYearId) {
       return res.status(400).json({ success: false, message: 'No active academic year found' });
@@ -938,9 +929,7 @@ const moveMultipleStudents = async (req, res) => {
 
     const studentIds = students.map(s => s.id);
 
-    // Active academic year
-    const [ayRows] = await connection.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
-    const activeAcademicYearId = ayRows.length > 0 ? ayRows[0].id : null;
+    const activeAcademicYearId = req.activeAcademicYearId;
     if (!activeAcademicYearId) {
       throw new Error('No active academic year found');
     }
@@ -1078,7 +1067,7 @@ const getTopicHierarchy = async (req, res) => {
     const rootTopics = [];
 
     topics.forEach(topic => {
-      topicMap[topic.id] = { ...topic, children: [] };
+      topicMap[topic.id] = { ...topic, children: [], batchDates: [] };
     });
 
     topics.forEach(topic => {
@@ -1089,10 +1078,36 @@ const getTopicHierarchy = async (req, res) => {
       }
     });
 
+    // Fetch batch-wise expected completion dates for these topics (for active academic year)
+    const activeAcademicYearId = req.activeAcademicYearId;
+    
+    let batchDatesRows = [];
+    if (topics.length > 0 && activeAcademicYearId) {
+      const topicIds = topics.map(t => t.id);
+      const [rows] = await db.query(
+        `SELECT topic_id, batch_id, expected_completion_date 
+         FROM topic_completion_dates 
+         WHERE topic_id IN (?) AND academic_year = ?`,
+        [topicIds, activeAcademicYearId]
+      );
+      batchDatesRows = rows || [];
+
+      // console.log('Batch Dates Rows:', batchDatesRows);
+
+      // attach to topic nodes
+      batchDatesRows.forEach(r => {
+        if (topicMap[r.topic_id]) {
+          topicMap[r.topic_id].batchDates.push({ batch_id: r.batch_id, expected_completion_date: r.expected_completion_date });
+        }
+      });
+    }
+    // console.log(batchDatesRows);
+    
     res.json({
       success: true,
       topics: rootTopics,
-      flatTopics: topics
+      flatTopics: topics,
+      batchDates: batchDatesRows
     });
 
   } catch (error) {
@@ -1456,10 +1471,13 @@ const getTopicMaterials = async (req, res) => {
       });
     }
 
+    // Updated for new schema: no is_active column, use order_number for ordering
     const [materials] = await db.query(
-      `SELECT * FROM topic_materials 
-       WHERE topic_id = ? AND is_active = 1
-       ORDER BY id`,
+      `SELECT id, topic_id, material_type, material_title, material_url, estimated_duration,
+              difficulty_level, instructions, has_assessment, order_number, created_at, updated_at
+       FROM topic_materials 
+       WHERE topic_id = ?
+       ORDER BY order_number, id`,
       [topicId]
     );
 
@@ -1484,37 +1502,39 @@ const getTopicMaterials = async (req, res) => {
 const addTopicMaterial = async (req, res) => {
   try {
     const {
-      topicId,
-      materialType,
-      fileName,
-      fileUrl,
-      estimatedDuration,
-      difficultyLevel,
+      topic_id,
+      material_type,
+      material_title,
+      material_url,
+      estimated_duration,
+      difficulty_level,
       instructions,
-      hasAssessment
+      has_assessment,
+      order_number
     } = req.body;
 
-    if (!topicId || !materialType || !fileUrl) {
+    if (!topic_id || !material_type || !material_url) {
       return res.status(400).json({
         success: false,
-        message: 'Topic ID, Material Type, and File URL are required'
+        message: 'Topic ID, Material Type, and Material URL are required'
       });
     }
 
     const [result] = await db.query(
       `INSERT INTO topic_materials 
-       (topic_id, material_type, file_name, file_url, estimated_duration, 
-        difficulty_level, instructions, is_active, has_assessment)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+       (topic_id, material_type, material_title, material_url, estimated_duration, 
+        difficulty_level, instructions, has_assessment, order_number, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
-        topicId,
-        materialType,
-        fileName || null,
-        fileUrl,
-        estimatedDuration || 0,
-        difficultyLevel || 'Medium',
+        topic_id,
+        material_type,
+        material_title || 'Untitled Material',
+        material_url,
+        estimated_duration || 30,
+        difficulty_level || 'Medium',
         instructions || null,
-        hasAssessment ? 1 : 0
+        has_assessment ? 1 : 0,
+        order_number || 1
       ]
     );
 
@@ -1540,16 +1560,17 @@ const addTopicMaterial = async (req, res) => {
 const updateTopicMaterial = async (req, res) => {
   try {
     const {
-      materialId,
-      fileName,
-      fileUrl,
-      estimatedDuration,
-      difficultyLevel,
+      id,
+      material_title,
+      material_url,
+      estimated_duration,
+      difficulty_level,
       instructions,
-      hasAssessment
+      has_assessment,
+      order_number
     } = req.body;
 
-    if (!materialId) {
+    if (!id) {
       return res.status(400).json({
         success: false,
         message: 'Material ID is required'
@@ -1559,33 +1580,37 @@ const updateTopicMaterial = async (req, res) => {
     const updates = [];
     const values = [];
 
-    if (fileName !== undefined) {
-      updates.push('file_name = ?');
-      values.push(fileName);
+    if (material_title !== undefined) {
+      updates.push('material_title = ?');
+      values.push(material_title);
     }
-    if (fileUrl !== undefined) {
-      updates.push('file_url = ?');
-      values.push(fileUrl);
+    if (material_url !== undefined) {
+      updates.push('material_url = ?');
+      values.push(material_url);
     }
-    if (estimatedDuration !== undefined) {
+    if (estimated_duration !== undefined) {
       updates.push('estimated_duration = ?');
-      values.push(estimatedDuration);
+      values.push(estimated_duration);
     }
-    if (difficultyLevel !== undefined) {
+    if (difficulty_level !== undefined) {
       updates.push('difficulty_level = ?');
-      values.push(difficultyLevel);
+      values.push(difficulty_level);
     }
     if (instructions !== undefined) {
       updates.push('instructions = ?');
       values.push(instructions);
     }
-    if (hasAssessment !== undefined) {
+    if (has_assessment !== undefined) {
       updates.push('has_assessment = ?');
-      values.push(hasAssessment ? 1 : 0);
+      values.push(has_assessment ? 1 : 0);
+    }
+    if (order_number !== undefined) {
+      updates.push('order_number = ?');
+      values.push(order_number);
     }
 
     updates.push('updated_at = NOW()');
-    values.push(materialId);
+    values.push(id);
 
     await db.query(
       `UPDATE topic_materials SET ${updates.join(', ')} WHERE id = ?`,
@@ -1612,19 +1637,20 @@ const updateTopicMaterial = async (req, res) => {
  */
 const deleteTopicMaterial = async (req, res) => {
   try {
-    const { materialId } = req.body;
+    const { materialId, id } = req.body;
+    const materialIdToDelete = materialId || id;
 
-    if (!materialId) {
+    if (!materialIdToDelete) {
       return res.status(400).json({
         success: false,
         message: 'Material ID is required'
       });
     }
 
-    // Soft delete
+    // Hard delete since there's no is_active in new schema
     await db.query(
-      `UPDATE topic_materials SET is_active = 0, updated_at = NOW() WHERE id = ?`,
-      [materialId]
+      `DELETE FROM topic_materials WHERE id = ?`,
+      [materialIdToDelete]
     );
 
     res.json({
@@ -1648,6 +1674,7 @@ const deleteTopicMaterial = async (req, res) => {
 const setExpectedCompletionDate = async (req, res) => {
   try {
     const { topicId, batchId, expectedDate } = req.body;
+    const activeAcademicYearId = req.activeAcademicYearId;
 
     if (!topicId || !batchId || !expectedDate) {
       return res.status(400).json({
@@ -1656,11 +1683,12 @@ const setExpectedCompletionDate = async (req, res) => {
       });
     }
 
+
     // Check if record exists
     const [existing] = await db.query(
       `SELECT id FROM topic_completion_dates 
-       WHERE topic_id = ? AND batch_id = ?`,
-      [topicId, batchId]
+       WHERE topic_id = ? AND batch_id = ? AND academic_year = ?`,
+      [topicId, batchId, activeAcademicYearId]
     );
 
     if (existing.length > 0) {
@@ -1675,9 +1703,9 @@ const setExpectedCompletionDate = async (req, res) => {
       // Insert new
       await db.query(
         `INSERT INTO topic_completion_dates 
-         (topic_id, batch_id, expected_completion_date)
-         VALUES (?, ?, ?)`,
-        [topicId, batchId, expectedDate]
+         (topic_id, batch_id, expected_completion_date, academic_year)
+         VALUES (?, ?, ?, ?)`,
+        [topicId, batchId, expectedDate, activeAcademicYearId]
       );
     }
 
@@ -1693,6 +1721,28 @@ const setExpectedCompletionDate = async (req, res) => {
       message: 'Failed to set expected date',
       error: error.message
     });
+  }
+};
+
+/**
+ * Get batch-wise expected completion dates for a topic
+ */
+const getBatchExpectedDates = async (req, res) => {
+  try {
+    const { topicId } = req.body;
+    const activeAcademicYearId = req.activeAcademicYearId;
+    if (!topicId) {
+      return res.status(400).json({ success: false, message: 'topicId is required' });
+    }
+    const [rows] = await db.query(
+      `SELECT batch_id, expected_completion_date FROM topic_completion_dates WHERE topic_id = ? AND academic_year = ? `,
+      [topicId, activeAcademicYearId]
+    );
+
+    res.json({ success: true, batchDates: rows });
+  } catch (error) {
+    console.error('Error fetching batch expected dates:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch batch dates', error: error.message });
   }
 };
 
@@ -2075,12 +2125,7 @@ const uploadBatchesFromExcel = async (req, res) => {
       // Combine and dedupe mapping IDs
       const finalIds = Array.from(new Set([...(mappedIds || [])]));
 
-      const [activeAcademicYearRows] = await connection.query(`SELECT ay.id FROM academic_years ay JOIN ay_status ays ON ays.academic_year_id = ay.id AND ays.is_active=1 LIMIT 1`);
-
-      if (activeAcademicYearRows.length === 0) {
-        throw new Error('No active academic year found');
-      }
-      const activeAcademicYearId = activeAcademicYearRows[0].id;
+      const activeAcademicYearId = req.activeAcademicYearId;
       
       if (finalIds.length > 0) {
         // Check if any of these students are already assigned to a batch
@@ -2384,6 +2429,7 @@ module.exports = {
   
   // Topic hierarchy
   getTopicHierarchy,
+  getBatchExpectedDates,
   createTopic,
   updateTopic,
   deleteTopic,
