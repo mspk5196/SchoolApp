@@ -355,33 +355,33 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
   };
 
   // Excel Upload/Download Functions
-  const handleDownloadMaterialsTemplate = async () => {
-    try {
-      setLoading(true);
+  // const handleDownloadMaterialsTemplate = async () => {
+  //   try {
+  //     setLoading(true);
 
-      if (!selectedSubject || !selectedSection) {
-        Alert.alert('Error', 'Please select subject and section first');
-        return;
-      }
+  //     if (!selectedSubject || !selectedSection) {
+  //       Alert.alert('Error', 'Please select subject and section first');
+  //       return;
+  //     }
 
-      const result = await materialApi.downloadMaterialsTemplate(selectedSubject, selectedSection);
+  //     const result = await materialApi.downloadMaterialsTemplate(selectedSubject, selectedSection);
 
-      if (result && result.success) {
-        Alert.alert('Success', 'Materials template downloaded successfully!');
-      } else {
-        Alert.alert('Error', result?.message || 'Failed to download template');
-      }
-    } catch (error) {
-      console.error('Download template error:', error);
-      Alert.alert('Error', 'Failed to download template');
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     if (result && result.success) {
+  //       Alert.alert('Success', 'Materials template downloaded successfully!');
+  //     } else {
+  //       Alert.alert('Error', result?.message || 'Failed to download template');
+  //     }
+  //   } catch (error) {
+  //     console.error('Download template error:', error);
+  //     Alert.alert('Error', 'Failed to download template');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  const handleUploadMaterialsExcel = async () => {
-    Alert.alert('Disabled', 'Excel upload for materials is disabled. Use the material editor to add materials via URL.');
-  };
+  // const handleUploadMaterialsExcel = async () => {
+  //   Alert.alert('Disabled', 'Excel upload for materials is disabled. Use the material editor to add materials via URL.');
+  // };
 
   // ---------------- Batch expected dates (for Topic creation/edit) ----------------
   const fetchBatchesForSubject = async () => {

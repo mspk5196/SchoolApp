@@ -227,20 +227,20 @@ export const getBatchExpectedDates = async (topicId) => {
 };
 
 // Excel Upload/Download for Materials
-export const downloadMaterialsTemplate = async () => {
-  return await ApiService.downloadFile(
-    '/coordinator/material/generate-materials-template',
-    'materials_template.xlsx'
-  );
-};
+// export const downloadMaterialsTemplate = async () => {
+//   return await ApiService.downloadFile(
+//     '/coordinator/material/generate-materials-template',
+//     'materials_template.xlsx'
+//   );
+// };
 
-export const uploadMaterialsExcel = async (file) => {
-  return await ApiService.uploadFile(
-    '/coordinator/material/upload-materials',
-    file,
-    'file'
-  );
-};
+// export const uploadMaterialsExcel = async (file) => {
+//   return await ApiService.uploadFile(
+//     '/coordinator/material/upload-materials',
+//     file,
+//     'file'
+//   );
+// };
 
 // ==================== ACADEMIC YEAR BULK ====================
 
