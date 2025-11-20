@@ -5,6 +5,7 @@ const enrollmentController = require('../controllers/coordinator/enrollmentContr
 const coordinatorController = require('../controllers/coordinator/coordinatorController');
 const subjectAllotmentController = require('../controllers/coordinator/subjectAllotmentController');
 const materialController = require('../controllers/coordinator/materialController');
+const infrastructureEnrollment = require('../controllers/coordinator/infrastructureController');
 const { authenticateToken } = require('../middleware/auth');
 const getAcademicYear = require('../middleware/getAcademicYear');
 
@@ -19,6 +20,13 @@ router.use(getAcademicYear);
 router.post('/enrollment/getSectionsByGrade', enrollmentController.getSectionsByGrade);
 router.post('/enrollment/createSection', enrollmentController.createSection);
 router.post('/enrollment/deleteSection', enrollmentController.deleteSection);
+// Infrastructure / Venues
+router.get('/enrollment/getBlocks', infrastructureEnrollment.getBlocks);
+router.get('/enrollment/getAllVenues', infrastructureEnrollment.getAllVenues);
+router.post('/enrollment/createVenue', infrastructureEnrollment.createVenue);
+router.put('/enrollment/updateVenue/:id', infrastructureEnrollment.updateVenue);
+router.delete('/enrollment/deleteVenue/:id', infrastructureEnrollment.deleteVenue);
+router.put('/enrollment/updateVenueStatus/:id', infrastructureEnrollment.updateVenueStatus);
 
 // Student enrollment routes
 router.post('/enrollment/enrollStudent', enrollmentController.enrollStudent);

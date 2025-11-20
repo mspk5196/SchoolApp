@@ -1,0 +1,238 @@
+import { StyleSheet } from "react-native";
+
+const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#f5f7fa',
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 15,
+      paddingHorizontal: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E3E3E3',
+      backgroundColor: '#FFFFFF',
+    },
+    headerText: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: '#000000',
+      marginLeft: 10,
+    },
+    content: {
+      flex: 1,
+    },
+    formContainer: {
+      backgroundColor: '#FFFFFF',
+      margin: 16,
+      borderRadius: 8,
+      padding: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    inputGroup: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 14,
+      color: '#333',
+      marginBottom: 6,
+      fontWeight: '500',
+    },
+    input: {
+      height: 48,
+      borderWidth: 1,
+      borderColor: '#E3E3E3',
+      color:'black',
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      backgroundColor: '#FFFFFF',
+      justifyContent: 'center',
+    },
+    inputText: {
+      color: '#333',
+      fontSize: 14,
+    },
+    placeholderText: {
+      color: '#9e9e9e',
+      fontSize: 14,
+    },
+    pickerInput: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    dropdownIcon: {
+      fontSize: 12,
+      color: '#9e9e9e',
+    },
+    footer: {
+      padding: 16,
+    },
+    submitButton: {
+      backgroundColor: '#3557FF',
+      height: 48,
+      borderRadius: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    submitButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    blockSelection: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    blockOption: {
+      flex: 1,
+      height: 40,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#f5f5f5',
+      marginHorizontal: 4,
+      borderRadius: 8,
+    },
+    blockOptionSelected: {
+      backgroundColor: '#3557FF',
+    },
+    blockOptionText: {
+      color: '#666',
+      fontWeight: '500',
+    },
+    blockOptionTextSelected: {
+      color: '#fff',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      width: '85%',
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      paddingVertical: 24,
+      paddingHorizontal: 16,
+      maxHeight: '75%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    modalTitle: {
+      fontSize: 20,
+      color: '#1a1a1a',
+      fontWeight: '600',
+      textAlign: 'center',
+      marginBottom: 20,
+      letterSpacing: 0.5,
+    },
+    modalScrollView: {
+      maxHeight: 350,
+    },
+    modalItem: {
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      borderBottomWidth: 0.5,
+      borderBottomColor: '#e0e0e0',
+      backgroundColor: '#fff',
+    },
+    modalItemText: {
+      fontSize: 16,
+      color: '#333',
+      fontWeight: '400',
+      marginLeft: 12,
+    },
+    closeButton: {
+      marginTop: 20,
+      alignSelf: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 32,
+      backgroundColor: '#3557FF',
+      borderRadius: 25,
+      shadowColor: '#3557FF',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    closeButtonText: {
+      fontSize: 16,
+      color: '#fff',
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#f5f7fa',
+    },
+    // Enhanced styles for checkbox items
+    checkboxItem: {
+      paddingVertical: 16,
+      paddingHorizontal: 12,
+      borderBottomWidth: 0.5,
+      borderBottomColor: '#e0e0e0',
+      backgroundColor: '#fff',
+      marginVertical: 1,
+    },
+    checkboxContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    // Enhanced tag styles for selected items
+    selectedGradeTag: {
+      backgroundColor: '#E8F4FD',
+      borderRadius: 6,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      marginRight: 8,
+      marginBottom: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#3557FF',
+    },
+    selectedGradeText: {
+      color: '#3557FF',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    selectedGradesContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: 10,
+      paddingHorizontal: 4,
+    },
+    // Additional modal enhancements
+    modalItemSelected: {
+      backgroundColor: '#f8f9ff',
+      borderLeftWidth: 3,
+      borderLeftColor: '#3557FF',
+    },
+    searchContainer: {
+      marginBottom: 16,
+      paddingHorizontal: 4,
+    },
+    searchInput: {
+      height: 40,
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      fontSize: 14,
+      backgroundColor: '#f9f9f9',
+    },
+  });
+  
+  export default styles;
