@@ -260,7 +260,8 @@ class ApiService {
         }
 
         const downloadDir = '/storage/emulated/0/Download';
-        const filePath = `${downloadDir}/${filename}`;
+        // Start with fallback filename; will rename if server provides one
+        let filePath = `${downloadDir}/${filename}`;
 
 
         // Ensure the Downloads directory exists
@@ -292,6 +293,31 @@ class ApiService {
           throw new Error(`Server returned status ${statusCode}`);
         }
 
+        // Try to extract filename from Content-Disposition header and rename file
+        try {
+          const headers = info && (info.headers || info.respInfo || {});
+          // RNFetchBlob on Android often exposes headers under respInfo.headers
+          const hdrs = headers.headers || headers;
+          const cd = hdrs['Content-Disposition'] || hdrs['content-disposition'] || hdrs['Content-disposition'];
+          if (cd && typeof cd === 'string') {
+            const match = cd.match(/filename\*=UTF-8''([^;\n\r]+)|filename="?([^";\n\r]+)"?/i);
+            const extracted = match ? (decodeURIComponent(match[1] || match[2]).trim()) : null;
+            if (extracted && extracted.length > 0) {
+              const targetPath = `${downloadDir}/${extracted}`;
+              if (targetPath !== filePath) {
+                try {
+                  await RNFetchBlob.fs.mv(filePath, targetPath);
+                  filePath = targetPath;
+                } catch (mvErr) {
+                  console.warn('Rename to server filename failed, keeping fallback:', mvErr);
+                }
+              }
+            }
+          }
+        } catch (nameErr) {
+          console.warn('Filename extraction failed:', nameErr);
+        }
+
         // Verify file exists
         const fileExists = await RNFetchBlob.fs.exists(filePath);
         console.log('File exists after download:', fileExists);
@@ -321,11 +347,11 @@ class ApiService {
         return {
           success: true,
           path: filePath,
-          message: `File saved successfully!\nCheck: Files > Downloads > ${filename}`,
+          message: `File saved successfully!\nCheck: Files > Downloads > ${filePath.substring(filePath.lastIndexOf('/') + 1)}`,
         };
       } else {
         // iOS: Use RNFS
-        const dest = `${RNFS.DocumentDirectoryPath}/${filename}`;
+        let dest = `${RNFS.DocumentDirectoryPath}/${filename}`;
         
         console.log('Download path (iOS):', dest);
         
@@ -339,6 +365,28 @@ class ApiService {
 
         if (!result.statusCode || result.statusCode < 200 || result.statusCode >= 300) {
           throw new Error(`HTTP ${result.statusCode || 'unknown'}`);
+        }
+
+        // iOS: attempt to read filename from headers and rename
+        try {
+          const cd = result.headers && (result.headers['Content-Disposition'] || result.headers['content-disposition']);
+          if (cd && typeof cd === 'string') {
+            const match = cd.match(/filename\*=UTF-8''([^;\n\r]+)|filename="?([^";\n\r]+)"?/i);
+            const extracted = match ? (decodeURIComponent(match[1] || match[2]).trim()) : null;
+            if (extracted && extracted.length > 0) {
+              const targetPath = `${RNFS.DocumentDirectoryPath}/${extracted}`;
+              if (targetPath !== dest) {
+                try {
+                  await RNFS.moveFile(dest, targetPath);
+                  dest = targetPath;
+                } catch (mvErr) {
+                  console.warn('iOS rename to server filename failed, keeping fallback:', mvErr);
+                }
+              }
+            }
+          }
+        } catch (nameErr) {
+          console.warn('iOS filename extraction failed:', nameErr);
         }
 
         // Try to open the file

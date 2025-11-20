@@ -34,6 +34,11 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
       fetchSections();
     }
   }, [selectedGrade]);
+  useEffect(() => {
+    if (selectedSection) {
+      fetchSectionSubjects();
+    }
+  }, [selectedSection]);
 
   const fetchgrades = async () => {
     try {
@@ -360,7 +365,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
                 disabled={loading}
               >
                 <MaterialCommunityIcons name="download" size={20} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Download Template</Text>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Download Batch Template</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -381,7 +386,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
                 disabled={loading}
               >
                 <MaterialCommunityIcons name="download" size={20} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Academic Year Template</Text>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Topic Hierarchy Template</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#D97706', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, marginLeft: 8 }}
@@ -389,7 +394,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
                 disabled={loading}
               >
                 <MaterialCommunityIcons name="upload" size={20} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Upload Academic Year</Text>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Upload Topic Hierarchy</Text>
               </TouchableOpacity>
             </View>
           )}

@@ -1061,7 +1061,7 @@ const getTopicHierarchy = async (req, res) => {
       ORDER BY th.level, th.order_sequence`,
       [contextActivityId]
     );
-
+    
     // Build hierarchy tree
     const topicMap = {};
     const rootTopics = [];
@@ -2345,20 +2345,32 @@ const generateAcademicYearTemplate = async (req, res) => {
 
       // Build paths
       const roots = allActs.filter(a => !a.parent_context_id);
-      const pathColumns = new Map(); // key subj|root -> list of chains excluding root
+      // key subj|root -> Set of chains (excluding root); include intermediate and leaf chains
+      const pathColumns = new Map();
+      const addPath = (subject, rootName, chain) => {
+        const excl = chain.slice(1).join(' > ');
+        const key = `${subject}|${rootName}`;
+        if (!pathColumns.has(key)) pathColumns.set(key, new Set());
+        if (excl) pathColumns.get(key).add(excl);
+      };
       const traverse = (subject, rootName, chain, id) => {
-        const kids = childMap.get(id) || [];
-        if (kids.length === 0) {
-          const excl = chain.slice(1).join(' > ');
-          const key = `${subject}|${rootName}`;
-          if (!pathColumns.has(key)) pathColumns.set(key, []);
-          pathColumns.get(key).push(excl);
-        } else {
-          for (const k of kids) traverse(subject, rootName, [...chain, k.name], k.id);
+        const kids = (childMap.get(id) || []).sort((a, b) => a.name.localeCompare(b.name));
+        for (const k of kids) {
+          const nextChain = [...chain, k.name];
+          // Add the immediate and intermediate chain (e.g., "Lecture", then deeper like "Lecture > Test")
+          addPath(subject, rootName, nextChain);
+          traverse(subject, rootName, nextChain, k.id);
         }
       };
       for (const r of roots) traverse(r.subject_name, r.activity_name, [r.activity_name], r.id);
-      pathColumns.forEach(list => { if (!list.includes('')) list.push(''); });
+      // Convert Sets to sorted arrays and add blank option at end for "no path"
+      const pathColumnsArray = new Map();
+      pathColumns.forEach((set, key) => {
+        const arr = Array.from(set);
+        arr.sort((a, b) => a.localeCompare(b));
+        arr.push('');
+        pathColumnsArray.set(key, arr);
+      });
 
       // Activities sheet (root activities per subject)
       let aIdx = 1;
@@ -2370,7 +2382,7 @@ const generateAcademicYearTemplate = async (req, res) => {
       });
       // ActivityPaths sheet
       let pIdx = 1;
-      pathColumns.forEach((list, key) => {
+      (pathColumnsArray.size > 0 ? pathColumnsArray : pathColumns).forEach((list, key) => {
         const [subj, root] = key.split('|');
         const header = `${sanitize(subj)}__${sanitize(root)}`;
         activityPathsSheet.getRow(1).getCell(pIdx).value = header;
@@ -2397,21 +2409,34 @@ const generateAcademicYearTemplate = async (req, res) => {
       sectionMeta.addRow([batchDatesName, secId, 'BatchDate']);
 
       const topicsSheet = workbook.addWorksheet(topicsName);
+      // Added ParentTopicCode column (blank if root topic). Child topics should reference a previously defined TopicCode in the same section sheet.
+      // Also added HasHomework, IsBottomLevel, PassPercentage columns as requested.
       topicsSheet.columns = [
-        { header: 'Subject', width: 18 },
-        { header: 'ActivityRoot', width: 18 },
-        { header: 'ActivityPath (Child1 > Child2 or blank)', width: 34 },
-        { header: 'TopicCode', width: 14 },
-        { header: 'TopicName', width: 28 },
-        { header: 'TopicOrder', width: 12 },
-        { header: 'HasAssessment (Yes/No)', width: 18 },
-        { header: 'DifficultyLevel', width: 16 }
+        { header: 'Subject', width: 18 },            // Col 1
+        { header: 'ActivityRoot', width: 18 },       // Col 2
+        { header: 'ActivityPath (Child1 > Child2 or blank)', width: 34 }, // Col 3
+        { header: 'ParentTopicCode (blank if root)', width: 26 },          // Col 4
+        { header: 'TopicCode', width: 14 },          // Col 5
+        { header: 'TopicName', width: 28 },          // Col 6
+        { header: 'TopicOrder', width: 12 },         // Col 7
+        { header: 'HasAssessment (Yes/No)', width: 18 }, // Col 8
+        { header: 'HasHomework (Yes/No)', width: 18 },   // Col 9
+        { header: 'IsBottomLevel (Yes/No)', width: 20 }, // Col 10
+        { header: 'PassPercentage', width: 16 },         // Col 11
+        { header: 'DifficultyLevel', width: 16 }     // Col 12 (optional hint)
       ];
       topicsSheet.getRow(1).font = { bold: true };
+      // Sample root topic row (ParentTopicCode blank)
       topicsSheet.addRow([
         subjects[0]?.subject_name || '',
         actsBySubject.get(subjects[0]?.subject_name || '')?.[0] || '',
-        '', 'T001', 'Sample Topic', 1, 'No', 'Medium'
+        '', '', 'T001', 'Sample Root Topic', 1, 'No', 'No', 'Yes', 60, 'Medium'
+      ]);
+      // Sample child topic row referencing T001 as parent
+      topicsSheet.addRow([
+        subjects[0]?.subject_name || '',
+        actsBySubject.get(subjects[0]?.subject_name || '')?.[0] || '',
+        '', 'T001', 'T001A', 'Sample Child Topic', 2, 'No', 'No', 'Yes', 60, 'Medium'
       ]);
 
       const materialsSheet = workbook.addWorksheet(materialsName);
@@ -2459,8 +2484,17 @@ const generateAcademicYearTemplate = async (req, res) => {
         if (diffCol) ws.getColumn(diffCol).eachCell({ includeEmpty: true }, (cell, row) => { if (row === 1) return; const f = `'DifficultyLevels'!$A$2:$A$${diffLast}`; cell.dataValidation = { type: 'list', allowBlank: true, formulae: [f] }; });
       };
 
-      // Topic sheet validations (unchanged)
-      applyCommon(topicsSheet, 1, 2, 3, 8);
+      // Topic sheet validations (DifficultyLevel now at column 12)
+      applyCommon(topicsSheet, 1, 2, 3, 12);
+      // Add simple Yes/No dropdowns for boolean columns (HasAssessment col 8, HasHomework col 9, IsBottomLevel col 10)
+      const booleanCols = [8, 9, 10];
+      for (const col of booleanCols) {
+        topicsSheet.getColumn(col).eachCell({ includeEmpty: true }, (cell, row) => {
+          if (row === 1) return;
+          // Use inline list string for validation to avoid Excel repair
+          cell.dataValidation = { type: 'list', allowBlank: true, formulae: ['"Yes,No"'] };
+        });
+      }
 
       // Materials validations: Subject (col1), MaterialType (col3), Difficulty (col7)
       materialsSheet.getColumn(1).eachCell({ includeEmpty: true }, (cell, row) => { if (row === 1) return; if (subjects.length > 0) cell.dataValidation = { type: 'list', allowBlank: true, formulae: [`'Subjects_${secId}'!$A$2:$A$${subjLast}`] }; });
@@ -2480,7 +2514,8 @@ const generateAcademicYearTemplate = async (req, res) => {
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=topic_material_upload_${gradeName}.xlsx`);
+    const safeGrade = gradeName ? sanitize(gradeName) : 'all_grades';
+    res.setHeader('Content-Disposition', `attachment; filename=topic_material_upload_${safeGrade}.xlsx`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
@@ -2521,10 +2556,59 @@ const uploadAcademicYearData = async (req, res) => {
       if (!root) return null; const segs = [root, ...path.split('>').map(s => s.trim()).filter(s => s.length > 0)]; let parentId = 0; let found = null; for (const seg of segs) { const key = `${sectionId}|${subject}|${parentId}|${seg}`; const id = traversal.get(key); if (!id) return null; found = id; parentId = id; } return found;
     };
 
-    // Topics
+    // Topics (now supports ParentTopicCode in column 4; blank if root)
+    const topicLevelMap = new Map(); // key sectionId|topicCode -> level
     for (const info of sheetInfos.filter(s => s.type === 'Topic')) {
       const ws = workbook.getWorksheet(info.name); if (!ws) continue;
-      ws.eachRow((row, rn) => { if (rn === 1) return; const subject = (row.getCell(1).value || '').toString().trim(); if (!subject) return; const root = (row.getCell(2).value || '').toString().trim(); const path = (row.getCell(3).value || '').toString().trim(); const code = (row.getCell(4).value || '').toString().trim(); const name = (row.getCell(5).value || '').toString().trim(); const order = parseInt(row.getCell(6).value) || 1; const hasAssess = (row.getCell(7).value || '').toString().toLowerCase() === 'yes'; const difficulty = (row.getCell(8).value || 'Medium').toString().trim(); if (!code || !name) { errors.push(`Topic ${info.name} row ${rn}: missing code/name`); return; } const key = `${info.sid}|${code}`; if (topicCodeMap.has(key)) { errors.push(`Topic ${info.name} row ${rn}: duplicate code ${code}`); return; } const caId = resolveActivity(info.sid, subject, root, path); if (!caId) { errors.push(`Topic ${info.name} row ${rn}: cannot resolve activity path`); return; } connection.query(`INSERT INTO topic_hierarchy (parent_id, context_activity_id, level, topic_name, topic_code, order_sequence, has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage) VALUES (NULL, ?, 1, ?, ?, ?, ?, 0, 1, 7, 60)`, [caId, name, code, order, hasAssess ? 1 : 0]).then(([res]) => { topicCodeMap.set(key, res.insertId); topicsCreated++; }).catch(e => errors.push(`Topic ${info.name} row ${rn}: ${e.message}`)); });
+      // Collect rows first to preserve ordering and allow parent-first dependency
+      const topicRows = [];
+      ws.eachRow((row, rn) => { if (rn === 1) return; topicRows.push({ row, rn }); });
+      for (const { row, rn } of topicRows) {
+        const subject = (row.getCell(1).value || '').toString().trim(); if (!subject) continue;
+        const root = (row.getCell(2).value || '').toString().trim();
+        const path = (row.getCell(3).value || '').toString().trim();
+        const parentCode = (row.getCell(4).value || '').toString().trim();
+        const code = (row.getCell(5).value || '').toString().trim();
+        const name = (row.getCell(6).value || '').toString().trim();
+        const order = parseInt(row.getCell(7).value) || 1;
+        const yesNo = (v) => {
+          if (v === true || v === 1) return true;
+          const s = (v || '').toString().trim().toLowerCase();
+          return s === 'yes' || s === 'y' || s === 'true' || s === '1';
+        };
+        const hasAssess = yesNo(row.getCell(8).value || '');
+        const hasHomework = yesNo(row.getCell(9).value || '');
+        const isBottom = yesNo(row.getCell(10).value || 'yes');
+        const passPerc = parseInt((row.getCell(11).value || '60').toString().trim()) || 60;
+        const difficulty = (row.getCell(12).value || 'Medium').toString().trim(); // currently unused in insert (legacy schema)
+        if (!code || !name) { errors.push(`Topic ${info.name} row ${rn}: missing code/name`); continue; }
+        const key = `${info.sid}|${code}`;
+        if (topicCodeMap.has(key)) { errors.push(`Topic ${info.name} row ${rn}: duplicate code ${code}`); continue; }
+        const caId = resolveActivity(info.sid, subject, root, path);
+        if (!caId) { errors.push(`Topic ${info.name} row ${rn}: cannot resolve activity path`); continue; }
+        let parentId = null; let level = 1;
+        if (parentCode) {
+          const parentKey = `${info.sid}|${parentCode}`;
+            if (!topicCodeMap.has(parentKey)) {
+              errors.push(`Topic ${info.name} row ${rn}: parent topic code ${parentCode} not found above`); continue;
+            }
+            parentId = topicCodeMap.get(parentKey);
+            const parentLevel = topicLevelMap.get(parentKey) || 1;
+            level = parentLevel + 1;
+        }
+        try {
+          const [resInsert] = await connection.query(
+            `INSERT INTO topic_hierarchy (parent_id, context_activity_id, level, topic_name, topic_code, order_sequence, has_assessment, has_homework, is_bottom_level, expected_completion_days, pass_percentage)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+            [parentId, caId, level, name, code, order, hasAssess ? 1 : 0, hasHomework ? 1 : 0, isBottom ? 1 : 0, 7, passPerc]
+          );
+          topicCodeMap.set(key, resInsert.insertId);
+          topicLevelMap.set(key, level);
+          topicsCreated++;
+        } catch (e) {
+          errors.push(`Topic ${info.name} row ${rn}: ${e.message}`);
+        }
+      }
     }
 
     // Materials

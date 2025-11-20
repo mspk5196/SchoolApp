@@ -133,13 +133,53 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
       );
 
       if (result && result.success) {
-        const list = result.subActivities || [];
-        setSubActivities(list);
-        if (list.length > 0) {
-          setSelectedSubActivity(list[0].context_activity_id);
-        } else {
-          setSelectedSubActivity(null);
+        const level1 = result.subActivities || [];
+
+        // For each level-1 sub-activity, fetch one more level and build path labels
+        const childFetches = level1.map(async (parent) => {
+          try {
+            const childResp = await materialApi.getSubActivitiesForActivity(
+              selectedSection,
+              selectedSubject,
+              parent.context_activity_id
+            );
+            const children = childResp && childResp.success && Array.isArray(childResp.subActivities)
+              ? childResp.subActivities
+              : [];
+            // Return children with path labels "Parent -> Child"
+            return children.map((child) => ({
+              ...child,
+              activity_name: `${parent.activity_name} -> ${child.activity_name}`,
+            }));
+          } catch (e) {
+            return [];
+          }
+        });
+
+        const childrenArrays = await Promise.all(childFetches);
+        const level2 = childrenArrays.flat();
+
+        // Build final list: include level-1 as-is plus level-2 with path labels
+        const combined = [
+          ...level1.map((p) => ({ ...p })),
+          ...level2,
+        ];
+
+        // De-duplicate by context_activity_id just in case
+        const seen = new Set();
+        const finalList = [];
+        for (const item of combined) {
+          if (!seen.has(item.context_activity_id)) {
+            seen.add(item.context_activity_id);
+            finalList.push(item);
+          }
         }
+
+        setSubActivities(finalList);
+        setSelectedSubActivity((prev) => {
+          if (prev && finalList.some((a) => a.context_activity_id === prev)) return prev;
+          return finalList.length > 0 ? finalList[0].context_activity_id : null;
+        });
       } else {
         console.error('Failed to fetch sub-activities:', result?.message);
       }

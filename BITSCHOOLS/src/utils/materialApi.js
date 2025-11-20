@@ -248,7 +248,7 @@ export const downloadAcademicYearTemplate = async (gradeId) => {
   const url = gradeId ? `/coordinator/academic-year/generate-template?gradeId=${encodeURIComponent(gradeId)}` : '/coordinator/academic-year/generate-template';
   return await ApiService.downloadFile(
     url,
-    'academic_year_template.xlsx'
+    'topic_material_upload.xlsx'
   );
 };
 
