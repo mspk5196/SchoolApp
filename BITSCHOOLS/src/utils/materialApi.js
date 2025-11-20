@@ -262,11 +262,11 @@ export const uploadAcademicYearExcel = async (file) => {
 
 // ==================== UTILITIES ====================
 
-export const getGradeSubjects = async (gradeId) => {
-  const response = await ApiService.makeRequest('/coordinator/getGradeSubject', {
+export const getSectionSubjects = async (sectionId) => {
+  const response = await ApiService.makeRequest('/coordinator/getSectionSubjects', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ gradeId }),
+    body: JSON.stringify({ sectionId }),
   });
   return response.json();
 };

@@ -67,7 +67,7 @@ const SubjectAllotment = ({ navigation, route }) => {
 
   const handleSectionChange = (sectionId) => {
     console.log(sectionId.id);
-    
+
     setActiveSection(sectionId.id);
     setActiveSectionSelection(sectionId);
   };
@@ -115,6 +115,7 @@ const SubjectAllotment = ({ navigation, route }) => {
       if (data.success && data.gradeSections.length > 0) {
         setSections(data.gradeSections);
         setActiveSection(data.gradeSections[0].id);
+        setActiveSectionSelection(data.gradeSections[0]);
       } else {
         Alert.alert('No Sections Found', 'No section is associated with this grade');
       }
@@ -158,7 +159,7 @@ const SubjectAllotment = ({ navigation, route }) => {
   const fetchSubjectActivities = async () => {
     if (!activeSection) return;
     console.log(activeSection);
-    
+
     try {
       const response = await ApiService.makeRequest(`/coordinator/getSubjectActivities`, {
         method: 'POST',
@@ -509,6 +510,9 @@ const SubjectAllotment = ({ navigation, route }) => {
         fetchSubActivities();
         setShowAddSubActivityModal(false);
         setSubActivityInputs(['']);
+        setRefreshing(true);
+        await fetchSubjectActivities();
+        setRefreshing(false);
       } else {
         Alert.alert('Error', data.message || 'Failed to add sub-activities');
       }
@@ -521,17 +525,17 @@ const SubjectAllotment = ({ navigation, route }) => {
   const renderActivity = (activity, depth = 0) => {
     const hasChildren = activity.children && activity.children.length > 0;
     const indent = depth * 20; // Increase indent for each level
-    
+
     return (
       <View key={activity.id} style={styles.categoryItemWrapper}>
         <View style={[styles.categoryItem, { paddingLeft: 14 + indent }]}>
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
             {depth > 0 && (
-              <Ionicons 
-                name="return-down-forward-outline" 
-                size={16} 
-                color="#94A3B8" 
-                style={{ marginRight: 8 }} 
+              <Ionicons
+                name="return-down-forward-outline"
+                size={16}
+                color="#94A3B8"
+                style={{ marginRight: 8 }}
               />
             )}
             <Text style={[styles.categoryName, depth > 0 && { fontSize: 14, fontWeight: '600' }]}>
@@ -539,17 +543,29 @@ const SubjectAllotment = ({ navigation, route }) => {
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <TouchableOpacity 
-              onPress={() => { 
-                setSelectedSubjectSubActivityId(activity.id); 
-                setShowSubjectSubActivityTypeModal(true); 
-              }} 
+            <TouchableOpacity
+              onPress={() => {
+                setSelectedSubjectSubActivityId(activity.id);
+                setShowSubjectSubActivityTypeModal(true);
+              }}
               style={styles.addSubCategory}
             >
               <Ionicons name="add" size={16} color="#4361EE" />
             </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => handleRemoveCategory(activity.id)} 
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  'Confirm Removal',
+                  `Are you sure you want to remove "${activity.name}"?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Remove', style: 'destructive', onPress: () =>
+                        handleRemoveCategory(activity.id)
+                    },
+                  ]
+                );
+              }}
               style={styles.removeCategory}
             >
               <Ionicons name="close" size={15} color="#E53E3E" />
@@ -571,7 +587,7 @@ const SubjectAllotment = ({ navigation, route }) => {
       <Header title="Subject Enrollment" navigation={navigation} />
 
       <HorizontalChipSelector
-        data={grades} 
+        data={grades}
         selectedItem={selectedGrade}
         onSelectItem={setSelectedGrade}
         idKey="grade_id"
@@ -589,29 +605,29 @@ const SubjectAllotment = ({ navigation, route }) => {
       {activeSection && (
         <View style={styles.actionMenuBar}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionMenuContent}>
-            <TouchableOpacity 
-              style={[styles.actionMenuItem, { backgroundColor: '#4361EE' }]} 
+            <TouchableOpacity
+              style={[styles.actionMenuItem, { backgroundColor: '#4361EE' }]}
               onPress={() => setSubjectTitleModal(true)}
             >
               <Ionicons name="school-outline" size={18} color="#FFF" />
               <Text style={styles.actionMenuItemText}>Allot Subject</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionMenuItem, { backgroundColor: '#7209B7' }]} 
+            <TouchableOpacity
+              style={[styles.actionMenuItem, { backgroundColor: '#7209B7' }]}
               onPress={handleAddMoreSubject}
             >
               <Ionicons name="add-circle-outline" size={18} color="#FFF" />
               <Text style={styles.actionMenuItemText}>New Subject</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionMenuItem, { backgroundColor: '#F72585' }]} 
+            <TouchableOpacity
+              style={[styles.actionMenuItem, { backgroundColor: '#F72585' }]}
               onPress={handleAddMoreActivity}
             >
               <Ionicons name="list-outline" size={18} color="#FFF" />
               <Text style={styles.actionMenuItemText}>New Activity</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionMenuItem, { backgroundColor: '#3A0CA3' }]} 
+            <TouchableOpacity
+              style={[styles.actionMenuItem, { backgroundColor: '#3A0CA3' }]}
               onPress={handleAddMoreSubActivity}
             >
               <Ionicons name="git-branch-outline" size={18} color="#FFF" />
@@ -635,7 +651,16 @@ const SubjectAllotment = ({ navigation, route }) => {
                 <TouchableOpacity onPress={() => openSubjectTypeModal(subject.id)} style={styles.actionButton}>
                   <Ionicons name="add" size={18} color="#4361EE" />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleRemoveSubject(subject.id)} style={styles.actionButton}>
+                <TouchableOpacity onPress={() => {
+                  Alert.alert(
+                    'Confirm Removal',
+                    `Are you sure you want to remove "${subject.name}"?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Remove', style: 'destructive', onPress: () => handleRemoveSubject(subject.id) },
+                    ]
+                  );
+                }} style={styles.actionButton}>
                   <Ionicons name="trash-outline" size={20} color="#E53E3E" />
                 </TouchableOpacity>
               </View>

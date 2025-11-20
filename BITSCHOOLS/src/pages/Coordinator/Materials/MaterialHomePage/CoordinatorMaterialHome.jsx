@@ -29,8 +29,9 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
     fetchgrades()
   }, [])
   useEffect(() => {
+    // when selectedGrade changes we fetch sections; subjects are fetched after a section is selected
     if (selectedGrade) {
-      fetchGradeSubjects();
+      fetchSections();
     }
   }, [selectedGrade]);
 
@@ -49,9 +50,11 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
     }
   };
 
-  const fetchGradeSubjects = async (isRefreshing = false) => {
-    // Guard: don't call API if selectedGrade is not set
-    if (!selectedGrade || !selectedGrade.grade_id) return;
+  const fetchSectionSubjects = async (isRefreshing = false, sectionId) => {
+    // Use the passed sectionId when provided, otherwise fall back to currently selectedSection
+    const secToUse = sectionId || selectedSection;
+    // Guard: don't call API if selectedGrade or section is not set
+    if (!selectedGrade || !selectedGrade.grade_id || !secToUse) return;
 
     try {
       if (isRefreshing) {
@@ -60,10 +63,9 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         setLoading(true);
       }
 
-      const result = await materialApi.getGradeSubjects(selectedGrade.grade_id);
-      
-      if (result && result.success) {
+      const result = await materialApi.getSectionSubjects(secToUse);
 
+      if (result && result.success) {
         const subjectsWithActivities = result.gradeSubjects.map((subject, index) => ({
           ...subject,
           key: `${subject.subject_id}-${index}` // Create a unique key
@@ -119,6 +121,9 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
 
     setSelectedSection(sectionId.id);
     setActiveSectionSelection(sectionId);
+
+    // pass section id as second param (first param is isRefreshing)
+    fetchSectionSubjects(false, sectionId.id);
   };
 
   useEffect(() => {
@@ -134,7 +139,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
 
   const onRefresh = () => {
     if (selectedGrade) {
-      fetchGradeSubjects(true);
+      fetchSectionSubjects(true);
     }
   };
 
@@ -218,7 +223,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
           showUploadSummary(uploadResult);
           // Refresh the data
           if (selectedGrade) {
-            fetchGradeSubjects(true);
+            fetchSectionSubjects(true);
           }
         } else {
           showErrorMessage(uploadResult?.message || 'Failed to upload batches');
@@ -271,7 +276,7 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
         if (uploadResult && uploadResult.success) {
           showAcademicYearUploadSummary(uploadResult);
           // Refresh subjects (new topics/materials won't change subjects but safe to refresh)
-          if (selectedGrade) fetchGradeSubjects(true);
+          if (selectedGrade) fetchSectionSubjects(true);
         } else {
           showErrorMessage(uploadResult?.message || 'Failed to upload academic year data');
         }

@@ -2375,14 +2375,14 @@ const uploadMaterialsFromExcel = async (req, res) => {
 /**
  * Get grade subjects
  */
-const getGradeSubjects = async (req, res) => {
+const getSectionSubjects = async (req, res) => {
   try {
-    const { gradeId } = req.body;
+    const { sectionId } = req.body;
 
-    if (!gradeId) {
+    if (!sectionId) {
       return res.status(400).json({
         success: false,
-        message: 'Grade ID is required'
+        message: 'Section ID is required'
       });
     }
 
@@ -2393,9 +2393,9 @@ const getGradeSubjects = async (req, res) => {
       FROM subjects s
       JOIN subject_section_assignments ssa ON s.id = ssa.subject_id
       JOIN sections sec ON ssa.section_id = sec.id
-      WHERE sec.grade_id = ? AND ssa.is_active = 1 AND sec.is_active = 1
+      WHERE  sec.id = ? AND ssa.is_active = 1 AND sec.is_active = 1
       ORDER BY s.subject_name`,
-      [gradeId]
+      [sectionId]
     );
 
     res.json({
@@ -2454,7 +2454,15 @@ const generateAcademicYearTemplate = async (req, res) => {
     sectionMeta.state = 'hidden';
     sectionMeta.addRow(['SheetName','SectionId']);
 
-    // For each section, prepare per-section lookup lists
+    // Helper to convert column index to Excel letter (1 -> A)
+    const colLetter = (n) => {
+      let s = '';
+      while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+      return s;
+    };
+    const sanitize = (name) => (name || '').toString().replace(/[^A-Za-z0-9]/g, '_');
+
+    // For each section, prepare per-section lookup lists (root activities + full paths)
     for (const sec of sections) {
       const secId = sec.id;
       const secName = sec.section_name;
@@ -2464,15 +2472,15 @@ const generateAcademicYearTemplate = async (req, res) => {
 
       const activitiesSheet = workbook.addWorksheet(`Activities_${secId}`);
       activitiesSheet.state = 'hidden';
-      activitiesSheet.addRow(['Activity']);
-
-      const subActivitiesSheet = workbook.addWorksheet(`SubActivities_${secId}`);
-      subActivitiesSheet.state = 'hidden';
-      subActivitiesSheet.addRow(['SubActivity']);
+      // dynamic columns per subject; first row headers are sanitized subject keys (listing ROOT activities only)
 
       const batchesSheet = workbook.addWorksheet(`Batches_${secId}`);
       batchesSheet.state = 'hidden';
-      batchesSheet.addRow(['Batch']);
+      // dynamic columns per subject; first row headers are sanitized subject keys
+
+      const activityPathsSheet = workbook.addWorksheet(`ActivityPaths_${secId}`);
+      activityPathsSheet.state = 'hidden';
+      // dynamic columns per subject; first row headers are sanitized subject keys (listing child chains excluding root)
 
       // Subjects for this section
       const [subjects] = await db.query(
@@ -2485,38 +2493,92 @@ const generateAcademicYearTemplate = async (req, res) => {
       );
       subjects.forEach(s => subjectsSheet.addRow([s.subject_name]));
 
-      // Activities (parent) for this section
-      const [acts] = await db.query(
-        `SELECT DISTINCT act.name as activity_name
+      // All activities (including nested) for this section to build root dropdowns and full paths
+      const [allActs] = await db.query(
+        `SELECT ca.id, ca.parent_context_id, sub.subject_name, act.name as activity_name
          FROM context_activities ca
          JOIN activities act ON ca.activity_id = act.id
-         WHERE ca.section_id = ? AND ca.parent_context_id IS NULL
-         ORDER BY act.name`,
+         JOIN subjects sub ON ca.subject_id = sub.id
+         WHERE ca.section_id = ?
+         ORDER BY sub.subject_name, activity_name`,
         [secId]
       );
-      acts.forEach(a => activitiesSheet.addRow([a.activity_name]));
-
-      // SubActivities for this section
-      const [subs] = await db.query(
-        `SELECT DISTINCT act.name as subactivity_name
-         FROM context_activities ca
-         JOIN activities act ON ca.activity_id = act.id
-         WHERE ca.section_id = ? AND ca.parent_context_id IS NOT NULL
-         ORDER BY act.name`,
-        [secId]
-      );
-      subs.forEach(sa => subActivitiesSheet.addRow([sa.subactivity_name]));
-
-      // Batches for this section
-      const [batches] = await db.query(
-        `SELECT DISTINCT sb.batch_name
+      // Batches by subject for this section
+      const [batchesAll] = await db.query(
+        `SELECT DISTINCT sub.subject_name, sb.batch_name
          FROM section_batches sb
          JOIN subject_section_assignments ssa ON sb.subject_section_id = ssa.id
+         JOIN subjects sub ON ssa.subject_id = sub.id
          WHERE ssa.section_id = ? AND sb.is_active = 1
-         ORDER BY sb.batch_name`,
+         ORDER BY sub.subject_name, sb.batch_name`,
         [secId]
       );
-      batches.forEach(b => batchesSheet.addRow([b.batch_name]));
+
+      // Build maps: root activities + batches
+      const actsBySubject = new Map(); // root level only
+      const childMap = new Map(); // key: parent_context_id (or 0) -> array of {activity_name}
+      allActs.forEach(r => {
+        const parentKey = r.parent_context_id ? r.parent_context_id : 0;
+        if (!childMap.has(parentKey)) childMap.set(parentKey, []);
+        childMap.get(parentKey).push({ id: r.id, name: r.activity_name, subject: r.subject_name });
+        if (!r.parent_context_id) { // root
+          if (!actsBySubject.has(r.subject_name)) actsBySubject.set(r.subject_name, []);
+          actsBySubject.get(r.subject_name).push(r.activity_name);
+        }
+      });
+      const batchesBySubject = new Map();
+      batchesAll.forEach(r => { const k = r.subject_name; if (!batchesBySubject.has(k)) batchesBySubject.set(k, []); batchesBySubject.get(k).push(r.batch_name); });
+
+      // Build full paths recursively per (subject, root) so path dropdown filters by selected root
+      const roots = allActs.filter(a => !a.parent_context_id);
+      const pathColumns = new Map(); // key: subject|rootName -> array of child chains ('' indicates no further depth)
+      const traverse = (subject, rootName, pathNames, currentId) => {
+        const children = childMap.get(currentId) || [];
+        if (children.length === 0) {
+          const chainExcludingRoot = pathNames.slice(1).join(' > '); // may be '' if only root
+          const key = `${subject}|${rootName}`;
+          if (!pathColumns.has(key)) pathColumns.set(key, []);
+          pathColumns.get(key).push(chainExcludingRoot);
+        } else {
+          for (const ch of children) {
+            traverse(subject, rootName, [...pathNames, ch.name], ch.id);
+          }
+        }
+      };
+      for (const r of roots) {
+        traverse(r.subject_name, r.activity_name, [r.activity_name], r.id);
+      }
+      // Ensure blank entry exists for each (subject, root) so users can select leaf root without children
+      pathColumns.forEach((list, key) => { if (!list.includes('')) list.push(''); });
+      // Write ActivityPaths columns: header sanitized(subject) + '__' + sanitized(root)
+      let apColIdx = 1;
+      pathColumns.forEach((list, key) => {
+        const [subj, rootName] = key.split('|');
+        const header = `${sanitize(subj)}__${sanitize(rootName)}`;
+        activityPathsSheet.getRow(1).getCell(apColIdx).value = header;
+        list.forEach((val,i)=> activityPathsSheet.getRow(2 + i).getCell(apColIdx).value = val);
+        apColIdx++;
+      });
+
+      // Write Activities columns (header row = sanitized subject key)
+      let colIdx = 1;
+      actsBySubject.forEach((list, subj) => {
+        const header = sanitize(subj);
+        activitiesSheet.getRow(1).getCell(colIdx).value = header;
+        list.forEach((val, i) => activitiesSheet.getRow(2 + i).getCell(colIdx).value = val);
+        colIdx++;
+      });
+
+      // (Removed sub-activities sheet usage for infinite depth; path handled via free-text column)
+
+      // Write Batches columns (header row = sanitized subject key)
+      colIdx = 1;
+      batchesBySubject.forEach((list, subj) => {
+        const header = sanitize(subj);
+        batchesSheet.getRow(1).getCell(colIdx).value = header;
+        list.forEach((val, i) => batchesSheet.getRow(2 + i).getCell(colIdx).value = val);
+        colIdx++;
+      });
 
       // Create a visible sheet per section
       const sheetName = `Section_${secName}`.replace(/[^A-Za-z0-9_]/g,'_').substring(0,31);
@@ -2525,8 +2587,8 @@ const generateAcademicYearTemplate = async (req, res) => {
       ws.columns = [
         { header: 'RowType', key: 'row_type', width: 12 },
         { header: 'Subject', key: 'subject_name', width: 18 },
-        { header: 'Activity', key: 'activity_name', width: 18 },
-        { header: 'SubActivity', key: 'subactivity_name', width: 18 },
+        { header: 'ActivityRoot', key: 'activity_root', width: 18 },
+        { header: 'ActivityPath ("Child A > Child B" or blank)', key: 'activity_path', width: 30 },
         { header: 'TopicCode', key: 'topic_code', width: 16 },
         { header: 'TopicName', key: 'topic_name', width: 26 },
         { header: 'TopicOrder', key: 'topic_order', width: 12 },
@@ -2545,9 +2607,9 @@ const generateAcademicYearTemplate = async (req, res) => {
       ws.getRow(1).font = { color:{ argb:'FFFFFFFF'}, bold:true };
 
       // Sample rows
-      ws.addRow({ row_type: 'Topic', subject_name: subjects[0]?.subject_name || '', activity_name: acts[0]?.activity_name || '', topic_code: 'T001', topic_name: 'Sample Topic', topic_order: 1 });
-      ws.addRow({ row_type: 'Material', subject_name: subjects[0]?.subject_name || '', activity_name: acts[0]?.activity_name || '', topic_code: 'T001', material_type: 'Video', material_title: 'Intro Video', material_url: 'https://example.com/video.mp4', estimated_duration: 30, difficulty_level: 'Medium', has_assessment: 'No' });
-      ws.addRow({ row_type: 'BatchDate', subject_name: subjects[0]?.subject_name || '', activity_name: acts[0]?.activity_name || '', topic_code: 'T001', batch_name: batches[0]?.batch_name || '', expected_date: '2025-01-15' });
+      ws.addRow({ row_type: 'Topic', subject_name: subjects[0]?.subject_name || '', activity_root: actsBySubject.get(subjects[0]?.subject_name || '')?.[0] || '', activity_path: '', topic_code: 'T001', topic_name: 'Sample Topic', topic_order: 1 });
+      ws.addRow({ row_type: 'Material', subject_name: subjects[0]?.subject_name || '', activity_root: actsBySubject.get(subjects[0]?.subject_name || '')?.[0] || '', activity_path: '', topic_code: 'T001', material_type: 'Video', material_title: 'Intro Video', material_url: 'https://example.com/video.mp4', estimated_duration: 30, difficulty_level: 'Medium', has_assessment: 'No' });
+      ws.addRow({ row_type: 'BatchDate', subject_name: subjects[0]?.subject_name || '', activity_root: actsBySubject.get(subjects[0]?.subject_name || '')?.[0] || '', activity_path: '', topic_code: 'T001', batch_name: '', expected_date: '2025-01-15' });
 
       // Data validation
       const rowTypeLast = 1 + 3; // 3 values
@@ -2560,12 +2622,23 @@ const generateAcademicYearTemplate = async (req, res) => {
       // Per-section lists
       const subjLast = subjects.length + 1;
       ws.getColumn(2).eachCell({includeEmpty:true}, (cell,row) => { if (row===1) return; if (subjects.length>0) cell.dataValidation = { type:'list', allowBlank:true, formulae:[`'Subjects_${secId}'!$A$2:$A$${subjLast}`] }; });
-      const actLast = acts.length + 1;
-      ws.getColumn(3).eachCell({includeEmpty:true}, (cell,row) => { if (row===1) return; if (acts.length>0) cell.dataValidation = { type:'list', allowBlank:true, formulae:[`'Activities_${secId}'!$A$2:$A$${actLast}`] }; });
-      const subActLast = subs.length + 1;
-      ws.getColumn(4).eachCell({includeEmpty:true}, (cell,row) => { if (row===1) return; if (subs.length>0) cell.dataValidation = { type:'list', allowBlank:true, formulae:[`'SubActivities_${secId}'!$A$2:$A$${subActLast}`] }; });
-      const batchLast = batches.length + 1;
-      ws.getColumn(15).eachCell({includeEmpty:true}, (cell,row) => { if (row===1) return; if (batches.length>0) cell.dataValidation = { type:'list', allowBlank:true, formulae:[`'Batches_${secId}'!$A$2:$A$${batchLast}`] }; });
+      // Root activity dropdown only (ActivityRoot column index 3)
+      ws.getColumn(3).eachCell({includeEmpty:true}, (cell,row) => {
+        if (row===1) return;
+        const formula = `OFFSET(Activities_${secId}!$A$2,0, MATCH(SUBSTITUTE($B${row}," ","_"), Activities_${secId}!$1:$1, 0)-1, 1000, 1)`;
+        cell.dataValidation = { type:'list', allowBlank:true, formulae:[formula] };
+      });
+      // ActivityPath dropdown dependent on Subject (col 2) + ActivityRoot (col 3)
+      ws.getColumn(4).eachCell({includeEmpty:true}, (cell,row) => {
+        if (row===1) return;
+        const formula = `OFFSET(ActivityPaths_${secId}!$A$2,0, MATCH(SUBSTITUTE($B${row}," ","_")&"__"&SUBSTITUTE($C${row}," ","_"), ActivityPaths_${secId}!$1:$1, 0)-1, 1000, 1)`;
+        cell.dataValidation = { type:'list', allowBlank:true, formulae:[formula] };
+      });
+      ws.getColumn(15).eachCell({includeEmpty:true}, (cell,row) => {
+        if (row===1) return;
+        const formula = `OFFSET(Batches_${secId}!$A$2,0, MATCH(SUBSTITUTE($B${row}," ","_"), Batches_${secId}!$1:$1, 0)-1, 1000, 1)`;
+        cell.dataValidation = { type:'list', allowBlank:true, formulae:[formula] };
+      });
       // Date formatting for expected date column
       ws.getColumn(16).eachCell({includeEmpty:true}, (cell,row) => { if (row===1) return; cell.numFmt = 'yyyy-mm-dd'; });
     }
@@ -2606,20 +2679,10 @@ const uploadAcademicYearData = async (req, res) => {
     }
 
     // Preload mappings (keyed by section_id)
-    const [activityRows] = await db.query(`
-      SELECT ca.id as context_activity_id, ca.section_id, sub.subject_name, act.name as activity_name
+    const [allContextRows] = await db.query(`
+      SELECT ca.id as context_activity_id, ca.section_id, sub.subject_name, act.name as activity_name, ca.parent_context_id
       FROM context_activities ca
       JOIN activities act ON ca.activity_id = act.id
-      JOIN subjects sub ON ca.subject_id = sub.id
-      WHERE ca.parent_context_id IS NULL
-    `);
-    const [subActivityRows] = await db.query(`
-      SELECT ca.id as context_activity_id, ca.section_id, sub.subject_name,
-             act.name as subactivity_name, pact.name as parent_activity_name
-      FROM context_activities ca
-      JOIN activities act ON ca.activity_id = act.id
-      JOIN context_activities parent ON ca.parent_context_id = parent.id
-      JOIN activities pact ON parent.activity_id = pact.id
       JOIN subjects sub ON ca.subject_id = sub.id
     `);
     const [batchRows] = await db.query(`
@@ -2630,9 +2693,12 @@ const uploadAcademicYearData = async (req, res) => {
       WHERE sb.is_active = 1
     `);
 
-    const contextMap = new Map();
-    activityRows.forEach(r => contextMap.set(`${r.section_id}|${r.subject_name}|${r.activity_name}|`, r.context_activity_id));
-    subActivityRows.forEach(r => contextMap.set(`${r.section_id}|${r.subject_name}|${r.parent_activity_name}|${r.subactivity_name}`, r.context_activity_id));
+    // Build traversal map: key = section|subject|parentId|name -> context_activity_id (parentId 0 for root)
+    const traversalMap = new Map();
+    allContextRows.forEach(r => {
+      const parentId = r.parent_context_id ? r.parent_context_id : 0;
+      traversalMap.set(`${r.section_id}|${r.subject_name}|${parentId}|${r.activity_name}`, r.context_activity_id);
+    });
     const batchMap = new Map();
     batchRows.forEach(r => batchMap.set(`${r.section_id}|${r.subject_name}|${r.batch_name}`, r.batch_id));
 
@@ -2656,8 +2722,8 @@ const uploadAcademicYearData = async (req, res) => {
         if (!rowType) return; // skip empty
 
         const subject = (row.getCell(2).value || '').toString().trim();
-        const activity = (row.getCell(3).value || '').toString().trim();
-        const subactivity = (row.getCell(4).value || '').toString().trim();
+        const rootActivity = (row.getCell(3).value || '').toString().trim();
+        const activityPath = (row.getCell(4).value || '').toString().trim();
         const topicCode = (row.getCell(5).value || '').toString().trim();
         const topicName = (row.getCell(6).value || '').toString().trim();
         const topicOrder = parseInt(row.getCell(7).value) || 1;
@@ -2671,10 +2737,24 @@ const uploadAcademicYearData = async (req, res) => {
         const batchName = (row.getCell(15).value || '').toString().trim();
         const expectedDateRaw = row.getCell(16).value;
 
-        const contextKey = `${sectionId}|${subject}|${activity}|${subactivity}`;
-        const contextActivityId = contextMap.get(contextKey);
+        // Resolve context activity by traversing path segments
+        let contextActivityId = null;
+        if (rootActivity) {
+          const segments = [rootActivity, ...activityPath.split('>').map(s => s.trim()).filter(s => s.length>0)];
+          let parentId = 0; // 0 denotes root (NULL parent)
+          for (const seg of segments) {
+            const key = `${sectionId}|${subject}|${parentId}|${seg}`;
+            const found = traversalMap.get(key);
+            if (!found) {
+              contextActivityId = null;
+              break;
+            }
+            contextActivityId = found;
+            parentId = found; // next parent
+          }
+        }
         if (!contextActivityId && rowType !== 'BatchDate') {
-          errors.push(`Row ${rowNumber} (${ws.name}): Context activity not found for key ${contextKey}`);
+          errors.push(`Row ${rowNumber} (${ws.name}): Unable to resolve activity path (root='${rootActivity}' path='${activityPath}') for subject '${subject}'`);
           return;
         }
 
@@ -2792,5 +2872,5 @@ module.exports = {
   uploadAcademicYearData,
   
   // Utilities
-  getGradeSubjects
+  getSectionSubjects
 };

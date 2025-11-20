@@ -55,6 +55,7 @@ exports.getActivities = async (req, res) => {
             level,
             parent_id
         FROM activities
+        WHERE level = 1
         ORDER BY name
     `;
 
@@ -77,6 +78,7 @@ exports.getSubActivities = async (req, res) => {
             a.parent_id,
             a.level
         FROM activities a
+        WHERE a.level = 2
         ORDER BY a.name
     `;
 
@@ -385,7 +387,7 @@ exports.addSubActivities = async (req, res) => {
         a.name, 
         a.description || null, 
         a.parent_id || null, 
-        a.parent_id ? 2 : 1, // Default level based on whether parent exists
+        2, // Default level based on whether parent exists
         new Date()
     ]);
     const placeholders = activities.map(() => '(?, ?, ?, ?, ?)').join(', ');

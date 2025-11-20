@@ -95,6 +95,6 @@ router.get('/academic-year/generate-template', materialController.generateAcadem
 router.post('/academic-year/upload', upload.single('file'), materialController.uploadAcademicYearData);
 
 // Utility routes
-router.post('/getGradeSubject',  materialController.getGradeSubjects);
+router.post('/getSectionSubjects',  materialController.getSectionSubjects);
 module.exports = router;
 
