@@ -8,6 +8,7 @@ router.use(authenticateToken);
 router.use(getAcademicYear);
 
 // General routes
+router.get('/active-academic-year', generalController.getActiveAcademicYear);
 router.post('/getUserRoles', generalController.getUserRoles);
 router.post('/getUserGeneralData', generalController.getGeneralData);
 router.get('/getGrades', generalController.getGrades);

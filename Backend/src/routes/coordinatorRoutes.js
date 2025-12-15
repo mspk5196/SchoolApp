@@ -7,6 +7,7 @@ const subjectAllotmentController = require('../controllers/coordinator/subjectAl
 const materialController = require('../controllers/coordinator/materialController');
 const scheduleController = require('../controllers/coordinator/scheduleController');
 const infrastructureEnrollment = require('../controllers/coordinator/infrastructureController');
+const academicCalendarController = require('../controllers/coordinator/academicCalendarController');
 const { authenticateToken } = require('../middleware/auth');
 const getAcademicYear = require('../middleware/getAcademicYear');
 
@@ -111,6 +112,15 @@ router.post('/getSectionSubjects',  materialController.getSectionSubjects);
 //Schedule
 router.get('/schedule/mentor/generate-template', scheduleController.generateMentorScheduleTemplate);
 router.post('/schedule/mentor/upload', upload.single('file'), scheduleController.uploadMentorSchedule);
+
+// Academic Calendar
+router.get('/academic-calendar/generate-template', academicCalendarController.generateAcademicCalendarTemplate);
+router.post('/academic-calendar/upload', upload.single('file'), academicCalendarController.uploadAcademicCalendar);
+router.post('/academic-calendar/get', academicCalendarController.getAcademicCalendar);
+router.post('/academic-calendar/delete', academicCalendarController.deleteAcademicCalendarEntry);
+router.post('/academic-calendar/stats', academicCalendarController.getCalendarStats);
+router.get('/academic-calendar/day-types', academicCalendarController.getDayTypes);
+router.post('/academic-calendar/bulk-update', academicCalendarController.bulkUpdateAcademicCalendar);
 
 module.exports = router;
 

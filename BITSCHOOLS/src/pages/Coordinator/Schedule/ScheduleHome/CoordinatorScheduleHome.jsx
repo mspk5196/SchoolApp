@@ -15,7 +15,15 @@ const CoordinatorScheduleHome = ({ navigation }) => {
       bgColor: '#E9D5FF',
       route: 'CoordinatorMentorScheduleUpload',
     },
-    
+    {
+      id: '2',
+      title: 'Academic Calendar',
+      iconName: 'calendar',
+      iconType: 'MaterialCommunityIcons',
+      color: '#10B981',
+      bgColor: '#D1FAE5',
+      route: 'CoordinatorAcademicCalendar',
+    },
   ];
 
   const [userData, setUserData] = useState(null);

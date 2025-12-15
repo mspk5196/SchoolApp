@@ -21,6 +21,7 @@ import TopicMaterials from '../../pages/Coordinator/Materials/TopicHierarchy/Top
 
 import CoordinatorScheduleHome from '../../pages/Coordinator/Schedule/ScheduleHome/CoordinatorScheduleHome';
 import MentorScheduleUpload from '../../pages/Coordinator/Schedule/MentorSchedule/MentorScheduleUpload';
+import AcademicCalendar from '../../pages/Coordinator/Schedule/AcademicCalendar/AcademicCalendar';
 
 const Stack = createNativeStackNavigator();
 
@@ -53,6 +54,7 @@ const CoordinatorRoutes = () => {
       {/* Schedule */}
        <Stack.Screen name="CoordinatorScheduleHome" component={CoordinatorScheduleHome} />
       <Stack.Screen name="CoordinatorMentorScheduleUpload" component={MentorScheduleUpload} />
+      <Stack.Screen name="CoordinatorAcademicCalendar" component={AcademicCalendar} />
     </Stack.Navigator>
   );
 };

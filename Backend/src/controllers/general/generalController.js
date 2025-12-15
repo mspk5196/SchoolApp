@@ -109,3 +109,25 @@ exports.getGradeSections = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Database error' });
     }
 };
+
+// Returns the active academic year (id and year)
+exports.getActiveAcademicYear = async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT ay.id, ay.academic_year
+            FROM academic_years ay
+            JOIN ay_status ays ON ays.academic_year_id = ay.id
+            WHERE ays.is_active = 1
+            LIMIT 1
+        `);
+
+        if (!rows || rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'No active academic year found' });
+        }
+
+        return res.json({ success: true, academicYear: { id: rows[0].id, year: rows[0].academic_year } });
+    } catch (err) {
+        console.error('Error fetching active academic year:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+};

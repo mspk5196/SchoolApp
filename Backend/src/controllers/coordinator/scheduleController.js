@@ -48,8 +48,13 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
 
     const [venues] = await conn.query('SELECT id, name FROM venues ORDER BY name');
 
-    const sessionTypes = ['class', 'lab', 'assessment', 'exam', 'homework_eval', 'admin_task', 'other'];
-    const evaluationModes = ['none', 'marks', 'attentiveness'];
+    const [sessionTypes] = await conn.query(
+      `SELECT st.id, st.name, em.name AS eval_name
+       FROM session_types st
+       LEFT JOIN evaluation_modes em ON em.id = st.evaluation_mode
+       WHERE st.is_active = 1
+       ORDER BY st.name`
+    );
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('MentorSchedule');
@@ -62,7 +67,6 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
     const batchSheet = workbook.addWorksheet('Batches');
     const venueSheet = workbook.addWorksheet('Venues');
     const sessionTypeSheet = workbook.addWorksheet('SessionTypes');
-    const evalModeSheet = workbook.addWorksheet('EvalModes');
 
     // Populate hidden sheets with combined labels
     mentorSheet.addRow(['Mentor']);
@@ -84,10 +88,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
     venues.forEach(v => venueSheet.addRow([v.name]));
 
     sessionTypeSheet.addRow(['SessionType']);
-    sessionTypes.forEach(st => sessionTypeSheet.addRow([st]));
-
-    evalModeSheet.addRow(['EvalMode']);
-    evaluationModes.forEach(em => evalModeSheet.addRow([em]));
+    sessionTypes.forEach(st => sessionTypeSheet.addRow([`${st.name}[${st.eval_name || 'none'}]`]));
 
     // Hide the data sheets
     mentorSheet.state = 'veryHidden';
@@ -97,7 +98,6 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
     batchSheet.state = 'veryHidden';
     venueSheet.state = 'veryHidden';
     sessionTypeSheet.state = 'veryHidden';
-    evalModeSheet.state = 'veryHidden';
 
     // Main sheet columns
     sheet.columns = [
@@ -110,8 +110,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
       { header: 'Subject*', key: 'subject_name', width: 22 },
       { header: 'Batch (optional)', key: 'batch_name', width: 25 },
       { header: 'Venue*', key: 'venue_name', width: 20 },
-      { header: 'SessionType*', key: 'session_type', width: 20 },
-      { header: 'EvaluationMode*', key: 'evaluation_mode', width: 20 },
+      { header: 'SessionType*', key: 'session_type', width: 24 },
       { header: 'TotalMarks', key: 'total_marks', width: 15 },
       { header: 'AssessmentCycleName', key: 'assessment_cycle_name', width: 25 },
       { header: 'TaskDescription', key: 'task_description', width: 40 },
@@ -181,7 +180,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
         error: 'Please select a venue from the list'
       };
 
-      // SessionType dropdown
+      // SessionType dropdown (label includes evaluation mode)
       sheet.getCell(`J${i}`).dataValidation = {
         type: 'list',
         allowBlank: false,
@@ -189,16 +188,6 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
         showErrorMessage: true,
         errorTitle: 'Invalid Session Type',
         error: 'Please select a valid session type'
-      };
-
-      // EvaluationMode dropdown
-      sheet.getCell(`K${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: false,
-        formulae: [`EvalModes!$A$2:$A$${evaluationModes.length + 1}`],
-        showErrorMessage: true,
-        errorTitle: 'Invalid Evaluation Mode',
-        error: 'Please select a valid evaluation mode'
       };
     }
 
@@ -213,8 +202,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
       subject_name: subjects.length > 0 ? `${subjects[0].subject_name}[${subjects[0].grade_name}-${subjects[0].section_name}]` : 'Mathematics[Grade 1-A]',
       batch_name: batches.length > 0 ? `${batches[0].batch_name}[${batches[0].grade_name}-${batches[0].section_name}-${batches[0].subject_name}]` : '',
       venue_name: venues.length > 0 ? venues[0].name : 'Room 101',
-      session_type: 'class',
-      evaluation_mode: 'attentiveness',
+      session_type: sessionTypes.length > 0 ? sessionTypes[0].name : 'class',
       total_marks: '',
       assessment_cycle_name: '',
       task_description: 'Regular class session',
@@ -244,7 +232,7 @@ exports.uploadMentorSchedule = async (req, res) => {
 		return res.status(400).json({ success: false, message: 'No file uploaded' });
 	}
 
-	const results = { processed: 0, succeeded: 0, failed: [] };
+  const results = { processed: 0, succeeded: 0, failed: [] };
 
 	let conn;
 
@@ -257,8 +245,28 @@ exports.uploadMentorSchedule = async (req, res) => {
 			return res.status(400).json({ success: false, message: 'Invalid Excel: No worksheet found' });
 		}
 
-		conn = await db.getConnection();
-		const academicYearId = req.activeAcademicYearId;
+    conn = await db.getConnection();
+    const academicYearId = req.activeAcademicYearId;
+
+    // Pre-fetch session types with their evaluation modes (active)
+    const [sessionTypes] = await conn.query(
+      `SELECT st.id, st.name, em.name AS eval_name
+       FROM session_types st
+       LEFT JOIN evaluation_modes em ON em.id = st.evaluation_mode
+       WHERE st.is_active = 1
+       ORDER BY st.name`
+    );
+    const sessionTypeMapDb = new Map(sessionTypes.map(st => [String(st.name).toLowerCase(), st]));
+
+    const scheduleTypeMap = {
+      class: 'class_session',
+      lab: 'class_session',
+      assessment: 'exam',
+      exam: 'exam',
+      homework_eval: 'homework',
+      admin_task: 'class_session',
+      other: 'class_session',
+    };
 
 		for (let i = 2; i <= sheet.rowCount; i++) {
 			const row = sheet.getRow(i);
@@ -285,21 +293,28 @@ exports.uploadMentorSchedule = async (req, res) => {
         const batchName = batchRaw.includes('[') ? batchRaw.split('[')[0].trim() : batchRaw; // Single batch now
         const venueName = String(row.getCell(9).value || '').trim();
         const sessionTypeRaw = String(row.getCell(10).value || '').trim().toLowerCase();
-        const evalModeRaw = String(row.getCell(11).value || '').trim().toLowerCase();
-        const totalMarksCell = row.getCell(12).value;
-        const assessmentCycleName = String(row.getCell(13).value || '').trim();
-        const taskDescription = String(row.getCell(14).value || '').trim();
+        const totalMarksCell = row.getCell(11).value;
+        const assessmentCycleName = String(row.getCell(12).value || '').trim();
+        const taskDescription = String(row.getCell(13).value || '').trim();
 
         if (!facultyRollno || !dateStr || !startTimeStr || !endTimeStr || !gradeName || !sectionName || !subjectName || !venueName) {
           results.failed.push({ row: i, reason: 'Missing required fields' });
           continue;
         }
 
-        const allowedSessionTypes = ['class', 'lab', 'assessment', 'exam', 'homework_eval', 'admin_task', 'other'];
-        const allowedEvalModes = ['none', 'marks', 'attentiveness'];
-
-        const sessionType = allowedSessionTypes.includes(sessionTypeRaw) ? sessionTypeRaw : 'class';
-        const evaluationMode = allowedEvalModes.includes(evalModeRaw) ? evalModeRaw : 'none';
+        const sessionTypeName = sessionTypeRaw.includes('[')
+          ? sessionTypeRaw.split('[')[0].trim()
+          : sessionTypeRaw;
+        const sessionTypeRow = sessionTypeName
+          ? sessionTypeMapDb.get(sessionTypeName)
+          : (sessionTypes[0] || null);
+        if (!sessionTypeRow) {
+          results.failed.push({ row: i, reason: `Unknown session type: ${sessionTypeRaw || 'not provided'}` });
+          continue;
+        }
+        const sessionType = String(sessionTypeRow.name).toLowerCase();
+        const sessionTypeId = sessionTypeRow.id;
+        const evaluationMode = String(sessionTypeRow.eval_name || 'none').toLowerCase();
         const totalMarks = totalMarksCell ? parseInt(totalMarksCell, 10) : null;
 
         // Resolve mentor by rollno
@@ -377,8 +392,8 @@ exports.uploadMentorSchedule = async (req, res) => {
           `INSERT INTO mentor_calendar
            (mentor_id, academic_year, date, start_time, end_time, venue_id, grade_id, section_id, subject_id,
             context_activity_id, section_activity_topic_id, task_description, is_assessment, is_rescheduled, status,
-            created_at, session_type, evaluation_mode, total_marks, assessment_cycle_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, 0, 'scheduled', NOW(), ?, ?, ?, ?)`,
+            created_at, session_type_id, session_type, evaluation_mode, total_marks, assessment_cycle_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, 0, 'scheduled', NOW(), ?, ?, ?, ?, ?)`,
           [
             mentorId,
             academicYearId,
@@ -391,6 +406,7 @@ exports.uploadMentorSchedule = async (req, res) => {
             subjectRow.id,
             taskDescription || null,
             sessionType === 'assessment' || sessionType === 'exam' ? 1 : 0,
+            sessionTypeId,
             sessionType,
             evaluationMode,
             totalMarks || null,
