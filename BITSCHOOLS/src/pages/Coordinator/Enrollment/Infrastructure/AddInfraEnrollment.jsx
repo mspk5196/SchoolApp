@@ -1,4 +1,4 @@
-import { apiFetch } from "../../../../utils/apiClient.js";
+import ApiService from '../../../../utils/ApiService';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Alert, ActivityIndicator } from 'react-native';
 import styles from './AddInfraEnrollmentStyle';
@@ -136,15 +136,18 @@ const AddInfraEnrollment = ({ navigation, route }) => {
 
   const fetchGrades = async () => {
     try {
-      const response = await apiFetch(`/coordinator/enrollment/getGrades`, {
+      const resp = await ApiService.makeRequest(`/general/getGrades`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-
-      const data = response
-
-      if (data.success) {
-        setGrades(data.grades);
+      
+      const data = await resp.json();
+      console.log(data);
+      
+      if (data && data.success) {
+        setGrades(data.grades || data.data || []);
+      } else if (resp.ok && Array.isArray(data)) {
+        setGrades(data);
       } else {
         Alert.alert('No Grades Found', 'No grade is associated');
       }
@@ -156,14 +159,15 @@ const AddInfraEnrollment = ({ navigation, route }) => {
 
   const fetchSubject = async () => {
     try {
-      const response = await apiFetch(`/coordinator/enrollment/getSubjects`, {
+      const resp = await ApiService.makeRequest(`/coordinator/getSubjects`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-
-      const data = response
-      if (data.success) {
-        setSubject(data.subjects);
+      const data = await resp.json();
+      if (data && data.success) {
+        setSubject(data.subjects || data.data || []);
+      } else if (resp.ok && Array.isArray(data)) {
+        setSubject(data);
       }
     } catch (error) {
       console.error('Error fetching subject titles:', error);
@@ -172,14 +176,15 @@ const AddInfraEnrollment = ({ navigation, route }) => {
 
   const fetchBlock = async () => {
     try {
-      const response = await apiFetch(`/coordinator/enrollment/getBlocks`, {
+      const resp = await ApiService.makeRequest(`/coordinator/enrollment/getBlocks`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-
-      const data = response
-      if (data.success) {
-        setBlocks(data.blocks);
+      const data = await resp.json();
+      if (data && data.success) {
+        setBlocks(data.blocks || data.data || []);
+      } else if (resp.ok && Array.isArray(data)) {
+        setBlocks(data);
       }
     } catch (error) {
       console.error('Error fetching blocks:', error);
@@ -291,8 +296,9 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       setLoading(true);
       let response;
 
+      let resp;
       if (isEditing) {
-        response = await apiFetch(`/coordinator/enrollment/updateVenue/${editVenue.id}`, {
+        resp = await ApiService.makeRequest(`/coordinator/enrollment/updateVenue/${editVenue.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -300,7 +306,7 @@ const AddInfraEnrollment = ({ navigation, route }) => {
           body: JSON.stringify(venueData)
         });
       } else {
-        response = await apiFetch(`/coordinator/enrollment/createVenue`, {
+        resp = await ApiService.makeRequest(`/coordinator/enrollment/createVenue`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -309,10 +315,10 @@ const AddInfraEnrollment = ({ navigation, route }) => {
         });
       }
 
-      const responseData = response;
+      const responseData = await resp.json();
       console.log('Server response:', responseData); // Debug log
 
-      if (response) {
+      if (resp.ok || (responseData && responseData.success)) {
         Alert.alert('Success', isEditing ? 'Venue updated successfully' : 'Venue added successfully');
         navigation.goBack();
       } else {

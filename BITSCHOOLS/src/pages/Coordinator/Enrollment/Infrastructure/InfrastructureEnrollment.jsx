@@ -1,4 +1,4 @@
-import { apiFetch } from "../../../../utils/apiClient.js";
+import ApiService from '../../../../utils/ApiService';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, ActivityIndicator, RefreshControl, TouchableWithoutFeedback } from 'react-native';
 import { Menu, MenuOptions, MenuOption, MenuTrigger, MenuProvider } from 'react-native-popup-menu';
@@ -159,7 +159,8 @@ const Block = ({ title, classrooms, onEdit, onToggleStatus, onDelete }) => {
 const InfrastructureEnrollment = ({ navigation, route }) => {
   const params = route.params && route.params.data ? route.params.data : (route.params || {});
   const { userData } = params;
-
+  console.log(userData);
+  
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -181,10 +182,12 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
         setLoading(true);
       }
 
-      const response = await apiFetch(`/coordinator/enrollment/getAllVenues`);
-      const data = response
-      if (response) {
+      const resp = await ApiService.makeRequest(`/coordinator/enrollment/getAllVenues`, { method: 'GET' });
+      const data = await resp.json();
+      if (resp.ok) {
         setVenues(data);
+        console.log(data);
+        
       } else {
         throw new Error(data.message || 'Failed to fetch venues');
       }
@@ -259,7 +262,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
         created_by: venue.created_by
       };
 
-      navigation.navigate('AddInfraEnrollment', {
+      navigation.navigate('CoordinatorAddInfraEnrollment', {
         venue: cleanVenue,
         isEdit: true, // Pass isEdit as a separate parameter
         phone: userData.phone
@@ -274,7 +277,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
   const handleToggleStatus = async (venue) => {
     try {
       const newStatus = venue.status === 'Active' ? 'InActive' : 'Active';
-      const response = await apiFetch(`/coordinator/enrollment/updateVenueStatus/${venue.id}`, {
+      const resp = await ApiService.makeRequest(`/coordinator/enrollment/updateVenueStatus/${venue.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -282,12 +285,12 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
         body: JSON.stringify({ status: newStatus })
       });
 
-      if (response) {
+      const result = await resp.json();
+      if (resp.ok) {
         fetchVenues(false); // Refresh the list
         Alert.alert('Success', `Venue status updated to ${newStatus}`);
       } else {
-        const error = response;
-        throw new Error(error.message || 'Failed to update status');
+        throw new Error(result.message || 'Failed to update status');
       }
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -309,7 +312,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15 seconds
 
-              const response = await apiFetch(`/coordinator/enrollment/deleteVenue/${venue.id}`, {
+              const resp = await ApiService.makeRequest(`/coordinator/enrollment/deleteVenue/${venue.id}`, {
                 method: 'DELETE',
                 headers: {
                   'Content-Type': 'application/json',
@@ -319,29 +322,24 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
 
               clearTimeout(timeoutId);
 
-              // Check if response is ok (status 200-299)
-              if (response) {
+              if (resp.ok) {
                 try {
-                  const responseData = response;
+                  const responseData = await resp.json();
                   console.log('Delete response:', responseData);
-
-                  // Refresh the list immediately
-                  await fetchVenues(false);
-                  Alert.alert('Success', 'Venue deleted successfully');
                 } catch (jsonError) {
-                  // If JSON parsing fails but status was ok, deletion likely succeeded
                   console.log('Response ok but no JSON - deletion likely successful');
-                  await fetchVenues(false);
-                  Alert.alert('Success', 'Venue deleted successfully');
                 }
+
+                // Refresh the list immediately
+                await fetchVenues(false);
+                Alert.alert('Success', 'Venue deleted successfully');
               } else {
-                // If response is not ok, try to get error message
-                let errorMessage = `Failed to delete venue (Status: ${response.status})`;
+                let errorMessage = `Failed to delete venue (Status: ${resp.status})`;
                 try {
-                  const errorData = response;
+                  const errorData = await resp.json();
                   errorMessage = errorData.message || errorMessage;
                 } catch (jsonError) {
-                  // Keep the default error message with status code
+                  // Keep default message
                 }
                 throw new Error(errorMessage);
               }
@@ -482,7 +480,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
         {/* Floating Action Button */}
         <TouchableOpacity
           style={styles.floatingButton}
-          onPress={() => navigation.navigate('AddInfraEnrollment', { phone: userData.phone })}
+          onPress={() => navigation.navigate('CoordinatorAddInfraEnrollment', { phone: userData.phone })}
         >
           <MaterialCommunityIcons name="plus" size={24} color="#fff" />
         </TouchableOpacity>

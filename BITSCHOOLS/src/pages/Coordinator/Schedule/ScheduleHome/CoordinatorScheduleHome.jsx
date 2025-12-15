@@ -4,44 +4,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header, HomePageList } from '../../../../components';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const EnrollmentHome = ({ navigation }) => {
+const CoordinatorScheduleHome = ({ navigation }) => {
   const menuItems = [
     {
       id: '1',
-      title: 'Student Enrollment',
+      title: 'Mentor Schedule Upload',
       iconName: 'account-plus',
       iconType: 'MaterialCommunityIcons',
       color: '#7C3AED',
       bgColor: '#E9D5FF',
-      route: 'CoordinatorStudentEnrollment',
+      route: 'CoordinatorMentorScheduleUpload',
     },
-    {
-      id: '2',
-      title: 'Section Enrollment',
-      iconName: 'google-classroom',
-      iconType: 'MaterialCommunityIcons',
-      color: '#3B82F6',
-      bgColor: '#DBEAFE',
-      route: 'CoordinatorSectionEnrollment',
-    },
-    {
-      id: '3',
-      title: 'Subject Enrollment',
-      iconName: 'google-classroom',
-      iconType: 'MaterialCommunityIcons',
-      color: '#3B82F6',
-      bgColor: '#DBEAFE',
-      route: 'CoordinatorSubjectEnrollment',
-    },
-    {
-      id: '4',
-      title: 'Infrastructure Management',
-      iconName: 'calendar-check',
-      iconType: 'MaterialCommunityIcons',
-      color: '#059669',
-      bgColor: '#A7F3D0',
-      route: 'CoordinatorInfrastructureEnrollment',
-    }
+    
   ];
 
   const [userData, setUserData] = useState(null);
@@ -65,17 +39,17 @@ const EnrollmentHome = ({ navigation }) => {
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['bottom', 'left', 'right']}>
       <Header
-        title="Enrollment Home" 
+        title="Schedule Home" 
         navigation={navigation}
       />
       <HomePageList 
         menuItems={menuItems} 
         navigation={navigation}
-        homeRoute="AdminMain"
+        homeRoute="CoordinatorMain"
         data={{ userData }}
       />
     </SafeAreaView>
   );
 };
 
-export default EnrollmentHome;
+export default CoordinatorScheduleHome;

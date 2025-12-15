@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../config/env';
 import { Platform, Alert, PermissionsAndroid } from 'react-native';
-import RNFetchBlob from 'react-native-blob-util';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
 
@@ -259,96 +258,62 @@ class ApiService {
           console.warn('Permission error:', permErr);
         }
 
-        const downloadDir = '/storage/emulated/0/Download';
-        // Start with fallback filename; will rename if server provides one
-        let filePath = `${downloadDir}/${filename}`;
-
-
-        // Ensure the Downloads directory exists
-        const dirExists = await RNFetchBlob.fs.isDir(downloadDir);
-        if (!dirExists) {
-          console.log('Creating Downloads directory...');
-          await RNFetchBlob.fs.mkdir(downloadDir);
+        const tryDirs = [RNFS.DownloadDirectoryPath, RNFS.ExternalDirectoryPath].filter(Boolean);
+        if (!tryDirs.length) {
+          throw new Error('Unable to resolve download directory');
         }
 
-        const result = await RNFetchBlob.config({
-          fileCache: true,
-          path: filePath,
-        }).fetch(
-          'GET',
-          fullUrl,
-          accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
-        );
+        let dest = '';
+        let lastErr = null;
 
-        console.log('Fetch completed');
-
-        // Check response status
-        const info = result.info();
-        const statusCode = info.status;
-        
-        console.log('Response status:', statusCode);
-        console.log('Response info:', JSON.stringify(info));
-
-        if (statusCode < 200 || statusCode >= 300) {
-          throw new Error(`Server returned status ${statusCode}`);
-        }
-
-        // Try to extract filename from Content-Disposition header and rename file
-        try {
-          const headers = info && (info.headers || info.respInfo || {});
-          // RNFetchBlob on Android often exposes headers under respInfo.headers
-          const hdrs = headers.headers || headers;
-          const cd = hdrs['Content-Disposition'] || hdrs['content-disposition'] || hdrs['Content-disposition'];
-          if (cd && typeof cd === 'string') {
-            const match = cd.match(/filename\*=UTF-8''([^;\n\r]+)|filename="?([^";\n\r]+)"?/i);
-            const extracted = match ? (decodeURIComponent(match[1] || match[2]).trim()) : null;
-            if (extracted && extracted.length > 0) {
-              const targetPath = `${downloadDir}/${extracted}`;
-              if (targetPath !== filePath) {
-                try {
-                  await RNFetchBlob.fs.mv(filePath, targetPath);
-                  filePath = targetPath;
-                } catch (mvErr) {
-                  console.warn('Rename to server filename failed, keeping fallback:', mvErr);
-                }
-              }
+        for (const dir of tryDirs) {
+          try {
+            const dirExists = await RNFS.exists(dir);
+            if (!dirExists) {
+              await RNFS.mkdir(dir);
             }
+
+            dest = `${dir}/${filename}`;
+
+            const result = await RNFS.downloadFile({
+              fromUrl: fullUrl,
+              toFile: dest,
+              headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+            }).promise;
+
+            if (!result.statusCode || result.statusCode < 200 || result.statusCode >= 300) {
+              throw new Error(`HTTP ${result.statusCode || 'unknown'}`);
+            }
+
+            const exists = await RNFS.exists(dest);
+            if (!exists) {
+              throw new Error('File was not saved to device');
+            }
+
+            const stats = await RNFS.stat(dest);
+            if (!stats.size || stats.size === 0) {
+              throw new Error('Downloaded file is empty');
+            }
+
+            try {
+              await FileViewer.open(dest, { showOpenWithDialog: true });
+            } catch (viewerError) {
+              console.log('File saved but could not open viewer:', viewerError);
+            }
+
+            return {
+              success: true,
+              path: dest,
+              message: `File saved successfully!\nLocation: ${dest}`,
+            };
+          } catch (err) {
+            console.warn(`Download attempt failed for dir ${dir}:`, err?.message || err);
+            lastErr = err;
+            dest = '';
           }
-        } catch (nameErr) {
-          console.warn('Filename extraction failed:', nameErr);
         }
 
-        // Verify file exists
-        const fileExists = await RNFetchBlob.fs.exists(filePath);
-        console.log('File exists after download:', fileExists);
-
-        if (!fileExists) {
-          throw new Error('File was not saved to device');
-        }
-
-        // Get file stats
-        const fileStats = await RNFetchBlob.fs.stat(filePath);
-        console.log('File size:', fileStats.size, 'bytes');
-
-        if (fileStats.size === 0) {
-          throw new Error('Downloaded file is empty');
-        }
-
-        // For Android, we can manually trigger a media scan to make file visible
-        try {
-          await RNFetchBlob.fs.scanFile([{ path: filePath }]);
-          console.log('Media scan completed');
-        } catch (scanErr) {
-          console.warn('Media scan failed:', scanErr);
-        }
-
-        console.log('Download successful!');
-
-        return {
-          success: true,
-          path: filePath,
-          message: `File saved successfully!\nCheck: Files > Downloads > ${filePath.substring(filePath.lastIndexOf('/') + 1)}`,
-        };
+        throw lastErr || new Error('Download failed');
       } else {
         // iOS: Use RNFS
         let dest = `${RNFS.DocumentDirectoryPath}/${filename}`;

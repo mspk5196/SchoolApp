@@ -5,6 +5,7 @@ const enrollmentController = require('../controllers/coordinator/enrollmentContr
 const coordinatorController = require('../controllers/coordinator/coordinatorController');
 const subjectAllotmentController = require('../controllers/coordinator/subjectAllotmentController');
 const materialController = require('../controllers/coordinator/materialController');
+const scheduleController = require('../controllers/coordinator/scheduleController');
 const infrastructureEnrollment = require('../controllers/coordinator/infrastructureController');
 const { authenticateToken } = require('../middleware/auth');
 const getAcademicYear = require('../middleware/getAcademicYear');
@@ -105,5 +106,11 @@ router.post('/academic-year/upload', upload.single('file'), materialController.u
 
 // Utility routes
 router.post('/getSectionSubjects',  materialController.getSectionSubjects);
+
+
+//Schedule
+router.get('/schedule/mentor/generate-template', scheduleController.generateMentorScheduleTemplate);
+router.post('/schedule/mentor/upload', upload.single('file'), scheduleController.uploadMentorSchedule);
+
 module.exports = router;
 

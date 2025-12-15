@@ -5,6 +5,8 @@ import CoordinatorEnrollmentHome from '../../pages/Coordinator/Enrollment/Home/E
 import CoordinatorMentorHome from '../../pages/Coordinator/Mentor/Home/CoordinatorMentorHome';
 import CoordinatorStudentEnrollment from '../../pages/Coordinator/Enrollment/StudentEnrollment/StudentEnrollment';
 import CoordinatorSectionEnrollment from '../../pages/Coordinator/Enrollment/SectionEnrollment/CoordinatorSectionEnrollment';
+import InfrastructureEnrollment from '../../pages/Coordinator/Enrollment/Infrastructure/InfrastructureEnrollment';
+import AddInfraEnrollment from '../../pages/Coordinator/Enrollment/Infrastructure/AddInfraEnrollment';
 import CoordinatorSubjectMentor from '../../pages/Coordinator/Mentor/SubjectMapping/CoordinatorSubjectMentor';
 import CoordinatorMentorMapping from '../../pages/Coordinator/Mentor/SectionMapping/CoordinatorMentorMapping';
 import CoordinatorSectionStudents from '../../pages/Coordinator/Mentor/SectionMapping/SectionStudents/CoordinatorSectionStudents';
@@ -17,6 +19,9 @@ import BatchDetails from '../../pages/Coordinator/Materials/BatchManagement/Batc
 import TopicHierarchyManagement from '../../pages/Coordinator/Materials/TopicHierarchy/TopicHierarchyManagement';
 import TopicMaterials from '../../pages/Coordinator/Materials/TopicHierarchy/TopicMaterials';
 
+import CoordinatorScheduleHome from '../../pages/Coordinator/Schedule/ScheduleHome/CoordinatorScheduleHome';
+import MentorScheduleUpload from '../../pages/Coordinator/Schedule/MentorSchedule/MentorScheduleUpload';
+
 const Stack = createNativeStackNavigator();
 
 const CoordinatorRoutes = () => {
@@ -24,11 +29,15 @@ const CoordinatorRoutes = () => {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="CoordinatorHome" component={CoordinatorHome} />
 
+      {/* Enrollment Management Routes */}
       <Stack.Screen name="CoordinatorEnrollmentHome" component={CoordinatorEnrollmentHome} />
       <Stack.Screen name="CoordinatorStudentEnrollment" component={CoordinatorStudentEnrollment} />
       <Stack.Screen name="CoordinatorSectionEnrollment" component={CoordinatorSectionEnrollment} />
       <Stack.Screen name="CoordinatorSubjectEnrollment" component={SubjectAllotment} />
+      <Stack.Screen name="CoordinatorInfrastructureEnrollment" component={InfrastructureEnrollment} />
+      <Stack.Screen name="CoordinatorAddInfraEnrollment" component={AddInfraEnrollment} />
 
+      {/* Mentor Management Routes */}
       <Stack.Screen name="CoordinatorMentorHome" component={CoordinatorMentorHome} />
       <Stack.Screen name="CoordinatorSubjectMentor" component={CoordinatorSubjectMentor} />
       <Stack.Screen name="CoordinatorMentorMapping" component={CoordinatorMentorMapping} />
@@ -40,6 +49,10 @@ const CoordinatorRoutes = () => {
       <Stack.Screen name="BatchDetails" component={BatchDetails} />
       <Stack.Screen name="TopicHierarchyManagement" component={TopicHierarchyManagement} />
       <Stack.Screen name="TopicMaterials" component={TopicMaterials} />
+
+      {/* Schedule */}
+       <Stack.Screen name="CoordinatorScheduleHome" component={CoordinatorScheduleHome} />
+      <Stack.Screen name="CoordinatorMentorScheduleUpload" component={MentorScheduleUpload} />
     </Stack.Navigator>
   );
 };

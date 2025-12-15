@@ -15,18 +15,36 @@ exports.getBlocks = async (req, res) => {
 exports.getAllVenues = async (req, res) => {
     try {
         const sql = `
-                SELECT v.id, v.name, v.block AS block_id, b.block_name, v.floor, v.capacity, v.type, v.created_by,
-                             vs.status as venue_status, vs.is_usable, vs.approved_at, vs.rejected_at, vs.rejection_reason,
-                             vu.is_under_use
+                SELECT 
+                    v.id,
+                    v.name,
+                    v.block AS block_id,
+                    b.block_name,
+                    b.block_name AS block,
+                    v.floor,
+                    v.capacity,
+                    v.type,
+                    v.created_by,
+                    vs.status AS venue_status,
+                    CASE WHEN vs.status = 'Accepted' THEN 1 ELSE 0 END AS is_accepted,
+                    CASE WHEN vu.is_under_use = 1 THEN 'Active' ELSE 'InActive' END AS status,
+                    vs.is_usable,
+                    vs.approved_at,
+                    vs.rejected_at,
+                    vs.rejection_reason,
+                    vu.is_under_use,
+                    v.created_at
                 FROM venues v
                 LEFT JOIN infra_blocks b ON v.block = b.id
                 LEFT JOIN (
                     SELECT vs1.* FROM venue_status vs1
-                    JOIN (SELECT venue_id, MAX(id) as maxid FROM venue_status GROUP BY venue_id) mx ON vs1.venue_id = mx.venue_id AND vs1.id = mx.maxid
+                    JOIN (SELECT venue_id, MAX(id) AS maxid FROM venue_status GROUP BY venue_id) mx 
+                        ON vs1.venue_id = mx.venue_id AND vs1.id = mx.maxid
                 ) vs ON vs.venue_id = v.id
                 LEFT JOIN (
                     SELECT vu1.* FROM venue_usage vu1
-                    JOIN (SELECT venue_id, MAX(id) as maxid FROM venue_usage GROUP BY venue_id) mv ON vu1.venue_id = mv.venue_id AND vu1.id = mv.maxid
+                    JOIN (SELECT venue_id, MAX(id) AS maxid FROM venue_usage GROUP BY venue_id) mv 
+                        ON vu1.venue_id = mv.venue_id AND vu1.id = mv.maxid
                 ) vu ON vu.venue_id = v.id
                 ORDER BY b.block_name, v.name
             `;
@@ -39,26 +57,61 @@ exports.getAllVenues = async (req, res) => {
     }
 };
 
-// Create a new venue
+// Create a new venue (and initialize related tables)
 exports.createVenue = async (req, res) => {
+    let conn;
     try {
         const { name, block_id, floor, capacity, type } = req.body;
         // created_by should come from authenticated user
         const createdBy = req.user && req.user.id ? req.user.id : null;
 
-        if (!name || !block_id || !floor || !capacity) {
+        if (!name || !block_id || floor === undefined || !capacity) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
 
-        const [result] = await db.query(
-            `INSERT INTO venues (name, block, floor, capacity, type, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        conn = await db.getConnection();
+        await conn.beginTransaction();
+
+        // 1) Insert into venues
+        const [venueResult] = await conn.query(
+            `INSERT INTO venues (name, block, floor, capacity, type, created_by, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
             [name, block_id, floor, capacity, type || 'Academic class', createdBy]
         );
 
-        return res.json({ success: true, message: 'Venue created', venueId: result.insertId });
+        const venueId = venueResult.insertId;
+
+        // 2) Initialize venue_status with a Pending, usable status
+        await conn.query(
+            `INSERT INTO venue_status (venue_id, status, is_usable, status_updated_by, created_at)
+             VALUES (?, 'Pending', 1, ?, NOW())`,
+            [venueId, createdBy]
+        );
+
+        // 3) Initialize venue_usage with not under use
+        await conn.query(
+            `INSERT INTO venue_usage (venue_id, is_under_use, updated_at)
+             VALUES (?, 0, NOW())`,
+            [venueId]
+        );
+
+        await conn.commit();
+
+        return res.json({ success: true, message: 'Venue created', venueId });
     } catch (error) {
+        if (conn) {
+            try {
+                await conn.rollback();
+            } catch (rollbackErr) {
+                console.error('Error rolling back venue creation transaction:', rollbackErr);
+            }
+        }
         console.error('Error creating venue:', error);
         return res.status(500).json({ success: false, message: 'Failed to create venue', error: error.message });
+    } finally {
+        if (conn) {
+            conn.release();
+        }
     }
 };
 
