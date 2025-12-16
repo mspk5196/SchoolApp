@@ -327,7 +327,22 @@ class ApiService {
               await RNFS.mkdir(dir);
             }
 
-            dest = `${dir}/${filename}`;
+            // Avoid overwriting existing files: if the name exists, append (1), (2), ...
+            const extIndex = filename.lastIndexOf('.');
+            const baseName = extIndex !== -1 ? filename.substring(0, extIndex) : filename;
+            const ext = extIndex !== -1 ? filename.substring(extIndex) : '';
+
+            let candidate = `${dir}/${filename}`;
+            let counter = 1;
+            // Loop until we find a filename that does not yet exist
+            // e.g. mentor_schedule_template(1).xlsx, mentor_schedule_template(2).xlsx, ...
+            // This ensures the file manager will show each download separately.
+            while (await RNFS.exists(candidate)) {
+              candidate = `${dir}/${baseName}(${counter})${ext}`;
+              counter += 1;
+            }
+
+            dest = candidate;
 
             const result = await RNFS.downloadFile({
               fromUrl: fullUrl,

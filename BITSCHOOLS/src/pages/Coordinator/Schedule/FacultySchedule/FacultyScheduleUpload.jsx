@@ -14,11 +14,11 @@ const FacultyScheduleUpload = ({ navigation }) => {
       setLoadingTemplate(true);
       const result = await ApiService.downloadFile(
         '/coordinator/schedule/mentor/generate-template',
-        'mentor_schedule_template.xlsx',
+        'faculty_schedule_template.xlsx',
         {
           mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          title: 'Mentor Schedule Template',
-          description: 'Template to upload mentor schedules',
+          title: 'Faculty Schedule Template',
+          description: 'Template to upload faculty schedules',
         },
       );
       Alert.alert('Success', result.message || 'Template downloaded successfully.');

@@ -1,7 +1,7 @@
 const db = require('../../config/db');
 const ExcelJS = require('exceljs');
 
-// Generate Excel template for mentor schedule upload with dropdowns and dependent data
+// Generate Excel template for faculty schedule upload with dropdowns and dependent data
 exports.generateMentorScheduleTemplate = async (req, res) => {
   let conn;
   try {
@@ -9,10 +9,10 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
     const academicYearId = req.activeAcademicYearId;
 
     // Fetch all necessary data for dropdowns
-    const [mentors] = await conn.query(`
+    // All faculty with a roll number can be scheduled
+    const [faculty] = await conn.query(`
       SELECT DISTINCT f.roll, f.name
       FROM faculty f
-      JOIN mentors m ON m.faculty_id = f.id
       WHERE f.roll IS NOT NULL
       ORDER BY f.roll
     `);
@@ -48,6 +48,26 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
 
     const [venues] = await conn.query('SELECT id, name FROM venues ORDER BY name');
 
+    // Venue mappings with academic context (grade/section/batch/activity)
+    const [venueMappings] = await conn.query(`
+      SELECT 
+        vm.id,
+        v.name AS venue_name,
+        g.grade_name,
+        s.section_name,
+        b.batch_name,
+        a.name AS activity_name
+      FROM venue_mappings vm
+      JOIN venues v ON v.id = vm.venue_id
+      LEFT JOIN grades g ON vm.grade_id = g.id
+      LEFT JOIN sections s ON vm.section_id = s.id
+      LEFT JOIN section_batches b ON vm.batch_id = b.id
+      LEFT JOIN context_activities ca ON vm.context_activity_id = ca.id
+      LEFT JOIN activities a ON ca.activity_id = a.id
+      WHERE vm.is_active = 1
+      ORDER BY v.name, g.grade_name, s.section_name, b.batch_name, a.name
+    `);
+
     const [sessionTypes] = await conn.query(
       `SELECT st.id, st.name, em.name AS eval_name
        FROM session_types st
@@ -56,52 +76,193 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
        ORDER BY st.name`
     );
 
+    // Pre-fetch context activities with grade/section/subject for context_activity dropdown
+    const [contextActivities] = await conn.query(
+      `SELECT 
+         ca.id AS context_activity_id,
+         g.grade_name,
+         s.section_name,
+         sub.subject_name,
+         a.name AS activity_name,
+         ca.parent_context_id
+       FROM context_activities ca
+       JOIN activities a ON ca.activity_id = a.id
+       JOIN grades g ON g.id = ca.grade_id
+       JOIN sections s ON s.id = ca.section_id
+       JOIN subjects sub ON sub.id = ca.subject_id
+       ORDER BY g.id, s.section_name, sub.subject_name, ca.parent_context_id, a.name`
+    );
+
+    // Fetch active assessment cycles for the current academic year
+    const [assessmentCycles] = await conn.query(
+      `SELECT 
+         ac.id,
+         ac.name,
+         ac.context_activity_id,
+         g.grade_name,
+         s.section_name,
+         sub.subject_name,
+         sb.batch_name,
+         a.name AS activity_name
+       FROM assessment_cycles ac
+       JOIN academic_years ay ON ay.id = ac.academic_year_id
+       LEFT JOIN grades g ON g.id = ac.grade_id
+       LEFT JOIN sections s ON s.id = ac.section_id
+       LEFT JOIN subjects sub ON sub.id = ac.subject_id
+       LEFT JOIN section_batches sb ON sb.id = ac.batch_id
+       LEFT JOIN context_activities ca ON ca.id = ac.context_activity_id
+       LEFT JOIN activities a ON a.id = ca.activity_id
+       WHERE ac.academic_year_id = ? AND ac.is_active = 1
+       ORDER BY ac.name`,
+      [academicYearId]
+    );
+
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('MentorSchedule');
+    const sheet = workbook.addWorksheet('FacultySchedule');
 
     // Create hidden data sheets for dropdowns
-    const mentorSheet = workbook.addWorksheet('Mentors');
+    const facultySheet = workbook.addWorksheet('Faculty');
+    const roleSheet = workbook.addWorksheet('Roles');
     const gradeSheet = workbook.addWorksheet('Grades');
     const sectionSheet = workbook.addWorksheet('Sections');
     const subjectSheet = workbook.addWorksheet('Subjects');
     const batchSheet = workbook.addWorksheet('Batches');
     const venueSheet = workbook.addWorksheet('Venues');
     const sessionTypeSheet = workbook.addWorksheet('SessionTypes');
+    const assessmentCycleSheet = workbook.addWorksheet('AssessmentCycles');
+    const contextActivitySheet = workbook.addWorksheet('ContextActivities');
 
     // Populate hidden sheets with combined labels
-    mentorSheet.addRow(['Mentor']);
-    mentors.forEach(m => mentorSheet.addRow([`${m.roll}[${m.name}]`]));
+    facultySheet.addRow(['Faculty']);
+    faculty.forEach(f => facultySheet.addRow([`${f.roll}[${f.name}]`]));
+
+    roleSheet.addRow(['ActingRole']);
+    roleSheet.addRow(['mentor']);
+    roleSheet.addRow(['coordinator']);
 
     gradeSheet.addRow(['Grade']);
     grades.forEach(g => gradeSheet.addRow([g.grade_name]));
 
-    sectionSheet.addRow(['Section[Grade]']);
-    sections.forEach(s => sectionSheet.addRow([`${s.section_name}[${s.grade_name}]`]));
+    // Sections: Grade, Section (for dependent dropdown by grade)
+    sectionSheet.addRow(['Grade', 'Section']);
+    sections.forEach(s => sectionSheet.addRow([s.grade_name, s.section_name]));
 
-    subjectSheet.addRow(['Subject[Grade-Section]']);
-    subjects.forEach(sub => subjectSheet.addRow([`${sub.subject_name}[${sub.grade_name}-${sub.section_name}]`]));
+    // Subjects: key (Grade|Section), Subject (for dependent dropdown by grade+section)
+    subjectSheet.addRow(['Key_Grade_Section', 'Subject']);
+    subjects.forEach(sub => {
+      subjectSheet.addRow([`${sub.grade_name}|${sub.section_name}`, sub.subject_name]);
+    });
 
-    batchSheet.addRow(['Batch[Grade-Section-Subject]']);
-    batches.forEach(b => batchSheet.addRow([`${b.batch_name}[${b.grade_name}-${b.section_name}-${b.subject_name}]`]));
+    // Batches: key (Grade|Section|Subject), Batch (for dependent dropdown by grade+section+subject)
+    batchSheet.addRow(['Key_Grade_Section_Subject', 'Batch']);
+    batches.forEach(b => {
+      batchSheet.addRow([`${b.grade_name}|${b.section_name}|${b.subject_name}`, b.batch_name]);
+    });
 
-    venueSheet.addRow(['Venue']);
-    venues.forEach(v => venueSheet.addRow([v.name]));
+    // Venue sheet: key (Grade|Section), label with optional batch/activity context
+    if (venueMappings.length > 0) {
+      venueSheet.addRow(['Key_Grade_Section', 'VenueLabel']);
+      venueMappings.forEach(vm => {
+        if (!vm.grade_name || !vm.section_name) return;
+        const parts = [];
+        if (vm.batch_name) parts.push(vm.batch_name);
+        if (vm.activity_name) parts.push(vm.activity_name);
+        const suffix = parts.length ? `[${parts.join('-')}]` : '';
+        venueSheet.addRow([`${vm.grade_name}|${vm.section_name}`, `${vm.venue_name}${suffix}`]);
+      });
+    } else {
+      // Fallback: plain venue names if no mappings yet
+      venueSheet.addRow(['Venue']);
+      venues.forEach(v => venueSheet.addRow([v.name]));
+    }
 
     sessionTypeSheet.addRow(['SessionType']);
     sessionTypes.forEach(st => sessionTypeSheet.addRow([`${st.name}[${st.eval_name || 'none'}]`]));
 
+    // Context activities sheet: key by Grade|Section|Subject|Batch, label is hierarchical activity path
+    const contextActivityRows = [];
+    const ctxMap = new Map();
+
+    const buildActivityPath = (ctx) => {
+      const names = [];
+      let current = ctx;
+      while (current) {
+        names.unshift(current.activity_name);
+        current = current.parent_context_id ? ctxMap.get(current.parent_context_id) : null;
+      }
+      return names.join(' > ');
+    };
+
+    if (contextActivities.length > 0) {
+      // Populate context map first so hierarchical paths can be built
+      contextActivities.forEach(ca => {
+        ctxMap.set(ca.context_activity_id, ca);
+      });
+
+      contextActivities.forEach(ca => {
+        const label = buildActivityPath(ca);
+        // Section-level (no batch)
+        contextActivityRows.push({
+          key: `${ca.grade_name}|${ca.section_name}|${ca.subject_name}|`,
+          label,
+        });
+
+        // Batch-specific rows for all batches under same grade/section/subject
+        const relatedBatches = batches.filter(
+          b => b.grade_name === ca.grade_name && b.section_name === ca.section_name && b.subject_name === ca.subject_name
+        );
+        relatedBatches.forEach(b => {
+          contextActivityRows.push({
+            key: `${ca.grade_name}|${ca.section_name}|${ca.subject_name}|${b.batch_name}`,
+            label,
+          });
+        });
+      });
+    }
+
+    contextActivitySheet.addRow(['Key_Grade_Section_Subject_Batch', 'ContextActivityLabel']);
+    contextActivityRows.forEach(row => contextActivitySheet.addRow([row.key, row.label]));
+
+    // Assessment cycles sheet with key (Grade|Section|Subject|Batch|Activity) and contextual label
+    assessmentCycleSheet.addRow([
+      'Key_Grade_Section_Subject_Batch_Activity',
+      'AssessmentCycleLabel[Grade-Section-Subject-Batch-Activity]',
+    ]);
+    assessmentCycles.forEach(ac => {
+      // Build activity label using the same hierarchical path as ContextActivities sheet when possible
+      let activityLabel = ac.activity_name || '';
+      if (ac.context_activity_id && ctxMap.has(ac.context_activity_id)) {
+        const ctx = ctxMap.get(ac.context_activity_id);
+        activityLabel = buildActivityPath(ctx);
+      }
+
+      const key = `${ac.grade_name || ''}|${ac.section_name || ''}|${ac.subject_name || ''}|${ac.batch_name || ''}|${activityLabel || ''}`;
+      const parts = [];
+      if (ac.grade_name) parts.push(ac.grade_name);
+      if (ac.section_name) parts.push(ac.section_name);
+      if (ac.subject_name) parts.push(ac.subject_name);
+      if (ac.batch_name) parts.push(ac.batch_name);
+      if (activityLabel) parts.push(activityLabel);
+      const suffix = parts.length ? `[${parts.join('-')}]` : '';
+      assessmentCycleSheet.addRow([key, `${ac.name}${suffix}`]);
+    });
+
     // Hide the data sheets
-    mentorSheet.state = 'veryHidden';
+    facultySheet.state = 'veryHidden';
+    roleSheet.state = 'veryHidden';
     gradeSheet.state = 'veryHidden';
     sectionSheet.state = 'veryHidden';
     subjectSheet.state = 'veryHidden';
     batchSheet.state = 'veryHidden';
     venueSheet.state = 'veryHidden';
     sessionTypeSheet.state = 'veryHidden';
+    assessmentCycleSheet.state = 'veryHidden';
+    contextActivitySheet.state = 'veryHidden';
 
     // Main sheet columns
     sheet.columns = [
       { header: 'FacultyRollno*', key: 'faculty_rollno', width: 16 },
+      { header: 'ActingRole* (mentor/coordinator)', key: 'acting_role', width: 22 },
       { header: 'Date* (YYYY-MM-DD)', key: 'date', width: 18 },
       { header: 'StartTime* (HH:MM)', key: 'start_time', width: 18 },
       { header: 'EndTime* (HH:MM)', key: 'end_time', width: 18 },
@@ -112,6 +273,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
       { header: 'Venue*', key: 'venue_name', width: 20 },
       { header: 'SessionType*', key: 'session_type', width: 24 },
       { header: 'TotalMarks', key: 'total_marks', width: 15 },
+      { header: 'ContextActivity', key: 'context_activity_name', width: 30 },
       { header: 'AssessmentCycleName', key: 'assessment_cycle_name', width: 25 },
       { header: 'TaskDescription', key: 'task_description', width: 40 },
     ];
@@ -120,18 +282,28 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
 
     // Add data validation (dropdowns) for 100 rows
     for (let i = 2; i <= 101; i++) {
-      // Mentor dropdown (roll[name])
+      // Faculty dropdown (roll[name])
       sheet.getCell(`A${i}`).dataValidation = {
         type: 'list',
         allowBlank: false,
-        formulae: [`Mentors!$A$2:$A$${mentors.length + 1}`],
+        formulae: [`Faculty!$A$2:$A$${faculty.length + 1}`],
         showErrorMessage: true,
-        errorTitle: 'Invalid Mentor',
-        error: 'Please select a mentor from the list (roll[name])'
+        errorTitle: 'Invalid Faculty',
+        error: 'Please select a faculty from the list (roll[name])'
+      };
+
+      // Acting role dropdown
+      sheet.getCell(`B${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: ['Roles!$A$2:$A$3'],
+        showErrorMessage: true,
+        errorTitle: 'Invalid Acting Role',
+        error: 'Please select acting role as mentor or coordinator',
       };
 
       // Grade dropdown
-      sheet.getCell(`E${i}`).dataValidation = {
+      sheet.getCell(`F${i}`).dataValidation = {
         type: 'list',
         allowBlank: false,
         formulae: [`Grades!$A$2:$A$${grades.length + 1}`],
@@ -140,48 +312,78 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
         error: 'Please select a grade from the list'
       };
 
-      // Section dropdown labeled as Section[Grade]
-      sheet.getCell(`F${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: false,
-        formulae: [`Sections!$A$2:$A$${sections.length + 1}`],
-        showErrorMessage: true,
-        errorTitle: 'Invalid Section',
-        error: 'Please select a section (Section[Grade])'
-      };
+      // Section dropdown: only sections for selected grade (F)
+      if (sections.length > 0) {
+        sheet.getCell(`G${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: false,
+          formulae: [
+            `OFFSET(Sections!$B$2, MATCH($F${i}, Sections!$A$2:$A$${sections.length + 1}, 0)-1, 0, ` +
+              `COUNTIF(Sections!$A$2:$A$${sections.length + 1}, $F${i}), 1)`,
+          ],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Section',
+          error: 'Please select a section for the chosen grade',
+        };
+      }
 
-      // Subject dropdown labeled as Subject[Grade-Section]
-      sheet.getCell(`G${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: false,
-        formulae: [`Subjects!$A$2:$A$${subjects.length + 1}`],
-        showErrorMessage: true,
-        errorTitle: 'Invalid Subject',
-        error: 'Please select a subject (Subject[Grade-Section])'
-      };
+      // Subject dropdown: only subjects for selected grade (F) and section (G)
+      if (subjects.length > 0) {
+        sheet.getCell(`H${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: false,
+          formulae: [
+            `OFFSET(Subjects!$B$2, MATCH($F${i}&"|"&$G${i}, Subjects!$A$2:$A$${subjects.length + 1}, 0)-1, 0, ` +
+              `COUNTIF(Subjects!$A$2:$A$${subjects.length + 1}, $F${i}&"|"&$G${i}), 1)`,
+          ],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Subject',
+          error: 'Please select a subject for the chosen grade and section',
+        };
+      }
 
-      // Batch dropdown labeled as Batch[Grade-Section-Subject] (optional)
-      sheet.getCell(`H${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [`Batches!$A$2:$A$${batches.length + 1}`],
-        showErrorMessage: true,
-        errorTitle: 'Invalid Batch',
-        error: 'Please select a batch (Batch[Grade-Section-Subject])'
-      };
+      // Batch dropdown: only batches for selected grade (F), section (G) and subject (H)
+      if (batches.length > 0) {
+        sheet.getCell(`I${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [
+            `OFFSET(Batches!$B$2, MATCH($F${i}&"|"&$G${i}&"|"&$H${i}, Batches!$A$2:$A$${batches.length + 1}, 0)-1, 0, ` +
+              `COUNTIF(Batches!$A$2:$A$${batches.length + 1}, $F${i}&"|"&$G${i}&"|"&$H${i}), 1)`,
+          ],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Batch',
+          error: 'Please select a batch for the chosen grade, section and subject',
+        };
+      }
 
-      // Venue dropdown
-      sheet.getCell(`I${i}`).dataValidation = {
-        type: 'list',
-        allowBlank: false,
-        formulae: [`Venues!$A$2:$A$${venues.length + 1}`],
-        showErrorMessage: true,
-        errorTitle: 'Invalid Venue',
-        error: 'Please select a venue from the list'
-      };
+      // Venue dropdown: only venues mapped for selected grade (F) and section (G) when mappings exist
+      if (venueMappings.length > 0) {
+        sheet.getCell(`J${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: false,
+          formulae: [
+            `OFFSET(Venues!$B$2, MATCH($F${i}&"|"&$G${i}, Venues!$A$2:$A$${venueMappings.length + 1}, 0)-1, 0, ` +
+              `COUNTIF(Venues!$A$2:$A$${venueMappings.length + 1}, $F${i}&"|"&$G${i}), 1)`,
+          ],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Venue',
+          error: 'Please select a venue for the chosen grade and section',
+        };
+      } else {
+        // Fallback: plain venue list without academic context
+        sheet.getCell(`J${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: false,
+          formulae: [`Venues!$A$2:$A$${venues.length + 1}`],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Venue',
+          error: 'Please select a venue from the list',
+        };
+      }
 
       // SessionType dropdown (label includes evaluation mode)
-      sheet.getCell(`J${i}`).dataValidation = {
+      sheet.getCell(`K${i}`).dataValidation = {
         type: 'list',
         allowBlank: false,
         formulae: [`SessionTypes!$A$2:$A$${sessionTypes.length + 1}`],
@@ -189,22 +391,86 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
         errorTitle: 'Invalid Session Type',
         error: 'Please select a valid session type'
       };
+
+      // ContextActivity dropdown: only context activities for selected grade/section/subject/batch
+      if (contextActivityRows.length > 0) {
+        sheet.getCell(`M${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [
+            `OFFSET(ContextActivities!$B$2, MATCH($F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}, ` +
+              `ContextActivities!$A$2:$A$${contextActivityRows.length + 1}, 0)-1, 0, ` +
+              `COUNTIF(ContextActivities!$A$2:$A$${contextActivityRows.length + 1}, $F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}), 1)`,
+          ],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Context Activity',
+          error: 'Please select a valid context activity for the chosen grade/section/subject/batch',
+        };
+      }
+
+      // AssessmentCycle dropdown: only cycles for selected grade/section/subject/batch/context_activity
+      if (assessmentCycles.length > 0) {
+        sheet.getCell(`N${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [
+            `OFFSET(AssessmentCycles!$B$2, MATCH($F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}&"|"&$M${i}, ` +
+              `AssessmentCycles!$A$2:$A$${assessmentCycles.length + 1}, 0)-1, 0, ` +
+              `COUNTIF(AssessmentCycles!$A$2:$A$${assessmentCycles.length + 1}, $F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}&"|"&$M${i}), 1)`,
+          ],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Assessment Cycle',
+          error: 'Please select a valid assessment cycle for the chosen grade/section/subject/batch/context activity',
+        };
+      }
     }
 
     // Add example row
     sheet.addRow({
-      faculty_rollno: mentors.length > 0 ? `${mentors[0].roll}[${mentors[0].name}]` : 'M1001[John Doe]',
+      faculty_rollno: faculty.length > 0 ? `${faculty[0].roll}[${faculty[0].name}]` : 'F1001[John Doe]',
+      acting_role: 'mentor',
       date: '2025-12-20',
       start_time: '09:00',
       end_time: '09:50',
       grade_name: grades.length > 0 ? grades[0].grade_name : 'Grade 1',
-      section_name: sections.length > 0 ? `${sections[0].section_name}[${sections[0].grade_name}]` : 'A[Grade 1]',
-      subject_name: subjects.length > 0 ? `${subjects[0].subject_name}[${subjects[0].grade_name}-${subjects[0].section_name}]` : 'Mathematics[Grade 1-A]',
-      batch_name: batches.length > 0 ? `${batches[0].batch_name}[${batches[0].grade_name}-${batches[0].section_name}-${batches[0].subject_name}]` : '',
-      venue_name: venues.length > 0 ? venues[0].name : 'Room 101',
+      section_name: sections.length > 0 ? sections[0].section_name : 'A',
+      subject_name: subjects.length > 0 ? subjects[0].subject_name : 'Mathematics',
+      batch_name: batches.length > 0 ? batches[0].batch_name : '',
+      venue_name:
+        venueMappings.length > 0
+          ? (() => {
+              const vm = venueMappings[0];
+              const parts = [];
+              if (vm.batch_name) parts.push(vm.batch_name);
+              if (vm.activity_name) parts.push(vm.activity_name);
+              const suffix = parts.length ? `[${parts.join('-')}]` : '';
+              return `${vm.venue_name}${suffix}`;
+            })()
+          : (venues.length > 0 ? venues[0].name : 'Room 101'),
       session_type: sessionTypes.length > 0 ? sessionTypes[0].name : 'class',
       total_marks: '',
-      assessment_cycle_name: '',
+      context_activity_name: contextActivityRows.length > 0 ? contextActivityRows[0].label : '',
+      assessment_cycle_name:
+        assessmentCycles.length > 0
+          ? (() => {
+              const ac = assessmentCycles[0];
+              // Build hierarchical activity label if possible
+              let activityLabel = ac.activity_name || '';
+              if (ac.context_activity_id && ctxMap.has(ac.context_activity_id)) {
+                const ctx = ctxMap.get(ac.context_activity_id);
+                activityLabel = buildActivityPath(ctx);
+              }
+
+              const parts = [];
+              if (ac.grade_name) parts.push(ac.grade_name);
+              if (ac.section_name) parts.push(ac.section_name);
+              if (ac.subject_name) parts.push(ac.subject_name);
+              if (ac.batch_name) parts.push(ac.batch_name);
+              if (activityLabel) parts.push(activityLabel);
+              const suffix = parts.length ? `[${parts.join('-')}]` : '';
+              return `${ac.name}${suffix}`;
+            })()
+          : '',
       task_description: 'Regular class session',
     });
 
@@ -212,10 +478,10 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
 
     const buffer = await workbook.xlsx.writeBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="mentor_schedule_template.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="faculty_schedule_template.xlsx"');
     return res.send(Buffer.from(buffer));
   } catch (err) {
-    console.error('Error generating mentor schedule template:', err);
+    console.error('Error generating faculty schedule template:', err);
     if (conn) conn.release();
   }
 };
@@ -226,7 +492,7 @@ async function fetchSingle(conn, sql, params) {
   return rows && rows.length ? rows[0] : null;
 }
 
-// Upload mentor schedule from Excel and create mentor & student schedules
+// Upload faculty schedule from Excel and create faculty & student schedules
 exports.uploadMentorSchedule = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -239,7 +505,10 @@ exports.uploadMentorSchedule = async (req, res) => {
   try {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(req.file.buffer);
-    const sheet = workbook.getWorksheet('MentorSchedule') || workbook.worksheets[0];
+    const sheet =
+      workbook.getWorksheet('FacultySchedule') ||
+      workbook.getWorksheet('MentorSchedule') ||
+      workbook.worksheets[0];
 
     if (!sheet) {
       return res.status(400).json({ success: false, message: 'Invalid Excel: No worksheet found' });
@@ -250,7 +519,8 @@ exports.uploadMentorSchedule = async (req, res) => {
 
     // Pre-fetch session types with their evaluation modes (active)
     const [sessionTypes] = await conn.query(
-      `SELECT st.id, st.name, em.name AS eval_name
+      `SELECT st.id, st.name, st.is_student_facing, em.name AS eval_name,
+              em.requires_marks, em.requires_attentiveness
        FROM session_types st
        LEFT JOIN evaluation_modes em ON em.id = st.evaluation_mode
        WHERE st.is_active = 1
@@ -275,30 +545,38 @@ exports.uploadMentorSchedule = async (req, res) => {
       results.processed++;
 
       try {
-        // Mentor value like M1001[Name] -> extract roll before '['
-        const mentorCellRaw = String(row.getCell(1).value || '').trim();
-        const facultyRollno = mentorCellRaw.includes('[') ? mentorCellRaw.split('[')[0].trim() : mentorCellRaw;
-        const dateStr = String(row.getCell(2).value || '').trim();
-        const startTimeStr = String(row.getCell(3).value || '').trim();
-        const endTimeStr = String(row.getCell(4).value || '').trim();
-        const gradeName = String(row.getCell(5).value || '').trim();
+        // Faculty value like F1001[Name] -> extract roll before '['
+        const facultyCellRaw = String(row.getCell(1).value || '').trim();
+        const facultyRollno = facultyCellRaw.includes('[') ? facultyCellRaw.split('[')[0].trim() : facultyCellRaw;
+        const actingRoleRaw = String(row.getCell(2).value || '').trim().toLowerCase();
+        const dateStr = String(row.getCell(3).value || '').trim();
+        const startTimeStr = String(row.getCell(4).value || '').trim();
+        const endTimeStr = String(row.getCell(5).value || '').trim();
+        const gradeName = String(row.getCell(6).value || '').trim();
         // Section value like SectionA[Grade1] -> take text before '['
-        const sectionRaw = String(row.getCell(6).value || '').trim();
+        const sectionRaw = String(row.getCell(7).value || '').trim();
         const sectionName = sectionRaw.includes('[') ? sectionRaw.split('[')[0].trim() : sectionRaw;
         // Subject value like Maths[Grade1-SectionA] -> take text before '['
-        const subjectRaw = String(row.getCell(7).value || '').trim();
+        const subjectRaw = String(row.getCell(8).value || '').trim();
         const subjectName = subjectRaw.includes('[') ? subjectRaw.split('[')[0].trim() : subjectRaw;
         // Batch value like BatchA[Grade1-SectionA-Maths] -> take text before '['
-        const batchRaw = String(row.getCell(8).value || '').trim();
+        const batchRaw = String(row.getCell(9).value || '').trim();
         const batchName = batchRaw.includes('[') ? batchRaw.split('[')[0].trim() : batchRaw; // Single batch now
-        const venueName = String(row.getCell(9).value || '').trim();
-        const sessionTypeRaw = String(row.getCell(10).value || '').trim().toLowerCase();
-        const totalMarksCell = row.getCell(11).value;
-        const assessmentCycleName = String(row.getCell(12).value || '').trim();
-        const taskDescription = String(row.getCell(13).value || '').trim();
+        const venueName = String(row.getCell(10).value || '').trim();
+        const sessionTypeRaw = String(row.getCell(11).value || '').trim().toLowerCase();
+        const totalMarksCell = row.getCell(12).value;
+        const contextActivityRaw = String(row.getCell(13).value || '').trim();
+        const assessmentCycleRaw = String(row.getCell(14).value || '').trim();
+        const taskDescription = String(row.getCell(15).value || '').trim();
 
-        if (!facultyRollno || !dateStr || !startTimeStr || !endTimeStr || !gradeName || !sectionName || !subjectName || !venueName) {
+        if (!facultyRollno || !actingRoleRaw || !dateStr || !startTimeStr || !endTimeStr || !gradeName || !sectionName || !subjectName || !venueName) {
           results.failed.push({ row: i, reason: 'Missing required fields' });
+          continue;
+        }
+
+        const actingRole = actingRoleRaw === 'coordinator' ? 'coordinator' : actingRoleRaw === 'mentor' ? 'mentor' : null;
+        if (!actingRole) {
+          results.failed.push({ row: i, reason: `Invalid acting role: ${actingRoleRaw}` });
           continue;
         }
 
@@ -314,24 +592,26 @@ exports.uploadMentorSchedule = async (req, res) => {
         }
         const sessionType = String(sessionTypeRow.name).toLowerCase();
         const sessionTypeId = sessionTypeRow.id;
-        const evaluationMode = String(sessionTypeRow.eval_name || 'none').toLowerCase();
+        // Determine evaluation mode for student schedules based on evaluation_modes flags
+        let evaluationMode = 'none';
+        if (sessionTypeRow.requires_marks) {
+          evaluationMode = 'marks';
+        } else if (sessionTypeRow.requires_attentiveness) {
+          evaluationMode = 'attentiveness';
+        }
         const totalMarks = totalMarksCell ? parseInt(totalMarksCell, 10) : null;
 
-        // Resolve mentor by rollno
-        const mentorRow = await fetchSingle(
+        // Resolve faculty by rollno
+        const facultyRow = await fetchSingle(
           conn,
-          `SELECT m.id AS mentor_id
-           FROM faculty f
-           JOIN mentors m ON m.faculty_id = f.id
-           WHERE f.roll = ?`,
+          `SELECT id FROM faculty WHERE roll = ?`,
           [facultyRollno]
         );
-        if (!mentorRow) {
-          results.failed.push({ row: i, reason: `Mentor not found for rollno ${facultyRollno}` });
+        if (!facultyRow) {
+          results.failed.push({ row: i, reason: `Faculty not found for rollno ${facultyRollno}` });
           continue;
         }
-
-        const mentorId = mentorRow.mentor_id;
+        const facultyId = facultyRow.id;
 
         // Resolve grade, section, subject
         const gradeRow = await fetchSingle(conn, 'SELECT id FROM grades WHERE grade_name = ?', [gradeName]);
@@ -356,14 +636,62 @@ exports.uploadMentorSchedule = async (req, res) => {
           continue;
         }
 
-        // Resolve venue by name
-        const venueRow = await fetchSingle(conn, 'SELECT id FROM venues WHERE name = ?', [venueName]);
+        // Resolve venue by name (strip any [Grade-Section-Batch-Activity] suffix from dropdown label)
+        const venueBaseName = venueName.includes('[') ? venueName.split('[')[0].trim() : venueName;
+        const venueRow = await fetchSingle(conn, 'SELECT id FROM venues WHERE name = ?', [venueBaseName]);
         if (!venueRow) {
           results.failed.push({ row: i, reason: `Unknown venue: ${venueName}` });
           continue;
         }
 
+        // Optional context activity
+        let contextActivityId = null;
+        const contextActivityLabel = contextActivityRaw;
+        if (contextActivityLabel) {
+          // Match by activity path leaf name (last segment) within grade/section/subject
+          const leafName = contextActivityLabel.includes('>')
+            ? contextActivityLabel.split('>').pop().trim()
+            : contextActivityLabel.trim();
+          const ctxRow = await fetchSingle(
+            conn,
+            `SELECT ca.id
+             FROM context_activities ca
+             JOIN activities a ON a.id = ca.activity_id
+             WHERE ca.grade_id = ? AND ca.section_id = ? AND ca.subject_id = ? AND a.name = ?`,
+            [gradeRow.id, sectionRow.id, subjectRow.id, leafName]
+          );
+          if (!ctxRow) {
+            results.failed.push({ row: i, reason: `Unknown context activity: ${contextActivityLabel} for ${gradeName}/${sectionName}/${subjectName}` });
+            continue;
+          }
+          contextActivityId = ctxRow.id;
+        }
+
+        // Validate date is not a holiday in academic calendar
+        const acRow = await fetchSingle(
+          conn,
+          `SELECT ac.id, dt.day_type
+           FROM academic_calendar ac
+           LEFT JOIN ac_day_types dt ON dt.id = ac.day_type
+           WHERE ac.academic_year = ? AND ac.date = ?`,
+          [academicYearId, dateStr]
+        );
+        if (!acRow) {
+          results.failed.push({ row: i, reason: `No academic calendar entry for date ${dateStr}` });
+          continue;
+        }
+        const dayType = (acRow.day_type || '').toLowerCase();
+        if (dayType.includes('holiday')) {
+          results.failed.push({ row: i, reason: `Date ${dateStr} is marked as holiday in academic calendar` });
+          continue;
+        }
+
         // Optional assessment cycle
+        // Extract plain assessment cycle name (before any [context] suffix)
+        const assessmentCycleName = assessmentCycleRaw.includes('[')
+          ? assessmentCycleRaw.split('[')[0].trim()
+          : assessmentCycleRaw;
+
         let assessmentCycleId = null;
         if (assessmentCycleName) {
           const existingCycle = await fetchSingle(
@@ -376,45 +704,63 @@ exports.uploadMentorSchedule = async (req, res) => {
           } else {
             const [ins] = await conn.query(
               `INSERT INTO assessment_cycles
-               (name, academic_year_id, grade_id, section_id, subject_id, frequency, period_start, period_end, default_total_marks, created_by, created_at)
-               VALUES (?, ?, ?, ?, ?, 'custom', NULL, NULL, ?, NULL, NOW())`,
+               (name, academic_year_id, grade_id, section_id, subject_id, frequency, period_start, period_end,
+                default_total_marks, is_active, created_by)
+               VALUES (?, ?, ?, ?, ?, 'custom', NULL, NULL, ?, 1, NULL)`,
               [assessmentCycleName, academicYearId, gradeRow.id, sectionRow.id, subjectRow.id, totalMarks || null]
             );
             assessmentCycleId = ins.insertId;
           }
         }
 
+        // Check for time overlap in faculty_calendar for this faculty/date
+        const overlap = await fetchSingle(
+          conn,
+          `SELECT id
+           FROM faculty_calendar
+           WHERE academic_year = ? AND faculty_id = ? AND date = ?
+             AND NOT (end_time <= ? OR start_time >= ?)` ,
+          [academicYearId, facultyId, dateStr, startTimeStr, endTimeStr]
+        );
+        if (overlap) {
+          results.failed.push({ row: i, reason: 'Time overlap with existing session for this faculty' });
+          continue;
+        }
+
         // Start transaction per row to keep failures isolated
         await conn.beginTransaction();
 
-        // Insert mentor session
+        // Insert faculty session
         const [sessionRes] = await conn.query(
-          `INSERT INTO mentor_calendar
-           (mentor_id, academic_year, date, start_time, end_time, venue_id, grade_id, section_id, subject_id,
-            context_activity_id, section_activity_topic_id, task_description, is_assessment, is_rescheduled, status,
-            created_at, session_type_id, session_type, evaluation_mode, total_marks, assessment_cycle_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, 0, 'scheduled', NOW(), ?, ?, ?, ?, ?)`,
+          `INSERT INTO faculty_calendar
+           (academic_year, acting_role, assessment_cycle_id, context_activity_id, created_at, date, end_time,
+            faculty_id, grade_id, id, is_rescheduled, section_activity_topic_id, section_id, session_type_id,
+            start_time, status, subject_id, task_description, total_marks, venue_id)
+           VALUES (?, ?, ?, ?, NOW(), ?, ?, ?, ?, NULL, 0, NULL, ?, ?, ?, 'scheduled', ?, ?, ?, ?)` ,
           [
-            mentorId,
             academicYearId,
+            actingRole,
+            assessmentCycleId,
+            contextActivityId,
             dateStr,
-            startTimeStr,
             endTimeStr,
-            venueRow.id,
+            facultyId,
             gradeRow.id,
             sectionRow.id,
+            sessionTypeId,
+            startTimeStr,
             subjectRow.id,
             taskDescription || null,
-            sessionType === 'assessment' || sessionType === 'exam' ? 1 : 0,
-            sessionTypeId,
-            sessionType,
-            evaluationMode,
             totalMarks || null,
-            assessmentCycleId,
+            venueRow.id,
           ]
         );
 
-        const mentorCalendarId = sessionRes.insertId;
+        const facultyCalendarId = sessionRes.insertId;
+
+        // Determine students for this session (by batch if provided, else by section)
+        let students = [];
+        let batchIdForStudents = null;
 
         // Attach batch if provided
         let batchIds = [];
@@ -432,36 +778,65 @@ exports.uploadMentorSchedule = async (req, res) => {
             results.failed.push({ row: i, reason: `Unknown batch: ${batchName} for ${gradeName}/${sectionName}/${subjectName}` });
             continue;
           }
-          batchIds.push(batchRow.id);
+          batchIdForStudents = batchRow.id;
           await conn.query(
-            'INSERT INTO session_batches (mentor_calendar_id, batch_id) VALUES (?, ?)',
-            [mentorCalendarId, batchRow.id]
+            'INSERT INTO session_batches (faculty_calendar_id, batch_id) VALUES (?, ?)',
+            [facultyCalendarId, batchRow.id]
           );
+          const [stuRows] = await conn.query(
+            `SELECT sba.student_id
+             FROM student_batch_assignments sba
+             WHERE sba.academic_year = ? AND sba.batch_id = ?`,
+            [academicYearId, batchIdForStudents]
+          );
+          students = stuRows;
         };
         const scheduleType = scheduleTypeMap[sessionType] || 'class_session';
 
-        // Insert student schedules for this session (only for class/lab/assessment/exam/homework_eval)
-        if (['class', 'lab', 'assessment', 'exam', 'homework_eval'].includes(sessionType) && students.length > 0) {
+        if (!batchIdForStudents) {
+          const [stuRows] = await conn.query(
+            `SELECT sm.student_id
+             FROM student_mappings sm
+             WHERE sm.academic_year = ? AND sm.section_id = ?`,
+            [academicYearId, sectionRow.id]
+          );
+          students = stuRows;
+        }
+
+        // Insert student schedules for this session if the session type is student facing
+        if (sessionTypeRow.is_student_facing && students.length > 0) {
+          // Optionally resolve mentor_id for student_schedule_calendar when acting_role is mentor
+          let mentorIdForStudents = null;
+          if (actingRole === 'mentor') {
+            const mentorRow = await fetchSingle(
+              conn,
+              'SELECT id FROM mentors WHERE faculty_id = ?',
+              [facultyId]
+            );
+            mentorIdForStudents = mentorRow ? mentorRow.id : null;
+          }
+
           for (const s of students) {
             await conn.query(
               `INSERT INTO student_schedule_calendar
-							 (student_id, grade_id, section_id, subject_id, mentor_id, context_activity_id, section_activity_topic_id,
-								task_description, date, start_time, end_time, venue_id, schedule_type, status, attendance, remarks,
-								created_at, mentor_calendar_id, evaluation_mode, total_marks)
-							 VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, 'scheduled', 'present', '', NOW(), ?, ?, ?)`,
+						 (student_id, grade_id, section_id, subject_id, mentor_id, context_activity_id, section_activity_topic_id,
+							 task_description, date, start_time, end_time, venue_id, schedule_type, status, attendance, remarks,
+							 created_at, faculty_calendar_id, evaluation_mode, total_marks)
+						 VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 'scheduled', 'present', '', NOW(), ?, ?, ?)`,
               [
                 s.student_id,
                 gradeRow.id,
                 sectionRow.id,
                 subjectRow.id,
-                mentorId,
+                mentorIdForStudents,
+                contextActivityId,
                 taskDescription || null,
                 dateStr,
                 startTimeStr,
                 endTimeStr,
                 venueRow.id,
                 scheduleType,
-                mentorCalendarId,
+                facultyCalendarId,
                 evaluationMode,
                 totalMarks || null,
               ]
@@ -485,11 +860,11 @@ exports.uploadMentorSchedule = async (req, res) => {
 
     if (conn) conn.release();
 
-    return res.json({ success: true, message: 'Mentor schedule upload completed', data: results });
+    return res.json({ success: true, message: 'Faculty schedule upload completed', data: results });
   } catch (error) {
-    console.error('Mentor schedule upload error:', error);
+    console.error('Faculty schedule upload error:', error);
     if (conn) conn.release();
-    return res.status(500).json({ success: false, message: 'Failed to upload mentor schedule', error: error.message });
+    return res.status(500).json({ success: false, message: 'Failed to upload faculty schedule', error: error.message });
   }
 };
 // ---- Session types & evaluation modes management ----
@@ -670,6 +1045,248 @@ exports.deleteSessionType = async (req, res) => {
   } catch (error) {
     console.error('Error deleting session type:', error);
     return res.status(500).json({ success: false, message: 'Failed to delete session type', error: error.message });
+  }
+};
+
+// ---- Assessment cycles management ----
+
+// Get assessment cycles for current academic year (optional filters)
+exports.getAssessmentCycles = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const academicYearId = req.activeAcademicYearId;
+    const { gradeId, sectionId, subjectId, batchId } = req.body || {};
+
+    let sql = `
+      SELECT 
+        ac.id,
+        ac.name,
+        ac.academic_year_id,
+        ac.grade_id,
+        g.grade_name,
+        ac.section_id,
+        s.section_name,
+        ac.subject_id,
+        sub.subject_name,
+        ac.batch_id,
+        sb.batch_name,
+        ac.context_activity_id,
+        a.name AS activity_name,
+        ac.frequency,
+        ac.period_start,
+        ac.period_end,
+        ac.default_total_marks,
+        ac.is_active
+      FROM assessment_cycles ac
+      JOIN academic_years ay ON ay.id = ac.academic_year_id
+      LEFT JOIN grades g ON g.id = ac.grade_id
+      LEFT JOIN sections s ON s.id = ac.section_id
+      LEFT JOIN subjects sub ON sub.id = ac.subject_id
+      LEFT JOIN section_batches sb ON sb.id = ac.batch_id
+      LEFT JOIN context_activities ca ON ca.id = ac.context_activity_id
+      LEFT JOIN activities a ON a.id = ca.activity_id
+      WHERE ac.academic_year_id = ?
+    `;
+    const params = [academicYearId];
+
+    if (gradeId) {
+      sql += ' AND ac.grade_id = ?';
+      params.push(gradeId);
+    }
+    if (sectionId) {
+      sql += ' AND ac.section_id = ?';
+      params.push(sectionId);
+    }
+    if (subjectId) {
+      sql += ' AND ac.subject_id = ?';
+      params.push(subjectId);
+    }
+    if (batchId) {
+      sql += ' AND ac.batch_id = ?';
+      params.push(batchId);
+    }
+
+    sql += ' ORDER BY ac.name';
+
+    const [rows] = await conn.query(sql, params);
+    if (conn) conn.release();
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error fetching assessment cycles:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to fetch assessment cycles', error: error.message });
+  }
+};
+
+// Create a new assessment cycle
+exports.createAssessmentCycle = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const academicYearId = req.activeAcademicYearId;
+    const userId = req.user && req.user.id ? req.user.id : null;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: user not found' });
+    }
+
+    const {
+      name,
+      gradeId,
+      sectionId,
+      subjectId,
+      batchId,
+      contextActivityId,
+      frequency,
+      periodStart,
+      periodEnd,
+      defaultTotalMarks,
+      isActive,
+    } = req.body || {};
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Name is required' });
+    }
+
+    const freq = frequency && ['daily','weekly','monthly','term','custom'].includes(frequency)
+      ? frequency
+      : 'custom';
+
+    // Optional: basic period validation
+    if (periodStart && periodEnd && periodStart > periodEnd) {
+      return res.status(400).json({ success: false, message: 'Period start cannot be after period end' });
+    }
+
+    const isActiveFlag = typeof isActive === 'boolean' || typeof isActive === 'number'
+      ? (isActive ? 1 : 0)
+      : 1;
+
+    const [result] = await conn.query(
+      `INSERT INTO assessment_cycles 
+         (name, academic_year_id, grade_id, section_id, subject_id, batch_id, context_activity_id,
+          frequency, period_start, period_end, default_total_marks, created_by, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
+      [
+        name.trim(),
+        academicYearId,
+        gradeId || null,
+        sectionId || null,
+        subjectId || null,
+        batchId || null,
+        contextActivityId || null,
+        freq,
+        periodStart || null,
+        periodEnd || null,
+        defaultTotalMarks || null,
+        userId,
+        isActiveFlag,
+      ]
+    );
+
+    if (conn) conn.release();
+    return res.json({ success: true, message: 'Assessment cycle created', id: result.insertId });
+  } catch (error) {
+    console.error('Error creating assessment cycle:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to create assessment cycle', error: error.message });
+  }
+};
+
+// Update an existing assessment cycle
+exports.updateAssessmentCycle = async (req, res) => {
+  try {
+    const {
+      id,
+      name,
+      gradeId,
+      sectionId,
+      subjectId,
+      batchId,
+      contextActivityId,
+      frequency,
+      periodStart,
+      periodEnd,
+      defaultTotalMarks,
+      isActive,
+    } = req.body || {};
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Assessment cycle id is required' });
+    }
+
+    const [rows] = await db.query('SELECT * FROM assessment_cycles WHERE id = ?', [id]);
+    if (!rows || !rows.length) {
+      return res.status(404).json({ success: false, message: 'Assessment cycle not found' });
+    }
+    const current = rows[0];
+
+    const finalName = name !== undefined ? name.trim() : current.name;
+    if (!finalName) {
+      return res.status(400).json({ success: false, message: 'Name is required' });
+    }
+
+    const freq = frequency && ['daily','weekly','monthly','term','custom'].includes(frequency)
+      ? frequency
+      : current.frequency || 'custom';
+
+    const finalPeriodStart = periodStart !== undefined ? (periodStart || null) : current.period_start;
+    const finalPeriodEnd = periodEnd !== undefined ? (periodEnd || null) : current.period_end;
+    if (finalPeriodStart && finalPeriodEnd && finalPeriodStart > finalPeriodEnd) {
+      return res.status(400).json({ success: false, message: 'Period start cannot be after period end' });
+    }
+
+    const finalGradeId = gradeId !== undefined ? (gradeId || null) : current.grade_id;
+    const finalSectionId = sectionId !== undefined ? (sectionId || null) : current.section_id;
+    const finalSubjectId = subjectId !== undefined ? (subjectId || null) : current.subject_id;
+    const finalBatchId = batchId !== undefined ? (batchId || null) : current.batch_id;
+    const finalContextActivityId = contextActivityId !== undefined ? (contextActivityId || null) : current.context_activity_id;
+    const finalDefaultMarks = defaultTotalMarks !== undefined ? (defaultTotalMarks || null) : current.default_total_marks;
+    const finalIsActive =
+      isActive !== undefined
+        ? (isActive ? 1 : 0)
+        : (current.is_active !== undefined ? current.is_active : 1);
+
+    await db.query(
+      `UPDATE assessment_cycles
+         SET name = ?, grade_id = ?, section_id = ?, subject_id = ?, batch_id = ?, context_activity_id = ?,
+             frequency = ?, period_start = ?, period_end = ?, default_total_marks = ?, is_active = ?
+       WHERE id = ?`,
+      [
+        finalName,
+        finalGradeId,
+        finalSectionId,
+        finalSubjectId,
+        finalBatchId,
+        finalContextActivityId,
+        freq,
+        finalPeriodStart,
+        finalPeriodEnd,
+        finalDefaultMarks,
+        finalIsActive,
+        id,
+      ]
+    );
+
+    return res.json({ success: true, message: 'Assessment cycle updated' });
+  } catch (error) {
+    console.error('Error updating assessment cycle:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update assessment cycle', error: error.message });
+  }
+};
+
+// Hard delete assessment cycle
+exports.deleteAssessmentCycle = async (req, res) => {
+  try {
+    const { id } = req.body || {};
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Assessment cycle id is required' });
+    }
+
+    await db.query('DELETE FROM assessment_cycles WHERE id = ?', [id]);
+    return res.json({ success: true, message: 'Assessment cycle deleted' });
+  } catch (error) {
+    console.error('Error deleting assessment cycle:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete assessment cycle', error: error.message });
   }
 };
 

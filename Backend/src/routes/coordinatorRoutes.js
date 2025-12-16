@@ -130,6 +130,12 @@ router.post('/schedule/session-types/create', scheduleController.createSessionTy
 router.post('/schedule/session-types/update', scheduleController.updateSessionType);
 router.post('/schedule/session-types/delete', scheduleController.deleteSessionType);
 
+// Assessment cycles
+router.post('/schedule/assessment-cycles', scheduleController.getAssessmentCycles);
+router.post('/schedule/assessment-cycles/create', scheduleController.createAssessmentCycle);
+router.post('/schedule/assessment-cycles/update', scheduleController.updateAssessmentCycle);
+router.post('/schedule/assessment-cycles/delete', scheduleController.deleteAssessmentCycle);
+
 // Academic Calendar
 router.get('/academic-calendar/generate-template', academicCalendarController.generateAcademicCalendarTemplate);
 router.post('/academic-calendar/upload', upload.single('file'), academicCalendarController.uploadAcademicCalendar);

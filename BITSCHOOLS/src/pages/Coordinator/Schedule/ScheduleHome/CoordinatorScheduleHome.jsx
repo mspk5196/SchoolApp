@@ -33,6 +33,15 @@ const CoordinatorScheduleHome = ({ navigation }) => {
       bgColor: '#FEF3C7',
       route: 'CoordinatorFacultySessionTypes',
     },
+    {
+      id: '4',
+      title: 'Assessment Cycles',
+      iconName: 'calendar-multiselect',
+      iconType: 'MaterialCommunityIcons',
+      color: '#3B82F6',
+      bgColor: '#DBEAFE',
+      route: 'CoordinatorAssessmentCycles',
+    },
   ];
 
   const [userData, setUserData] = useState(null);

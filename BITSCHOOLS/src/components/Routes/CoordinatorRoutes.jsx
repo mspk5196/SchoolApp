@@ -24,6 +24,7 @@ import CoordinatorScheduleHome from '../../pages/Coordinator/Schedule/ScheduleHo
 import FacultyScheduleUpload from '../../pages/Coordinator/Schedule/FacultySchedule/FacultyScheduleUpload';
 import AcademicCalendar from '../../pages/Coordinator/Schedule/AcademicCalendar/AcademicCalendar';
 import FacultySessionTypes from '../../pages/Coordinator/Schedule/FacultySessionTypes/FacultySessionTypes';
+import AssessmentCycles from '../../pages/Coordinator/Schedule/AssessmentCycles/AssessmentCycles';
 
 const Stack = createNativeStackNavigator();
 
@@ -59,6 +60,7 @@ const CoordinatorRoutes = () => {
       <Stack.Screen name="CoordinatorFacultyScheduleUpload" component={FacultyScheduleUpload} />
       <Stack.Screen name="CoordinatorAcademicCalendar" component={AcademicCalendar} />
       <Stack.Screen name="CoordinatorFacultySessionTypes" component={FacultySessionTypes} />
+      <Stack.Screen name="CoordinatorAssessmentCycles" component={AssessmentCycles} />
     </Stack.Navigator>
   );
 };
