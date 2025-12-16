@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   cardSubject: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: '#006affff',
     fontWeight: '500',
     marginTop: 8,
     fontStyle: 'italic',

@@ -38,6 +38,7 @@ router.post('/enrollment/mapping/activities', infrastructureEnrollment.getActivi
 router.post('/enrollment/mapping/get', infrastructureEnrollment.getVenueMappings);
 router.post('/enrollment/mapping/create', infrastructureEnrollment.createVenueMapping);
 router.post('/enrollment/mapping/delete', infrastructureEnrollment.deleteVenueMapping);
+router.post('/enrollment/mapping/activate', infrastructureEnrollment.activateVenueMapping);
 
 // Student enrollment routes
 router.post('/enrollment/enrollStudent', enrollmentController.enrollStudent);

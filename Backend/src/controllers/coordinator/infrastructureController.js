@@ -46,7 +46,6 @@ exports.getAllVenues = async (req, res) => {
                     JOIN (SELECT venue_id, MAX(id) AS maxid FROM venue_usage GROUP BY venue_id) mv 
                         ON vu1.venue_id = mv.venue_id AND vu1.id = mv.maxid
                 ) vu ON vu.venue_id = v.id
-                 JOIN venue_mappings vm ON vm.venue_id = v.id
                 ORDER BY b.block_name, v.name
             `;
 
@@ -275,7 +274,7 @@ exports.getActivitiesForMapping = async (req, res) => {
     }
 };
 
-// Get existing mappings for a venue
+// Get existing mappings for a venue (both active and inactive)
 exports.getVenueMappings = async (req, res) => {
     try {
         const { venueId } = req.body;
@@ -301,8 +300,8 @@ exports.getVenueMappings = async (req, res) => {
             LEFT JOIN section_batches b ON vm.batch_id = b.id
             LEFT JOIN context_activities ca ON vm.context_activity_id = ca.id
             LEFT JOIN activities a ON ca.activity_id = a.id
-            WHERE vm.venue_id = ? AND vm.is_active = 1
-            ORDER BY vm.created_at DESC
+            WHERE vm.venue_id = ?
+            ORDER BY vm.is_active DESC, vm.created_at DESC
         `;
 
         const [rows] = await db.query(sql, [venueId]);
@@ -339,16 +338,30 @@ exports.createVenueMapping = async (req, res) => {
     }
 };
 
-// Delete venue mapping
+// Deactivate (soft delete) venue mapping
 exports.deleteVenueMapping = async (req, res) => {
     try {
         const { mappingId } = req.body;
         if (!mappingId) return res.status(400).json({ success: false, message: 'Mapping id is required' });
 
         await db.query('UPDATE venue_mappings SET is_active = 0, updated_at = NOW() WHERE id = ?', [mappingId]);
-        return res.json({ success: true, message: 'Venue mapping deleted' });
+        return res.json({ success: true, message: 'Venue mapping deactivated' });
     } catch (error) {
         console.error('Error deleting venue mapping:', error);
         return res.status(500).json({ success: false, message: 'Failed to delete venue mapping', error: error.message });
+    }
+};
+
+// Activate venue mapping
+exports.activateVenueMapping = async (req, res) => {
+    try {
+        const { mappingId } = req.body;
+        if (!mappingId) return res.status(400).json({ success: false, message: 'Mapping id is required' });
+
+        await db.query('UPDATE venue_mappings SET is_active = 1, updated_at = NOW() WHERE id = ?', [mappingId]);
+        return res.json({ success: true, message: 'Venue mapping activated' });
+    } catch (error) {
+        console.error('Error activating venue mapping:', error);
+        return res.status(500).json({ success: false, message: 'Failed to activate venue mapping', error: error.message });
     }
 };

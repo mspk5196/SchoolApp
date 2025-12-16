@@ -7,7 +7,9 @@ import styles from './InfrastructureEnrollmentStyle';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Header } from '../../../../components';
 
-const ClassroomCard = ({ classroom, onEdit, onToggleStatus, onDelete }) => {
+const ClassroomCard = ({ classroom, onEdit, onToggleStatus, onDelete, navigation }) => {
+  // console.log(classroom);
+  
   const getStatusColor = (status) => {
     switch (status) {
       case 'Active':
@@ -51,6 +53,15 @@ const ClassroomCard = ({ classroom, onEdit, onToggleStatus, onDelete }) => {
 
   const isPending = classroom.is_accepted === 0;
 
+  const handleNavigateToMapping = () => {
+    if (!classroom || !classroom.id) {
+      Alert.alert('Error', 'Please save the venue first before mapping it to grades/sections');
+      return;
+    }
+    // Navigate to mapping screen with venue details
+    navigation.navigate('VenueMapping', { venueId: classroom.id, venueName: classroom.name });
+  };
+
   return (
     <View style={[
       styles.card,
@@ -93,9 +104,11 @@ const ClassroomCard = ({ classroom, onEdit, onToggleStatus, onDelete }) => {
             <Text style={styles.cardCapacity}>Capacity: {classroom.capacity}</Text>
           </View>
 
-          {classroom.subject_names && (
-            <Text style={styles.cardSubject}>Subjects: {classroom.subject_names}</Text>
-          )}
+
+          <TouchableOpacity onPress={handleNavigateToMapping}>
+            <Text style={styles.cardSubject}>View Mappings</Text>
+          </TouchableOpacity>
+
         </View>
 
         {/* Metadata Section */}
@@ -140,7 +153,7 @@ const ClassroomCard = ({ classroom, onEdit, onToggleStatus, onDelete }) => {
   );
 };
 
-const Block = ({ title, classrooms, onEdit, onToggleStatus, onDelete }) => {
+const Block = ({ title, classrooms, onEdit, onToggleStatus, onDelete, navigation }) => {
   return (
     <View style={styles.blockContainer}>
       <Text style={styles.blockTitle}>{title}</Text>
@@ -151,6 +164,7 @@ const Block = ({ title, classrooms, onEdit, onToggleStatus, onDelete }) => {
           onEdit={onEdit}
           onToggleStatus={onToggleStatus}
           onDelete={onDelete}
+          navigation={navigation}
         />
       ))}
     </View>
@@ -161,7 +175,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
   const params = route.params && route.params.data ? route.params.data : (route.params || {});
   const { userData } = params;
   console.log(userData);
-  
+
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -188,7 +202,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
       if (resp.ok) {
         setVenues(data);
         console.log(data);
-        
+
       } else {
         throw new Error(data.message || 'Failed to fetch venues');
       }
@@ -407,6 +421,8 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
     return unsubscribe;
   }, [navigation]);
 
+  
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -457,6 +473,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
                 onEdit={handleEdit}
                 onToggleStatus={handleToggleStatus}
                 onDelete={handleDelete}
+                navigation={navigation}
               />
             )}
             refreshControl={

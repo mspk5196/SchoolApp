@@ -131,6 +131,11 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontWeight: '500',
   },
+  mappingStatus: {
+    fontSize: 12,
+    marginLeft: 12,
+    marginTop: 2,
+  },
   deleteButton: {
     padding: 8,
   },

@@ -239,18 +239,18 @@ const VenueMapping = ({ navigation, route }) => {
     }
   };
 
-  const handleDeleteMapping = async (mappingId) => {
-    Alert.alert('Delete Mapping', 'Are you sure you want to delete this mapping?', [
+  const handleDeactivateMapping = async (mappingId) => {
+    Alert.alert('Deactivate Mapping', 'Are you sure you want to deactivate this mapping?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete',
+        text: 'Deactivate',
         style: 'destructive',
         onPress: async () => {
           setLoading(true);
           try {
             const response = await ApiService.post('/coordinator/enrollment/mapping/delete', { mappingId });
             if (response?.success) {
-              Alert.alert('Success', 'Mapping deleted successfully');
+              Alert.alert('Success', 'Mapping deactivated successfully');
               fetchExistingMappings();
             }
           } catch (error) {
@@ -263,12 +263,29 @@ const VenueMapping = ({ navigation, route }) => {
     ]);
   };
 
+  const handleActivateMapping = async (mappingId) => {
+    setLoading(true);
+    try {
+      const response = await ApiService.post('/coordinator/enrollment/mapping/activate', { mappingId });
+      if (response?.success) {
+        Alert.alert('Success', 'Mapping activated successfully');
+        fetchExistingMappings();
+      }
+    } catch (error) {
+      Alert.alert('Error', error?.message || 'Failed to activate mapping');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getMappingLabel = (mapping) => {
-    if (mapping.grade_name) return mapping.grade_name;
-    if (mapping.section_name) return `${mapping.grade_name} - ${mapping.section_name}`;
-    if (mapping.batch_name) return mapping.batch_name;
-    if (mapping.activity_name) return mapping.activity_name;
-    return 'Unknown';
+    const parts = [];
+    if (mapping.grade_name) parts.push(mapping.grade_name);
+    if (mapping.section_name) parts.push(mapping.section_name);
+    if (mapping.batch_name) parts.push(mapping.batch_name);
+    if (mapping.activity_name) parts.push(mapping.activity_name);
+    if (parts.length === 0) return 'Unknown mapping';
+    return parts.join(' / ');
   };
 
   const renderMappingType = () => {
@@ -390,15 +407,38 @@ const VenueMapping = ({ navigation, route }) => {
                 {existingMappings.map((mapping) => (
                   <View key={mapping.id} style={styles.mappingItem}>
                     <View style={styles.mappingContent}>
-                      <MaterialCommunityIcons name="map-marker" size={20} color="#3557FF" />
-                      <Text style={styles.mappingLabel}>{getMappingLabel(mapping)}</Text>
+                      <MaterialCommunityIcons
+                        name="map-marker"
+                        size={20}
+                        color={mapping.is_active ? '#3557FF' : '#999'}
+                      />
+                      <View>
+                        <Text style={styles.mappingLabel}>{getMappingLabel(mapping)}</Text>
+                        <Text
+                          style={[
+                            styles.mappingStatus,
+                            { color: mapping.is_active ? '#4caf50' : '#f44336' }
+                          ]}
+                        >
+                          {mapping.is_active ? 'Active' : 'Inactive'}
+                        </Text>
+                      </View>
                     </View>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteMapping(mapping.id)}
-                      style={styles.deleteButton}
-                    >
-                      <MaterialCommunityIcons name="delete" size={20} color="#f44336" />
-                    </TouchableOpacity>
+                    {mapping.is_active ? (
+                      <TouchableOpacity
+                        onPress={() => handleDeactivateMapping(mapping.id)}
+                        style={styles.deleteButton}
+                      >
+                        <MaterialCommunityIcons name="close-circle" size={20} color="#f44336" />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => handleActivateMapping(mapping.id)}
+                        style={styles.deleteButton}
+                      >
+                        <MaterialCommunityIcons name="check-circle" size={20} color="#4caf50" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ))}
               </View>
