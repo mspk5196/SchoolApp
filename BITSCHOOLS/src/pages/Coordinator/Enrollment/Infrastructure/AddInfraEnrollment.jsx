@@ -11,30 +11,11 @@ const AddInfraEnrollment = ({ navigation, route }) => {
   const isEditing = isEdit || !!editVenue;
   const [loading, setLoading] = useState(false);
 
-  const [grades, setGrades] = useState([]);
-  const [subjects, setSubject] = useState([]);
   const [blocks, setBlocks] = useState([]);
   const types = ['Academic class', 'Laboratory', 'Library', 'Auditorium', 'Sports', 'Other'];
 
-  const [gradeModalVisible, setGradeModalVisible] = useState(false);
-  const [subjectModalVisible, setSubjectModalVisible] = useState(false);
   const [blockModalVisible, setBlockModalVisible] = useState(false);
   const [typeModalVisible, setTypeModalVisible] = useState(false);
-
-  // Single grade selection initialization
-  const [selectedGrade, setSelectedGrade] = useState(() => {
-    if (isEditing && editVenue) {
-      // If grades array exists (multiple grades) - take first one
-      if (editVenue.grades && Array.isArray(editVenue.grades)) {
-        return editVenue.grades[0]?.id || editVenue.grades[0] || null;
-      }
-      // If single grade_id exists
-      if (editVenue.grade_id) {
-        return editVenue.grade_id;
-      }
-    }
-    return null;
-  });
 
   // Block selection initialization
   const [selectedBlock, setSelectedBlock] = useState(() => {
@@ -43,21 +24,6 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       return editVenue.block_id || null;
     }
     return null;
-  });
-
-  // Add state for multiple subject selection
-  const [selectedSubjects, setSelectedSubjects] = useState(() => {
-    if (isEditing && editVenue) {
-      // If subjects array exists (multiple subjects)
-      if (editVenue.subjects && Array.isArray(editVenue.subjects)) {
-        return editVenue.subjects.map(s => s.id || s);
-      }
-      // If single subject_id exists
-      if (editVenue.subject_id) {
-        return [editVenue.subject_id];
-      }
-    }
-    return [];
   });
 
   const [formData, setFormData] = useState({
@@ -73,15 +39,13 @@ const AddInfraEnrollment = ({ navigation, route }) => {
     blockName: isEditing && editVenue ? editVenue.block : '',
     floor: isEditing && editVenue ? editVenue.floor.toString() : '',
     capacity: isEditing && editVenue ? editVenue.capacity.toString() : '',
-    gradeName: '',
-    subjectNames: '',
     type: isEditing && editVenue ? editVenue.type : 'Academic class',
     status: isEditing && editVenue ? editVenue.status : 'Active'
   });
 
   useEffect(() => {
     const loadData = async () => {
-      await Promise.all([fetchGrades(), fetchSubject(), fetchBlock()]);
+      await fetchBlock();
       
       // After loading options, set edit data if editing
       if (isEditing && editVenue) {
@@ -94,14 +58,6 @@ const AddInfraEnrollment = ({ navigation, route }) => {
 
   // Load edit data after options are fetched
   const loadEditData = () => {
-    // Set grade name for display
-    if (selectedGrade && grades.length > 0) {
-      const grade = grades.find(g => g.id === selectedGrade);
-      if (grade) {
-        handleChangeDisplay('gradeName', grade.grade_name);
-      }
-    }
-    
     // Set block name for display
     if (selectedBlock && blocks.length > 0) {
       const block = blocks.find(b => b.id === selectedBlock);
@@ -116,63 +72,14 @@ const AddInfraEnrollment = ({ navigation, route }) => {
         handleChangeDisplay('blockName', block.block_name);
       }
     }
-    
-    // Set subject names for display
-    if (selectedSubjects.length > 0 && subjects.length > 0) {
-      const selectedSubjectNames = subjects
-        .filter(subject => selectedSubjects.includes(subject.id))
-        .map(subject => subject.subject_name)
-        .join(', ');
-      handleChangeDisplay('subjectNames', selectedSubjectNames);
-    }
   };
 
-  // Re-run loadEditData when grades, blocks, or subjects are loaded
+  // Re-run loadEditData when blocks are loaded
   useEffect(() => {
-    if (isEditing && editVenue && (grades.length > 0 || blocks.length > 0 || subjects.length > 0)) {
+    if (isEditing && editVenue && blocks.length > 0) {
       loadEditData();
     }
-  }, [grades, blocks, subjects, isEditing]);
-
-  const fetchGrades = async () => {
-    try {
-      const resp = await ApiService.makeRequest(`/general/getGrades`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      const data = await resp.json();
-      console.log(data);
-      
-      if (data && data.success) {
-        setGrades(data.grades || data.data || []);
-      } else if (resp.ok && Array.isArray(data)) {
-        setGrades(data);
-      } else {
-        Alert.alert('No Grades Found', 'No grade is associated');
-      }
-    } catch (error) {
-      console.error('Error fetching grades data:', error);
-      Alert.alert('Error', 'Failed to fetch grades data');
-    }
-  };
-
-  const fetchSubject = async () => {
-    try {
-      const resp = await ApiService.makeRequest(`/coordinator/getSubjects`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const data = await resp.json();
-      if (data && data.success) {
-        setSubject(data.subjects || data.data || []);
-      } else if (resp.ok && Array.isArray(data)) {
-        setSubject(data);
-      }
-    } catch (error) {
-      console.error('Error fetching subject titles:', error);
-    }
-  };
+  }, [blocks, isEditing]);
 
   const fetchBlock = async () => {
     try {
@@ -205,42 +112,13 @@ const AddInfraEnrollment = ({ navigation, route }) => {
     });
   };
 
-  const selectGrade = (gradeId, gradeName) => {
-    setSelectedGrade(gradeId);
-    handleChangeDisplay('gradeName', gradeName);
-  };
-
-  const toggleSubjectSelection = (subjectId, subjectName) => {
-    setSelectedSubjects(prevSelectedSubjects => {
-      // Check if subject is already selected
-      if (prevSelectedSubjects.includes(subjectId)) {
-        // Remove subject if already selected
-        const newSelectedSubjects = prevSelectedSubjects.filter(id => id !== subjectId);
-
-        // Update displayed subject names
-        const selectedSubjectNames = subjects
-          .filter(subject => newSelectedSubjects.includes(subject.id))
-          .map(subject => subject.subject_name)
-          .join(', ');
-
-        handleChangeDisplay('subjectNames', selectedSubjectNames);
-
-        return newSelectedSubjects;
-      } else {
-        // Add subject if not already selected
-        const newSelectedSubjects = [...prevSelectedSubjects, subjectId];
-
-        // Update displayed subject names
-        const selectedSubjectNames = subjects
-          .filter(subject => newSelectedSubjects.includes(subject.id))
-          .map(subject => subject.subject_name)
-          .join(', ');
-
-        handleChangeDisplay('subjectNames', selectedSubjectNames);
-
-        return newSelectedSubjects;
-      }
-    });
+  const handleNavigateToMapping = () => {
+    if (!isEditing || !editVenue?.id) {
+      Alert.alert('Error', 'Please save the venue first before mapping it to grades/sections');
+      return;
+    }
+    // Navigate to mapping screen with venue details
+    navigation.navigate('VenueMapping', { venueId: editVenue.id, venueName: editVenue.name });
   };
 
   const handleSubmit = async () => {
@@ -275,20 +153,6 @@ const AddInfraEnrollment = ({ navigation, route }) => {
       status: formData.status,
       created_by: phoneNo || '9876543201'
     };
-
-    // Add single grade if selected
-    if (selectedGrade) {
-      venueData.grade_id = selectedGrade;
-    }
-
-    // Add multiple subjects if selected
-    if (selectedSubjects.length > 0) {
-      if (isEditing) {
-        venueData.subjects = selectedSubjects;
-      } else {
-        venueData.subject_ids = selectedSubjects;
-      }
-    }
 
     console.log('Submitting venue data:', venueData); // Debug log
 
@@ -413,131 +277,6 @@ const AddInfraEnrollment = ({ navigation, route }) => {
     </Modal>
   );
 
-  const SubjectSelectionModal = React.memo(({
-    visible,
-    onClose,
-    subjects,
-    selectedSubjects,
-    toggleSubjectSelection
-  }) => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Select Subjects</Text>
-          <Text style={[styles.modalItemText, { textAlign: 'center', fontSize: 14, color: '#666', marginBottom: 16 }]}>
-            Choose multiple subjects for this venue
-          </Text>
-          <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
-            {subjects.map((subject) => {
-              const isSelected = selectedSubjects.includes(subject.id);
-              return (
-                <TouchableOpacity
-                  key={subject.id}
-                  style={[
-                    styles.checkboxItem,
-                    isSelected && styles.modalItemSelected
-                  ]}
-                  onPress={() => {
-                    // Only call toggleSubjectSelection, don't close modal
-                    toggleSubjectSelection(subject.id, subject.subject_name);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.checkboxContainer}>
-                    {isSelected ? (
-                      <MaterialCommunityIcons name="checkbox-marked" color="#000" size={24} />
-                    ) : (
-                      <MaterialCommunityIcons name="checkbox-blank-outline" color="#000" size={24} />
-                    )}
-                    <Text style={[
-                      styles.modalItemText,
-                      isSelected && { color: '#3557FF', fontWeight: '600' }
-                    ]}>
-                      {subject.subject_name}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
-            <Text style={[styles.modalItemText, { fontSize: 14, color: '#666' }]}>
-              {selectedSubjects.length} selected
-            </Text>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={onClose}
-            >
-              <Text style={styles.closeButtonText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  ));
-
-  // Single grade selection modal
-  const GradeSelectionModal = React.memo(({
-    visible,
-    onClose,
-    grades,
-    selectedGrade,
-    selectGrade
-  }) => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Select Grade</Text>
-          <Text style={[styles.modalItemText, { textAlign: 'center', fontSize: 14, color: '#666', marginBottom: 16 }]}>
-            Choose a grade for this venue
-          </Text>
-          <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
-            {grades.map((grade) => {
-              const isSelected = selectedGrade === grade.id;
-              return (
-                <TouchableOpacity
-                  key={grade.id}
-                  style={[
-                    styles.modalItem,
-                    isSelected && styles.modalItemSelected
-                  ]}
-                  onPress={() => {
-                    selectGrade(grade.id, grade.grade_name);
-                    onClose();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.modalItemText,
-                    isSelected && { color: '#3557FF', fontWeight: '600' }
-                  ]}>
-                    {grade.grade_name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
-          >
-            <Text style={styles.closeButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  ));
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -555,6 +294,14 @@ const AddInfraEnrollment = ({ navigation, route }) => {
         <Text style={styles.headerText}>
           {isEditing ? 'Edit Venue' : 'Add New Venue'}
         </Text>
+        {isEditing && editVenue?.id && (
+          <TouchableOpacity 
+            onPress={handleNavigateToMapping}
+            style={{ paddingRight: 16 }}
+          >
+            <MaterialCommunityIcons name="plus-circle" size={24} color="#3557FF" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={styles.content}>
@@ -625,59 +372,6 @@ const AddInfraEnrollment = ({ navigation, route }) => {
               <Text style={styles.dropdownIcon}>▼</Text>
             </TouchableOpacity>
             <TypeSelectionModal />
-          </View>
-
-          {/* Grade */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Grade</Text>
-            <TouchableOpacity
-              style={[styles.input, styles.pickerInput]}
-              onPress={() => setGradeModalVisible(true)}
-            >
-              <Text style={selectedGrade ? styles.inputText : styles.placeholderText}>
-                {showFormData.gradeName || 'Select grade'}
-              </Text>
-              <Text style={styles.dropdownIcon}>▼</Text>
-            </TouchableOpacity>
-            <GradeSelectionModal
-              visible={gradeModalVisible}
-              onClose={() => setGradeModalVisible(false)}
-              grades={grades}
-              selectedGrade={selectedGrade}
-              selectGrade={selectGrade}
-            />
-          </View>
-
-          {/* Subjects */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Subjects</Text>
-            <TouchableOpacity
-              style={[styles.input, styles.pickerInput]}
-              onPress={() => setSubjectModalVisible(true)}
-            >
-              <Text style={selectedSubjects.length > 0 ? styles.inputText : styles.placeholderText}>
-                {showFormData.subjectNames || 'Select subjects'}
-              </Text>
-              <Text style={styles.dropdownIcon}>▼</Text>
-            </TouchableOpacity>
-            {selectedSubjects.length > 0 && (
-              <View style={styles.selectedGradesContainer}>
-                {subjects
-                  .filter(subject => selectedSubjects.includes(subject.id))
-                  .map(subject => (
-                    <View key={subject.id} style={styles.selectedGradeTag}>
-                      <Text style={styles.selectedGradeText}>{subject.subject_name}</Text>
-                    </View>
-                  ))}
-              </View>
-            )}
-            <SubjectSelectionModal
-              visible={subjectModalVisible}
-              onClose={() => setSubjectModalVisible(false)}
-              subjects={subjects}
-              selectedSubjects={selectedSubjects}
-              toggleSubjectSelection={toggleSubjectSelection}
-            />
           </View>
 
           {/* Status - only show when editing */}

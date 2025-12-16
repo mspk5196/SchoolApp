@@ -7,6 +7,7 @@ import CoordinatorStudentEnrollment from '../../pages/Coordinator/Enrollment/Stu
 import CoordinatorSectionEnrollment from '../../pages/Coordinator/Enrollment/SectionEnrollment/CoordinatorSectionEnrollment';
 import InfrastructureEnrollment from '../../pages/Coordinator/Enrollment/Infrastructure/InfrastructureEnrollment';
 import AddInfraEnrollment from '../../pages/Coordinator/Enrollment/Infrastructure/AddInfraEnrollment';
+import VenueMapping from '../../pages/Coordinator/Enrollment/Infrastructure/VenueMapping';
 import CoordinatorSubjectMentor from '../../pages/Coordinator/Mentor/SubjectMapping/CoordinatorSubjectMentor';
 import CoordinatorMentorMapping from '../../pages/Coordinator/Mentor/SectionMapping/CoordinatorMentorMapping';
 import CoordinatorSectionStudents from '../../pages/Coordinator/Mentor/SectionMapping/SectionStudents/CoordinatorSectionStudents';
@@ -37,6 +38,7 @@ const CoordinatorRoutes = () => {
       <Stack.Screen name="CoordinatorSubjectEnrollment" component={SubjectAllotment} />
       <Stack.Screen name="CoordinatorInfrastructureEnrollment" component={InfrastructureEnrollment} />
       <Stack.Screen name="CoordinatorAddInfraEnrollment" component={AddInfraEnrollment} />
+      <Stack.Screen name="VenueMapping" component={VenueMapping} />
 
       {/* Mentor Management Routes */}
       <Stack.Screen name="CoordinatorMentorHome" component={CoordinatorMentorHome} />

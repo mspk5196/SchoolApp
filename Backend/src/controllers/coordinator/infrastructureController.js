@@ -46,6 +46,7 @@ exports.getAllVenues = async (req, res) => {
                     JOIN (SELECT venue_id, MAX(id) AS maxid FROM venue_usage GROUP BY venue_id) mv 
                         ON vu1.venue_id = mv.venue_id AND vu1.id = mv.maxid
                 ) vu ON vu.venue_id = v.id
+                 JOIN venue_mappings vm ON vm.venue_id = v.id
                 ORDER BY b.block_name, v.name
             `;
 
@@ -180,5 +181,174 @@ exports.updateVenueStatus = async (req, res) => {
     } catch (error) {
         console.error('Error updating venue status:', error);
         return res.status(500).json({ success: false, message: 'Failed to update venue status', error: error.message });
+    }
+};
+
+// ---------------------- Venue Mapping APIs ----------------------
+// Get available grades
+exports.getGradesForMapping = async (req, res) => {
+    try {
+        // grades table does not have is_active; return all with id and grade_name
+        const [rows] = await db.query('SELECT id, grade_name FROM grades ORDER BY grade_name');
+        return res.json(rows);
+    } catch (error) {
+        console.error('Error fetching grades:', error);
+        return res.status(500).json({ success: false, message: 'Failed to fetch grades', error: error.message });
+    }
+};
+
+// Get sections by grade
+exports.getSectionsForMapping = async (req, res) => {
+    try {
+        const { gradeId } = req.body;
+        if (!gradeId) return res.status(400).json({ success: false, message: 'Grade id is required' });
+
+        const [rows] = await db.query(
+            'SELECT id, section_name FROM sections WHERE grade_id = ? AND is_active = 1 ORDER BY section_name',
+            [gradeId]
+        );
+        return res.json(rows);
+    } catch (error) {
+        console.error('Error fetching sections:', error);
+        return res.status(500).json({ success: false, message: 'Failed to fetch sections', error: error.message });
+    }
+};
+
+// Get batches
+exports.getBatchesForMapping = async (req, res) => {
+    const {sectionId} = req.body;
+    try {
+        const [rows] = await db.query(`
+            SELECT sb.id, sb.batch_name, ssa.subject_id, s.subject_name 
+            FROM section_batches sb 
+            JOIN subject_section_assignments ssa ON sb.subject_section_id = ssa.id
+            JOIN subjects s ON ssa.subject_id = s.id 
+            WHERE sb.is_active = 1 AND ssa.section_id = ?
+            ORDER BY sb.batch_name
+            `, [sectionId]);
+        return res.json(rows);
+    } catch (error) {
+        console.error('Error fetching batches:', error);
+        return res.status(500).json({ success: false, message: 'Failed to fetch batches', error: error.message });
+    }
+};
+
+// Get activities (context activities) as hierarchy for a given section and subject
+exports.getActivitiesForMapping = async (req, res) => {
+    try {
+        const { sectionId, subjectId } = req.body || {};
+        if (!sectionId || !subjectId) {
+            return res.status(400).json({ success: false, message: 'sectionId and subjectId are required' });
+        }
+
+        // Fetch all context activities for section + subject with their names and parents
+        const [rows] = await db.query(
+            `SELECT 
+                ca.id,
+                ca.parent_context_id,
+                a.name AS activity_name
+             FROM context_activities ca
+             JOIN activities a ON ca.activity_id = a.id
+             WHERE ca.section_id = ? AND ca.subject_id = ?
+             ORDER BY a.name`
+            , [sectionId, subjectId]
+        );
+
+        // Build a tree structure on the server side
+        const nodeMap = new Map();
+        rows.forEach(r => {
+            nodeMap.set(r.id, { id: r.id, activity_name: r.activity_name, parent_context_id: r.parent_context_id, children: [] });
+        });
+        const roots = [];
+        nodeMap.forEach(node => {
+            if (node.parent_context_id && nodeMap.has(node.parent_context_id)) {
+                nodeMap.get(node.parent_context_id).children.push(node);
+            } else {
+                roots.push(node);
+            }
+        });
+
+        return res.json({ success: true, data: roots });
+    } catch (error) {
+        console.error('Error fetching activities:', error);
+        return res.status(500).json({ success: false, message: 'Failed to fetch activities', error: error.message });
+    }
+};
+
+// Get existing mappings for a venue
+exports.getVenueMappings = async (req, res) => {
+    try {
+        const { venueId } = req.body;
+        if (!venueId) return res.status(400).json({ success: false, message: 'Venue id is required' });
+
+        const sql = `
+            SELECT 
+                vm.id,
+                vm.venue_id,
+                vm.grade_id,
+                vm.section_id,
+                vm.batch_id,
+                vm.context_activity_id,
+                g.grade_name,
+                s.section_name,
+                b.batch_name,
+                a.name AS activity_name,
+                vm.is_active,
+                vm.created_at
+            FROM venue_mappings vm
+            LEFT JOIN grades g ON vm.grade_id = g.id
+            LEFT JOIN sections s ON vm.section_id = s.id
+            LEFT JOIN section_batches b ON vm.batch_id = b.id
+            LEFT JOIN context_activities ca ON vm.context_activity_id = ca.id
+            LEFT JOIN activities a ON ca.activity_id = a.id
+            WHERE vm.venue_id = ? AND vm.is_active = 1
+            ORDER BY vm.created_at DESC
+        `;
+
+        const [rows] = await db.query(sql, [venueId]);
+        return res.json(rows);
+    } catch (error) {
+        console.error('Error fetching venue mappings:', error);
+        return res.status(500).json({ success: false, message: 'Failed to fetch venue mappings', error: error.message });
+    }
+};
+
+// Create venue mapping
+exports.createVenueMapping = async (req, res) => {
+    try {
+        const { venueId, gradeId, sectionId, batchId, contextActivityId } = req.body;
+        const userId = req.user && req.user.id ? req.user.id : null;
+
+        if (!venueId) return res.status(400).json({ success: false, message: 'Venue id is required' });
+
+        // At least one mapping target should be provided
+        if (!gradeId && !sectionId && !batchId && !contextActivityId) {
+            return res.status(400).json({ success: false, message: 'At least one mapping target is required' });
+        }
+
+        const [result] = await db.query(
+            `INSERT INTO venue_mappings (venue_id, grade_id, section_id, batch_id, context_activity_id, is_active, mapped_by, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 1, ?, NOW(), NOW())`,
+            [venueId, gradeId || null, sectionId || null, batchId || null, contextActivityId || null, userId]
+        );
+
+        return res.json({ success: true, message: 'Venue mapping created', mappingId: result.insertId });
+    } catch (error) {
+        console.error('Error creating venue mapping:', error);
+        return res.status(500).json({ success: false, message: 'Failed to create venue mapping', error: error.message });
+    }
+};
+
+// Delete venue mapping
+exports.deleteVenueMapping = async (req, res) => {
+    try {
+        const { mappingId } = req.body;
+        if (!mappingId) return res.status(400).json({ success: false, message: 'Mapping id is required' });
+
+        await db.query('UPDATE venue_mappings SET is_active = 0, updated_at = NOW() WHERE id = ?', [mappingId]);
+        return res.json({ success: true, message: 'Venue mapping deleted' });
+    } catch (error) {
+        console.error('Error deleting venue mapping:', error);
+        return res.status(500).json({ success: false, message: 'Failed to delete venue mapping', error: error.message });
     }
 };

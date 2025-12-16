@@ -30,6 +30,15 @@ router.put('/enrollment/updateVenue/:id', infrastructureEnrollment.updateVenue);
 router.delete('/enrollment/deleteVenue/:id', infrastructureEnrollment.deleteVenue);
 router.put('/enrollment/updateVenueStatus/:id', infrastructureEnrollment.updateVenueStatus);
 
+// Venue Mapping
+router.get('/enrollment/mapping/grades', infrastructureEnrollment.getGradesForMapping);
+router.post('/enrollment/mapping/sections', infrastructureEnrollment.getSectionsForMapping);
+router.post('/enrollment/mapping/batches', infrastructureEnrollment.getBatchesForMapping);
+router.post('/enrollment/mapping/activities', infrastructureEnrollment.getActivitiesForMapping);
+router.post('/enrollment/mapping/get', infrastructureEnrollment.getVenueMappings);
+router.post('/enrollment/mapping/create', infrastructureEnrollment.createVenueMapping);
+router.post('/enrollment/mapping/delete', infrastructureEnrollment.deleteVenueMapping);
+
 // Student enrollment routes
 router.post('/enrollment/enrollStudent', enrollmentController.enrollStudent);
 router.get('/enrollment/generate-student-enroll-template', enrollmentController.generateStudentEnrollTemplate);

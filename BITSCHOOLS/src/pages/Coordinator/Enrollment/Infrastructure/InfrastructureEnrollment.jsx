@@ -5,6 +5,7 @@ import { Menu, MenuOptions, MenuOption, MenuTrigger, MenuProvider } from 'react-
 import FilterPopup from './FilterPopup';
 import styles from './InfrastructureEnrollmentStyle';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Header } from '../../../../components';
 
 const ClassroomCard = ({ classroom, onEdit, onToggleStatus, onDelete }) => {
   const getStatusColor = (status) => {
@@ -417,12 +418,7 @@ const InfrastructureEnrollment = ({ navigation, route }) => {
   return (
     <MenuProvider>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#000"
-            onPress={() => navigation.goBack()}
-          />
-          <Text style={styles.headerTxt}>Infrastructure Enrollment</Text>
-        </View>
+        <Header title="Infrastructure Enrollment" navigation={navigation} />
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>

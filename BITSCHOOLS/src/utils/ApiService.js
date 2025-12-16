@@ -223,8 +223,62 @@ class ApiService {
     return !!accessToken;
   }
 
-  /**
-   * Download a file from the API
+    // GET request helper
+    async get(url) {
+      try {
+        const response = await this.makeRequest(url, {
+          method: 'GET',
+        });
+        return response.json();
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    // POST request helper
+    async post(url, data) {
+      try {
+        const response = await this.makeRequest(url, {
+          method: 'POST',
+          body: JSON.stringify(data),
+        });
+        return response.json();
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    // PUT request helper
+    async put(url, data) {
+      try {
+        const response = await this.makeRequest(url, {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        });
+        return response.json();
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    // DELETE request helper
+    async delete(url, data = null) {
+      try {
+        const options = {
+          method: 'DELETE',
+        };
+        if (data) {
+          options.body = JSON.stringify(data);
+        }
+        const response = await this.makeRequest(url, options);
+        return response.json();
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    /**
+     * Download a file from the API
    * @param {string} url - API endpoint (relative to baseURL)
    * @param {string} filename - Name of the file to save
    * @param {object} options - Additional options
