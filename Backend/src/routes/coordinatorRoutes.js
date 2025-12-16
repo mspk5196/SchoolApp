@@ -123,6 +123,13 @@ router.post('/getSectionSubjects',  materialController.getSectionSubjects);
 router.get('/schedule/mentor/generate-template', scheduleController.generateMentorScheduleTemplate);
 router.post('/schedule/mentor/upload', upload.single('file'), scheduleController.uploadMentorSchedule);
 
+// Session types & evaluation modes
+router.get('/schedule/session-types', scheduleController.getSessionTypes);
+router.get('/schedule/evaluation-modes', scheduleController.getEvaluationModes);
+router.post('/schedule/session-types/create', scheduleController.createSessionType);
+router.post('/schedule/session-types/update', scheduleController.updateSessionType);
+router.post('/schedule/session-types/delete', scheduleController.deleteSessionType);
+
 // Academic Calendar
 router.get('/academic-calendar/generate-template', academicCalendarController.generateAcademicCalendarTemplate);
 router.post('/academic-calendar/upload', upload.single('file'), academicCalendarController.uploadAcademicCalendar);

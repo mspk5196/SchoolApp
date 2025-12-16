@@ -21,8 +21,9 @@ import TopicHierarchyManagement from '../../pages/Coordinator/Materials/TopicHie
 import TopicMaterials from '../../pages/Coordinator/Materials/TopicHierarchy/TopicMaterials';
 
 import CoordinatorScheduleHome from '../../pages/Coordinator/Schedule/ScheduleHome/CoordinatorScheduleHome';
-import MentorScheduleUpload from '../../pages/Coordinator/Schedule/MentorSchedule/MentorScheduleUpload';
+import FacultyScheduleUpload from '../../pages/Coordinator/Schedule/FacultySchedule/FacultyScheduleUpload';
 import AcademicCalendar from '../../pages/Coordinator/Schedule/AcademicCalendar/AcademicCalendar';
+import FacultySessionTypes from '../../pages/Coordinator/Schedule/FacultySessionTypes/FacultySessionTypes';
 
 const Stack = createNativeStackNavigator();
 
@@ -54,9 +55,10 @@ const CoordinatorRoutes = () => {
       <Stack.Screen name="TopicMaterials" component={TopicMaterials} />
 
       {/* Schedule */}
-       <Stack.Screen name="CoordinatorScheduleHome" component={CoordinatorScheduleHome} />
-      <Stack.Screen name="CoordinatorMentorScheduleUpload" component={MentorScheduleUpload} />
+      <Stack.Screen name="CoordinatorScheduleHome" component={CoordinatorScheduleHome} />
+      <Stack.Screen name="CoordinatorFacultyScheduleUpload" component={FacultyScheduleUpload} />
       <Stack.Screen name="CoordinatorAcademicCalendar" component={AcademicCalendar} />
+      <Stack.Screen name="CoordinatorFacultySessionTypes" component={FacultySessionTypes} />
     </Stack.Navigator>
   );
 };

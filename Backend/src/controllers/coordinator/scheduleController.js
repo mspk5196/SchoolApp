@@ -207,7 +207,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
       assessment_cycle_name: '',
       task_description: 'Regular class session',
     });
-    
+
     if (conn) conn.release();
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -222,28 +222,28 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
 
 // Helper to fetch single row
 async function fetchSingle(conn, sql, params) {
-	const [rows] = await conn.query(sql, params);
-	return rows && rows.length ? rows[0] : null;
+  const [rows] = await conn.query(sql, params);
+  return rows && rows.length ? rows[0] : null;
 }
 
 // Upload mentor schedule from Excel and create mentor & student schedules
 exports.uploadMentorSchedule = async (req, res) => {
-	if (!req.file) {
-		return res.status(400).json({ success: false, message: 'No file uploaded' });
-	}
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded' });
+  }
 
   const results = { processed: 0, succeeded: 0, failed: [] };
 
-	let conn;
+  let conn;
 
-	try {
-		const workbook = new ExcelJS.Workbook();
-		await workbook.xlsx.load(req.file.buffer);
-		const sheet = workbook.getWorksheet('MentorSchedule') || workbook.worksheets[0];
+  try {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+    const sheet = workbook.getWorksheet('MentorSchedule') || workbook.worksheets[0];
 
-		if (!sheet) {
-			return res.status(400).json({ success: false, message: 'Invalid Excel: No worksheet found' });
-		}
+    if (!sheet) {
+      return res.status(400).json({ success: false, message: 'Invalid Excel: No worksheet found' });
+    }
 
     conn = await db.getConnection();
     const academicYearId = req.activeAcademicYearId;
@@ -268,13 +268,13 @@ exports.uploadMentorSchedule = async (req, res) => {
       other: 'class_session',
     };
 
-		for (let i = 2; i <= sheet.rowCount; i++) {
-			const row = sheet.getRow(i);
-			// Skip empty
-			if (!row.getCell(1).value) continue;
-			results.processed++;
+    for (let i = 2; i <= sheet.rowCount; i++) {
+      const row = sheet.getRow(i);
+      // Skip empty
+      if (!row.getCell(1).value) continue;
+      results.processed++;
 
-			try {
+      try {
         // Mentor value like M1001[Name] -> extract roll before '['
         const mentorCellRaw = String(row.getCell(1).value || '').trim();
         const facultyRollno = mentorCellRaw.includes('[') ? mentorCellRaw.split('[')[0].trim() : mentorCellRaw;
@@ -437,57 +437,239 @@ exports.uploadMentorSchedule = async (req, res) => {
             'INSERT INTO session_batches (mentor_calendar_id, batch_id) VALUES (?, ?)',
             [mentorCalendarId, batchRow.id]
           );
-				};
-				const scheduleType = scheduleTypeMap[sessionType] || 'class_session';
+        };
+        const scheduleType = scheduleTypeMap[sessionType] || 'class_session';
 
-				// Insert student schedules for this session (only for class/lab/assessment/exam/homework_eval)
-				if (['class', 'lab', 'assessment', 'exam', 'homework_eval'].includes(sessionType) && students.length > 0) {
-					for (const s of students) {
-						await conn.query(
-							`INSERT INTO student_schedule_calendar
+        // Insert student schedules for this session (only for class/lab/assessment/exam/homework_eval)
+        if (['class', 'lab', 'assessment', 'exam', 'homework_eval'].includes(sessionType) && students.length > 0) {
+          for (const s of students) {
+            await conn.query(
+              `INSERT INTO student_schedule_calendar
 							 (student_id, grade_id, section_id, subject_id, mentor_id, context_activity_id, section_activity_topic_id,
 								task_description, date, start_time, end_time, venue_id, schedule_type, status, attendance, remarks,
 								created_at, mentor_calendar_id, evaluation_mode, total_marks)
 							 VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, 'scheduled', 'present', '', NOW(), ?, ?, ?)`,
-							[
-								s.student_id,
-								gradeRow.id,
-								sectionRow.id,
-								subjectRow.id,
-								mentorId,
-								taskDescription || null,
-								dateStr,
-								startTimeStr,
-								endTimeStr,
-								venueRow.id,
-								scheduleType,
-								mentorCalendarId,
-								evaluationMode,
-								totalMarks || null,
-							]
-						);
-					}
-				}
+              [
+                s.student_id,
+                gradeRow.id,
+                sectionRow.id,
+                subjectRow.id,
+                mentorId,
+                taskDescription || null,
+                dateStr,
+                startTimeStr,
+                endTimeStr,
+                venueRow.id,
+                scheduleType,
+                mentorCalendarId,
+                evaluationMode,
+                totalMarks || null,
+              ]
+            );
+          }
+        }
 
-				await conn.commit();
-				results.succeeded++;
-			} catch (err) {
-				console.error(`Error processing row ${i}:`, err);
-				try {
-					if (conn) await conn.rollback();
-				} catch (rbErr) {
-					console.error('Rollback error:', rbErr);
-				}
-				results.failed.push({ row: i, reason: err.message || 'Unknown error' });
-			}
-		}
+        await conn.commit();
+        results.succeeded++;
+      } catch (err) {
+        console.error(`Error processing row ${i}:`, err);
+        try {
+          if (conn) await conn.rollback();
+        } catch (rbErr) {
+          console.error('Rollback error:', rbErr);
 
-		if (conn) conn.release();
+        }
+        results.failed.push({ row: i, reason: err.message || 'Unknown error' });
+      }
+    }
 
-		return res.json({ success: true, message: 'Mentor schedule upload completed', data: results });
-	} catch (error) {
-		console.error('Mentor schedule upload error:', error);
-		if (conn) conn.release();
-		return res.status(500).json({ success: false, message: 'Failed to upload mentor schedule', error: error.message });
-	}
+    if (conn) conn.release();
+
+    return res.json({ success: true, message: 'Mentor schedule upload completed', data: results });
+  } catch (error) {
+    console.error('Mentor schedule upload error:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to upload mentor schedule', error: error.message });
+  }
 };
+// ---- Session types & evaluation modes management ----
+
+// Get active evaluation modes for dropdowns
+exports.getEvaluationModes = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, name, description, requires_marks, requires_attentiveness, requires_docs, allows_malpractice, is_active
+           FROM evaluation_modes
+           WHERE is_active = 1
+           ORDER BY name`
+    );
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error fetching evaluation modes:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch evaluation modes', error: error.message });
+  }
+};
+
+// Get all session types (active and inactive) with evaluation mode name
+exports.getSessionTypes = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+             st.id,
+             st.name,
+             st.description,
+             st.is_student_facing,
+             st.requires_context_activity,
+             st.evaluation_mode,
+             st.is_active,
+             em.name AS evaluation_mode_name
+           FROM session_types st
+           LEFT JOIN evaluation_modes em ON em.id = st.evaluation_mode
+           ORDER BY st.name`
+    );
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error fetching session types:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch session types', error: error.message });
+  }
+};
+
+// Create a new session type
+exports.createSessionType = async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      isStudentFacing,
+      requiresContextActivity,
+      evaluationModeId,
+      isActive,
+    } = req.body || {};
+
+    const userId = req.user && req.user.id ? req.user.id : null;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: user not found' });
+    }
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Name is required' });
+    }
+
+    // Check duplicate name
+    const [existing] = await db.query('SELECT id FROM session_types WHERE name = ?', [name.trim()]);
+    if (existing && existing.length) {
+      return res.status(400).json({ success: false, message: 'Session type with this name already exists' });
+    }
+
+    const isStudentFlag = isStudentFacing ? 1 : 0;
+    const requiresContextFlag = requiresContextActivity ? 1 : 0;
+    const isActiveFlag = typeof isActive === 'boolean' || typeof isActive === 'number'
+      ? (isActive ? 1 : 0)
+      : 1;
+
+    const [result] = await db.query(
+      `INSERT INTO session_types 
+             (name, description, is_student_facing, requires_context_activity, evaluation_mode, is_active, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?)` ,
+      [
+        name.trim(),
+        description || null,
+        isStudentFlag,
+        requiresContextFlag,
+        evaluationModeId || null,
+        isActiveFlag,
+        userId,
+      ]
+    );
+
+    return res.json({ success: true, message: 'Session type created', id: result.insertId });
+  } catch (error) {
+    console.error('Error creating session type:', error);
+    return res.status(500).json({ success: false, message: 'Failed to create session type', error: error.message });
+  }
+};
+
+// Update session type (fields and active/inactive flag)
+exports.updateSessionType = async (req, res) => {
+  try {
+    const {
+      id,
+      name,
+      description,
+      isStudentFacing,
+      requiresContextActivity,
+      evaluationModeId,
+      isActive,
+    } = req.body || {};
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Session type id is required' });
+    }
+
+    const [rows] = await db.query('SELECT * FROM session_types WHERE id = ?', [id]);
+    if (!rows || !rows.length) {
+      return res.status(404).json({ success: false, message: 'Session type not found' });
+    }
+    const current = rows[0];
+
+    // If name is changing, ensure uniqueness
+    const newName = name !== undefined ? name.trim() : current.name;
+    if (!newName) {
+      return res.status(400).json({ success: false, message: 'Name is required' });
+    }
+
+    if (newName !== current.name) {
+      const [dup] = await db.query('SELECT id FROM session_types WHERE name = ? AND id <> ?', [newName, id]);
+      if (dup && dup.length) {
+        return res.status(400).json({ success: false, message: 'Another session type with this name already exists' });
+      }
+    }
+
+    const finalDescription = description !== undefined ? description : current.description;
+    const finalIsStudent = isStudentFacing !== undefined ? (isStudentFacing ? 1 : 0) : current.is_student_facing;
+    const finalRequiresContext =
+      requiresContextActivity !== undefined ? (requiresContextActivity ? 1 : 0) : current.requires_context_activity;
+    const finalEvalMode = evaluationModeId !== undefined ? (evaluationModeId || null) : current.evaluation_mode;
+    const finalIsActive =
+      isActive !== undefined
+        ? (isActive ? 1 : 0)
+        : current.is_active;
+
+    await db.query(
+      `UPDATE session_types 
+           SET name = ?, description = ?, is_student_facing = ?, requires_context_activity = ?, evaluation_mode = ?, is_active = ?
+           WHERE id = ?`,
+      [
+        newName,
+        finalDescription,
+        finalIsStudent,
+        finalRequiresContext,
+        finalEvalMode,
+        finalIsActive,
+        id,
+      ]
+    );
+
+    return res.json({ success: true, message: 'Session type updated' });
+  } catch (error) {
+    console.error('Error updating session type:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update session type', error: error.message });
+  }
+};
+
+// Hard delete session type
+exports.deleteSessionType = async (req, res) => {
+  try {
+    const { id } = req.body || {};
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Session type id is required' });
+    }
+
+    await db.query('DELETE FROM session_types WHERE id = ?', [id]);
+    return res.json({ success: true, message: 'Session type deleted' });
+  } catch (error) {
+    console.error('Error deleting session type:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete session type', error: error.message });
+  }
+};
+

@@ -8,12 +8,12 @@ const CoordinatorScheduleHome = ({ navigation }) => {
   const menuItems = [
     {
       id: '1',
-      title: 'Mentor Schedule Upload',
+      title: 'Faculty Schedule Upload',
       iconName: 'account-plus',
       iconType: 'MaterialCommunityIcons',
       color: '#7C3AED',
       bgColor: '#E9D5FF',
-      route: 'CoordinatorMentorScheduleUpload',
+      route: 'CoordinatorFacultyScheduleUpload',
     },
     {
       id: '2',
@@ -23,6 +23,15 @@ const CoordinatorScheduleHome = ({ navigation }) => {
       color: '#10B981',
       bgColor: '#D1FAE5',
       route: 'CoordinatorAcademicCalendar',
+    },
+    {
+      id: '3',
+      title: 'Faculty Session Types',
+      iconName: 'book-open-variant',
+      iconType: 'MaterialCommunityIcons',
+      color: '#F59E0B',
+      bgColor: '#FEF3C7',
+      route: 'CoordinatorFacultySessionTypes',
     },
   ];
 

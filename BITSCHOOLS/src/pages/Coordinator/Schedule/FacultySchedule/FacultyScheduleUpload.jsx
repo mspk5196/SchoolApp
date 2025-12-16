@@ -5,7 +5,7 @@ import { Header } from '../../../../components';
 import ApiService from '../../../../utils/ApiService';
 import * as DocumentPicker from '@react-native-documents/picker';
 
-const MentorScheduleUpload = ({ navigation }) => {
+const FacultyScheduleUpload = ({ navigation }) => {
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -64,10 +64,10 @@ const MentorScheduleUpload = ({ navigation }) => {
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['bottom', 'left', 'right']}>
-      <Header title="Mentor Schedule Upload" navigation={navigation} />
+      <Header title="Faculty Schedule Upload" navigation={navigation} />
       <View style={styles.container}>
         <Text style={styles.description}>
-          Download the Excel template, fill in the mentor schedules, and upload the file to create mentor and student schedules.
+          Download the Excel template, fill in the faculty schedules, and upload the file to create faculty and student schedules.
         </Text>
 
         <TouchableOpacity
@@ -134,4 +134,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MentorScheduleUpload;
+export default FacultyScheduleUpload;
