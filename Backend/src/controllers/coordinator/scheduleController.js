@@ -181,7 +181,75 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
 
     // Context activities sheet: key by Grade|Section|Subject|Batch, label is hierarchical activity path
     const contextActivityRows = [];
+    const seen = new Set();
+
+    const addContextRow = (key, label) => {
+      const uniq = `${key}@@${label}`;
+      if (seen.has(uniq)) return;
+      seen.add(uniq);
+      contextActivityRows.push({ key, label });
+    };
+
+    const grouped = {};
+    contextActivities.forEach(ca => {
+      const gk = `${ca.grade_name}|${ca.section_name}|${ca.subject_name}`;
+      if (!grouped[gk]) grouped[gk] = [];
+      grouped[gk].push(ca);
+    });
+
+    Object.entries(grouped).forEach(([groupKey, activities]) => {
+      const byParent = new Map();
+      activities.forEach(a => {
+        const pid = a.parent_context_id || 0;
+        if (!byParent.has(pid)) byParent.set(pid, []);
+        byParent.get(pid).push(a);
+      });
+
+      const walk = (node, path) => {
+        const newPath = [...path, node.activity_name];
+        const label = newPath.join(' > ');
+
+        addContextRow(`${groupKey}|`, label);
+
+        batches
+          .filter(
+            b =>
+              `${b.grade_name}|${b.section_name}|${b.subject_name}` === groupKey
+          )
+          .forEach(b =>
+            addContextRow(`${groupKey}|${b.batch_name}`, label)
+          );
+
+        (byParent.get(node.context_activity_id) || []).forEach(child =>
+          walk(child, newPath)
+        );
+      };
+
+      (byParent.get(0) || []).forEach(root => walk(root, []));
+    });
+    contextActivityRows.sort((a, b) => {
+      if (a.key !== b.key) {
+        return a.key.localeCompare(b.key); // group same keys together
+      }
+      return a.label.localeCompare(b.label); // stable ordering
+    });
+
+    contextActivitySheet.addRow([
+      'Key_Grade_Section_Subject_Batch',
+      'ContextActivityLabel'
+    ]);
+    contextActivityRows.forEach(r =>
+      contextActivitySheet.addRow([r.key, r.label])
+    );
+
+    // console.log([...new Set(contextActivityRows.map(r => r.label))]);
+
+    // Assessment cycles sheet with key (Grade|Section|Subject|Batch|Activity) and contextual label
+    // Build a map for quick lookup of context activities
     const ctxMap = new Map();
+    contextActivities.forEach(ca => {
+      ctxMap.set(ca.context_activity_id, ca);
+    });
 
     const buildActivityPath = (ctx) => {
       const names = [];
@@ -193,37 +261,6 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
       return names.join(' > ');
     };
 
-    if (contextActivities.length > 0) {
-      // Populate context map first so hierarchical paths can be built
-      contextActivities.forEach(ca => {
-        ctxMap.set(ca.context_activity_id, ca);
-      });
-
-      contextActivities.forEach(ca => {
-        const label = buildActivityPath(ca);
-        // Section-level (no batch)
-        contextActivityRows.push({
-          key: `${ca.grade_name}|${ca.section_name}|${ca.subject_name}|`,
-          label,
-        });
-
-        // Batch-specific rows for all batches under same grade/section/subject
-        const relatedBatches = batches.filter(
-          b => b.grade_name === ca.grade_name && b.section_name === ca.section_name && b.subject_name === ca.subject_name
-        );
-        relatedBatches.forEach(b => {
-          contextActivityRows.push({
-            key: `${ca.grade_name}|${ca.section_name}|${ca.subject_name}|${b.batch_name}`,
-            label,
-          });
-        });
-      });
-    }
-
-    contextActivitySheet.addRow(['Key_Grade_Section_Subject_Batch', 'ContextActivityLabel']);
-    contextActivityRows.forEach(row => contextActivitySheet.addRow([row.key, row.label]));
-
-    // Assessment cycles sheet with key (Grade|Section|Subject|Batch|Activity) and contextual label
     assessmentCycleSheet.addRow([
       'Key_Grade_Section_Subject_Batch_Activity',
       'AssessmentCycleLabel[Grade-Section-Subject-Batch-Activity]',
@@ -319,7 +356,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
           allowBlank: false,
           formulae: [
             `OFFSET(Sections!$B$2, MATCH($F${i}, Sections!$A$2:$A$${sections.length + 1}, 0)-1, 0, ` +
-              `COUNTIF(Sections!$A$2:$A$${sections.length + 1}, $F${i}), 1)`,
+            `COUNTIF(Sections!$A$2:$A$${sections.length + 1}, $F${i}), 1)`,
           ],
           showErrorMessage: true,
           errorTitle: 'Invalid Section',
@@ -334,7 +371,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
           allowBlank: false,
           formulae: [
             `OFFSET(Subjects!$B$2, MATCH($F${i}&"|"&$G${i}, Subjects!$A$2:$A$${subjects.length + 1}, 0)-1, 0, ` +
-              `COUNTIF(Subjects!$A$2:$A$${subjects.length + 1}, $F${i}&"|"&$G${i}), 1)`,
+            `COUNTIF(Subjects!$A$2:$A$${subjects.length + 1}, $F${i}&"|"&$G${i}), 1)`,
           ],
           showErrorMessage: true,
           errorTitle: 'Invalid Subject',
@@ -349,7 +386,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
           allowBlank: true,
           formulae: [
             `OFFSET(Batches!$B$2, MATCH($F${i}&"|"&$G${i}&"|"&$H${i}, Batches!$A$2:$A$${batches.length + 1}, 0)-1, 0, ` +
-              `COUNTIF(Batches!$A$2:$A$${batches.length + 1}, $F${i}&"|"&$G${i}&"|"&$H${i}), 1)`,
+            `COUNTIF(Batches!$A$2:$A$${batches.length + 1}, $F${i}&"|"&$G${i}&"|"&$H${i}), 1)`,
           ],
           showErrorMessage: true,
           errorTitle: 'Invalid Batch',
@@ -364,7 +401,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
           allowBlank: false,
           formulae: [
             `OFFSET(Venues!$B$2, MATCH($F${i}&"|"&$G${i}, Venues!$A$2:$A$${venueMappings.length + 1}, 0)-1, 0, ` +
-              `COUNTIF(Venues!$A$2:$A$${venueMappings.length + 1}, $F${i}&"|"&$G${i}), 1)`,
+            `COUNTIF(Venues!$A$2:$A$${venueMappings.length + 1}, $F${i}&"|"&$G${i}), 1)`,
           ],
           showErrorMessage: true,
           errorTitle: 'Invalid Venue',
@@ -392,6 +429,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
         error: 'Please select a valid session type'
       };
 
+
       // ContextActivity dropdown: only context activities for selected grade/section/subject/batch
       if (contextActivityRows.length > 0) {
         sheet.getCell(`M${i}`).dataValidation = {
@@ -399,8 +437,8 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
           allowBlank: true,
           formulae: [
             `OFFSET(ContextActivities!$B$2, MATCH($F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}, ` +
-              `ContextActivities!$A$2:$A$${contextActivityRows.length + 1}, 0)-1, 0, ` +
-              `COUNTIF(ContextActivities!$A$2:$A$${contextActivityRows.length + 1}, $F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}), 1)`,
+            `ContextActivities!$A$2:$A$${contextActivityRows.length + 1}, 0)-1, 0, ` +
+            `COUNTIF(ContextActivities!$A$2:$A$${contextActivityRows.length + 1}, $F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}), 1)`,
           ],
           showErrorMessage: true,
           errorTitle: 'Invalid Context Activity',
@@ -415,8 +453,8 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
           allowBlank: true,
           formulae: [
             `OFFSET(AssessmentCycles!$B$2, MATCH($F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}&"|"&$M${i}, ` +
-              `AssessmentCycles!$A$2:$A$${assessmentCycles.length + 1}, 0)-1, 0, ` +
-              `COUNTIF(AssessmentCycles!$A$2:$A$${assessmentCycles.length + 1}, $F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}&"|"&$M${i}), 1)`,
+            `AssessmentCycles!$A$2:$A$${assessmentCycles.length + 1}, 0)-1, 0, ` +
+            `COUNTIF(AssessmentCycles!$A$2:$A$${assessmentCycles.length + 1}, $F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}&"|"&$M${i}), 1)`,
           ],
           showErrorMessage: true,
           errorTitle: 'Invalid Assessment Cycle',
@@ -439,13 +477,13 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
       venue_name:
         venueMappings.length > 0
           ? (() => {
-              const vm = venueMappings[0];
-              const parts = [];
-              if (vm.batch_name) parts.push(vm.batch_name);
-              if (vm.activity_name) parts.push(vm.activity_name);
-              const suffix = parts.length ? `[${parts.join('-')}]` : '';
-              return `${vm.venue_name}${suffix}`;
-            })()
+            const vm = venueMappings[0];
+            const parts = [];
+            if (vm.batch_name) parts.push(vm.batch_name);
+            if (vm.activity_name) parts.push(vm.activity_name);
+            const suffix = parts.length ? `[${parts.join('-')}]` : '';
+            return `${vm.venue_name}${suffix}`;
+          })()
           : (venues.length > 0 ? venues[0].name : 'Room 101'),
       session_type: sessionTypes.length > 0 ? sessionTypes[0].name : 'class',
       total_marks: '',
@@ -453,23 +491,23 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
       assessment_cycle_name:
         assessmentCycles.length > 0
           ? (() => {
-              const ac = assessmentCycles[0];
-              // Build hierarchical activity label if possible
-              let activityLabel = ac.activity_name || '';
-              if (ac.context_activity_id && ctxMap.has(ac.context_activity_id)) {
-                const ctx = ctxMap.get(ac.context_activity_id);
-                activityLabel = buildActivityPath(ctx);
-              }
+            const ac = assessmentCycles[0];
+            // Build hierarchical activity label if possible
+            let activityLabel = ac.activity_name || '';
+            if (ac.context_activity_id && ctxMap.has(ac.context_activity_id)) {
+              const ctx = ctxMap.get(ac.context_activity_id);
+              activityLabel = buildActivityPath(ctx);
+            }
 
-              const parts = [];
-              if (ac.grade_name) parts.push(ac.grade_name);
-              if (ac.section_name) parts.push(ac.section_name);
-              if (ac.subject_name) parts.push(ac.subject_name);
-              if (ac.batch_name) parts.push(ac.batch_name);
-              if (activityLabel) parts.push(activityLabel);
-              const suffix = parts.length ? `[${parts.join('-')}]` : '';
-              return `${ac.name}${suffix}`;
-            })()
+            const parts = [];
+            if (ac.grade_name) parts.push(ac.grade_name);
+            if (ac.section_name) parts.push(ac.section_name);
+            if (ac.subject_name) parts.push(ac.subject_name);
+            if (ac.batch_name) parts.push(ac.batch_name);
+            if (activityLabel) parts.push(activityLabel);
+            const suffix = parts.length ? `[${parts.join('-')}]` : '';
+            return `${ac.name}${suffix}`;
+          })()
           : '',
       task_description: 'Regular class session',
     });
@@ -1148,7 +1186,7 @@ exports.createAssessmentCycle = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name is required' });
     }
 
-    const freq = frequency && ['daily','weekly','monthly','term','custom'].includes(frequency)
+    const freq = frequency && ['daily', 'weekly', 'monthly', 'term', 'custom'].includes(frequency)
       ? frequency
       : 'custom';
 
@@ -1225,7 +1263,7 @@ exports.updateAssessmentCycle = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name is required' });
     }
 
-    const freq = frequency && ['daily','weekly','monthly','term','custom'].includes(frequency)
+    const freq = frequency && ['daily', 'weekly', 'monthly', 'term', 'custom'].includes(frequency)
       ? frequency
       : current.frequency || 'custom';
 

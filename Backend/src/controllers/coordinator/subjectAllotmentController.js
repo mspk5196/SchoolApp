@@ -117,7 +117,7 @@ exports.getSubjectActivities = async (req, res) => {
         const [subjects] = await db.query(subjectsSql, [gradeID, sectionID]);
         if (!subjects || subjects.length === 0) {
             return res.json({ success: true, subjects: [] });
-        }
+        } 
 
         // All context_activities for the section
         const activitiesSql = `
