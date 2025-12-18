@@ -121,7 +121,13 @@ const styles = StyleSheet.create({
   },
   infoColumn: {
     flex: 1,
-    flexDirection: 'row'
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap:5
+  },
+  infoLabelContainer: {
+    flexShrink: 0,
   },
   infoTitle: {
     marginTop: 3,
@@ -143,7 +149,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginLeft: 6,
     color: '#000',
-    fontWeight: "600"
+    fontWeight: "600",
+    flexShrink: 1,
   },
 
   penicon: {
@@ -171,6 +178,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  todayIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3B82F6',
+    marginRight: 8,
+  },
   dateNavigationControls: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -189,61 +203,157 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   dateButton: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   dateText: {
     fontSize: 14,
-    color: '#000',
+    color: '#1E293B',
     fontWeight: '600',
   },
   assignButton: {
     marginLeft: 10,
+    padding: 6,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
   },
   classItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#F7F7F7',
-    marginBottom: 7,
-    width: '95%',
-    margin: 10
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    marginHorizontal: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3B82F6',
+  },
+  sessionHeader: {
+    marginBottom: 12,
+  },
+  sessionMainInfo: {
+    marginBottom: 8,
   },
   subjectText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000'
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
   },
   gradeText: {
     fontSize: 14,
-    marginTop: 4,
-    color: '#666',
-    fontWeight: '600'
-
+    color: '#64748B',
+    fontWeight: '500',
   },
-  typeText: {
-    fontSize: 14,
-    color: '#ff9800',
-    marginTop: 4,
-    fontWeight: '600'
+  timeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   timeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#64748B',
+  },
+  sessionDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  sessionBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  sessionBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E40AF',
+  },
+  venueBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  venueBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  topicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  topicText: {
+    fontSize: 13,
+    color: '#475569',
+    flex: 1,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  activityText: {
+    fontSize: 13,
+    color: '#475569',
+    flex: 1,
+  },
+  batchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  batchText: {
+    fontSize: 13,
+    color: '#475569',
+    flex: 1,
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  statusCompleted: {
+    backgroundColor: '#D1FAE5',
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  statusTextCompleted: {
+    color: '#065F46',
   },
   eyeicon: {
-    marginTop: 7
+    marginTop: 10
   },
   shedulesContainer: {
     flex: 1,
-    backgroundColor: '#fff',
-    width: '95%',
-    margin: 10,
-    borderRadius: 10
+    backgroundColor: '#F8FAFC',
   },
   modalOverlay: {
     flex: 1,
@@ -336,11 +446,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     color: '#FF6B6B',
   },
-  homeButtonContainer: {
-    position: 'absolute',
-    bottom: 30,
-    right: 25,
-  },
+  
   // Add new styles for session modal
   sessionModalContent: {
     backgroundColor: 'white',

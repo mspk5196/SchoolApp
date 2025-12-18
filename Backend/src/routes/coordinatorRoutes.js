@@ -59,6 +59,17 @@ router.post('/mentor/getEnroledSubjectMentors', coordinatorController.getEnroled
 router.post('/mentor/assignMentorToSubject', coordinatorController.assignMentorToSubject);
 router.post('/mentor/removeEnroledSubjectMentor', coordinatorController.removeEnroledSubjectMentor);
 
+// Mentor list and details routes
+router.post('/mentor/getGradeMentors', coordinatorController.getGradeMentors);
+router.post('/mentor/getMentorSchedule', coordinatorController.getMentorSchedule);
+router.post('/mentor/getMentorDetails', coordinatorController.getMentorDetails);
+
+// Faculty issue routes
+router.post('/mentor/getFacultyIssues', coordinatorController.getFacultyIssues);
+router.post('/mentor/createFacultyIssue', coordinatorController.createFacultyIssue);
+router.post('/mentor/getFacultyIssueCount', coordinatorController.getFacultyIssueCount);
+router.post('/mentor/getGradeMentorsForIssues', coordinatorController.getGradeMentorsForIssues);
+
 // Subject allotment routes
 router.post('/getGradeSections', subjectAllotmentController.getGradeSections);
 router.get('/getSubjects', subjectAllotmentController.getSubjects);

@@ -1,20 +1,26 @@
-import { apiFetch } from "../../../../utils/apiClient.js";
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, Modal, FlatList, ScrollView, ActivityIndicator, Alert, TouchableWithoutFeedback, TextInput, SafeAreaView } from 'react-native';
-import { API_URL } from '../../../../utils/env.js'
+import { View, Text, TouchableOpacity, Image, Modal, FlatList, ScrollView, ActivityIndicator, Alert, TouchableWithoutFeedback, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import styles from './MentorListDetailsStyles';
 import Nodata from '../../../../components/General/Nodata';
-const Staff = require('../../../../assets/CoordinatorPage/MentorList/staff.png');
+const Staff = require('../../../../assets/General/staff.png');
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Feather from 'react-native-vector-icons/Feather';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import ApiService from '../../../../utils/ApiService';
+import { API_URL } from '../../../../config/env';
+import FooterHome from '../../../../components/General/FooterHome/FooterHome';
+import { Header } from '../../../../components';
 
 const CoordinatorMentorListDetails = ({ route, navigation }) => {
   const { mentor = {} } = route.params || {};
-
+  const params = route.params && route.params.data ? route.params.data : (route.params || {});
+  const { userData, selectedGrade } = params;
+  console.log(selectedGrade, userData);
+  
   const [selectedSessions, setSelectedSessions] = useState([]);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
 
@@ -133,18 +139,13 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
 
   // Fetch mentor schedule
   const fetchScheduleForDate = async (date) => {
-    console.log('Fetching schedule for date:', date, 'mentor ID:', mentor.id);
+    // console.log('Fetching schedule for date:', date, 'mentor ID:', mentor.id);
 
     try {
-      const response = await apiFetch(`/coordinator/mentor/getMentorSchedule`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mentorId: mentor.id,
-          date: date
-        }),
+      const data = await ApiService.post('/coordinator/mentor/getMentorSchedule', {
+        mentorId: mentor.id,
+        date: date
       });
-      const data = response
       console.log('Schedule API response:', data);
       if (data.success) {
         setMentorSchedule(data.schedule);
@@ -162,42 +163,34 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
   // Main function to fetch all mentor details
   const fetchMentorDetails = async () => {
     try {
-      // Fetch subjects and grades handled by mentor
-      const assignmentsResponse = await apiFetch(`/coordinator/getMentorAssignments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mentorId: mentor.id }),
+      const data = await ApiService.post('/coordinator/mentor/getMentorDetails', {
+        mentorId: mentor.id
       });
 
-      const assignmentsData = await assignmentsResponse
+      console.log('Mentor details response:', data);
 
-      // Fetch section information
-      const sectionResponse = await apiFetch(`/coordinator/getMentorSection`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mentorId: mentor.id }),
+      if (data.success) {
+        setMentorDetails({
+          subjects: data.details.subjects || [],
+          grades: data.details.grades || [],
+          sections: data.details.sections || [],
+          issues: 0
+        });
+        
+        // Update attendance data from the same response
+        if (data.details.attendance) {
+          setAttendanceData(data.details.attendance);
+        }
+      }
+
+      // Fetch issue count separately
+      const issueData = await ApiService.post('/coordinator/mentor/getFacultyIssueCount', {
+        facultyId: mentor.faculty_id
       });
 
-      const sectionData = await sectionResponse
-
-      // Fetch issues count (you'll need to implement this endpoint)
-      const issuesResponse = await apiFetch(`/coordinator/getMentorIssues`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: mentor.phone }),
-      });
-
-      const issuesData = await issuesResponse
-
-      // console.log("Assignments data", sectionData); 
-
-      setMentorDetails({
-        subjects: assignmentsData.subjects || [],
-        grades: assignmentsData.grades || [],
-        section: sectionData.section || '',
-        issues: issuesData.count || 0
-      });
-
+      if (issueData.success) {
+        setMentorDetails(prev => ({ ...prev, issues: issueData.count }));
+      }
     } catch (error) {
       console.error('Error fetching mentor details:', error);
       Alert.alert('Error', 'Failed to fetch mentor details');
@@ -207,36 +200,42 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
   // Update the formatSubjects and formatGrades functions
   const formatSubjects = (subjects) => {
     if (!subjects || subjects.length === 0) return 'None';
+    // Handle if subjects is array of strings
+    if (typeof subjects[0] === 'string') {
+      return subjects.join(', ');
+    }
+    // Handle if subjects is array of objects with subject_name
     return subjects.map(sub => sub.subject_name).join(', ');
   };
 
   const formatGrades = (grades) => {
     if (!grades || grades.length === 0) return 'None';
-    return grades.map(grade => grade.grade_id).join(', ');
-  };
-  const fetchAttendanceData = async () => {
-    try {
-      const response = await apiFetch(`/coordinator/getAttendance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: mentor.phone }),
-      });
-
-      const data = response
-      if (data.success) {
-        setAttendanceData(data.attendanceData);
-      }
-    } catch (error) {
-      console.error('Error fetching attendance data:', error);
-    } finally {
-      setLoading(false);
+    // Handle if grades is array of strings
+    if (typeof grades[0] === 'string') {
+      return grades.join(', ');
     }
+    // Handle if grades is array of objects with grade_name
+    return grades.map(grade => grade.grade_name).join(', ');
+  };
+
+  const formatSections = (sections) => {
+    if (!sections || sections.length === 0) return 'None';
+    // Handle if sections is array of strings
+    if (typeof sections[0] === 'string') {
+      return sections.join(', ');
+    }
+    // Handle if sections is array of objects with section_name
+    return sections.map(sec => sec.section_name).join(', ');
   };
 
   useEffect(() => {
-    fetchMentorDetails();
-    fetchAttendanceData();
-    fetchScheduleForDate(formattedDate);
+    const fetchData = async () => {
+      setLoading(true);
+      await fetchMentorDetails();
+      await fetchScheduleForDate(formattedDate);
+      setLoading(false);
+    };
+    fetchData();
   }, [mentor]);
 
   //Substitute Mentor
@@ -257,13 +256,9 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
       const newMentorId = selectedFaculties[0];
 
       for (const session of selectedSessions) {
-        await apiFetch(`/coordinator/substitute-mentor`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            scheduleId: session.id,
-            newMentorId: newMentorId
-          }),
+        await ApiService.post('/coordinator/substitute-mentor', {
+          scheduleId: session.id,
+          newMentorId: newMentorId
         });
       }
 
@@ -297,19 +292,14 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
   // Add the fetchAvailableMentors function
   const fetchAvailableMentors = async (selectedSession) => {
     try {
-      const response = await apiFetch(`/coordinator/mentor/available-substitute-mentors`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sectionId: mentor.section_id,
-          date: formattedDate,
-          startTime: selectedSession.start_time,
-          endTime: selectedSession.end_time,
-          currentMentorId: mentor.id
-        }),
+      const data = await ApiService.post('/coordinator/mentor/available-substitute-mentors', {
+        sectionId: mentor.section_id,
+        date: formattedDate,
+        startTime: selectedSession.start_time,
+        endTime: selectedSession.end_time,
+        currentMentorId: mentor.id
       });
 
-      const data = response
       if (data.success) {
         setAvailableMentors(data.availableMentors);
       }
@@ -323,12 +313,6 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
   useEffect(() => {
     AsyncStorage.getItem('token').then(t => { authTokenRef.current = t; });
   }, []);
-
-  useEffect(() => {
-    fetchMentorDetails();
-    fetchAttendanceData();
-    fetchScheduleForDate(formattedDate);
-  }, [mentor]);
 
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
@@ -346,12 +330,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Icon name="arrow-back" size={24} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Mentor Details</Text>
-        </View>
+        <Header title={'Mentor Details'} navigation={navigation} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
           <Text style={styles.loadingText}>Loading mentor details...</Text>
@@ -384,12 +363,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color="#1E293B" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mentor Details</Text>
-      </View>
+      <Header title={'Mentor Details'} navigation={navigation} />
 
       <View style={styles.MentorDayDetails}>
         <View style={styles.profileSection}>
@@ -442,21 +416,31 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
             </TouchableOpacity> */}
           </View>
           <View style={styles.infoColumn}>
-            <Text style={styles.infoTitle1}>Mentor For:</Text>
-            <Text style={styles.infoValue}>{'Section ' + mentorDetails.section || 'NA'}</Text>
+            <View style={styles.infoLabelContainer}>
+              <Text style={styles.infoTitle1}>Mentor For:</Text>
+            </View>
+            <Text style={styles.infoValue}>Section(s): {formatSections(mentorDetails.sections)}</Text>
           </View>
         </View>
 
         <View style={styles.infoRow}>
           <View style={styles.infoColumn}>
             <Text style={styles.infoTitle}>Issues: {mentorDetails.issues}</Text>
-            <TouchableOpacity style={styles.eyeicon}>
-              <MaterialCommunityIcons name="eye" size={16} color="#000" />
+            <TouchableOpacity 
+              style={styles.eyeicon}
+              onPress={() => navigation.navigate('CoordinatorMentorIssueLog', {
+                data: {
+                  userData,
+                  selectedGrade: selectedGrade
+                }
+              })}
+            >
+              <MaterialCommunityIcons name="eye" size={16} color="#3B82F6" />
             </TouchableOpacity>
           </View>
           <View style={styles.infoColumn}>
             <Text style={styles.infoTitle1}>Handling:</Text>
-            <Text style={styles.infoValue}>Grade {formatGrades(mentorDetails.grades)}</Text>
+            <Text style={styles.infoValue}>{formatGrades(mentorDetails.grades)}</Text>
           </View>
         </View>
       </View>
@@ -469,7 +453,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
             <Text style={styles.todayText}>{getDayLabel()}</Text>
             <View style={styles.dateNavigationControls}>
               <TouchableOpacity onPress={goToPreviousDay}>
-                <Text style={styles.dateNavArrow}>{"<"}</Text>
+                <Icon name="chevron-back" size={20} color="#000" />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -480,32 +464,66 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
               </TouchableOpacity>
 
               <TouchableOpacity onPress={goToNextDay}>
-                <Text style={styles.dateNavArrow}>{">"}</Text>
+                <Icon name="chevron-forward" size={20} color="#000" />
               </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.assignButton}
-              onPress={() => setShowSessionModal(true)}
-            >
-              <Feather name="repeat" color="#000" size={24} />
-            </TouchableOpacity>
+            
           </View>
         </View>
         <ScrollView>
           {mentorSchedule.length > 0 ? (
             mentorSchedule.map((cls, index) => (
               <View key={index} style={styles.classItem}>
-                <View>
-                  <Text style={styles.subjectText}>{cls.subject_name}</Text>
-                  <Text style={styles.gradeText}>Grade {cls.grade_id} - Section {cls.section_name}</Text>
-                  <Text style={styles.typeText}>{cls.session_type} - {cls.student_count} Student{cls.student_count !== 1 ? 's' : ''}</Text>
+                <View style={styles.sessionHeader}>
+                  <View style={styles.sessionMainInfo}>
+                    <Text style={styles.subjectText}>{cls.subject_name || 'N/A'}</Text>
+                    <Text style={styles.gradeText}>{cls.grade_name} - Section {cls.section_name}</Text>
+                  </View>
+                  <View style={styles.timeContainer}>
+                    <MaterialCommunityIcons name="clock-outline" size={16} color="#64748B" />
+                    <Text style={styles.timeText}>
+                      {formatTime(cls.start_time)} - {formatTime(cls.end_time)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.sessionDetails}>
+                  {cls.session_type && (
+                    <View style={styles.sessionBadge}>
+                      <Text style={styles.sessionBadgeText}>{cls.session_type}</Text>
+                    </View>
+                  )}
                   {cls.venue_name && (
-                    <Text style={styles.venueText}>Venue: {cls.venue_name}</Text>
+                    <View style={styles.venueBadge}>
+                      <MaterialCommunityIcons name="map-marker" size={14} color="#059669" />
+                      <Text style={styles.venueBadgeText}>{cls.venue_name}</Text>
+                    </View>
                   )}
                 </View>
-                <Text style={styles.timeText}>
-                  {formatTime(cls.start_time)} - {formatTime(cls.end_time)}
-                </Text>
+                {cls.topic_name && (
+                  <View style={styles.topicRow}>
+                    <MaterialCommunityIcons name="book-open-variant" size={14} color="#64748B" />
+                    <Text style={styles.topicText}>{cls.topic_name}</Text>
+                  </View>
+                )}
+                {cls.activity_name && (
+                  <View style={styles.activityRow}>
+                    <MaterialCommunityIcons name="clipboard-text" size={14} color="#64748B" />
+                    <Text style={styles.activityText}>{cls.activity_name}</Text>
+                  </View>
+                )}
+                {cls.batch_names && (
+                  <View style={styles.batchRow}>
+                    <MaterialCommunityIcons name="account-group" size={14} color="#64748B" />
+                    <Text style={styles.batchText}>{cls.batch_names}</Text>
+                  </View>
+                )}
+                {cls.status && (
+                  <View style={[styles.statusBadge, cls.status === 'completed' && styles.statusCompleted]}>
+                    <Text style={[styles.statusText, cls.status === 'completed' && styles.statusTextCompleted]}>
+                      {cls.status.toUpperCase()}
+                    </Text>
+                  </View>
+                )}
               </View>
             ))
           ) : (
@@ -540,131 +558,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
         </View>
       </Modal>
 
-      {/* Session Modal */}
-      <Modal
-        visible={showSessionModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowSessionModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.sessionModalContent}>
-            <View style={styles.sessionModalHeader}>
-              <MaterialCommunityIcons
-                name="arrow-left"
-                size={20}
-                color="#000"
-                onPress={() => setShowSessionModal(false)}
-              />
-              <Text style={styles.sessionModalTitle}>Substitute allocation</Text>
-            </View>
-
-            <ScrollView style={styles.sessionList}>
-              {mentorSchedule.map((session) => (
-                <TouchableOpacity
-                  key={session.id}
-                  style={styles.sessionItem}
-                  onPress={() => handleSessionSelect(session)}
-                >
-                  <View style={styles.checkboxContainer}>
-                    {selectedSessions.some(s => s.id === session.id) ? (
-                      <MaterialCommunityIcons name="checkbox-marked" color="#000" size={24} />
-                    ) : (
-                      <MaterialCommunityIcons name="checkbox-blank-outline" color="#000" size={24} />
-                    )}
-                  </View>
-                  <Text style={styles.sessionText}>
-                    {session.subject_name} ({formatTime(session.start_time)} - {formatTime(session.end_time)}) - {session.student_count} Student{session.student_count !== 1 ? 's' : ''}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.allotButton}
-              onPress={() => {
-                if (selectedSessions.length > 0) {
-                  setShowSessionModal(false);
-                  setShowFacultyModal(true);
-                }
-              }}
-            >
-              <Text style={styles.allotButtonText}>Allot substitute</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Faculty Selection Modal */}
-      <Modal
-        visible={showFacultyModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowFacultyModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.facultyModalContent}>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchBox}
-                placeholder="Search faculty"
-                value={searchText}
-                onChangeText={text => setSearchText(text)}
-              />
-            </View>
-
-            <FlatList
-              data={availableMentors?.filter(mentor =>
-                mentor.name.toLowerCase().includes(searchText.toLowerCase())
-              )}
-              keyExtractor={item => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.facultyItem,
-                    selectedFaculties.includes(item.id) && styles.selectedFacultyItem,
-                  ]}
-                  onPress={() => toggleFacultySelection(item.id)}
-                >
-                  <View style={styles.facultyDetails}>
-                    <View style={styles.staffName}>
-                      <Oneperson width={20} height={20} />
-                      <Text style={styles.facultyName}>{item.name}</Text>
-                    </View>
-                    <View style={styles.hatContainer}>
-                      <Hat width={20} height={20} />
-                      <Text style={styles.facultySpec}>
-                        {item.specification}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.checkboxContainer}>
-                    {selectedFaculties.includes(item.id) ? (
-                      <MaterialCommunityIcons name="checkbox-marked" color="#000" size={24} />
-                    ) : (
-                     <MaterialCommunityIcons name="checkbox-blank-outline" color="#000" size={24} />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              )}
-              style={styles.facultyList}
-            />
-
-            <TouchableOpacity
-              style={styles.selectButton}
-              onPress={handleAllotSubstitute}
-            >
-              <Text style={styles.selectButtonText}>
-                Assign Substitute <MaterialIcon name="check-circle-outline" color="#000" size={24} />
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <TouchableOpacity style={styles.homeButtonContainer} onPress={() => navigation.navigate('CoordinatorMain')}>
-        <MaterialIcon name="home-circle" color="#3B82F6" size={56} />
-      </TouchableOpacity>
+      <FooterHome navigation={navigation} homeRoute="CoordinatorHome" />
     </SafeAreaView>
   );
 };

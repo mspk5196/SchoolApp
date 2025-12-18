@@ -26,6 +26,10 @@ import AcademicCalendar from '../../pages/Coordinator/Schedule/AcademicCalendar/
 import FacultySessionTypes from '../../pages/Coordinator/Schedule/FacultySessionTypes/FacultySessionTypes';
 import AssessmentCycles from '../../pages/Coordinator/Schedule/AssessmentCycles/AssessmentCycles';
 
+import CoordinatorMentorList from '../../pages/Coordinator/Mentor/MentorList/CoordinatorMentorList';
+import CoordinatorMentorListDetails from '../../pages/Coordinator/Mentor/MentorList/CoordinatorMentorListDetails';
+import CoordinatorMentorIssueLog from '../../pages/Coordinator/Mentor/IssueLog/CoordinatorMentorIssueLog';
+
 const Stack = createNativeStackNavigator();
 
 const CoordinatorRoutes = () => {
@@ -47,6 +51,9 @@ const CoordinatorRoutes = () => {
       <Stack.Screen name="CoordinatorSubjectMentor" component={CoordinatorSubjectMentor} />
       <Stack.Screen name="CoordinatorMentorMapping" component={CoordinatorMentorMapping} />
       <Stack.Screen name="CoordinatorSectionStudents" component={CoordinatorSectionStudents} />
+      <Stack.Screen name="CoordinatorMentorList" component={CoordinatorMentorList} />
+      <Stack.Screen name="CoordinatorMentorListDetails" component={CoordinatorMentorListDetails} />
+      <Stack.Screen name="CoordinatorMentorIssueLog" component={CoordinatorMentorIssueLog} />
 
       {/* Material Management Routes */}
       <Stack.Screen name="CoordinatorMaterialHome" component={CoordinatorMaterialHome} />
