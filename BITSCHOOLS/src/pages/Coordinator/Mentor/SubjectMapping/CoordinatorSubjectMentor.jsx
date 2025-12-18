@@ -41,6 +41,11 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
   
   const scrollViewRef = React.useRef(null);
 
+  const getMentorId = (mentor, fallback) => {
+    const val = mentor?.id ?? mentor?.mentor_id ?? mentor?.mentorID ?? mentor?.msaID ?? mentor?.msa_id ?? mentor?.faculty_id;
+    return val !== undefined && val !== null ? val : fallback;
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -215,7 +220,8 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
     );
   };
 
-  const toggleSelection = id => {
+  const toggleSelection = (mentor) => {
+    const id = getMentorId(mentor, mentor?.roll || mentor?.name);
     if (selectedFaculties.includes(id)) {
       setSelectedFaculties(selectedFaculties.filter(item => item !== id));
     } else {
@@ -364,7 +370,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
       <FlatList
         data={enroledMentors}
         showsVerticalScrollIndicator={false}
-        keyExtractor={item => item.id.toString()}
+        keyExtractor={(item, index) => getMentorId(item, index).toString()}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -389,7 +395,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
               </Text>
               <Text style={styles.facultyId}>Faculty ID: {item.roll}</Text>
             </View>
-            <TouchableOpacity style={styles.moreIcon} onPress={() => removeEnroledSubjectMentor(item.id)}>
+            <TouchableOpacity style={styles.moreIcon} onPress={() => removeEnroledSubjectMentor(getMentorId(item, item.roll))}>
               <MaterialCommunityIcons name="trash-can-outline" size={22} color="#EF4444" />
             </TouchableOpacity>
           </View>
@@ -423,14 +429,14 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
               data={availableMentors.filter(mentor =>
                 mentor.name.toLowerCase().includes(searchText.toLowerCase())
               )}
-              keyExtractor={item => item.id.toString()}
+              keyExtractor={(item, index) => getMentorId(item, index).toString()}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
                     styles.facultyItem,
-                    selectedFaculties.includes(item.id) && styles.selectedCard,
+                    selectedFaculties.includes(getMentorId(item, item.roll)) && styles.selectedCard,
                   ]}
-                  onPress={() => toggleSelection(item.id)}>
+                  onPress={() => toggleSelection(item)}>
                   <View style={styles.facultyDetails}>
                     <View style={styles.staffName}>
                       <MaterialCommunityIcons name="account" size={24} color="#000" />
@@ -444,7 +450,7 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
                     </View>
                   </View>
                   <View style={styles.checkboxContainer}>
-                    {selectedFaculties.includes(item.id) ? (
+                    {selectedFaculties.includes(getMentorId(item, item.roll)) ? (
                       <MaterialCommunityIcons name="checkbox-marked" size={24} color="#000" />
                     ) : (
                       <MaterialCommunityIcons name="checkbox-blank-outline" size={24} color="#000" />

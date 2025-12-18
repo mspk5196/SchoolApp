@@ -93,6 +93,27 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
        ORDER BY g.id, s.section_name, sub.subject_name, ca.parent_context_id, a.name`
     );
 
+    // Topics by context activity (for topic dropdown)
+    const [topics] = await conn.query(
+      `SELECT 
+         th.id,
+         th.topic_name,
+         th.parent_id,
+         th.context_activity_id,
+         th.topic_code,
+         th.level,
+         th.order_sequence,
+         g.grade_name,
+         s.section_name,
+         sub.subject_name
+       FROM topic_hierarchy th
+       JOIN context_activities ca ON ca.id = th.context_activity_id
+       JOIN grades g ON g.id = ca.grade_id
+       JOIN sections s ON s.id = ca.section_id
+       JOIN subjects sub ON sub.id = ca.subject_id
+       ORDER BY g.id, s.section_name, sub.subject_name, th.context_activity_id, th.level, th.order_sequence, th.topic_name`
+    );
+
     // Fetch active assessment cycles for the current academic year
     const [assessmentCycles] = await conn.query(
       `SELECT 
@@ -131,6 +152,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
     const sessionTypeSheet = workbook.addWorksheet('SessionTypes');
     const assessmentCycleSheet = workbook.addWorksheet('AssessmentCycles');
     const contextActivitySheet = workbook.addWorksheet('ContextActivities');
+    const topicSheet = workbook.addWorksheet('Topics');
 
     // Populate hidden sheets with combined labels
     facultySheet.addRow(['Faculty']);
@@ -181,6 +203,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
 
     // Context activities sheet: key by Grade|Section|Subject|Batch, label is hierarchical activity path
     const contextActivityRows = [];
+    const contextLabelById = new Map();
     const seen = new Set();
 
     const addContextRow = (key, label) => {
@@ -210,6 +233,8 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
         const label = newPath.join(' > ');
 
         addContextRow(`${groupKey}|`, label);
+
+        contextLabelById.set(node.context_activity_id, label);
 
         batches
           .filter(
@@ -241,6 +266,65 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
     contextActivityRows.forEach(r =>
       contextActivitySheet.addRow([r.key, r.label])
     );
+
+    // Topics sheet: key is Grade|Section|Subject|Batch|ContextActivityLabel
+    topicSheet.addRow([
+      'Key_Grade_Section_Subject_Batch_ContextActivity',
+      'TopicLabel'
+    ]);
+
+    // Build complete topic map first (includes ALL topics regardless of context)
+    const topicMap = new Map();
+    topics.forEach(t => topicMap.set(t.id, t));
+
+    const getTopicPath = (topicId) => {
+      const names = [];
+      let currentId = topicId;
+      let guard = 0;
+      while (currentId && guard < 100) {
+        const topic = topicMap.get(currentId);
+        if (!topic) break;
+        names.unshift(topic.topic_name || topic.topic_code || `Topic-${topic.id}`);
+        currentId = topic.parent_id;
+        guard++;
+      }
+      return names.join(' > ');
+    };
+
+    const topicRows = [];
+    if (topics.length > 0) {
+      topics.forEach(t => {
+        const label = contextLabelById.get(t.context_activity_id);
+        if (!label) return; // skip if context not represented
+
+        const baseKey = `${t.grade_name}|${t.section_name}|${t.subject_name}|`;
+        const topicLabel = getTopicPath(t.id);
+
+        // Add for "no batch" key
+        topicRows.push({ key: `${baseKey}${''}|${label}`, label: topicLabel });
+        
+
+        // Add for each batch under the same grade/section/subject (optional)
+        batches
+          .filter(
+            b =>
+              b.grade_name === t.grade_name &&
+              b.section_name === t.section_name &&
+              b.subject_name === t.subject_name
+          )
+          .forEach(b => {
+            topicRows.push({ key: `${t.grade_name}|${t.section_name}|${t.subject_name}|${b.batch_name}|${label}`, label: topicLabel });
+          });
+      });
+    }
+
+    // Ensure all rows with the same key are contiguous for Excel OFFSET/MATCH/COUNTIF
+    topicRows.sort((a, b) => {
+      if (a.key !== b.key) return a.key.localeCompare(b.key);
+      return a.label.localeCompare(b.label);
+    });
+
+    topicRows.forEach(r => topicSheet.addRow([r.key, r.label]));
 
     // console.log([...new Set(contextActivityRows.map(r => r.label))]);
 
@@ -295,6 +379,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
     sessionTypeSheet.state = 'veryHidden';
     assessmentCycleSheet.state = 'veryHidden';
     contextActivitySheet.state = 'veryHidden';
+    topicSheet.state = 'veryHidden';
 
     // Main sheet columns
     sheet.columns = [
@@ -311,6 +396,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
       { header: 'SessionType*', key: 'session_type', width: 24 },
       { header: 'TotalMarks', key: 'total_marks', width: 15 },
       { header: 'ContextActivity', key: 'context_activity_name', width: 30 },
+      { header: 'Topic', key: 'topic_name', width: 28 },
       { header: 'AssessmentCycleName', key: 'assessment_cycle_name', width: 25 },
       { header: 'TaskDescription', key: 'task_description', width: 40 },
     ];
@@ -446,9 +532,23 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
         };
       }
 
+      // Topic dropdown: only topics for selected grade/section/subject/batch/context_activity
+      sheet.getCell(`N${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [
+          `OFFSET(Topics!$B$2, MATCH($F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}&"|"&$M${i}, ` +
+          `Topics!$A$2:$A$${topicRows.length + 1}, 0)-1, 0, ` +
+          `COUNTIF(Topics!$A$2:$A$${topicRows.length + 1}, $F${i}&"|"&$G${i}&"|"&$H${i}&"|"&$I${i}&"|"&$M${i}), 1)`,
+        ],
+        showErrorMessage: true,
+        errorTitle: 'Invalid Topic',
+        error: 'Please select a topic for the chosen grade/section/subject/context activity',
+      };
+
       // AssessmentCycle dropdown: only cycles for selected grade/section/subject/batch/context_activity
       if (assessmentCycles.length > 0) {
-        sheet.getCell(`N${i}`).dataValidation = {
+        sheet.getCell(`O${i}`).dataValidation = {
           type: 'list',
           allowBlank: true,
           formulae: [
@@ -488,6 +588,7 @@ exports.generateMentorScheduleTemplate = async (req, res) => {
       session_type: sessionTypes.length > 0 ? sessionTypes[0].name : 'class',
       total_marks: '',
       context_activity_name: contextActivityRows.length > 0 ? contextActivityRows[0].label : '',
+      topic_name: topics.length > 0 ? (topics[0].topic_name || topics[0].topic_code || 'Topic 1') : '',
       assessment_cycle_name:
         assessmentCycles.length > 0
           ? (() => {
@@ -576,6 +677,106 @@ exports.uploadMentorSchedule = async (req, res) => {
       other: 'class_session',
     };
 
+    // Helpers to reliably normalize Excel values
+    const extractPrimitive = (v) => {
+      if (v && typeof v === 'object') {
+        if ('result' in v) return v.result;
+        if ('text' in v) return v.text;
+        if (v.richText) return v.richText.map(r => r.text).join('');
+      }
+      return v;
+    };
+
+    const toYMD = (cell) => {
+      const pad = (n) => String(n).padStart(2, '0');
+      if (cell && typeof cell.text === 'string') {
+        const t = cell.text.trim();
+        const isoLike = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoLike) return t;
+      }
+      const val = cell ? cell.value : null;
+      const prim = extractPrimitive(val);
+      if (!prim) return '';
+      if (prim instanceof Date) {
+        // Prefer UTC to avoid TZ drift
+        const y = prim.getUTCFullYear();
+        const m = pad(prim.getUTCMonth() + 1);
+        const d = pad(prim.getUTCDate());
+        return `${y}-${m}-${d}`;
+      }
+      if (typeof prim === 'number') {
+        // Excel serial date to JS Date: Unix epoch = (val - 25569) days
+        const jsDate = new Date(Math.round((prim - 25569) * 86400 * 1000));
+        const y = jsDate.getUTCFullYear();
+        const m = pad(jsDate.getUTCMonth() + 1);
+        const d = pad(jsDate.getUTCDate());
+        return `${y}-${m}-${d}`;
+      }
+      if (typeof prim === 'string') {
+        // Try direct YYYY-MM-DD first
+        const isoLike2 = prim.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoLike2) return prim;
+        // Try parse via Date
+        const parsed = new Date(prim);
+        if (!isNaN(parsed.getTime())) {
+          const y = parsed.getUTCFullYear();
+          const m = pad(parsed.getUTCMonth() + 1);
+          const d = pad(parsed.getUTCDate());
+          return `${y}-${m}-${d}`;
+        }
+      }
+      return '';
+    };
+
+    const toHHMM = (cell) => {
+      const pad = (n) => String(n).padStart(2, '0');
+      if (cell && typeof cell.text === 'string') {
+        const t = cell.text.trim();
+        const m1 = t.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+        if (m1) {
+          let hh = parseInt(m1[1], 10);
+          const mm = Math.min(59, parseInt(m1[2], 10));
+          const ampm = m1[3] ? m1[3].toUpperCase() : '';
+          if (ampm === 'PM' && hh < 12) hh += 12;
+          if (ampm === 'AM' && hh === 12) hh = 0;
+          return `${pad(Math.min(23, hh))}:${pad(mm)}`;
+        }
+      }
+      const val = cell ? cell.value : null;
+      const prim = extractPrimitive(val);
+      if (!prim && prim !== 0) return '';
+      if (prim instanceof Date) {
+        // Use UTC to avoid TZ drift
+        const h = pad(prim.getUTCHours());
+        const m = pad(prim.getUTCMinutes());
+        return `${h}:${m}`;
+      }
+      if (typeof prim === 'number') {
+        // Excel time as fraction of day (or date+time). Use fractional part.
+        const frac = prim % 1;
+        const totalMinutes = Math.round(frac * 24 * 60);
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        return `${pad(h)}:${pad(m)}`;
+      }
+      if (typeof prim === 'string') {
+        // Accept HH:MM, HH:MM:SS, or a parsable Date string
+        const m1 = prim.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+        if (m1) {
+          const h = pad(Math.min(23, parseInt(m1[1], 10)));
+          const m = pad(Math.min(59, parseInt(m1[2], 10)));
+          return `${h}:${m}`;
+        }
+        const parsed = new Date(prim);
+        if (!isNaN(parsed.getTime())) {
+          const h = pad(parsed.getUTCHours());
+          const m = pad(parsed.getUTCMinutes());
+          return `${h}:${m}`;
+        }
+      }
+      return '';
+    };
+
     for (let i = 2; i <= sheet.rowCount; i++) {
       const row = sheet.getRow(i);
       // Skip empty
@@ -587,9 +788,9 @@ exports.uploadMentorSchedule = async (req, res) => {
         const facultyCellRaw = String(row.getCell(1).value || '').trim();
         const facultyRollno = facultyCellRaw.includes('[') ? facultyCellRaw.split('[')[0].trim() : facultyCellRaw;
         const actingRoleRaw = String(row.getCell(2).value || '').trim().toLowerCase();
-        const dateStr = String(row.getCell(3).value || '').trim();
-        const startTimeStr = String(row.getCell(4).value || '').trim();
-        const endTimeStr = String(row.getCell(5).value || '').trim();
+        const dateStr = toYMD(row.getCell(3));
+        const startTimeStr = toHHMM(row.getCell(4));
+        const endTimeStr = toHHMM(row.getCell(5));
         const gradeName = String(row.getCell(6).value || '').trim();
         // Section value like SectionA[Grade1] -> take text before '['
         const sectionRaw = String(row.getCell(7).value || '').trim();
@@ -604,8 +805,9 @@ exports.uploadMentorSchedule = async (req, res) => {
         const sessionTypeRaw = String(row.getCell(11).value || '').trim().toLowerCase();
         const totalMarksCell = row.getCell(12).value;
         const contextActivityRaw = String(row.getCell(13).value || '').trim();
-        const assessmentCycleRaw = String(row.getCell(14).value || '').trim();
-        const taskDescription = String(row.getCell(15).value || '').trim();
+        const topicRaw = String(row.getCell(14).value || '').trim();
+        const assessmentCycleRaw = String(row.getCell(15).value || '').trim();
+        const taskDescription = String(row.getCell(16).value || '').trim();
 
         if (!facultyRollno || !actingRoleRaw || !dateStr || !startTimeStr || !endTimeStr || !gradeName || !sectionName || !subjectName || !venueName) {
           results.failed.push({ row: i, reason: 'Missing required fields' });
@@ -705,6 +907,47 @@ exports.uploadMentorSchedule = async (req, res) => {
           contextActivityId = ctxRow.id;
         }
 
+        // Optional topic resolution by full hierarchical path for the chosen context activity
+        let topicId = null;
+        if (topicRaw) {
+          if (!contextActivityId) {
+            results.failed.push({ row: i, reason: `Topic provided without a valid Context Activity: ${topicRaw}` });
+            continue;
+          }
+          const [topicList] = await conn.query(
+            `SELECT id, topic_name, parent_id, topic_code
+             FROM topic_hierarchy
+             WHERE context_activity_id = ?`,
+            [contextActivityId]
+          );
+          const tMap = new Map();
+          topicList.forEach(t => tMap.set(t.id, t));
+          const buildPath = (id) => {
+            const names = [];
+            let current = id;
+            let guard = 0;
+            while (current && guard < 100) {
+              const t = tMap.get(current);
+              if (!t) break;
+              names.unshift(t.topic_name || t.topic_code || `Topic-${t.id}`);
+              current = t.parent_id;
+              guard++;
+            }
+            return names.join(' > ');
+          };
+          for (const t of topicList) {
+            const path = buildPath(t.id);
+            if (path === topicRaw) {
+              topicId = t.id;
+              break;
+            }
+          }
+          if (!topicId) {
+            results.failed.push({ row: i, reason: `Unknown topic: ${topicRaw} under selected context activity` });
+            continue;
+          }
+        }
+
         // Validate date is not a holiday in academic calendar
         const acRow = await fetchSingle(
           conn,
@@ -771,26 +1014,28 @@ exports.uploadMentorSchedule = async (req, res) => {
         // Insert faculty session
         const [sessionRes] = await conn.query(
           `INSERT INTO faculty_calendar
-           (academic_year, acting_role, assessment_cycle_id, context_activity_id, created_at, date, end_time,
-            faculty_id, grade_id, id, is_rescheduled, section_activity_topic_id, section_id, session_type_id,
-            start_time, status, subject_id, task_description, total_marks, venue_id)
-           VALUES (?, ?, ?, ?, NOW(), ?, ?, ?, ?, NULL, 0, NULL, ?, ?, ?, 'scheduled', ?, ?, ?, ?)` ,
+           (faculty_id, acting_role, academic_year, date, start_time, end_time,
+            venue_id, grade_id, section_id, subject_id,
+            context_activity_id, section_activity_topic_id, session_type_id,
+            topic_id, task_description, assessment_cycle_id, total_marks, status, is_rescheduled)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 'scheduled', 0)` ,
           [
-            academicYearId,
-            actingRole,
-            assessmentCycleId,
-            contextActivityId,
-            dateStr,
-            endTimeStr,
             facultyId,
+            actingRole,
+            academicYearId,
+            dateStr,
+            startTimeStr,
+            endTimeStr,
+            venueRow.id,
             gradeRow.id,
             sectionRow.id,
-            sessionTypeId,
-            startTimeStr,
             subjectRow.id,
+            contextActivityId || null,
+            sessionTypeId,
+            topicId || null,
             taskDescription || null,
+            assessmentCycleId || null,
             totalMarks || null,
-            venueRow.id,
           ]
         );
 

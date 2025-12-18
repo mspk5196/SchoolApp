@@ -202,8 +202,8 @@ ORDER BY st.roll;
 
     try {
         const [results] = await db.query(sql, [sectionId]);
-        // console.log(results);
-        
+        console.log(results[0].batch_subject_pairs);
+
         return res.json({ success: true, data: results });
     } catch (err) {
         console.error('Error fetching students:', err);

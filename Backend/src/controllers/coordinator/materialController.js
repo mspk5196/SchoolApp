@@ -475,19 +475,32 @@ const configureBatches = async (req, res) => {
 
     const subjectSectionId = ssaRows[0].id;
 
-    // Check if batches already exist
+    // Determine how many new batches to add (append mode)
     const [existingBatches] = await connection.query(
       `SELECT COUNT(*) as count FROM section_batches WHERE subject_section_id = ?`,
       [subjectSectionId]
     );
 
-    if (existingBatches[0].count > 0) {
-      throw new Error('Batches already exist for this subject-section combination');
+    const currentCount = existingBatches[0].count || 0;
+    const desiredTotal = parseInt(maxBatches, 10);
+
+    if (Number.isNaN(desiredTotal) || desiredTotal < 1) {
+      throw new Error('maxBatches must be a positive number');
     }
 
+    if (desiredTotal <= currentCount) {
+      await connection.commit();
+      return res.json({
+        success: true,
+        message: `No new batches added. Existing: ${currentCount}, requested: ${desiredTotal}.`,
+        batchesCreated: 0
+      });
+    }
+
+    const startIndex = currentCount + 1;
     const inserts = [];
     const limit = parseInt(batchSizeLimit, 10) || 30;
-    for (let i = 1; i <= parseInt(maxBatches, 10); i++) {
+    for (let i = startIndex; i <= desiredTotal; i++) {
       inserts.push([
         subjectSectionId,
         `Batch ${i}`,
@@ -498,17 +511,20 @@ const configureBatches = async (req, res) => {
     }
 
     if (inserts.length > 0) {
-      const [res] = await connection.query(
+      const [insertResult] = await connection.query(
         `INSERT INTO section_batches (subject_section_id, batch_name, batch_level, is_active, updated_by) VALUES ?`,
         [inserts]
       );
+
       const activeAcademicYearId = req.activeAcademicYearId;
       if (activeAcademicYearId) {
-        const [created] = await connection.query(
-          `SELECT id FROM section_batches WHERE subject_section_id = ?`,
-          [subjectSectionId]
-        );
-        const sbsValues = created.map(r => [r.id, activeAcademicYearId, limit, 0, coordinatorId]);
+        const firstId = insertResult.insertId;
+        const createdIds = [];
+        for (let idx = 0; idx < inserts.length; idx++) {
+          createdIds.push(firstId + idx);
+        }
+
+        const sbsValues = createdIds.map(id => [id, activeAcademicYearId, limit, 0, coordinatorId]);
         if (sbsValues.length > 0) {
           await connection.query(
             `INSERT INTO section_batch_size (batch_id, academic_year, max_students, current_students_count, updated_by) VALUES ?`,
@@ -520,7 +536,7 @@ const configureBatches = async (req, res) => {
 
     await connection.commit();
 
-    res.json({ success: true, message: `Configured ${inserts.length} batches`, batchesCreated: inserts.length });
+    res.json({ success: true, message: `Added ${inserts.length} new batch(es). Total now: ${desiredTotal}.`, batchesCreated: inserts.length });
   } catch (error) {
     await connection.rollback();
     console.error('Error configuring batches:', error);

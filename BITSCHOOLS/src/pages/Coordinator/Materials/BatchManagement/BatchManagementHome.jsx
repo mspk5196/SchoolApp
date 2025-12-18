@@ -363,11 +363,15 @@ const BatchManagementHome = ({route}) => {
       setShowBatchModal(false); // Close modal 
       setProcessingAction('Configuring batches...');
       
-      console.log('Creating batches:', {
+      // Treat input as "extra" to add on top of current
+      const currentCount = batchData.length || 0;
+      const desiredTotal = currentCount + numBatches;
+      console.log('Configuring batches (add extra):', {
         subjectId: selectedSubject || selectedSubjectId,
         gradeId: activeGradeId,
         sectionId: selectedSection || selectedSectionId,
-        maxBatches: numBatches,
+        addExtra: numBatches,
+        desiredTotal,
         coordinatorId: userData?.id
       });
 
@@ -377,7 +381,7 @@ const BatchManagementHome = ({route}) => {
           subjectId: selectedSubject || selectedSubjectId,
           gradeId: activeGradeId,
           sectionId: selectedSection || selectedSectionId,
-          maxBatches: numBatches,
+          maxBatches: desiredTotal,
           batchSizeLimit: 30, 
           autoAllocation: true,
           coordinatorId: userData?.id
@@ -388,7 +392,7 @@ const BatchManagementHome = ({route}) => {
       // console.log('Configure batches response:', result);
       
       if (response) {
-        showSuccessMessage(`${numBatches} batches configured successfully! You can now initialize students.`);
+        showSuccessMessage(`Added ${numBatches} extra batch(es). Total now: ${desiredTotal}.`);
         fetchBatchData();
         fetchAnalytics();
       } else {
@@ -422,8 +426,6 @@ const BatchManagementHome = ({route}) => {
       });
       const data = await res.json();
       if (data && data.success) {
-        // console.log(data.data);
-
         // Only include students who are not yet assigned to THIS subject
         const subjectIdForFilter = selectedSubject || selectedSubjectId;
         const unassigned = (data.data || []).filter(s => {
@@ -974,6 +976,7 @@ const BatchManagementHome = ({route}) => {
         </View>
       </Modal>
 
+
       {/* Move Students Modal */}
       <Modal
         visible={showMoveStudentsModal}
@@ -1096,7 +1099,7 @@ const BatchManagementHome = ({route}) => {
               marginBottom: 15,
               textAlign: 'center',
               color: '#666'
-            }}>Enter the number of batches to create (1-10):</Text>
+            }}>Enter extra batches to add (1-10). Current: {batchData.length}</Text>
             
             <TextInput
               style={{
@@ -1129,7 +1132,7 @@ const BatchManagementHome = ({route}) => {
                 }}
                 onPress={() => {
                   setShowBatchModal(false);
-                  setBatchInput('3'); // Reset to default
+                  setBatchInput('1'); // Reset to default
                 }}
               >
                 <Text style={{
@@ -1153,7 +1156,7 @@ const BatchManagementHome = ({route}) => {
                   fontSize: 16,
                   color: 'white',
                   fontWeight: 'bold'
-                }}>Create</Text>
+                }}>Add</Text>
               </TouchableOpacity>
             </View>
           </View>
