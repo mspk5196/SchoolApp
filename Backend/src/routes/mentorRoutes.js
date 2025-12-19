@@ -14,6 +14,12 @@ router.post('/getSessionDetails', mentorController.getSessionDetails);
 // Session management routes
 router.post('/startSession', mentorController.startSession);
 router.post('/getStudentsForSession', mentorController.getStudentsForSession);
+router.post('/finishSession', mentorController.finishSession);
+router.post('/updateFinishedSessionEvaluations', mentorController.updateFinishedSessionEvaluations);
 router.post('/endSession', mentorController.endSession);
+
+// Homework routes
+router.post('/getActivitiesForHomework', mentorController.getActivitiesForHomework);
+router.post('/getTopicsForHomework', mentorController.getTopicsForHomework);
 
 module.exports = router;

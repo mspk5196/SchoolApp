@@ -148,6 +148,8 @@ const MentorDashHome = ({ navigation, route }) => {
                 return '#F59E0B';
             case 'cancelled':
                 return '#EF4444';
+            case 'scheduled':
+                return '#3B82F6';
             default:
                 return '#6B7280';
         }
@@ -161,6 +163,8 @@ const MentorDashHome = ({ navigation, route }) => {
                 return '#FEF3C7';
             case 'cancelled':
                 return '#FEE2E2';
+            case 'scheduled':
+                return '#DBEAFE';
             default:
                 return '#F3F4F6';
         }
@@ -169,7 +173,8 @@ const MentorDashHome = ({ navigation, route }) => {
     const handleSessionClick = (session) => {
         navigation.navigate('MentorDashboardDetails', {
             facultyCalendarId: session.id,
-            sessionData: session
+            sessionData: session,
+            facultyId: userData.id
         });
     };
 
@@ -220,72 +225,59 @@ const MentorDashHome = ({ navigation, route }) => {
                                         {session.grade_name} - Section {session.section_name}
                                     </Text>
                                 </View>
-                                <View style={styles.timeContainer}>
-                                    <MaterialCommunityIcons name="clock-outline" size={16} color="#64748B" />
-                                    <Text style={styles.timeText}>
-                                        {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                                    </Text>
-                                </View>
+                                {(session.session_status || session.status) && (
+                                    <View
+                                        style={[
+                                            styles.statusBadgeHeader,
+                                            { backgroundColor: getStatusBgColor(session.session_status || session.status || 'scheduled') }
+                                        ]}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.statusTextHeader,
+                                                { color: getStatusColor(session.session_status || session.status || 'scheduled') }
+                                            ]}
+                                        >
+                                            {(session.session_status || session.status || 'scheduled').toUpperCase()}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+
+                            <View style={styles.timeContainer}>
+                                <MaterialCommunityIcons name="clock-outline" size={16} color="#64748B" />
+                                <Text style={styles.timeText}>
+                                    {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                                </Text>
                             </View>
 
                             <View style={styles.sessionDetails}>
-                                {session.session_type && (
-                                    <View style={styles.sessionBadge}>
-                                        <Text style={styles.sessionBadgeText}>{session.session_type}</Text>
+                                {session.venue_name && (
+                                    <View style={styles.detailItem}>
+                                        <MaterialCommunityIcons name="map-marker" size={16} color="#059669" />
+                                        <Text style={styles.detailText}>{session.venue_name}</Text>
                                     </View>
                                 )}
-                                {session.venue_name && (
-                                    <View style={styles.venueBadge}>
-                                        <MaterialCommunityIcons name="map-marker" size={14} color="#059669" />
-                                        <Text style={styles.venueBadgeText}>{session.venue_name}</Text>
+                                {session.session_type && (
+                                    <View style={styles.detailItem}>
+                                        <MaterialCommunityIcons name="clipboard-text" size={16} color="#3B82F6" />
+                                        <Text style={styles.detailText}>{session.session_type}</Text>
                                     </View>
                                 )}
                             </View>
 
-                            {session.topic_name && (
-                                <View style={styles.topicRow}>
-                                    <MaterialCommunityIcons name="book-open-variant" size={14} color="#64748B" />
-                                    <Text style={styles.topicText}>{session.topic_name}</Text>
-                                </View>
-                            )}
-
-                            {session.activity_name && (
-                                <View style={styles.activityRow}>
-                                    <MaterialCommunityIcons name="clipboard-text" size={14} color="#64748B" />
-                                    <Text style={styles.activityText}>{session.activity_name}</Text>
-                                </View>
-                            )}
-
                             {session.batch_names && (
-                                <View style={styles.batchRow}>
-                                    <MaterialCommunityIcons name="account-group" size={14} color="#64748B" />
-                                    <Text style={styles.batchText}>{session.batch_names}</Text>
+                                <View style={styles.detailItem}>
+                                    <MaterialCommunityIcons name="account-group" size={16} color="#64748B" />
+                                    <Text style={styles.detailText}>Batches: {session.batch_names}</Text>
                                 </View>
                             )}
 
                             {session.evaluation_mode_name && (
-                                <View style={styles.evaluationRow}>
-                                    <MaterialCommunityIcons name="clipboard-check" size={14} color="#64748B" />
-                                    <Text style={styles.evaluationText}>
+                                <View style={styles.detailItem}>
+                                    <MaterialCommunityIcons name="clipboard-check" size={16} color="#F59E0B" />
+                                    <Text style={styles.detailText}>
                                         Evaluation: {session.evaluation_mode_name}
-                                    </Text>
-                                </View>
-                            )}
-
-                            {session.session_status && (
-                                <View
-                                    style={[
-                                        styles.statusBadge,
-                                        { backgroundColor: getStatusBgColor(session.session_status) }
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.statusText,
-                                            { color: getStatusColor(session.session_status) }
-                                        ]}
-                                    >
-                                        {session.session_status.toUpperCase()}
                                     </Text>
                                 </View>
                             )}
@@ -404,10 +396,14 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     sessionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
         marginBottom: 12,
     },
     sessionMainInfo: {
-        marginBottom: 8,
+        flex: 1,
+        marginRight: 8,
     },
     subjectText: {
         fontSize: 18,
@@ -419,10 +415,20 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#64748B',
     },
+    statusBadgeHeader: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    statusTextHeader: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
     timeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        marginBottom: 12,
     },
     timeText: {
         fontSize: 14,
@@ -432,88 +438,18 @@ const styles = StyleSheet.create({
     sessionDetails: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
+        gap: 12,
         marginBottom: 8,
     },
-    sessionBadge: {
-        backgroundColor: '#DBEAFE',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    sessionBadgeText: {
-        fontSize: 12,
-        color: '#1E40AF',
-        fontWeight: '500',
-    },
-    venueBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#D1FAE5',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        gap: 4,
-    },
-    venueBadgeText: {
-        fontSize: 12,
-        color: '#059669',
-        fontWeight: '500',
-    },
-    topicRow: {
+    detailItem: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
         marginTop: 4,
     },
-    topicText: {
+    detailText: {
         fontSize: 13,
         color: '#475569',
-        flex: 1,
-    },
-    activityRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: 4,
-    },
-    activityText: {
-        fontSize: 13,
-        color: '#475569',
-        flex: 1,
-    },
-    batchRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: 4,
-    },
-    batchText: {
-        fontSize: 13,
-        color: '#475569',
-        flex: 1,
-    },
-    evaluationRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: 4,
-    },
-    evaluationText: {
-        fontSize: 13,
-        color: '#475569',
-        fontWeight: '500',
-    },
-    statusBadge: {
-        alignSelf: 'flex-start',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        marginTop: 8,
-    },
-    statusText: {
-        fontSize: 11,
-        fontWeight: '600',
     },
     modalOverlay: {
         flex: 1,

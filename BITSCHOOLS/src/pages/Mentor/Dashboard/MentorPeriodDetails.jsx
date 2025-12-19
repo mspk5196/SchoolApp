@@ -10,26 +10,54 @@ import {
   TextInput,
   FlatList,
   Image,
+  Linking,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../../../components';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import ApiService from '../../../utils/ApiService';
 import { API_URL } from '../../../config/env';
-import { StyleSheet } from 'react-native';
+import styles from './periodDetSty';
 
 const Staff = require('../../../assets/General/staff.png');
 
 const MentorPeriodDetails = ({ route, navigation }) => {
-  const { facultyCalendarId, sessionData } = route.params;
+  const { facultyCalendarId, sessionData, facultyId } = route.params;
 
   const [sessionDetails, setSessionDetails] = useState(null);
   const [students, setStudents] = useState([]);
   const [attentivenessOptions, setAttentivenessOptions] = useState([]);
+  const [topicHierarchy, setTopicHierarchy] = useState([]);
+  const [topicMaterials, setTopicMaterials] = useState([]);
+  const [activityHierarchy, setActivityHierarchy] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [sessionInstanceId, setSessionInstanceId] = useState(null);
-  
+  const [isFinishedNotCompleted, setIsFinishedNotCompleted] = useState(false);
+  const [canStartSession, setCanStartSession] = useState(false);
+  const [isStudentFacing, setIsStudentFacing] = useState(true);
+  const [facultyNotes, setFacultyNotes] = useState('');
+
+  // Timer states
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [totalDuration, setTotalDuration] = useState(0);
+  const [progressPercentage, setProgressPercentage] = useState(0);
+
+  // Bulk selection states
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [bulkEvaluation, setBulkEvaluation] = useState({});
+  const [showBulkPanel, setShowBulkPanel] = useState(false);
+
+  // Homework states
+  const [showHomeworkModal, setShowHomeworkModal] = useState(false);
+  const [homeworkTitle, setHomeworkTitle] = useState('');
+  const [homeworkDescription, setHomeworkDescription] = useState('');
+  const [availableActivities, setAvailableActivities] = useState([]);
+  const [selectedActivityId, setSelectedActivityId] = useState(null);
+  const [availableTopics, setAvailableTopics] = useState([]);
+  const [selectedTopicId, setSelectedTopicId] = useState(null);
+
   // Evaluation states
   const [showEndSessionModal, setShowEndSessionModal] = useState(false);
   const [showEarlyCompletionModal, setShowEarlyCompletionModal] = useState(false);
@@ -41,6 +69,40 @@ const MentorPeriodDetails = ({ route, navigation }) => {
     fetchStudents();
   }, []);
 
+  // Timer effect for running session
+  useEffect(() => {
+    if (sessionStarted && sessionDetails) {
+      const [startHours, startMinutes] = sessionDetails.start_time.split(':');
+      const [endHours, endMinutes] = sessionDetails.end_time.split(':');
+
+      const startTimeInMinutes = parseInt(startHours) * 60 + parseInt(startMinutes);
+      const endTimeInMinutes = parseInt(endHours) * 60 + parseInt(endMinutes);
+      const totalMinutes = endTimeInMinutes - startTimeInMinutes;
+
+      setTotalDuration(totalMinutes * 60); // Convert to seconds
+
+      const interval = setInterval(() => {
+        const now = new Date();
+        const sessionDate = new Date(sessionDetails.date);
+        const sessionStart = new Date(sessionDate);
+        sessionStart.setHours(parseInt(startHours), parseInt(startMinutes), 0, 0);
+
+        const elapsed = Math.floor((now - sessionStart) / 1000); // seconds
+        setElapsedTime(elapsed);
+
+        const progress = (elapsed / (totalMinutes * 60)) * 100;
+        setProgressPercentage(Math.min(progress, 100));
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [sessionStarted, sessionDetails]);
+
+  // Update bulk panel visibility when students are selected
+  useEffect(() => {
+    setShowBulkPanel(selectedStudents.length > 0);
+  }, [selectedStudents]);
+
   const fetchSessionDetails = async () => {
     try {
       const data = await ApiService.post('/mentor/getSessionDetails', {
@@ -49,9 +111,20 @@ const MentorPeriodDetails = ({ route, navigation }) => {
 
       if (data.success) {
         setSessionDetails(data.sessionDetails);
+        setTopicHierarchy(data.topicHierarchy || []);
+        setTopicMaterials(data.topicMaterials || []);
+        setActivityHierarchy(data.activityHierarchy || []);
+        setIsStudentFacing(data.sessionDetails.is_student_facing === 1);
+
+        // Check if session can be started
+        checkSessionStartTime(data.sessionDetails);
+
         if (data.sessionDetails.session_instance_id) {
           setSessionInstanceId(data.sessionDetails.session_instance_id);
-          setSessionStarted(data.sessionDetails.session_status === 'running');
+          const status = data.sessionDetails.session_status;
+          // Set session as started if it's running or finished but not completed
+          setSessionStarted(status === 'running' || status === 'finished_not_completed');
+          setIsFinishedNotCompleted(status === 'finished_not_completed');
         }
       }
     } catch (error) {
@@ -60,6 +133,15 @@ const MentorPeriodDetails = ({ route, navigation }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const checkSessionStartTime = (details) => {
+    const now = new Date();
+    const sessionDate = new Date(details.date);
+    const [hours, minutes] = details.start_time.split(':');
+    sessionDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+    setCanStartSession(now >= sessionDate);
   };
 
   const fetchStudents = async () => {
@@ -71,7 +153,7 @@ const MentorPeriodDetails = ({ route, navigation }) => {
       if (data.success) {
         setStudents(data.students);
         setAttentivenessOptions(data.attentivenessOptions || []);
-        
+
         // Initialize student evaluations with existing data
         const initialEvaluations = {};
         data.students.forEach(student => {
@@ -93,59 +175,117 @@ const MentorPeriodDetails = ({ route, navigation }) => {
   };
 
   const handleStartSession = async () => {
+    if (!canStartSession) {
+      Alert.alert('Cannot Start', 'Session cannot be started before scheduled time');
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await ApiService.post('/mentor/startSession', {
-        facultyCalendarId: facultyCalendarId
+        facultyCalendarId: facultyCalendarId,
+        facultyId: facultyId
       });
 
       if (data.success) {
         setSessionStarted(true);
         setSessionInstanceId(data.sessionInstanceId);
         Alert.alert('Success', 'Session started successfully');
+        await fetchStudents();
       }
     } catch (error) {
       console.error('Error starting session:', error);
-      Alert.alert('Error', 'Failed to start session');
+      const errorMsg = error.response?.data?.message || 'Failed to start session';
+      Alert.alert('Error', errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEndSession = () => {
-    // Check if session ended before scheduled end time
-    const now = new Date();
-    const endTime = new Date();
-    const [hours, minutes] = sessionDetails.end_time.split(':');
-    endTime.setHours(parseInt(hours), parseInt(minutes), 0);
+  const handleEndSession = async () => {
+    // If session is already finished but not completed, save any evaluation changes first
+    if (isFinishedNotCompleted) {
+      try {
+        setLoading(true);
+        
+        let requestData = {
+          facultyCalendarId: facultyCalendarId,
+          facultyId: facultyId,
+        };
 
-    if (now < endTime) {
-      setShowEarlyCompletionModal(true);
+        // Handle different session types
+        if (isStudentFacing) {
+          // Student-facing session: send updated student evaluations
+          const evaluations = Object.keys(studentEvaluations)
+            .filter(studentId => studentEvaluations[studentId]?.isPresent !== undefined)
+            .map(studentId => {
+              const evalu = studentEvaluations[studentId];
+              return {
+                studentId: parseInt(studentId),
+                isPresent: evalu.isPresent === true,
+                marksObtained: (sessionDetails.requires_marks && evalu.isPresent) 
+                  ? (evalu.marksObtained ? parseInt(evalu.marksObtained) : null) 
+                  : null,
+                attentivenessId: (sessionDetails.requires_attentiveness && evalu.isPresent) 
+                  ? (evalu.attentivenessId ? parseInt(evalu.attentivenessId) : null) 
+                  : null,
+                malpracticeFlag: (sessionDetails.allows_malpractice && evalu.isPresent) 
+                  ? (evalu.malpracticeFlag ? 1 : 0) 
+                  : 0,
+                remarks: evalu.remarks ? String(evalu.remarks) : null,
+              };
+            });
+          requestData.studentEvaluations = evaluations;
+        } else {
+          // Faculty-facing session: send updated faculty notes
+          requestData.facultyNotes = facultyNotes ? String(facultyNotes) : '';
+        }
+
+        // Update evaluations using finishSession endpoint (will update existing evaluations)
+        await ApiService.post('/mentor/updateFinishedSessionEvaluations', requestData);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error updating evaluations:', error);
+        setLoading(false);
+        // Continue to homework modal even if update fails
+      }
+    }
+    
+    // For student-facing sessions, show homework modal
+    if (isStudentFacing) {
+      setShowHomeworkModal(true);
+      fetchActivitiesForHomework();
     } else {
       setShowEndSessionModal(true);
     }
   };
 
-  const confirmEndSession = async () => {
+  const confirmEndSession = async (homework = null) => {
     try {
       setLoading(true);
 
-      // Prepare evaluations array based on evaluation mode
-      const evaluations = Object.values(studentEvaluations)
-        .filter(evalu => evalu.isPresent) // Only include present students
-        .map(evalu => ({
-          studentId: evalu.studentId,
-          marksObtained: sessionDetails.requires_marks ? evalu.marksObtained : null,
-          attentivenessId: sessionDetails.requires_attentiveness ? evalu.attentivenessId : null,
-          malpracticeFlag: sessionDetails.allows_malpractice ? evalu.malpracticeFlag : 0,
-          remarks: evalu.remarks || null,
-        }));
-
-      const data = await ApiService.post('/mentor/endSession', {
+      let requestData = {
         facultyCalendarId: facultyCalendarId,
-        studentEvaluations: evaluations,
-        earlyCompletionReason: earlyCompletionReason || null,
-      });
+        facultyId: facultyId
+      };
+
+      // Add homework if provided (for student-facing sessions)
+      if (homework) {
+        requestData.homework = {
+          title: String(homework.title),
+          description: homework.description ? String(homework.description) : null,
+          contextActivityId: parseInt(homework.contextActivityId),
+          topicId: homework.topicId ? parseInt(homework.topicId) : null
+        };
+      }
+
+      // Add early completion reason if provided
+      if (earlyCompletionReason) {
+        requestData.earlyCompletionReason = String(earlyCompletionReason);
+      }
+
+      const data = await ApiService.post('/mentor/endSession', requestData);
 
       if (data.success) {
         Alert.alert('Success', 'Session ended successfully', [
@@ -161,8 +301,184 @@ const MentorPeriodDetails = ({ route, navigation }) => {
     } finally {
       setLoading(false);
       setShowEndSessionModal(false);
-      setShowEarlyCompletionModal(false);
+      setShowHomeworkModal(false);
     }
+  };
+
+  const handleFinishSession = async () => {
+    if (!isStudentFacing) {
+      // For faculty sessions, go directly to end
+      handleEndSession();
+      return;
+    }
+    // Check if all students are marked
+    const unmarkedStudents = students.filter(student =>
+      studentEvaluations[student.id]?.isPresent === undefined
+    );
+
+    if (unmarkedStudents.length > 0) {
+      Alert.alert(
+        'Incomplete Evaluation',
+        `${unmarkedStudents.length} student(s) are not marked. Please mark all students or they will be marked as absent.`,
+        [
+          {
+            text: 'Continue Marking',
+            style: 'cancel'
+          },
+          {
+            text: 'Mark Remaining as Absent',
+            onPress: () => {
+              unmarkedStudents.forEach(student => {
+                updateStudentEvaluation(student.id, 'isPresent', false);
+              });
+              setTimeout(() => finishSession(), 500);
+            }
+          }
+        ]
+      );
+    } else {
+      // All students marked, proceed to finish
+      await finishSession();
+    }
+  };
+
+  const finishSession = async () => {
+    try {
+      setLoading(true);
+
+      // Check if session finished before scheduled end time and ensure reason is provided
+      const now = new Date();
+      const sessionDate = new Date(sessionDetails.date);
+      const [hours, minutes] = sessionDetails.end_time.split(':');
+      const endTime = new Date(sessionDate);
+      endTime.setHours(parseInt(hours), parseInt(minutes), 0);
+
+      if (now < endTime && !earlyCompletionReason) {
+        setShowEarlyCompletionModal(true);
+        setLoading(false);
+        return;
+      }
+
+      let requestData = {
+        facultyCalendarId: facultyCalendarId,
+        facultyId: facultyId,
+        // Only send early completion reason if it was provided
+        earlyCompletionReason: earlyCompletionReason ? String(earlyCompletionReason) : null,
+      };
+
+      // Handle different session types
+      if (isStudentFacing) {
+        // Student-facing session: send student evaluations
+        const evaluations = Object.keys(studentEvaluations)
+          .filter(studentId => studentEvaluations[studentId]?.isPresent !== undefined)
+          .map(studentId => {
+            const evalu = studentEvaluations[studentId];
+            return {
+              studentId: parseInt(studentId),
+              isPresent: evalu.isPresent === true,
+              marksObtained: (sessionDetails.requires_marks && evalu.isPresent) 
+                ? (evalu.marksObtained ? parseInt(evalu.marksObtained) : null) 
+                : null,
+              attentivenessId: (sessionDetails.requires_attentiveness && evalu.isPresent) 
+                ? (evalu.attentivenessId ? parseInt(evalu.attentivenessId) : null) 
+                : null,
+              malpracticeFlag: (sessionDetails.allows_malpractice && evalu.isPresent) 
+                ? (evalu.malpracticeFlag ? 1 : 0) 
+                : 0,
+              remarks: evalu.remarks ? String(evalu.remarks) : null,
+            };
+          });
+        requestData.studentEvaluations = evaluations;
+      } else {
+        // Faculty-facing session: send faculty notes
+        requestData.facultyNotes = facultyNotes ? String(facultyNotes) : '';
+      }
+
+      const data = await ApiService.post('/mentor/finishSession', requestData);
+
+      if (data.success) {
+        // Mark session as finished but not completed locally
+        setSessionDetails(prev => prev ? { ...prev, session_status: 'finished_not_completed' } : prev);
+        setIsFinishedNotCompleted(true);
+        Alert.alert('Success', 'Session marked as finished. You can update evaluations and end the session when ready.');
+      }
+    } catch (error) {
+      console.error('Error finishing session:', error);
+      Alert.alert('Error', 'Failed to finish session');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchActivitiesForHomework = async () => {
+    try {
+      const response = await ApiService.post('/mentor/getActivitiesForHomework', {
+        gradeId: sessionDetails.grade_id,
+        subjectId: sessionDetails.subject_id
+      });
+
+      if (response.success) {
+        setAvailableActivities(response.activities || []);
+      }
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+    }
+  };
+
+  const fetchTopicsForActivity = async (activityId) => {
+    try {
+      const response = await ApiService.post('/mentor/getTopicsForHomework', {
+        contextActivityId: activityId,
+        subjectId: sessionDetails.subject_id
+      });
+
+      if (response.success) {
+        setAvailableTopics(response.topics || []);
+      }
+    } catch (error) {
+      console.error('Error fetching topics:', error);
+    }
+  };
+
+  const handleActivityChange = (activityId) => {
+    setSelectedActivityId(activityId);
+    setSelectedTopicId(null);
+    setAvailableTopics([]);
+    if (activityId) {
+      fetchTopicsForActivity(activityId);
+    }
+  };
+
+  const handleSubmitHomework = () => {
+    if (!homeworkTitle.trim()) {
+      Alert.alert('Error', 'Please enter homework title');
+      return;
+    }
+
+    if (!selectedActivityId) {
+      Alert.alert('Error', 'Please select an activity');
+      return;
+    }
+
+    const homework = {
+      title: homeworkTitle,
+      description: homeworkDescription,
+      contextActivityId: selectedActivityId,
+      topicId: selectedTopicId
+    };
+
+    confirmEndSession(homework);
+  };
+
+  const handleSkipHomework = () => {
+    Alert.alert(
+      'Skip Homework',
+      'Are you sure you want to skip homework assignment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Skip', onPress: () => confirmEndSession(null) }
+      ]
+    );
   };
 
   const updateStudentEvaluation = (studentId, field, value) => {
@@ -175,6 +491,46 @@ const MentorPeriodDetails = ({ route, navigation }) => {
     }));
   };
 
+  const toggleStudentSelection = (studentId) => {
+    setSelectedStudents(prev => {
+      if (prev.includes(studentId)) {
+        return prev.filter(id => id !== studentId);
+      } else {
+        return [...prev, studentId];
+      }
+    });
+  };
+
+  const selectAllStudents = () => {
+    if (selectedStudents.length === students.length) {
+      setSelectedStudents([]);
+    } else {
+      setSelectedStudents(students.map(s => s.id));
+    }
+  };
+
+  const applyBulkEvaluation = () => {
+    if (selectedStudents.length === 0) {
+      Alert.alert('Error', 'Please select students first');
+      return;
+    }
+
+    selectedStudents.forEach(studentId => {
+      setStudentEvaluations(prev => ({
+        ...prev,
+        [studentId]: {
+          ...prev[studentId],
+          ...bulkEvaluation,
+          isPresent: true
+        }
+      }));
+    });
+
+    setSelectedStudents([]);
+    setBulkEvaluation({});
+    Alert.alert('Success', 'Evaluations applied to selected students');
+  };
+
   const formatTime = (timeString) => {
     if (!timeString) return '';
     const [hours, minutes] = timeString.split(':');
@@ -182,6 +538,20 @@ const MentorPeriodDetails = ({ route, navigation }) => {
     const period = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${period}`;
+  };
+
+  const formatDuration = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
   };
 
   const getProfileImageSource = (profilePath) => {
@@ -231,10 +601,95 @@ const MentorPeriodDetails = ({ route, navigation }) => {
             </View>
           )}
 
-          {sessionDetails.topic_name && (
+          {sessionDetails.batch_names && (
             <View style={styles.infoRow}>
-              <MaterialCommunityIcons name="book-open-variant" size={20} color="#64748B" />
-              <Text style={styles.infoText}>{sessionDetails.topic_name}</Text>
+              <MaterialCommunityIcons name="account-group" size={20} color="#64748B" />
+              <Text style={styles.infoText}>Batches: {sessionDetails.batch_names}</Text>
+            </View>
+          )}
+
+          {/* Topic Hierarchy */}
+          {topicHierarchy.length > 0 && (
+            <View style={styles.hierarchySection}>
+              <View style={styles.hierarchyHeader}>
+                <MaterialCommunityIcons name="file-tree" size={20} color="#3B82F6" />
+                <Text style={styles.hierarchyTitle}>Topic Hierarchy</Text>
+              </View>
+              <View style={styles.hierarchyPath}>
+                {topicHierarchy.map((topic, index) => (
+                  <React.Fragment key={topic.id}>
+                    {index > 0 && <Text style={styles.hierarchySeparator}> › </Text>}
+                    <Text style={[
+                      styles.hierarchyItem,
+                      index === topicHierarchy.length - 1 && styles.hierarchyItemActive
+                    ]}>
+                      {topic.topic_name}
+                    </Text>
+                  </React.Fragment>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Topic Materials */}
+          {topicMaterials.length > 0 && (
+            <View style={styles.materialsSection}>
+              <View style={styles.hierarchyHeader}>
+                <MaterialCommunityIcons name="folder-multiple" size={20} color="#10B981" />
+                <Text style={styles.hierarchyTitle}>Topic Materials</Text>
+              </View>
+              {topicMaterials.map((material) => (
+                <TouchableOpacity
+                  key={material.id}
+                  style={styles.materialCard}
+                  onPress={() => material.material_url && Linking.openURL(`${material.material_url}`)}
+                >
+                  <View style={styles.materialIcon}>
+                    <MaterialCommunityIcons
+                      name={
+                        material.material_type === 'PDF' ? 'file-pdf-box' :
+                          material.material_type === 'Video' ? 'video-box' :
+                            material.material_type === 'Image' ? 'image-box' :
+                              'file-document'
+                      }
+                      size={24}
+                      color="#3B82F6"
+                    />
+                  </View>
+                  <View style={styles.materialInfo}>
+                    <Text style={styles.materialTitle}>{material.material_title}</Text>
+                    <Text style={styles.materialMeta}>
+                      {material.material_type}
+                      {material.difficulty_level && ` • ${material.difficulty_level}`}
+                      {material.estimated_duration && ` • ${material.estimated_duration} min`}
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons name="open-in-new" size={20} color="#64748B" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* Activity Hierarchy */}
+          {activityHierarchy.length > 0 && (
+            <View style={styles.hierarchySection}>
+              <View style={styles.hierarchyHeader}>
+                <MaterialCommunityIcons name="layers-triple" size={20} color="#F59E0B" />
+                <Text style={styles.hierarchyTitle}>Activity Hierarchy</Text>
+              </View>
+              <View style={styles.hierarchyPath}>
+                {activityHierarchy.map((activity, index) => (
+                  <React.Fragment key={activity.id}>
+                    {index > 0 && <Text style={styles.hierarchySeparator}> › </Text>}
+                    <Text style={[
+                      styles.hierarchyItem,
+                      index === activityHierarchy.length - 1 && styles.hierarchyItemActive
+                    ]}>
+                      {activity.name}
+                    </Text>
+                  </React.Fragment>
+                ))}
+              </View>
             </View>
           )}
 
@@ -257,105 +712,110 @@ const MentorPeriodDetails = ({ route, navigation }) => {
 
         {/* Action Buttons */}
         {!sessionStarted && sessionDetails.session_status !== 'completed' && (
-          <TouchableOpacity style={styles.startButton} onPress={handleStartSession}>
+          <TouchableOpacity
+            style={[styles.startButton, !canStartSession && styles.disabledButton]}
+            onPress={handleStartSession}
+            disabled={!canStartSession}
+          >
             <MaterialCommunityIcons name="play-circle" size={24} color="#FFFFFF" />
-            <Text style={styles.startButtonText}>Start Session</Text>
+            <Text style={styles.startButtonText}>
+              {canStartSession ? 'Start Session' : 'Waiting for Start Time'}
+            </Text>
           </TouchableOpacity>
         )}
 
         {sessionStarted && sessionDetails.session_status !== 'completed' && (
           <>
-            {/* Students List with Evaluation */}
-            <View style={styles.studentsSection}>
-              <Text style={styles.sectionTitle}>Students ({students.length})</Text>
+            {/* Timer and Progress Bar */}
+            <View style={styles.timerCard}>
+              <View style={styles.timerHeader}>
+                <MaterialCommunityIcons name="timer-outline" size={24} color="#3B82F6" />
+                <Text style={styles.timerTitle}>Session Progress</Text>
+              </View>
+              <View style={styles.timerContent}>
+                <View style={styles.timeRow}>
+                  <Text style={styles.timeLabel}>Elapsed:</Text>
+                  <Text style={styles.timeValue}>{formatDuration(elapsedTime)}</Text>
+                </View>
+                <View style={styles.timeRow}>
+                  <Text style={styles.timeLabel}>Remaining:</Text>
+                  <Text style={styles.timeValue}>
+                    {formatDuration(Math.max(0, totalDuration - elapsedTime))}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.progressBarContainer}>
+                <View style={[styles.progressBar, { width: `${progressPercentage}%` }]} />
+              </View>
+              <Text style={styles.progressText}>{Math.round(progressPercentage)}% Complete</Text>
+            </View>
 
-              {students.map((student, index) => (
-                <View key={student.id} style={styles.studentCard}>
-                  <View style={styles.studentHeader}>
-                    <Image
-                      source={getProfileImageSource(student.photo_url)}
-                      style={styles.studentAvatar}
-                    />
-                    <View style={styles.studentInfo}>
-                      <Text style={styles.studentName}>{student.name}</Text>
-                      <Text style={styles.studentRoll}>Roll: {student.roll}</Text>
-                      {student.batch_name && (
-                        <Text style={styles.studentBatch}>Batch: {student.batch_name}</Text>
-                      )}
-                    </View>
-                    <TouchableOpacity
-                      style={[
-                        styles.presenceButton,
-                        !studentEvaluations[student.id]?.isPresent && styles.absentButton,
-                      ]}
-                      onPress={() =>
-                        updateStudentEvaluation(
-                          student.id,
-                          'isPresent',
-                          !studentEvaluations[student.id]?.isPresent
-                        )
-                      }
+            {isStudentFacing ? (
+              /* Student-facing session: Show students list with evaluation */
+              <>
+                {/* Bulk Selection Panel */}
+                <View style={styles.bulkActionsCard}>
+                  <View style={styles.bulkHeader}>
+                    <TouchableOpacity 
+                      style={styles.selectAllButton}
+                      onPress={selectAllStudents}
                     >
-                      <MaterialCommunityIcons
-                        name={
-                          studentEvaluations[student.id]?.isPresent
-                            ? 'check-circle'
-                            : 'close-circle'
-                        }
-                        size={24}
-                        color={
-                          studentEvaluations[student.id]?.isPresent ? '#10B981' : '#EF4444'
-                        }
+                      <MaterialCommunityIcons 
+                        name={selectedStudents.length === students.length ? "checkbox-marked" : "checkbox-blank-outline"} 
+                        size={24} 
+                        color="#3B82F6" 
                       />
+                      <Text style={styles.selectAllText}>
+                        {selectedStudents.length === students.length ? 'Deselect All' : 'Select All'}
+                      </Text>
                     </TouchableOpacity>
+                    {selectedStudents.length > 0 && (
+                      <Text style={styles.selectedCount}>
+                        {selectedStudents.length} selected
+                      </Text>
+                    )}
                   </View>
-
-                  {studentEvaluations[student.id]?.isPresent && (
-                    <View style={styles.evaluationInputs}>
-                      {/* Marks Input */}
-                      {sessionDetails.requires_marks && (
-                        <View style={styles.inputGroup}>
-                          <Text style={styles.inputLabel}>
-                            Marks (Out of {sessionDetails.total_marks || 'N/A'})
-                          </Text>
+                  
+                  {showBulkPanel && (
+                    <View style={styles.bulkPanel}>
+                      <Text style={styles.bulkPanelTitle}>Bulk Evaluation</Text>
+                      
+                      {sessionDetails.requires_marks === 1 && (
+                        <View style={styles.bulkInputGroup}>
+                          <Text style={styles.bulkInputLabel}>Marks</Text>
                           <TextInput
-                            style={styles.textInput}
+                            style={styles.bulkTextInput}
                             placeholder="Enter marks"
                             keyboardType="numeric"
-                            value={
-                              studentEvaluations[student.id]?.marksObtained?.toString() || ''
-                            }
-                            onChangeText={(text) =>
-                              updateStudentEvaluation(student.id, 'marksObtained', parseInt(text) || null)
-                            }
+                            value={bulkEvaluation.marksObtained?.toString() || ''}
+                            onChangeText={(text) => setBulkEvaluation(prev => ({
+                              ...prev,
+                              marksObtained: parseInt(text) || null
+                            }))}
                           />
                         </View>
                       )}
-
-                      {/* Attentiveness Selector */}
-                      {sessionDetails.requires_attentiveness && (
-                        <View style={styles.inputGroup}>
-                          <Text style={styles.inputLabel}>Attentiveness</Text>
+                      
+                      {sessionDetails.requires_attentiveness === 1 && (
+                        <View style={styles.bulkInputGroup}>
+                          <Text style={styles.bulkInputLabel}>Attentiveness</Text>
                           <View style={styles.attentivenessButtons}>
                             {attentivenessOptions.map((option) => (
                               <TouchableOpacity
                                 key={option.id}
                                 style={[
                                   styles.attentivenessButton,
-                                  studentEvaluations[student.id]?.attentivenessId === option.id &&
-                                    styles.attentivenessButtonActive,
+                                  bulkEvaluation.attentivenessId === option.id && styles.attentivenessButtonActive,
                                 ]}
-                                onPress={() =>
-                                  updateStudentEvaluation(student.id, 'attentivenessId', option.id)
-                                }
+                                onPress={() => setBulkEvaluation(prev => ({
+                                  ...prev,
+                                  attentivenessId: option.id
+                                }))}
                               >
-                                <Text
-                                  style={[
-                                    styles.attentivenessButtonText,
-                                    studentEvaluations[student.id]?.attentivenessId === option.id &&
-                                      styles.attentivenessButtonTextActive,
-                                  ]}
-                                >
+                                <Text style={[
+                                  styles.attentivenessButtonText,
+                                  bulkEvaluation.attentivenessId === option.id && styles.attentivenessButtonTextActive,
+                                ]}>
                                   {option.attentiveness}
                                 </Text>
                               </TouchableOpacity>
@@ -363,58 +823,241 @@ const MentorPeriodDetails = ({ route, navigation }) => {
                           </View>
                         </View>
                       )}
-
-                      {/* Malpractice Flag */}
-                      {sessionDetails.allows_malpractice && (
-                        <View style={styles.inputGroup}>
-                          <TouchableOpacity
-                            style={styles.checkboxRow}
-                            onPress={() =>
-                              updateStudentEvaluation(
-                                student.id,
-                                'malpracticeFlag',
-                                studentEvaluations[student.id]?.malpracticeFlag ? 0 : 1
-                              )
-                            }
-                          >
-                            <MaterialCommunityIcons
-                              name={
-                                studentEvaluations[student.id]?.malpracticeFlag
-                                  ? 'checkbox-marked'
-                                  : 'checkbox-blank-outline'
-                              }
-                              size={24}
-                              color="#3B82F6"
-                            />
-                            <Text style={styles.checkboxLabel}>Malpractice Detected</Text>
-                          </TouchableOpacity>
-                        </View>
+                      
+                      {sessionDetails.allows_malpractice === 1 && (
+                        <TouchableOpacity
+                          style={styles.bulkCheckboxRow}
+                          onPress={() => setBulkEvaluation(prev => ({
+                            ...prev,
+                            malpracticeFlag: prev.malpracticeFlag ? 0 : 1
+                          }))}
+                        >
+                          <MaterialCommunityIcons
+                            name={bulkEvaluation.malpracticeFlag ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                            size={24}
+                            color={bulkEvaluation.malpracticeFlag ? '#EF4444' : '#64748B'}
+                          />
+                          <Text style={styles.bulkCheckboxLabel}>Mark for Malpractice</Text>
+                        </TouchableOpacity>
                       )}
-
-                      {/* Remarks */}
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Remarks (Optional)</Text>
-                        <TextInput
-                          style={[styles.textInput, styles.textArea]}
-                          placeholder="Add remarks..."
-                          multiline
-                          numberOfLines={2}
-                          value={studentEvaluations[student.id]?.remarks || ''}
-                          onChangeText={(text) =>
-                            updateStudentEvaluation(student.id, 'remarks', text)
-                          }
-                        />
-                      </View>
+                      
+                      <TouchableOpacity 
+                        style={styles.applyBulkButton}
+                        onPress={applyBulkEvaluation}
+                      >
+                        <MaterialCommunityIcons name="check-all" size={20} color="#FFFFFF" />
+                        <Text style={styles.applyBulkButtonText}>
+                          Apply to {selectedStudents.length} Student(s)
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   )}
                 </View>
-              ))}
-            </View>
 
-            <TouchableOpacity style={styles.endButton} onPress={handleEndSession}>
-              <MaterialCommunityIcons name="stop-circle" size={24} color="#FFFFFF" />
-              <Text style={styles.endButtonText}>End Session</Text>
-            </TouchableOpacity>
+                <View style={styles.studentsSection}>
+                  <Text style={styles.sectionTitle}>Students ({students.length})</Text>
+
+                  {students.map((student, index) => (
+                    <View key={student.id} style={styles.studentCard}>
+                      <View style={styles.studentHeader}>
+                        {/* Bulk Selection Checkbox */}
+                        <TouchableOpacity 
+                          style={styles.selectionCheckbox}
+                          onPress={() => toggleStudentSelection(student.id)}
+                        >
+                          <MaterialCommunityIcons
+                            name={selectedStudents.includes(student.id) ? "checkbox-marked" : "checkbox-blank-outline"}
+                            size={24}
+                            color={selectedStudents.includes(student.id) ? "#3B82F6" : "#94A3B8"}
+                          />
+                        </TouchableOpacity>
+                        <Image
+                          source={getProfileImageSource(student.photo_url)}
+                          style={styles.studentAvatar}
+                        />
+                      <View style={styles.studentInfo}>
+                        <Text style={styles.studentName}>{student.name}</Text>
+                        <Text style={styles.studentRoll}>Roll: {student.roll}</Text>
+                        {student.batch_name && (
+                          <Text style={styles.studentBatch}>Batch: {student.batch_name}</Text>
+                        )}
+                      </View>
+                      <TouchableOpacity
+                        style={[
+                          styles.presenceButton,
+                          !studentEvaluations[student.id]?.isPresent && styles.absentButton,
+                        ]}
+                        onPress={() =>
+                          updateStudentEvaluation(
+                            student.id,
+                            'isPresent',
+                            !studentEvaluations[student.id]?.isPresent
+                          )
+                        }
+                      >
+                        <MaterialCommunityIcons
+                          name={
+                            studentEvaluations[student.id]?.isPresent
+                              ? 'check-circle'
+                              : 'close-circle'
+                          }
+                          size={24}
+                          color={
+                            studentEvaluations[student.id]?.isPresent ? '#10B981' : '#EF4444'
+                          }
+                        />
+                      </TouchableOpacity>
+                    </View>
+
+                    {studentEvaluations[student.id]?.isPresent && (
+                      <View style={styles.evaluationInputs}>
+                        {/* Marks Input - Only if requires_marks = 1 */}
+                        {sessionDetails.requires_marks === 1 && (
+                          <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>
+                              Marks (Out of {sessionDetails.total_marks || 'N/A'})
+                            </Text>
+                            <TextInput
+                              style={styles.textInput}
+                              placeholder="Enter marks"
+                              keyboardType="numeric"
+                              value={
+                                studentEvaluations[student.id]?.marksObtained?.toString() || ''
+                              }
+                              onChangeText={(text) =>
+                                updateStudentEvaluation(student.id, 'marksObtained', parseInt(text) || null)
+                              }
+                            />
+                          </View>
+                        )}
+
+                        {/* Attentiveness Selector - Only if requires_attentiveness = 1 */}
+                        {sessionDetails.requires_attentiveness === 1 && (
+                          <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Attentiveness</Text>
+                            <View style={styles.attentivenessButtons}>
+                              {attentivenessOptions.map((option) => (
+                                <TouchableOpacity
+                                  key={option.id}
+                                  style={[
+                                    styles.attentivenessButton,
+                                    studentEvaluations[student.id]?.attentivenessId === option.id &&
+                                    styles.attentivenessButtonActive,
+                                  ]}
+                                  onPress={() =>
+                                    updateStudentEvaluation(student.id, 'attentivenessId', option.id)
+                                  }
+                                >
+                                  <Text
+                                    style={[
+                                      styles.attentivenessButtonText,
+                                      studentEvaluations[student.id]?.attentivenessId === option.id &&
+                                      styles.attentivenessButtonTextActive,
+                                    ]}
+                                  >
+                                    {option.attentiveness}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </View>
+                        )}
+
+                        {/* Documents Link - Only if requires_docs = 1 */}
+                        {sessionDetails.requires_docs === 1 && (
+                          <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Supporting Documents Link</Text>
+                            <TextInput
+                              style={styles.textInput}
+                              placeholder="Enter document URL"
+                              value={studentEvaluations[student.id]?.docsLink || ''}
+                              onChangeText={(text) =>
+                                updateStudentEvaluation(student.id, 'docsLink', text)
+                              }
+                            />
+                          </View>
+                        )}
+
+                        {/* Malpractice Flag - Only if allows_malpractice = 1 */}
+                        {sessionDetails.allows_malpractice === 1 && (
+                          <View style={styles.inputGroup}>
+                            <TouchableOpacity
+                              style={styles.checkboxRow}
+                              onPress={() =>
+                                updateStudentEvaluation(
+                                  student.id,
+                                  'malpracticeFlag',
+                                  studentEvaluations[student.id]?.malpracticeFlag ? 0 : 1
+                                )
+                              }
+                            >
+                              <MaterialCommunityIcons
+                                name={
+                                  studentEvaluations[student.id]?.malpracticeFlag
+                                    ? 'checkbox-marked'
+                                    : 'checkbox-blank-outline'
+                                }
+                                size={24}
+                                color={
+                                  studentEvaluations[student.id]?.malpracticeFlag
+                                    ? '#EF4444'
+                                    : '#64748B'
+                                }
+                              />
+                              <Text style={styles.checkboxLabel}>Mark for Malpractice</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+
+                        {/* Remarks */}
+                        <View style={styles.inputGroup}>
+                          <Text style={styles.inputLabel}>Remarks (Optional)</Text>
+                          <TextInput
+                            style={[styles.textInput, styles.textArea]}
+                            placeholder="Add remarks..."
+                            multiline
+                            numberOfLines={2}
+                            value={studentEvaluations[student.id]?.remarks || ''}
+                            onChangeText={(text) =>
+                              updateStudentEvaluation(student.id, 'remarks', text)
+                            }
+                          />
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                ))}
+                </View>
+              </>
+            ) : (
+              /* Faculty-facing session: Show faculty notes input */
+              <View style={styles.facultyNotesSection}>
+                <Text style={styles.sectionTitle}>Session Notes</Text>
+                <View style={styles.notesCard}>
+                  <Text style={styles.inputLabel}>Enter session completion notes</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.textArea]}
+                    placeholder="Enter details about the session (e.g., questions generated, materials prepared, etc.)"
+                    multiline
+                    numberOfLines={8}
+                    value={facultyNotes}
+                    onChangeText={setFacultyNotes}
+                  />
+                </View>
+              </View>
+            )}
+
+            {sessionDetails.session_status !== 'finished_not_completed' ? (
+              <TouchableOpacity style={styles.finishButton} onPress={handleFinishSession}>
+                <MaterialCommunityIcons name="check-circle" size={24} color="#FFFFFF" />
+                <Text style={styles.finishButtonText}>Finish Session</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.endButton} onPress={handleEndSession}>
+                <MaterialCommunityIcons name="check-circle-outline" size={24} color="#FFFFFF" />
+                <Text style={styles.endButtonText}>End Session</Text>
+              </TouchableOpacity>
+            )}
           </>
         )}
       </ScrollView>
@@ -430,7 +1073,7 @@ const MentorPeriodDetails = ({ route, navigation }) => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Early Completion</Text>
             <Text style={styles.modalText}>
-              Session is ending before scheduled time. Please provide a reason:
+              Session is finishing before scheduled time. Please provide a reason:
             </Text>
             <TextInput
               style={[styles.textInput, styles.textArea, styles.modalInput]}
@@ -451,12 +1094,120 @@ const MentorPeriodDetails = ({ route, navigation }) => {
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={() => {
                   setShowEarlyCompletionModal(false);
-                  setShowEndSessionModal(true);
+                  // Early completion reason is only used for Finish Session flow
+                  finishSession();
                 }}
               >
                 <Text style={styles.confirmButtonText}>Continue</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Homework Assignment Modal */}
+      <Modal
+        visible={showHomeworkModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowHomeworkModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.homeworkModal]}>
+            <ScrollView
+              style={styles.homeworkScrollView}
+              contentContainerStyle={styles.homeworkScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+            >
+              <Text style={styles.modalTitle}>Assign Homework</Text>
+              <Text style={styles.modalText}>
+                Add homework for this session (optional)
+              </Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Homework Title *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter homework title"
+                  value={homeworkTitle}
+                  onChangeText={setHomeworkTitle}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Description</Text>
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  placeholder="Enter homework description"
+                  multiline
+                  numberOfLines={4}
+                  value={homeworkDescription}
+                  onChangeText={setHomeworkDescription}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Select Activity *</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={selectedActivityId}
+                    onValueChange={(value) => {
+                      if (value) {
+                        handleActivityChange(value);
+                      }
+                    }}
+                  >
+                    <Picker.Item label="Select activity" value={null} />
+                    {availableActivities.map((activity) => (
+                      <Picker.Item
+                        key={activity.id}
+                        label={activity.hierarchy}
+                        value={activity.id}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+
+              {availableTopics.length > 0 && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Select Topic (Optional)</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={selectedTopicId}
+                      onValueChange={(value) => {
+                        setSelectedTopicId(value || null);
+                      }}
+                    >
+                      <Picker.Item label="Select topic (optional)" value={null} />
+                      {availableTopics.map((topic) => (
+                        <Picker.Item
+                          key={topic.id}
+                          label={topic.hierarchy}
+                          value={topic.id}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+                </View>
+              )}
+
+            </ScrollView>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={handleSkipHomework}
+                >
+                  <Text style={styles.cancelButtonText}>Skip Homework</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.confirmButton]}
+                  onPress={handleSubmitHomework}
+                >
+                  <Text style={styles.confirmButtonText}>Submit</Text>
+                </TouchableOpacity>
+              </View>
           </View>
         </View>
       </Modal>
@@ -495,283 +1246,6 @@ const MentorPeriodDetails = ({ route, navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#64748B',
-  },
-  sessionInfoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  subjectText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  gradeText: {
-    fontSize: 14,
-    color: '#64748B',
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#475569',
-  },
-  evaluationBadge: {
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginTop: 12,
-  },
-  evaluationBadgeText: {
-    fontSize: 13,
-    color: '#1E40AF',
-    fontWeight: '500',
-  },
-  statusBadge: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginTop: 8,
-  },
-  statusText: {
-    fontSize: 13,
-    color: '#475569',
-    fontWeight: '500',
-  },
-  startButton: {
-    backgroundColor: '#10B981',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  startButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  endButton: {
-    backgroundColor: '#EF4444',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  endButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  studentsSection: {
-    marginTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 12,
-  },
-  studentCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  studentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  studentAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  studentInfo: {
-    flex: 1,
-  },
-  studentName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  studentRoll: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  studentBatch: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  presenceButton: {
-    padding: 8,
-  },
-  absentButton: {
-    opacity: 0.8,
-  },
-  evaluationInputs: {
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    paddingTop: 12,
-  },
-  inputGroup: {
-    marginBottom: 12,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#475569',
-    marginBottom: 6,
-  },
-  textInput: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 14,
-    color: '#1E293B',
-  },
-  textArea: {
-    minHeight: 60,
-    textAlignVertical: 'top',
-  },
-  attentivenessButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  attentivenessButton: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  attentivenessButtonActive: {
-    backgroundColor: '#DBEAFE',
-    borderColor: '#3B82F6',
-  },
-  attentivenessButtonText: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  attentivenessButtonTextActive: {
-    color: '#1E40AF',
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  checkboxLabel: {
-    fontSize: 14,
-    color: '#475569',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    width: '90%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 12,
-  },
-  modalText: {
-    fontSize: 14,
-    color: '#64748B',
-    marginBottom: 16,
-  },
-  modalInput: {
-    marginBottom: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#F1F5F9',
-  },
-  cancelButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  confirmButton: {
-    backgroundColor: '#3B82F6',
-  },
-  confirmButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-});
+
 
 export default MentorPeriodDetails;
