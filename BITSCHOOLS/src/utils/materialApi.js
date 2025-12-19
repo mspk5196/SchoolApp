@@ -270,3 +270,68 @@ export const getSectionSubjects = async (sectionId) => {
   });
   return response.json();
 };
+
+// ==================== MENTOR VIEW-ONLY MATERIAL APIS ====================
+
+export const mentorGetSectionSubjects = async (sectionId) => {
+  const response = await ApiService.makeRequest('/mentor/material/getSectionSubjects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sectionId }),
+  });
+  return response.json();
+};
+
+export const mentorGetTopicHierarchy = async (sectionId, subjectId, contextActivityId) => {
+  const response = await ApiService.makeRequest('/mentor/topic/getTopicHierarchy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sectionId, subjectId, contextActivityId }),
+  });
+  return response.json();
+};
+
+export const mentorGetActivitiesForSubject = async (sectionId, subjectId) => {
+  const response = await ApiService.makeRequest('/mentor/topic/getActivitiesForSubject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sectionId, subjectId }),
+  });
+  return response.json();
+};
+
+export const mentorGetSubActivitiesForActivity = async (sectionId, subjectId, contextActivityId) => {
+  const response = await ApiService.makeRequest('/mentor/topic/getSubActivitiesForActivity', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sectionId, subjectId, contextActivityId }),
+  });
+  return response.json();
+};
+
+export const mentorGetTopicMaterials = async (topicId) => {
+  const response = await ApiService.makeRequest('/mentor/material/getTopicMaterials', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ topicId }),
+  });
+  return response.json();
+};
+
+export const mentorGetBatches = async (sectionId, subjectId) => {
+  const response = await ApiService.makeRequest('/mentor/material/getBatches', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sectionId, subjectId }),
+  });
+  return response.json();
+};
+
+export const mentorGetBatchAnalytics = async (sectionId, subjectId) => {
+  const response = await ApiService.makeRequest('/mentor/material/getBatchAnalytics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sectionId, subjectId }),
+  });
+  return response.json();
+};
