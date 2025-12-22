@@ -5,15 +5,15 @@ import styles from '../../Coordinator/Materials/MaterialHomePage/MaterialHomeSty
 import Nodata from '../../../components/General/Nodata';
 import LottieView from 'lottie-react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import * as materialApi from '../../../utils/materialApi';
+import * as materialApi from '../../../utils/materialApi/mentorMaterialApi.js';
 import ApiService from '../../../utils/ApiService';
 import { Header, HorizontalChipSelector } from '../../../components';
 
 const MentorMaterialHome = ({ navigation, route }) => {
   const params = route?.params || {};
   const { userData } = params;
-//   console.log(userData);
-  
+  //   console.log(userData);
+
 
   const [grades, setGrades] = useState([]);
   const [gradeSubject, setGradeSubject] = useState([]);
@@ -41,8 +41,8 @@ const MentorMaterialHome = ({ navigation, route }) => {
         method: 'GET'
       });
       const data = await response.json();
-    //   console.log(data);
-      
+      //   console.log(data);
+
       if (data.success && Array.isArray(data.data)) {
         setGrades(data.data);
         if (data.data.length > 0) {
@@ -72,8 +72,9 @@ const MentorMaterialHome = ({ navigation, route }) => {
         setLoading(true);
       }
 
-      const result = await materialApi.mentorGetSectionSubjects(secId);
-
+      // console.log(secId);
+      const result = await materialApi.getSectionSubjects(secId);
+      
       if (result && result.success && Array.isArray(result.gradeSubjects) && result.gradeSubjects.length > 0) {
         const subjectsWithKeys = result.gradeSubjects.map((subject, index) => ({
           ...subject,
@@ -113,13 +114,13 @@ const MentorMaterialHome = ({ navigation, route }) => {
         body: JSON.stringify({ gradeID: selectedGrade.id }),
       });
       const data = await response.json();
-    //   console.log(data);
-      
+      //   console.log(data);
+
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         // Map API shape { section_id, section_name } to local { id, section_name }
         const mappedSections = data.data.map((sec) => ({
           id: sec.section_id,
-          section_name: sec.section_name,
+          section_name: `Section ${sec.section_name}`,
         }));
 
         setSections(mappedSections);

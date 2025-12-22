@@ -16,7 +16,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Header } from '../../../../components';
 import ApiService from '../../../../utils/ApiService';
-import { getBatches as fetchBatchesApi } from '../../../../utils/materialApi';
+import { getBatches as fetchBatchesApi } from '../../../../utils/materialApi/coordinatorMaterialApi.js';
 import { StyleSheet } from 'react-native';
 
 const FREQUENCIES = [

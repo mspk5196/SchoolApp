@@ -6,7 +6,7 @@ import Nodata from '../../../../components/General/Nodata';
 import LottieView from 'lottie-react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as DocumentPicker from '@react-native-documents/picker';
-import * as materialApi from '../../../../utils/materialApi';
+import * as materialApi from '../../../../utils/materialApi/coordinatorMaterialApi.js';
 import ApiService from '../../../../utils/ApiService';
 import { Header, HorizontalChipSelector } from '../../../../components';
 import AsyncStorage from '@react-native-async-storage/async-storage';

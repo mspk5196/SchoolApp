@@ -20,7 +20,7 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import Entypo from 'react-native-vector-icons/Entypo';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Nodata from '../../../../components/General/Nodata';
-import * as materialApi from '../../../../utils/materialApi/coordinatorMaterialApi.js';
+import * as materialApi from '../../../../utils/materialApi/mentorMaterialApi.js';
 
 const TopicMaterials = ({ route, navigation }) => {
   const { topicId, topicName, selectedSubjectId, selectedSectionId } = route.params;
@@ -292,7 +292,7 @@ const TopicMaterials = ({ route, navigation }) => {
         </TouchableOpacity>
       )}
 
-      <View style={styles.actionRow}>
+      {/* <View style={styles.actionRow}>
         <TouchableOpacity
           style={[styles.actionButton, styles.editButton]}
           onPress={() => openEditModal(item)}
@@ -308,7 +308,7 @@ const TopicMaterials = ({ route, navigation }) => {
           <MaterialCommunityIcons name="delete" size={18} color="#fff" />
           <Text style={styles.actionButtonText}>Delete</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
     </View>
   );
 

@@ -17,7 +17,7 @@ import { Picker } from '@react-native-picker/picker';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import styles from './BatchDetailsStyles.jsx';
-import * as materialApi from '../../../../utils/materialApi/coordinatorMaterialApi.js';
+import * as materialApi from '../../../../utils/materialApi/mentorMaterialApi.js';
 
 const BatchDetails = () => {
   const navigation = useNavigation(); 
@@ -139,12 +139,12 @@ const BatchDetails = () => {
           <Text style={styles.studentName}>{student.student_name}</Text>
           <Text style={styles.studentRoll}>Roll: {student.student_roll}</Text>
         </View>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.moveButton}
           onPress={() => handleMoveStudent(student)}
         >
           <Icon name="swap-horizontal" size={20} color="#3B82F6" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       <View style={styles.studentStats}>

@@ -5,9 +5,10 @@ import MentorHome from '../../pages/Mentor/Home/MentorHome';
 import MentorDashHome from '../../pages/Mentor/Dashboard/MentorDashHome';
 import MentorPeriodDetails from '../../pages/Mentor/Dashboard/MentorPeriodDetails';
 import MentorMaterialHome from '../../pages/Mentor/Materials/MentorMaterialHome';
-import MentorTopicHierarchy from '../../pages/Mentor/Materials/MentorTopicHierarchy';
-import MentorTopicMaterials from '../../pages/Mentor/Materials/MentorTopicMaterials';
-import MentorBatchOverview from '../../pages/Mentor/Materials/MentorBatchOverview';
+import TopicHierarchyManagement from '../../pages/Mentor/Materials/TopicHierarchy/TopicHierarchyManagement';
+import TopicMaterials from '../../pages/Mentor/Materials/TopicHierarchy/TopicMaterials';
+import BatchManagementHome from '../../pages/Mentor/Materials/BatchManagement/BatchManagementHome';
+import BatchDetails from '../../pages/Mentor/Materials/BatchManagement/BatchDetails';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,9 +23,10 @@ const MentorRoutes = () => {
 
       {/* Mentor Materials (view only) */}
       <Stack.Screen name="MentorMaterials" component={MentorMaterialHome} />
-      <Stack.Screen name="MentorTopicHierarchy" component={MentorTopicHierarchy} />
-      <Stack.Screen name="MentorTopicMaterials" component={MentorTopicMaterials} />
-      <Stack.Screen name="MentorBatchOverview" component={MentorBatchOverview} />
+      <Stack.Screen name="MentorTopicHierarchy" component={TopicHierarchyManagement} />
+      <Stack.Screen name="MentorTopicMaterials" component={TopicMaterials} />
+      <Stack.Screen name="MentorBatchOverview" component={BatchManagementHome} />
+      <Stack.Screen name="MentorBatchDetails" component={BatchDetails} />
 
     </Stack.Navigator>
   );

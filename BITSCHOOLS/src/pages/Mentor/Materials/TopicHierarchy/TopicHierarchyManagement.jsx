@@ -20,12 +20,12 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Foundation from 'react-native-vector-icons/Foundation';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as materialApi from '../../../../utils/materialApi/coordinatorMaterialApi.js';
+import * as materialApi from '../../../../utils/materialApi/mentorMaterialApi.js';
 import ApiService from '../../../../utils/ApiService';
 import { Nodata } from '../../../../components';
 
 const TopicHierarchyManagement = ({ navigation, route }) => {
-  const { coordinatorData, coordinatorGrades, activeGrade, selectedSubjectId, selectedSectionId, selectedSubjectName } = route.params || {};
+  const { userData, activeGrade, selectedSubjectId, selectedSectionId, selectedSubjectName } = route.params || {};
 
   // Debug: Log the route params
   // console.log('TopicHierarchyManagement route params:', {
@@ -211,7 +211,7 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
 
       if (result && result.success) {
         // console.log(result.topics);
-        
+
         setTopicHierarchy(result.topics || []);
       } else {
         console.error('Failed to fetch topic hierarchy:', result?.message);
@@ -519,32 +519,11 @@ const TopicHierarchyManagement = ({ navigation, route }) => {
           </View>
 
           <View style={styles.actionButtons}>
+
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => openCreateModal(item.id)}
+              onPress={() => navigation.navigate('MentorTopicMaterials', { topicId: item.id, topicName: item.topic_name, selectedSubjectId, selectedSectionId, selectedSubject })}
             >
-              {/* <Text style={styles.actionButtonText}>+</Text> */}
-              <Foundation name="folder-add" color="#000" size={26} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => openEditModal(item)}
-            >
-              {/* <Text style={styles.actionButtonText}>✏</Text> */}
-              <MaterialIcons name="edit-document" color="#000" size={24} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => deleteTopic(item.id)}
-            >
-              {/* <Text style={styles.actionButtonText}>🗑</Text> */}
-              <MaterialCommunityIcons name="delete-forever" color="#ff0000ff" size={24} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('TopicMaterials', { topicId: item.id, topicName: item.topic_name, selectedSubjectId, selectedSectionId, selectedSubject })}
-            >
-              {/* <Text style={styles.actionButtonText}>📁</Text> */}
               <Entypo name="folder-video" size={24} color="#ffbb00ff" />
 
             </TouchableOpacity>
@@ -1093,10 +1072,10 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   clearDateLink: {
-  noDataSubtext: {
-    fontSize: 13,
-    color: '#666',
-  },
+    noDataSubtext: {
+      fontSize: 13,
+      color: '#666',
+    },
     color: '#ff3b30',
     fontWeight: '600',
     marginLeft: 8,

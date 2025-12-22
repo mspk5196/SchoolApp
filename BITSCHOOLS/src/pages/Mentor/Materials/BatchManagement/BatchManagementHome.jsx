@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import styles from './BatchManagementStyles.jsx';
-import * as materialApi from '../../../../utils/materialApi/coordinatorMaterialApi.js';
+import * as materialApi from '../../../../utils/materialApi/mentorMaterialApi.js';
 import ApiService from '../../../../utils/ApiService';
 import { Nodata } from '../../../../components/index.js';
 
@@ -530,7 +530,7 @@ const BatchManagementHome = ({route}) => {
           borderLeftWidth: 4 
         }
       ]}
-      onPress={() => navigation.navigate('BatchDetails', { 
+      onPress={() => navigation.navigate('MentorBatchDetails', { 
         batchName: batch.batch_name,
         batchId: batch.id,
         sectionId: selectedSection || selectedSectionId,
@@ -592,7 +592,7 @@ const BatchManagementHome = ({route}) => {
           <Text style={styles.quickActionText}>Info</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           style={styles.quickActionButton}
           onPress={(e) => {
             e.stopPropagation();
@@ -601,7 +601,7 @@ const BatchManagementHome = ({route}) => {
         >
           <Icon name="resize" size={18} color="#3B82F6" />
           <Text style={styles.quickActionText}>Resize</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </TouchableOpacity>
   );
@@ -886,7 +886,7 @@ const BatchManagementHome = ({route}) => {
         )}
 
         {/* Action Buttons */}
-        {((selectedSection && selectedSubject) || (selectedSectionId && selectedSubjectId)) && (
+        {/* {((selectedSection && selectedSubject) || (selectedSectionId && selectedSubjectId)) && (
           <View style={styles.actionsContainer}>
             <TouchableOpacity
               style={[styles.actionButton, styles.configureButton]}
@@ -896,14 +896,6 @@ const BatchManagementHome = ({route}) => {
               <Text style={styles.actionButtonText}>Configure Batches</Text>
             </TouchableOpacity>
 
-            {/* <TouchableOpacity
-              style={[styles.actionButton, styles.reallocateButton]}
-              onPress={handleRunReallocation}
-            >
-              <Icon name="shuffle-variant" size={22} color="white" />
-              <Text style={styles.actionButtonText}>Run Reallocation</Text>
-            </TouchableOpacity> */}
-
             <TouchableOpacity
               style={[styles.actionButton, styles.initializeButton]}
               onPress={handleInitializeBatches}
@@ -912,7 +904,7 @@ const BatchManagementHome = ({route}) => {
               <Text style={styles.actionButtonText}>Initialize Batches</Text>
             </TouchableOpacity>
           </View>
-        )}
+        )} */}
 
         {/* Batch List */}
         {batchData.length > 0 && (

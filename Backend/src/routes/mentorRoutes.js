@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mentorController = require('../controllers/mentor/mentorController');
-const mentorMaterialController = require('../controllers/mentor/mentorMaterialController');
+const materialController = require('../controllers/mentor/mentorMaterialController');
 const { authenticateToken } = require('../middleware/auth');
 const getAcademicYear = require('../middleware/getAcademicYear');
 
@@ -24,13 +24,36 @@ router.post('/getActivitiesForHomework', mentorController.getActivitiesForHomewo
 router.post('/getTopicsForHomework', mentorController.getTopicsForHomework);
 
 // Mentor material routes (read-only, reuse coordinator logic)
-router.post('/material/getSectionSubjects', mentorMaterialController.getSectionSubjects);
-router.post('/material/getTopicMaterials', mentorMaterialController.getTopicMaterials);
-router.post('/material/getBatches', mentorMaterialController.getBatches);
-router.post('/material/getBatchAnalytics', mentorMaterialController.getBatchAnalytics);
+// Batch management routes
+router.post('/batch/getBatches', materialController.getBatches);
+router.post('/batch/getBatchAnalytics', materialController.getBatchAnalytics);
+router.post('/batch/initializeBatches',  materialController.initializeBatches);
+router.post('/batch/reallocateBatches',  materialController.reallocateBatches);
+router.post('/batch/updateBatchSize', materialController.updateBatchSize);
+router.post('/batch/getBatchDetails', materialController.getBatchDetails);
+router.post('/batch/moveStudentBatch', materialController.moveStudentBatch);
+router.post('/batch/getBatchStudents', materialController.getBatchStudents);
+router.post('/batch/moveMultipleStudents', materialController.moveMultipleStudents);
+// New: configure batches (create batch records without assigning students)
+router.post('/batches/configure',  materialController.configureBatches);
+// Assign students to batches (manual assignment)
+router.post('/batch/assignStudents', materialController.assignStudents);
+// Topic hierarchy routes
+router.post('/topic/getTopicHierarchy',  materialController.getTopicHierarchy);
+router.post('/topic/createTopic',  materialController.createTopic);
+router.post('/topic/updateTopic',  materialController.updateTopic);
+router.post('/topic/deleteTopic',  materialController.deleteTopic);
+router.post('/topic/getActivitiesForSubject',  materialController.getActivitiesForSubject);
+router.post('/topic/getSubActivitiesForActivity',  materialController.getSubActivitiesForActivity);
 
-router.post('/topic/getTopicHierarchy', mentorMaterialController.getTopicHierarchy);
-router.post('/topic/getActivitiesForSubject', mentorMaterialController.getActivitiesForSubject);
-router.post('/topic/getSubActivitiesForActivity', mentorMaterialController.getSubActivitiesForActivity);
+// Material management routes
+router.post('/material/getTopicMaterials',  materialController.getTopicMaterials);
+router.post('/material/addTopicMaterial',  materialController.addTopicMaterial);
+router.post('/material/updateTopicMaterial',  materialController.updateTopicMaterial);
+router.post('/material/deleteTopicMaterial',  materialController.deleteTopicMaterial);
+router.post('/material/setExpectedCompletionDate',  materialController.setExpectedCompletionDate);
+router.post('/material/getBatchExpectedDates',  materialController.getBatchExpectedDates);
+
+router.post('/getSectionSubjects',  materialController.getSectionSubjects);
 
 module.exports = router;

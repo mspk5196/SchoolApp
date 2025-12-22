@@ -1,4 +1,4 @@
-import ApiService from './ApiService';
+import ApiService from '../ApiService';
 
 /**
  * Material Management API Helper
@@ -8,7 +8,7 @@ import ApiService from './ApiService';
 // ==================== BATCH MANAGEMENT ====================
 
 export const getBatches = async (sectionId, subjectId) => {
-  const response = await ApiService.makeRequest('/coordinator/batch/getBatches', {
+  const response = await ApiService.makeRequest('/mentor/batch/getBatches', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sectionId, subjectId }),
@@ -17,7 +17,7 @@ export const getBatches = async (sectionId, subjectId) => {
 };
 
 export const getBatchAnalytics = async (sectionId, subjectId) => {
-  const response = await ApiService.makeRequest('/coordinator/batch/getBatchAnalytics', {
+  const response = await ApiService.makeRequest('/mentor/batch/getBatchAnalytics', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sectionId, subjectId }),
@@ -26,7 +26,7 @@ export const getBatchAnalytics = async (sectionId, subjectId) => {
 };
 
 export const initializeBatches = async (sectionId, subjectId, numberOfBatches, maxStudentsPerBatch) => {
-  const response = await ApiService.makeRequest('/coordinator/batch/initializeBatches', {
+  const response = await ApiService.makeRequest('/mentor/batch/initializeBatches', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sectionId, subjectId, numberOfBatches, maxStudentsPerBatch }),
@@ -35,7 +35,7 @@ export const initializeBatches = async (sectionId, subjectId, numberOfBatches, m
 };
 
 export const reallocateBatches = async (sectionId, subjectId) => {
-  const response = await ApiService.makeRequest('/coordinator/batch/reallocateBatches', {
+  const response = await ApiService.makeRequest('/mentor/batch/reallocateBatches', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sectionId, subjectId }),
@@ -44,7 +44,7 @@ export const reallocateBatches = async (sectionId, subjectId) => {
 };
 
 export const updateBatchSize = async (batchId, newMaxSize) => {
-  const response = await ApiService.makeRequest('/coordinator/batch/updateBatchSize', {
+  const response = await ApiService.makeRequest('/mentor/batch/updateBatchSize', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ batchId, newMaxSize }),
@@ -53,7 +53,7 @@ export const updateBatchSize = async (batchId, newMaxSize) => {
 };
 
 export const getBatchDetails = async (batchId) => {
-  const response = await ApiService.makeRequest('/coordinator/batch/getBatchDetails', {
+  const response = await ApiService.makeRequest('/mentor/batch/getBatchDetails', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ batchId }),
@@ -62,7 +62,7 @@ export const getBatchDetails = async (batchId) => {
 };
 
 export const moveStudentBatch = async (studentRoll, fromBatchId, toBatchId, subjectId, reason) => {
-  const response = await ApiService.makeRequest('/coordinator/batch/moveStudentBatch', {
+  const response = await ApiService.makeRequest('/mentor/batch/moveStudentBatch', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ studentRoll, fromBatchId, toBatchId, subjectId, reason }),
@@ -71,7 +71,7 @@ export const moveStudentBatch = async (studentRoll, fromBatchId, toBatchId, subj
 };
 
 export const getBatchStudents = async (batchId) => {
-  const response = await ApiService.makeRequest('/coordinator/batch/getBatchStudents', {
+  const response = await ApiService.makeRequest('/mentor/batch/getBatchStudents', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ batchId }),
@@ -80,7 +80,7 @@ export const getBatchStudents = async (batchId) => {
 };
 
 export const moveMultipleStudents = async (studentRolls, fromBatchId, toBatchId) => {
-  const response = await ApiService.makeRequest('/coordinator/batch/moveMultipleStudents', {
+  const response = await ApiService.makeRequest('/mentor/batch/moveMultipleStudents', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ studentRolls, fromBatchId, toBatchId }),
@@ -89,7 +89,7 @@ export const moveMultipleStudents = async (studentRolls, fromBatchId, toBatchId)
 };
 
 export const assignStudentsToBatches = async (assignments) => {
-  const response = await ApiService.makeRequest('/coordinator/batch/assignStudents', {
+  const response = await ApiService.makeRequest('/mentor/batch/assignStudents', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ assignments }),
@@ -100,14 +100,14 @@ export const assignStudentsToBatches = async (assignments) => {
 // Excel Upload/Download for Batches
 export const downloadBatchTemplate = async () => {
   return await ApiService.downloadFile(
-    '/coordinator/batch/generate-batch-template',
+    '/mentor/batch/generate-batch-template',
     'batch_template.xlsx'
   );
 };
 
 export const uploadBatchesExcel = async (file) => {
   return await ApiService.uploadFile(
-    '/coordinator/batch/upload-batches',
+    '/mentor/batch/upload-batches',
     file,
     'file'
   );
@@ -116,7 +116,7 @@ export const uploadBatchesExcel = async (file) => {
 // ==================== TOPIC HIERARCHY ====================
 
 export const getTopicHierarchy = async (sectionId, subjectId, contextActivityId) => {
-  const response = await ApiService.makeRequest('/coordinator/topic/getTopicHierarchy', {
+  const response = await ApiService.makeRequest('/mentor/topic/getTopicHierarchy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sectionId, subjectId, contextActivityId }),
@@ -125,7 +125,7 @@ export const getTopicHierarchy = async (sectionId, subjectId, contextActivityId)
 };
 
 export const createTopic = async (topicData) => {
-  const response = await ApiService.makeRequest('/coordinator/topic/createTopic', {
+  const response = await ApiService.makeRequest('/mentor/topic/createTopic', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(topicData),
@@ -134,7 +134,7 @@ export const createTopic = async (topicData) => {
 };
 
 export const updateTopic = async (topicData) => {
-  const response = await ApiService.makeRequest('/coordinator/topic/updateTopic', {
+  const response = await ApiService.makeRequest('/mentor/topic/updateTopic', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(topicData),
@@ -143,7 +143,7 @@ export const updateTopic = async (topicData) => {
 };
 
 export const deleteTopic = async (topicId) => {
-  const response = await ApiService.makeRequest('/coordinator/topic/deleteTopic', {
+  const response = await ApiService.makeRequest('/mentor/topic/deleteTopic', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ topicId }),
@@ -152,7 +152,7 @@ export const deleteTopic = async (topicId) => {
 };
 
 export const getActivitiesForSubject = async (sectionId, subjectId) => {
-  const response = await ApiService.makeRequest('/coordinator/topic/getActivitiesForSubject', {
+  const response = await ApiService.makeRequest('/mentor/topic/getActivitiesForSubject', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sectionId, subjectId }),
@@ -161,7 +161,7 @@ export const getActivitiesForSubject = async (sectionId, subjectId) => {
 };
 
 export const getSubActivitiesForActivity = async (sectionId, subjectId, contextActivityId) => {
-  const response = await ApiService.makeRequest('/coordinator/topic/getSubActivitiesForActivity', {
+  const response = await ApiService.makeRequest('/mentor/topic/getSubActivitiesForActivity', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sectionId, subjectId, contextActivityId }),
@@ -172,7 +172,7 @@ export const getSubActivitiesForActivity = async (sectionId, subjectId, contextA
 // ==================== MATERIAL MANAGEMENT ====================
 
 export const getTopicMaterials = async (topicId) => {
-  const response = await ApiService.makeRequest('/coordinator/material/getTopicMaterials', {
+  const response = await ApiService.makeRequest('/mentor/material/getTopicMaterials', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ topicId }),
@@ -181,7 +181,7 @@ export const getTopicMaterials = async (topicId) => {
 };
 
 export const addTopicMaterial = async (materialData) => {
-  const response = await ApiService.makeRequest('/coordinator/material/addTopicMaterial', {
+  const response = await ApiService.makeRequest('/mentor/material/addTopicMaterial', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(materialData),
@@ -190,7 +190,7 @@ export const addTopicMaterial = async (materialData) => {
 };
 
 export const updateTopicMaterial = async (materialData) => {
-  const response = await ApiService.makeRequest('/coordinator/material/updateTopicMaterial', {
+  const response = await ApiService.makeRequest('/mentor/material/updateTopicMaterial', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(materialData),
@@ -199,7 +199,7 @@ export const updateTopicMaterial = async (materialData) => {
 };
 
 export const deleteTopicMaterial = async (materialId) => {
-  const response = await ApiService.makeRequest('/coordinator/material/deleteTopicMaterial', {
+  const response = await ApiService.makeRequest('/mentor/material/deleteTopicMaterial', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ materialId }),
@@ -208,7 +208,7 @@ export const deleteTopicMaterial = async (materialId) => {
 };
 
 export const setExpectedCompletionDate = async (topicId, batchId, expectedDate) => {
-  const response = await ApiService.makeRequest('/coordinator/material/setExpectedCompletionDate', {
+  const response = await ApiService.makeRequest('/mentor/material/setExpectedCompletionDate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ topicId, batchId, expectedDate }),
@@ -218,7 +218,7 @@ export const setExpectedCompletionDate = async (topicId, batchId, expectedDate) 
 
 // Fetch batch-wise expected completion dates for a topic
 export const getBatchExpectedDates = async (topicId) => {
-  const response = await ApiService.makeRequest('/coordinator/material/getBatchExpectedDates', {
+  const response = await ApiService.makeRequest('/mentor/material/getBatchExpectedDates', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ topicId }),
@@ -229,14 +229,14 @@ export const getBatchExpectedDates = async (topicId) => {
 // Excel Upload/Download for Materials
 // export const downloadMaterialsTemplate = async () => {
 //   return await ApiService.downloadFile(
-//     '/coordinator/material/generate-materials-template',
+//     '/mentor/material/generate-materials-template',
 //     'materials_template.xlsx'
 //   );
 // };
 
 // export const uploadMaterialsExcel = async (file) => {
 //   return await ApiService.uploadFile(
-//     '/coordinator/material/upload-materials',
+//     '/mentor/material/upload-materials',
 //     file,
 //     'file'
 //   );
@@ -245,7 +245,7 @@ export const getBatchExpectedDates = async (topicId) => {
 // ==================== ACADEMIC YEAR BULK ====================
 
 export const downloadAcademicYearTemplate = async (gradeId) => {
-  const url = gradeId ? `/coordinator/academic-year/generate-template?gradeId=${encodeURIComponent(gradeId)}` : '/coordinator/academic-year/generate-template';
+  const url = gradeId ? `/mentor/academic-year/generate-template?gradeId=${encodeURIComponent(gradeId)}` : '/mentor/academic-year/generate-template';
   return await ApiService.downloadFile(
     url,
     'topic_material_upload.xlsx'
@@ -254,7 +254,7 @@ export const downloadAcademicYearTemplate = async (gradeId) => {
 
 export const uploadAcademicYearExcel = async (file) => {
   return await ApiService.uploadFile(
-    '/coordinator/academic-year/upload',
+    '/mentor/academic-year/upload',
     file,
     'file'
   );
@@ -263,75 +263,10 @@ export const uploadAcademicYearExcel = async (file) => {
 // ==================== UTILITIES ====================
 
 export const getSectionSubjects = async (sectionId) => {
-  const response = await ApiService.makeRequest('/coordinator/getSectionSubjects', {
+  const response = await ApiService.makeRequest('/mentor/getSectionSubjects', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sectionId }),
-  });
-  return response.json();
-};
-
-// ==================== MENTOR VIEW-ONLY MATERIAL APIS ====================
-
-export const mentorGetSectionSubjects = async (sectionId) => {
-  const response = await ApiService.makeRequest('/mentor/material/getSectionSubjects', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sectionId }),
-  });
-  return response.json();
-};
-
-export const mentorGetTopicHierarchy = async (sectionId, subjectId, contextActivityId) => {
-  const response = await ApiService.makeRequest('/mentor/topic/getTopicHierarchy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sectionId, subjectId, contextActivityId }),
-  });
-  return response.json();
-};
-
-export const mentorGetActivitiesForSubject = async (sectionId, subjectId) => {
-  const response = await ApiService.makeRequest('/mentor/topic/getActivitiesForSubject', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sectionId, subjectId }),
-  });
-  return response.json();
-};
-
-export const mentorGetSubActivitiesForActivity = async (sectionId, subjectId, contextActivityId) => {
-  const response = await ApiService.makeRequest('/mentor/topic/getSubActivitiesForActivity', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sectionId, subjectId, contextActivityId }),
-  });
-  return response.json();
-};
-
-export const mentorGetTopicMaterials = async (topicId) => {
-  const response = await ApiService.makeRequest('/mentor/material/getTopicMaterials', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ topicId }),
-  });
-  return response.json();
-};
-
-export const mentorGetBatches = async (sectionId, subjectId) => {
-  const response = await ApiService.makeRequest('/mentor/material/getBatches', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sectionId, subjectId }),
-  });
-  return response.json();
-};
-
-export const mentorGetBatchAnalytics = async (sectionId, subjectId) => {
-  const response = await ApiService.makeRequest('/mentor/material/getBatchAnalytics', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sectionId, subjectId }),
   });
   return response.json();
 };
