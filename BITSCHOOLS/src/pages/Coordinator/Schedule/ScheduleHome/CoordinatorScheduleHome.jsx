@@ -42,6 +42,15 @@ const CoordinatorScheduleHome = ({ navigation }) => {
       bgColor: '#DBEAFE',
       route: 'CoordinatorAssessmentCycles',
     },
+    {
+      id: '5',
+      title: 'Student Schedule View',
+      iconName: 'calendar-multiselect',
+      iconType: 'MaterialCommunityIcons',
+      color: '#3B82F6',
+      bgColor: '#DBEAFE',
+      route: 'CoordinatorStudentScheduleView',
+    },
   ];
 
   const [userData, setUserData] = useState(null);

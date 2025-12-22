@@ -50,7 +50,7 @@ exports.getAllVenues = async (req, res) => {
             `;
 
         const [rows] = await db.query(sql);
-        return res.json(rows);
+        return res.json({ success: true,  rows });
     } catch (error) {
         console.error('Error fetching venues:', error);
         return res.status(500).json({ success: false, message: 'Failed to fetch venues', error: error.message });

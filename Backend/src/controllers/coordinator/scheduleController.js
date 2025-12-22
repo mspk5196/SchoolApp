@@ -1573,3 +1573,707 @@ exports.deleteAssessmentCycle = async (req, res) => {
   }
 };
 
+// ---- Student Schedule Management ----
+
+// Get student schedules by grade, section, and date
+exports.getStudentSchedules = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const { gradeId, sectionId, date, studentId } = req.body;
+    const academicYear = req.activeAcademicYearId;
+
+    let query = `
+      SELECT 
+        ssc.*,
+        s.name as student_name,
+        s.roll as student_roll,
+        sub.subject_name,
+        v.name as venue_name,
+        f.name as mentor_name,
+        ca.id as context_activity_id,
+        a.name as activity_name,
+        th.topic_name,
+        fc.session_type_id,
+        st.name as session_type_name
+      FROM student_schedule_calendar ssc
+      LEFT JOIN students s ON ssc.student_id = s.id
+      LEFT JOIN subjects sub ON ssc.subject_id = sub.id
+      LEFT JOIN venues v ON ssc.venue_id = v.id
+      LEFT JOIN faculty f ON ssc.mentor_id = f.id
+      LEFT JOIN context_activities ca ON ssc.context_activity_id = ca.id
+      LEFT JOIN activities a ON ca.activity_id = a.id
+      LEFT JOIN topic_hierarchy th ON ssc.section_activity_topic_id = th.id
+      LEFT JOIN faculty_calendar fc ON ssc.faculty_calendar_id = fc.id
+      LEFT JOIN session_types st ON fc.session_type_id = st.id
+      WHERE 1=1
+    `;
+
+    const params = [];
+
+    if (gradeId) {
+      query += ' AND ssc.grade_id = ?';
+      params.push(gradeId);
+    }
+
+    if (sectionId) {
+      query += ' AND ssc.section_id = ?';
+      params.push(sectionId);
+    }
+
+    if (date) {
+      query += ' AND ssc.date = ?';
+      params.push(date);
+    }
+
+    if (studentId) {
+      query += ' AND ssc.student_id = ?';
+      params.push(studentId);
+    }
+
+    query += ' ORDER BY ssc.date, ssc.start_time';
+
+    const [schedules] = await conn.query(query, params);
+
+    if (conn) conn.release();
+    return res.json({ success: true, data: schedules });
+  } catch (error) {
+    console.error('Error fetching student schedules:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to fetch student schedules', error: error.message });
+  }
+};
+
+// Get students by section for dropdown
+exports.getStudentsBySection = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const { sectionId } = req.body;
+    const academicYear = req.activeAcademicYearId;
+
+    const [students] = await conn.query(
+      `SELECT DISTINCT s.id, s.name, s.roll
+       FROM students s
+       JOIN student_mappings sm ON s.id = sm.student_id
+       WHERE sm.section_id = ? AND sm.academic_year = ?
+       ORDER BY s.roll`,
+      [sectionId, academicYear]
+    );
+
+    if (conn) conn.release();
+    return res.json({ success: true, data: students });
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to fetch students', error: error.message });
+  }
+};
+
+// Create manual student schedule
+exports.createStudentSchedule = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const {
+      studentIds, // Array of student IDs or single student ID
+      gradeId,
+      sectionId,
+      subjectId,
+      mentorId,
+      contextActivityId,
+      topicId,
+      taskDescription,
+      date,
+      startTime,
+      endTime,
+      venueId,
+      evaluationMode,
+      totalMarks,
+      scheduleType,
+      status
+    } = req.body;
+
+    const userId = req.user && req.user.id ? req.user.id : null;
+
+    // Validate required fields
+    if (!gradeId || !sectionId || !subjectId || !date || !startTime || !endTime) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    // Ensure studentIds is an array
+    const studentIdArray = Array.isArray(studentIds) ? studentIds : [studentIds];
+
+    if (studentIdArray.length === 0) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'At least one student must be selected' });
+    }
+
+    await conn.beginTransaction();
+
+    // Insert schedule for each student
+    const insertPromises = studentIdArray.map(studentId =>
+      conn.query(
+        `INSERT INTO student_schedule_calendar 
+         (student_id, grade_id, section_id, subject_id, mentor_id, context_activity_id, 
+          section_activity_topic_id, task_description, date, start_time, end_time, venue_id,
+          evaluation_mode, total_marks, schedule_type, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          studentId,
+          gradeId,
+          sectionId,
+          subjectId,
+          mentorId || null,
+          contextActivityId || null,
+          topicId || null,
+          taskDescription || null,
+          date,
+          startTime,
+          endTime,
+          venueId || null,
+          evaluationMode || 'none',
+          totalMarks || null,
+          scheduleType || 'class_session',
+          status || 'scheduled'
+        ]
+      )
+    );
+
+    await Promise.all(insertPromises);
+    await conn.commit();
+
+    if (conn) conn.release();
+    return res.json({
+      success: true,
+      message: `Schedule created for ${studentIdArray.length} student(s)`,
+      data: { count: studentIdArray.length }
+    });
+  } catch (error) {
+    console.error('Error creating student schedule:', error);
+    if (conn) {
+      await conn.rollback();
+      conn.release();
+    }
+    return res.status(500).json({ success: false, message: 'Failed to create student schedule', error: error.message });
+  }
+};
+
+// Update student schedule
+exports.updateStudentSchedule = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const {
+      scheduleId,
+      subjectId,
+      mentorId,
+      contextActivityId,
+      topicId,
+      taskDescription,
+      date,
+      startTime,
+      endTime,
+      venueId,
+      evaluationMode,
+      totalMarks,
+      scheduleType,
+      status,
+      attendance,
+      remarks
+    } = req.body;
+
+    if (!scheduleId) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'Schedule ID is required' });
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const params = [];
+
+    if (subjectId !== undefined) {
+      updates.push('subject_id = ?');
+      params.push(subjectId);
+    }
+    if (mentorId !== undefined) {
+      updates.push('mentor_id = ?');
+      params.push(mentorId);
+    }
+    if (contextActivityId !== undefined) {
+      updates.push('context_activity_id = ?');
+      params.push(contextActivityId);
+    }
+    if (topicId !== undefined) {
+      updates.push('section_activity_topic_id = ?');
+      params.push(topicId);
+    }
+    if (taskDescription !== undefined) {
+      updates.push('task_description = ?');
+      params.push(taskDescription);
+    }
+    if (date !== undefined) {
+      updates.push('date = ?');
+      params.push(date);
+    }
+    if (startTime !== undefined) {
+      updates.push('start_time = ?');
+      params.push(startTime);
+    }
+    if (endTime !== undefined) {
+      updates.push('end_time = ?');
+      params.push(endTime);
+    }
+    if (venueId !== undefined) {
+      updates.push('venue_id = ?');
+      params.push(venueId);
+    }
+    if (evaluationMode !== undefined) {
+      updates.push('evaluation_mode = ?');
+      params.push(evaluationMode);
+    }
+    if (totalMarks !== undefined) {
+      updates.push('total_marks = ?');
+      params.push(totalMarks);
+    }
+    if (scheduleType !== undefined) {
+      updates.push('schedule_type = ?');
+      params.push(scheduleType);
+    }
+    if (status !== undefined) {
+      updates.push('status = ?');
+      params.push(status);
+    }
+    if (attendance !== undefined) {
+      updates.push('attendance = ?');
+      params.push(attendance);
+    }
+    if (remarks !== undefined) {
+      updates.push('remarks = ?');
+      params.push(remarks);
+    }
+
+    if (updates.length === 0) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+
+    params.push(scheduleId);
+    const query = `UPDATE student_schedule_calendar SET ${updates.join(', ')} WHERE id = ?`;
+
+    await conn.query(query, params);
+
+    if (conn) conn.release();
+    return res.json({ success: true, message: 'Schedule updated successfully' });
+  } catch (error) {
+    console.error('Error updating student schedule:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to update student schedule', error: error.message });
+  }
+};
+
+// Delete student schedule
+exports.deleteStudentSchedule = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const { scheduleId } = req.body;
+
+    if (!scheduleId) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'Schedule ID is required' });
+    }
+
+    await conn.query('DELETE FROM student_schedule_calendar WHERE id = ?', [scheduleId]);
+
+    if (conn) conn.release();
+    return res.json({ success: true, message: 'Schedule deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting student schedule:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to delete student schedule', error: error.message });
+  }
+};
+
+// Get topics for a context activity (for dropdown)
+exports.getTopicsForSchedule = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const { contextActivityId } = req.body;
+
+    if (!contextActivityId) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'Context activity ID is required' });
+    }
+
+    const [topics] = await conn.query(
+      `SELECT id, topic_name, topic_code, level, parent_id
+       FROM topic_hierarchy
+       WHERE context_activity_id = ?
+       ORDER BY level, order_sequence, topic_name`,
+      [contextActivityId]
+    );
+
+    if (conn) conn.release();
+    return res.json({ success: true, data: topics });
+  } catch (error) {
+    console.error('Error fetching topics:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to fetch topics', error: error.message });
+  }
+};
+
+// Get mentors for a subject in a section
+exports.getMentorsForSubject = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const { sectionId, subjectId } = req.body;
+    const academicYear = req.activeAcademicYearId;
+
+    const [mentors] = await conn.query(
+      `SELECT DISTINCT f.id, f.name, f.roll
+       FROM faculty f
+       JOIN faculty_subject_assignments fsa ON f.id = fsa.faculty_id
+       JOIN subject_section_assignments ssa ON fsa.subject_id = ssa.subject_id
+       WHERE ssa.section_id = ? AND ssa.subject_id = ? 
+       AND fsa.is_active = 1 AND ssa.is_active = 1
+       ORDER BY f.name`,
+      [sectionId, subjectId]
+    );
+
+    if (conn) conn.release();
+    return res.json({ success: true, data: mentors });
+  } catch (error) {
+    console.error('Error fetching mentors:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to fetch mentors', error: error.message });
+  }
+};
+
+// ---- Faculty (mentor) schedule management ----
+
+// List schedules for a faculty by date
+exports.getFacultySchedules = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const { facultyId, date } = req.body;
+    const academicYear = req.activeAcademicYearId;
+
+    if (!facultyId) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'Faculty ID is required' });
+    }
+
+    const params = [facultyId, academicYear];
+    let whereDate = '';
+    if (date) {
+      whereDate = ' AND fc.date = ?';
+      params.push(date);
+    }
+
+    const [rows] = await conn.query(
+      `SELECT 
+         fc.id,
+         fc.date,
+         fc.start_time,
+         fc.end_time,
+         fc.status,
+         fc.grade_id,
+         fc.section_id,
+         fc.subject_id,
+         fc.venue_id,
+         fc.session_type_id,
+         fc.context_activity_id,
+         fc.topic_id,
+         fc.task_description,
+         fc.total_marks,
+         g.grade_name,
+         s.section_name,
+         sub.subject_name,
+         v.name AS venue_name,
+         st.name AS session_type_name,
+         ca.activity_id AS context_activity_activity_id,
+         a.name AS context_activity_name,
+         th.topic_name
+       FROM faculty_calendar fc
+       LEFT JOIN grades g ON g.id = fc.grade_id
+       LEFT JOIN sections s ON s.id = fc.section_id
+       LEFT JOIN subjects sub ON sub.id = fc.subject_id
+       LEFT JOIN venues v ON v.id = fc.venue_id
+       LEFT JOIN session_types st ON st.id = fc.session_type_id
+         LEFT JOIN context_activities ca ON ca.id = fc.context_activity_id
+         LEFT JOIN activities a ON a.id = ca.activity_id
+         LEFT JOIN topic_hierarchy th ON th.id = fc.topic_id
+       WHERE fc.faculty_id = ? AND fc.academic_year = ? AND fc.acting_role = 'mentor' ${whereDate}
+       ORDER BY fc.date, fc.start_time`,
+      params
+    );
+
+    if (conn) conn.release();
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error fetching faculty schedules:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to fetch schedules', error: error.message });
+  }
+};
+
+// Create a single faculty schedule entry
+exports.createFacultySchedule = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const {
+      facultyId,
+      date,
+      startTime,
+      endTime,
+      gradeId,
+      sectionId,
+      subjectId,
+      venueId,
+      sessionTypeId,
+      taskDescription,
+      totalMarks,
+      contextActivityId,
+      topicId,
+      status
+    } = req.body;
+
+    const academicYear = req.activeAcademicYearId;
+
+    if (!facultyId || !date || !startTime || !endTime || !gradeId || !sectionId || !subjectId || !sessionTypeId) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    await conn.query(
+      `INSERT INTO faculty_calendar
+       (faculty_id, acting_role, academic_year, date, start_time, end_time, venue_id, grade_id, section_id, subject_id,
+        session_type_id, task_description, total_marks, context_activity_id, topic_id, status, created_at)
+         VALUES (?, 'mentor', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        facultyId,
+        academicYear,
+        date,
+        startTime,
+        endTime,
+        venueId || null,
+        gradeId,
+        sectionId,
+        subjectId,
+        sessionTypeId,
+        taskDescription || null,
+        totalMarks || null,
+        contextActivityId || null,
+        topicId || null,
+        status || 'scheduled'
+      ]
+    );
+
+    if (conn) conn.release();
+    return res.json({ success: true, message: 'Schedule created successfully' });
+  } catch (error) {
+    console.error('Error creating faculty schedule:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to create schedule', error: error.message });
+  }
+};
+
+// Update a faculty schedule entry
+exports.updateFacultySchedule = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const {
+      scheduleId,
+      date,
+      startTime,
+      endTime,
+      gradeId,
+      sectionId,
+      subjectId,
+      venueId,
+      sessionTypeId,
+      taskDescription,
+      totalMarks,
+      contextActivityId,
+      topicId,
+      status
+    } = req.body;
+
+    if (!scheduleId) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'Schedule ID is required' });
+    }
+
+    const updates = [];
+    const params = [];
+
+    if (date !== undefined) { updates.push('date = ?'); params.push(date); }
+    if (startTime !== undefined) { updates.push('start_time = ?'); params.push(startTime); }
+    if (endTime !== undefined) { updates.push('end_time = ?'); params.push(endTime); }
+    if (gradeId !== undefined) { updates.push('grade_id = ?'); params.push(gradeId); }
+    if (sectionId !== undefined) { updates.push('section_id = ?'); params.push(sectionId); }
+    if (subjectId !== undefined) { updates.push('subject_id = ?'); params.push(subjectId); }
+    if (venueId !== undefined) { updates.push('venue_id = ?'); params.push(venueId); }
+    if (sessionTypeId !== undefined) { updates.push('session_type_id = ?'); params.push(sessionTypeId); }
+    if (taskDescription !== undefined) { updates.push('task_description = ?'); params.push(taskDescription); }
+    if (totalMarks !== undefined) { updates.push('total_marks = ?'); params.push(totalMarks); }
+    if (contextActivityId !== undefined) { updates.push('context_activity_id = ?'); params.push(contextActivityId); }
+    if (topicId !== undefined) { updates.push('topic_id = ?'); params.push(topicId); }
+    if (status !== undefined) { updates.push('status = ?'); params.push(status); }
+
+    if (updates.length === 0) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+
+    params.push(scheduleId);
+    await conn.query(`UPDATE faculty_calendar SET ${updates.join(', ')} WHERE id = ?`, params);
+
+    if (conn) conn.release();
+    return res.json({ success: true, message: 'Schedule updated successfully' });
+  } catch (error) {
+    console.error('Error updating faculty schedule:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to update schedule', error: error.message });
+  }
+};
+
+// Delete a faculty schedule entry
+exports.deleteFacultySchedule = async (req, res) => {
+  let conn;
+  try {
+    conn = await db.getConnection();
+    const { scheduleId } = req.body;
+
+    if (!scheduleId) {
+      if (conn) conn.release();
+      return res.status(400).json({ success: false, message: 'Schedule ID is required' });
+    }
+
+    await conn.query('DELETE FROM faculty_calendar WHERE id = ?', [scheduleId]);
+
+    if (conn) conn.release();
+    return res.json({ success: true, message: 'Schedule deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting faculty schedule:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to delete schedule', error: error.message });
+  }
+};
+
+// ---- Context Activities (hierarchy) ----
+
+exports.getContextActivityTree = async (req, res) => {
+  let conn;
+  try {
+    const { gradeId, sectionId, subjectId } = req.body;
+    if (!gradeId || !sectionId || !subjectId) {
+      return res.status(400).json({ success: false, message: 'gradeId, sectionId, subjectId are required' });
+    }
+
+    conn = await db.getConnection();
+    const [rows] = await conn.query(
+      `SELECT ca.id, ca.parent_context_id, ca.activity_id, ca.grade_id, ca.section_id, ca.subject_id, a.name AS activity_name
+       FROM context_activities ca
+       LEFT JOIN activities a ON a.id = ca.activity_id
+       WHERE ca.grade_id = ? AND ca.section_id = ? AND ca.subject_id = ?
+       ORDER BY ca.parent_context_id, ca.id`,
+      [gradeId, sectionId, subjectId]
+    );
+
+    const map = new Map();
+    const roots = [];
+    rows.forEach((r) => {
+      map.set(r.id, { ...r, children: [] });
+    });
+    rows.forEach((r) => {
+      if (r.parent_context_id && map.has(r.parent_context_id)) {
+        map.get(r.parent_context_id).children.push(map.get(r.id));
+      } else {
+        roots.push(map.get(r.id));
+      }
+    });
+
+    if (conn) conn.release();
+    return res.json({ success: true, data: roots });
+  } catch (error) {
+    console.error('Error fetching context activities:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to fetch context activities', error: error.message });
+  }
+};
+
+exports.createContextActivity = async (req, res) => {
+  let conn;
+  try {
+    const { gradeId, sectionId, subjectId, activityId, parentContextId } = req.body;
+    if (!gradeId || !sectionId || !subjectId || !activityId) {
+      return res.status(400).json({ success: false, message: 'gradeId, sectionId, subjectId, activityId are required' });
+    }
+
+    conn = await db.getConnection();
+    const [result] = await conn.query(
+      `INSERT INTO context_activities (grade_id, section_id, subject_id, activity_id, parent_context_id, created_at)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [gradeId, sectionId, subjectId, activityId, parentContextId || null]
+    );
+    if (conn) conn.release();
+    return res.json({ success: true, id: result.insertId, message: 'Context activity created' });
+  } catch (error) {
+    console.error('Error creating context activity:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to create context activity', error: error.message });
+  }
+};
+
+exports.updateContextActivity = async (req, res) => {
+  let conn;
+  try {
+    const { contextActivityId, activityId, parentContextId } = req.body;
+    if (!contextActivityId) {
+      return res.status(400).json({ success: false, message: 'contextActivityId is required' });
+    }
+    const updates = [];
+    const params = [];
+    if (activityId !== undefined) { updates.push('activity_id = ?'); params.push(activityId); }
+    if (parentContextId !== undefined) { updates.push('parent_context_id = ?'); params.push(parentContextId || null); }
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+    params.push(contextActivityId);
+    conn = await db.getConnection();
+    await conn.query(`UPDATE context_activities SET ${updates.join(', ')} WHERE id = ?`, params);
+    if (conn) conn.release();
+    return res.json({ success: true, message: 'Context activity updated' });
+  } catch (error) {
+    console.error('Error updating context activity:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to update context activity', error: error.message });
+  }
+};
+
+exports.deleteContextActivity = async (req, res) => {
+  let conn;
+  try {
+    const { contextActivityId } = req.body;
+    if (!contextActivityId) {
+      return res.status(400).json({ success: false, message: 'contextActivityId is required' });
+    }
+    conn = await db.getConnection();
+    await conn.query('DELETE FROM context_activities WHERE parent_context_id = ? OR id = ?', [contextActivityId, contextActivityId]);
+    if (conn) conn.release();
+    return res.json({ success: true, message: 'Context activity deleted' });
+  } catch (error) {
+    console.error('Error deleting context activity:', error);
+    if (conn) conn.release();
+    return res.status(500).json({ success: false, message: 'Failed to delete context activity', error: error.message });
+  }
+};
+

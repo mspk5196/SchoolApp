@@ -134,6 +134,27 @@ router.post('/getSectionSubjects',  materialController.getSectionSubjects);
 router.get('/schedule/mentor/generate-template', scheduleController.generateMentorScheduleTemplate);
 router.post('/schedule/mentor/upload', upload.single('file'), scheduleController.uploadMentorSchedule);
 
+// Faculty schedule CRUD
+router.post('/schedule/faculty/list', scheduleController.getFacultySchedules);
+router.post('/schedule/faculty/create', scheduleController.createFacultySchedule);
+router.post('/schedule/faculty/update', scheduleController.updateFacultySchedule);
+router.post('/schedule/faculty/delete', scheduleController.deleteFacultySchedule);
+
+// Context activities hierarchy
+router.post('/schedule/context-activities', scheduleController.getContextActivityTree);
+router.post('/schedule/context-activities/create', scheduleController.createContextActivity);
+router.post('/schedule/context-activities/update', scheduleController.updateContextActivity);
+router.post('/schedule/context-activities/delete', scheduleController.deleteContextActivity);
+
+// Student Schedule Management
+router.post('/schedule/student/get', scheduleController.getStudentSchedules);
+router.post('/schedule/student/get-students', scheduleController.getStudentsBySection);
+router.post('/schedule/student/create', scheduleController.createStudentSchedule);
+router.post('/schedule/student/update', scheduleController.updateStudentSchedule);
+router.post('/schedule/student/delete', scheduleController.deleteStudentSchedule);
+router.post('/schedule/student/get-topics', scheduleController.getTopicsForSchedule);
+router.post('/schedule/student/get-mentors', scheduleController.getMentorsForSubject);
+
 // Session types & evaluation modes
 router.get('/schedule/session-types', scheduleController.getSessionTypes);
 router.get('/schedule/evaluation-modes', scheduleController.getEvaluationModes);

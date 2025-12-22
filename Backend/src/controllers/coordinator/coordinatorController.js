@@ -379,7 +379,7 @@ exports.removeEnroledSubjectMentor = async (req, res) => {
 // Get mentors for a specific grade with details
 exports.getGradeMentors = async (req, res) => {
     const { gradeID } = req.body;
-
+    // console.log(gradeID);
     if (!gradeID) {
         return res.status(400).json({ success: false, message: 'Grade ID is required' });
     }
@@ -419,6 +419,7 @@ exports.getGradeMentors = async (req, res) => {
             ORDER BY f.name`;
 
         const [mentors] = await db.query(sql, [gradeID, gradeID]);
+        // console.log(mentors);
         
         return res.json({ 
             success: true, 

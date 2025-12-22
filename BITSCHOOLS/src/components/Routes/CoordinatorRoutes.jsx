@@ -29,6 +29,7 @@ import AssessmentCycles from '../../pages/Coordinator/Schedule/AssessmentCycles/
 import CoordinatorMentorList from '../../pages/Coordinator/Mentor/MentorList/CoordinatorMentorList';
 import CoordinatorMentorListDetails from '../../pages/Coordinator/Mentor/MentorList/CoordinatorMentorListDetails';
 import CoordinatorMentorIssueLog from '../../pages/Coordinator/Mentor/IssueLog/CoordinatorMentorIssueLog';
+import StudentScheduleView from '../../pages/Coordinator/Schedule/StudentSchedule/StudentScheduleView';
 
 const Stack = createNativeStackNavigator();
 
@@ -68,6 +69,7 @@ const CoordinatorRoutes = () => {
       <Stack.Screen name="CoordinatorAcademicCalendar" component={AcademicCalendar} />
       <Stack.Screen name="CoordinatorFacultySessionTypes" component={FacultySessionTypes} />
       <Stack.Screen name="CoordinatorAssessmentCycles" component={AssessmentCycles} />
+      <Stack.Screen name="CoordinatorStudentScheduleView" component={StudentScheduleView} />
     </Stack.Navigator>
   );
 };
