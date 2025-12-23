@@ -46,7 +46,6 @@ const FacultyScheduleUpload = ({ navigation }) => {
   const [formDatePicker, setFormDatePicker] = useState(false);
   const [showContextManager, setShowContextManager] = useState(false);
   const [showTopicManager, setShowTopicManager] = useState(false);
-  const [showAssessmentManager, setShowAssessmentManager] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date(),
     startTime: '09:00',
@@ -58,6 +57,7 @@ const FacultyScheduleUpload = ({ navigation }) => {
     venueId: '',
     contextActivityId: '',
     topicId: '',
+    assessmentCycleId: '',
     status: 'scheduled',
     taskDescription: '',
     totalMarks: '',
@@ -65,7 +65,6 @@ const FacultyScheduleUpload = ({ navigation }) => {
 
   const [contextForm, setContextForm] = useState({ activityId: '', parentContextId: null, editingId: null });
   const [topicForm, setTopicForm] = useState({ topicName: '', topicCode: '', parentId: null, editingId: null });
-  const [assessmentForm, setAssessmentForm] = useState({ name: '', frequency: 'custom', periodStart: '', periodEnd: '', defaultTotalMarks: '', editingId: null });
 
   useEffect(() => {
     fetchGrades();
@@ -243,9 +242,19 @@ const FacultyScheduleUpload = ({ navigation }) => {
 
   const fetchTopicHierarchy = async (contextActivityId) => {
     try {
-      const result = await ApiService.makeRequest('/coordinator/topic/getTopicHierarchy', 'POST', { contextActivityId });
-      if (result.success) {
-        setTopicTree(result.data || []);
+      const res = await ApiService.makeRequest('/coordinator/topic/getTopicHierarchy', {
+        method: 'POST',
+        body: JSON.stringify({
+          contextActivityId,
+          sectionId: selectedSection,
+          subjectId: formData.subjectId,
+        }),
+      });
+      const data = await res.json();
+      // console.log(data);
+      
+      if (data.success) {
+        setTopicTree(data.topics || data.data || []);
       }
     } catch (error) {
       console.error('Error fetching topics:', error);
@@ -260,9 +269,17 @@ const FacultyScheduleUpload = ({ navigation }) => {
         subjectId: formData.subjectId || null,
         contextActivityId: formData.contextActivityId || null,
       };
-      const result = await ApiService.makeRequest('/coordinator/schedule/assessment-cycles', 'POST', payload);
-      if (result.success) {
-        setAssessmentCycles(result.data || []);
+      const res = await ApiService.makeRequest('/coordinator/schedule/assessment-cycles', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const rows = data.data || [];
+        setAssessmentCycles(rows);
+        if (rows.length && !formData.assessmentCycleId) {
+          setFormData((prev) => ({ ...prev, assessmentCycleId: rows[0].id }));
+        }
       }
     } catch (error) {
       console.error('Error fetching assessment cycles:', error);
@@ -452,8 +469,12 @@ const FacultyScheduleUpload = ({ navigation }) => {
 
   const deleteTopic = async (id) => {
     try {
-      const result = await ApiService.makeRequest('/coordinator/topic/deleteTopic', 'POST', { topicId: id });
-      if (result.success) {
+      const res = await ApiService.makeRequest('/coordinator/topic/deleteTopic', {
+        method: 'POST',
+        body: JSON.stringify({ topicId: id }),
+      });
+      const data = await res.json();
+      if (data.success) {
         Alert.alert('Success', 'Topic deleted');
         fetchTopicHierarchy(formData.contextActivityId);
       }
@@ -462,49 +483,7 @@ const FacultyScheduleUpload = ({ navigation }) => {
     }
   };
 
-  const saveAssessmentCycle = async () => {
-    if (!assessmentForm.name) {
-      Alert.alert('Validation', 'Assessment cycle name is required');
-      return;
-    }
-    const route = assessmentForm.editingId
-      ? '/coordinator/schedule/assessment-cycles/update'
-      : '/coordinator/schedule/assessment-cycles/create';
-    const payload = {
-      name: assessmentForm.name,
-      frequency: assessmentForm.frequency,
-      periodStart: assessmentForm.periodStart || null,
-      periodEnd: assessmentForm.periodEnd || null,
-      defaultTotalMarks: assessmentForm.defaultTotalMarks ? Number(assessmentForm.defaultTotalMarks) : null,
-      gradeId: selectedGrade,
-      sectionId: selectedSection,
-      subjectId: formData.subjectId,
-      contextActivityId: formData.contextActivityId || null,
-    };
-    if (assessmentForm.editingId) payload.id = assessmentForm.editingId;
-    try {
-      const result = await ApiService.makeRequest(route, 'POST', payload);
-      if (result.success) {
-        Alert.alert('Success', 'Assessment cycle saved');
-        setAssessmentForm({ name: '', frequency: 'custom', periodStart: '', periodEnd: '', defaultTotalMarks: '', editingId: null });
-        fetchAssessmentCycles();
-      }
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    }
-  };
-
-  const deleteAssessmentCycle = async (id) => {
-    try {
-      const result = await ApiService.makeRequest('/coordinator/schedule/assessment-cycles/delete', 'POST', { id });
-      if (result.success) {
-        Alert.alert('Success', 'Assessment cycle deleted');
-        fetchAssessmentCycles();
-      }
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    }
-  };
+  // Assessment cycles are fetched and selected only; creation/editing happens elsewhere
 
   const openCreateForm = () => {
     setEditingSchedule(null);
@@ -519,6 +498,7 @@ const FacultyScheduleUpload = ({ navigation }) => {
       venueId: '',
       contextActivityId: flattenTree(contextTree)[0]?.id || '',
       topicId: topicTree[0]?.id || '',
+      assessmentCycleId: assessmentCycles[0]?.id || '',
       status: 'scheduled',
       taskDescription: '',
       totalMarks: '',
@@ -539,6 +519,7 @@ const FacultyScheduleUpload = ({ navigation }) => {
       venueId: item.venue_id || '',
       contextActivityId: item.context_activity_id || '',
       topicId: item.topic_id || '',
+      assessmentCycleId: item.assessment_cycle_id || '',
       status: item.status || 'scheduled',
       taskDescription: item.task_description || '',
       totalMarks: item.total_marks ? String(item.total_marks) : '',
@@ -563,6 +544,7 @@ const FacultyScheduleUpload = ({ navigation }) => {
       venueId: formData.venueId || null,
       contextActivityId: formData.contextActivityId || null,
       topicId: formData.topicId || null,
+      assessmentCycleId: formData.assessmentCycleId || null,
       status: formData.status,
       taskDescription: formData.taskDescription,
       totalMarks: formData.totalMarks ? Number(formData.totalMarks) : null,
@@ -825,19 +807,14 @@ const FacultyScheduleUpload = ({ navigation }) => {
                 />
               </View>
               {renderPicker('Context Activity', formData.contextActivityId, (v) => {
-                setFormData((p) => ({ ...p, contextActivityId: v, topicId: '' }));
+                setFormData((p) => ({ ...p, contextActivityId: v, topicId: '', assessmentCycleId: '' }));
               }, flattenTree(contextTree).map((t) => ({ id: t.id, name: t.label })), 'id', 'name')}
-              {formData.contextActivityId && (
-                <TouchableOpacity
-                  style={[styles.button, { backgroundColor: '#8B5CF6', marginBottom: 12, paddingVertical: 8 }]}
-                  onPress={() => setShowAssessmentManager(true)}
-                >
-                  <Text style={styles.buttonText}>Manage Assessment Cycles</Text>
-                </TouchableOpacity>
-              )}
+              {formData.contextActivityId && assessmentCycles.length > 0 && renderPicker('Assessment Cycle', formData.assessmentCycleId, (v) => {
+                setFormData((p) => ({ ...p, assessmentCycleId: v }));
+              }, [{ id: '', name: 'Select cycle' }, ...assessmentCycles.map((c) => ({ id: c.id, name: c.name }))])}
               {formData.contextActivityId && renderPicker('Topic', formData.topicId, (v) => {
                 setFormData((p) => ({ ...p, topicId: v }));
-              }, flattenTree(topicTree).map((t) => ({ id: t.id, name: t.label })), 'id', 'name')}
+              }, [{ id: '', name: 'Select topic' }, ...flattenTree(topicTree).map((t) => ({ id: t.id, name: t.label }))], 'id', 'name')}
               {renderPicker('Status', formData.status, (v) => setFormData((p) => ({ ...p, status: v })), [
                 { id: 'scheduled', name: 'Scheduled' },
                 { id: 'completed', name: 'Completed' },
@@ -935,75 +912,6 @@ const FacultyScheduleUpload = ({ navigation }) => {
         </View>
       </Modal>
 
-      <Modal visible={showAssessmentManager} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Manage Assessment Cycles</Text>
-            <ScrollView style={{ maxHeight: 400 }}>
-              <View style={styles.fieldRow}>
-                <Text style={styles.label}>Cycle Name</Text>
-                <TextInput
-                  style={styles.input}
-                  value={assessmentForm.name}
-                  onChangeText={(text) => setAssessmentForm((p) => ({ ...p, name: text }))}
-                />
-              </View>
-              {renderPicker('Frequency', assessmentForm.frequency, (v) => setAssessmentForm((p) => ({ ...p, frequency: v })), [
-                { id: 'daily', name: 'Daily' },
-                { id: 'weekly', name: 'Weekly' },
-                { id: 'monthly', name: 'Monthly' },
-                { id: 'term', name: 'Term' },
-                { id: 'custom', name: 'Custom' },
-              ])}
-              <View style={styles.fieldRow}>
-                <Text style={styles.label}>Period Start (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={assessmentForm.periodStart}
-                  onChangeText={(text) => setAssessmentForm((p) => ({ ...p, periodStart: text }))}
-                />
-              </View>
-              <View style={styles.fieldRow}>
-                <Text style={styles.label}>Period End (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={assessmentForm.periodEnd}
-                  onChangeText={(text) => setAssessmentForm((p) => ({ ...p, periodEnd: text }))}
-                />
-              </View>
-              <View style={styles.fieldRow}>
-                <Text style={styles.label}>Default Total Marks (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="numeric"
-                  value={assessmentForm.defaultTotalMarks}
-                  onChangeText={(text) => setAssessmentForm((p) => ({ ...p, defaultTotalMarks: text }))}
-                />
-              </View>
-              <Text style={styles.sectionTitle}>Existing Cycles</Text>
-              {assessmentCycles.map((cycle) => (
-                <View key={cycle.id} style={styles.listItem}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.itemText}>{cycle.name}</Text>
-                    {cycle.frequency && <Text style={{ fontSize: 12, color: '#6B7280' }}>Frequency: {cycle.frequency}</Text>}
-                  </View>
-                  <TouchableOpacity onPress={() => deleteAssessmentCycle(cycle.id)}>
-                    <Text style={{ color: '#DC2626', fontWeight: '700' }}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.button, styles.secondaryButton, { marginRight: 8 }]} onPress={() => setShowAssessmentManager(false)}>
-                <Text style={styles.secondaryButtonText}>Close</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={saveAssessmentCycle}>
-                <Text style={styles.buttonText}>Add Cycle</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };

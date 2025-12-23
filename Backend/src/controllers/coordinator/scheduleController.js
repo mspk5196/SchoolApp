@@ -1987,6 +1987,7 @@ exports.getFacultySchedules = async (req, res) => {
          fc.subject_id,
          fc.venue_id,
          fc.session_type_id,
+         fc.assessment_cycle_id,
          fc.context_activity_id,
          fc.topic_id,
          fc.task_description,
@@ -2039,6 +2040,7 @@ exports.createFacultySchedule = async (req, res) => {
       sessionTypeId,
       taskDescription,
       totalMarks,
+      assessmentCycleId,
       contextActivityId,
       topicId,
       status
@@ -2054,8 +2056,8 @@ exports.createFacultySchedule = async (req, res) => {
     await conn.query(
       `INSERT INTO faculty_calendar
        (faculty_id, acting_role, academic_year, date, start_time, end_time, venue_id, grade_id, section_id, subject_id,
-        session_type_id, task_description, total_marks, context_activity_id, topic_id, status, created_at)
-         VALUES (?, 'mentor', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        session_type_id, task_description, total_marks, assessment_cycle_id, context_activity_id, topic_id, status, created_at)
+         VALUES (?, 'mentor', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         facultyId,
         academicYear,
@@ -2069,6 +2071,7 @@ exports.createFacultySchedule = async (req, res) => {
         sessionTypeId,
         taskDescription || null,
         totalMarks || null,
+        assessmentCycleId || null,
         contextActivityId || null,
         topicId || null,
         status || 'scheduled'
@@ -2124,6 +2127,7 @@ exports.updateFacultySchedule = async (req, res) => {
     if (sessionTypeId !== undefined) { updates.push('session_type_id = ?'); params.push(sessionTypeId); }
     if (taskDescription !== undefined) { updates.push('task_description = ?'); params.push(taskDescription); }
     if (totalMarks !== undefined) { updates.push('total_marks = ?'); params.push(totalMarks); }
+    if (assessmentCycleId !== undefined) { updates.push('assessment_cycle_id = ?'); params.push(assessmentCycleId); }
     if (contextActivityId !== undefined) { updates.push('context_activity_id = ?'); params.push(contextActivityId); }
     if (topicId !== undefined) { updates.push('topic_id = ?'); params.push(topicId); }
     if (status !== undefined) { updates.push('status = ?'); params.push(status); }

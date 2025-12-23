@@ -1117,8 +1117,7 @@ const getTopicHierarchy = async (req, res) => {
         }
       });
     }
-    // console.log(batchDatesRows);
-
+    // console.log(topics);
     res.json({
       success: true,
       topics: rootTopics,

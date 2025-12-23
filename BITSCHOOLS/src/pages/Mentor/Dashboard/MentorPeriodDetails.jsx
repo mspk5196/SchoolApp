@@ -38,6 +38,8 @@ const MentorPeriodDetails = ({ route, navigation }) => {
   const [canStartSession, setCanStartSession] = useState(false);
   const [isStudentFacing, setIsStudentFacing] = useState(true);
   const [facultyNotes, setFacultyNotes] = useState('');
+  const [assessmentCycleName, setAssessmentCycleName] = useState(null);
+  const [requiresMarks, setRequiresMarks] = useState(false);
 
   // Timer states
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -108,13 +110,16 @@ const MentorPeriodDetails = ({ route, navigation }) => {
       const data = await ApiService.post('/mentor/getSessionDetails', {
         facultyCalendarId: facultyCalendarId
       });
-
+      console.log(data);
+      
       if (data.success) {
         setSessionDetails(data.sessionDetails);
         setTopicHierarchy(data.topicHierarchy || []);
         setTopicMaterials(data.topicMaterials || []);
         setActivityHierarchy(data.activityHierarchy || []);
         setIsStudentFacing(data.sessionDetails.is_student_facing === 1);
+        setRequiresMarks(data.sessionDetails.requires_marks === 1);
+        setAssessmentCycleName(data.sessionDetails.assessment_cycle_name || null);
 
         // Check if session can be started
         checkSessionStartTime(data.sessionDetails);
@@ -147,7 +152,8 @@ const MentorPeriodDetails = ({ route, navigation }) => {
   const fetchStudents = async () => {
     try {
       const data = await ApiService.post('/mentor/getStudentsForSession', {
-        facultyCalendarId: facultyCalendarId
+        facultyCalendarId: facultyCalendarId,
+        assessment_cycle_id: sessionDetails.assessment_cycle_id || null
       });
 
       if (data.success) {
@@ -248,15 +254,24 @@ const MentorPeriodDetails = ({ route, navigation }) => {
       } catch (error) {
         console.error('Error updating evaluations:', error);
         setLoading(false);
-        // Continue to homework modal even if update fails
+        // Continue to end session flow even if update fails
       }
     }
     
-    // For student-facing sessions, show homework modal
+    // For student-facing sessions:
+    // - If requires_marks is true (marks-based evaluation), skip homework and end directly
+    // - Otherwise, show homework modal
     if (isStudentFacing) {
-      setShowHomeworkModal(true);
-      fetchActivitiesForHomework();
+      if (requiresMarks) {
+        // Marks-based evaluation - end session directly without homework
+        setShowEndSessionModal(true);
+      } else {
+        // Regular session - show homework modal
+        setShowHomeworkModal(true);
+        fetchActivitiesForHomework();
+      }
     } else {
+      // Faculty-facing session - end directly
       setShowEndSessionModal(true);
     }
   };
@@ -697,6 +712,15 @@ const MentorPeriodDetails = ({ route, navigation }) => {
             <View style={styles.evaluationBadge}>
               <Text style={styles.evaluationBadgeText}>
                 Evaluation: {sessionDetails.evaluation_mode_name}
+              </Text>
+            </View>
+          )}
+
+          {assessmentCycleName && (
+            <View style={[styles.evaluationBadge, { backgroundColor: '#DBEAFE' }]}>
+              <MaterialCommunityIcons name="clipboard-check-multiple" size={16} color="#1E40AF" />
+              <Text style={[styles.evaluationBadgeText, { color: '#1E40AF', marginLeft: 6 }]}>
+                Assessment Cycle: {assessmentCycleName}
               </Text>
             </View>
           )}

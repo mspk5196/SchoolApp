@@ -95,16 +95,18 @@ const getMentorSchedule = async (req, res) => {
 // Get students for a session (for marking attendance/evaluation)
 const getStudentsForSession = async (req, res) => {
   try {
-    const { facultyCalendarId } = req.body;
+    const { facultyCalendarId, assessment_cycle_id } = req.body;
     const academicYear = req.activeAcademicYearId;
 
     // First get the session details
     const [sessionDetails] = await db.execute(`
       SELECT fc.*, st.evaluation_mode, st.is_student_facing,
-        em.requires_marks, em.requires_attentiveness, em.allows_malpractice
+        em.requires_marks, em.requires_attentiveness, em.allows_malpractice,
+        ac.name as assessment_cycle_name
       FROM faculty_calendar fc
       LEFT JOIN session_types st ON fc.session_type_id = st.id
       LEFT JOIN evaluation_modes em ON st.evaluation_mode = em.id
+      LEFT JOIN assessment_cycles ac ON fc.assessment_cycle_id = ac.id
       WHERE fc.id = ?
     `, [facultyCalendarId]);
 
@@ -117,67 +119,95 @@ const getStudentsForSession = async (req, res) => {
 
     const session = sessionDetails[0];
 
-    // Get batches for this session
-    const [batches] = await db.execute(`
-      SELECT batch_id FROM session_batches WHERE faculty_calendar_id = ?
-    `, [facultyCalendarId]);
-
     let students = [];
 
-    if (batches.length > 0) {
-      const batchIds = batches.map(b => b.batch_id);
-      const placeholders = batchIds.map(() => '?').join(',');
-
-      // Get students assigned to these batches
-      const [batchStudents] = await db.execute(`
+    // If this is a marks-based assessment session tied to an assessment cycle,
+    // fetch students from student_schedule_calendar using this faculty_calendar_id.
+    if (session.requires_marks === 1 && session.assessment_cycle_id) {
+      const [assessmentStudents] = await db.execute(`
         SELECT DISTINCT
           s.id,
           s.name,
           s.roll,
           s.photo_url,
-          sba.batch_id,
-          sb.batch_name,
           se.marks_obtained,
           se.attentiveness_id,
           se.malpractice_flag,
           se.remarks,
           sa.attentiveness
-        FROM students s
-        INNER JOIN student_batch_assignments sba ON s.id = sba.student_id
-        INNER JOIN section_batches sb ON sba.batch_id = sb.id
+        FROM student_schedule_calendar ssc
+        INNER JOIN students s ON ssc.student_id = s.id
         LEFT JOIN session_instances si ON si.faculty_calendar_id = ?
         LEFT JOIN student_evaluations se ON se.session_instance_id = si.id AND se.student_id = s.id
         LEFT JOIN student_attentiveness sa ON se.attentiveness_id = sa.id
-        WHERE sba.batch_id IN (${placeholders})
-          AND sba.academic_year = ?
+        WHERE ssc.faculty_calendar_id = ?
         ORDER BY s.roll
-      `, [facultyCalendarId, ...batchIds, academicYear]);
+      `, [facultyCalendarId, facultyCalendarId, academicYear]);
 
-      students = batchStudents;
+      students = assessmentStudents;
     } else {
-      // If no batches, get all students from the section
-      const [sectionStudents] = await db.execute(`
-        SELECT DISTINCT
-          s.id,
-          s.name,
-          s.roll,
-          s.photo_url,
-          se.marks_obtained,
-          se.attentiveness_id,
-          se.malpractice_flag,
-          se.remarks,
-          sa.attentiveness
-        FROM students s
-        INNER JOIN student_mappings sm ON s.id = sm.student_id
-        LEFT JOIN session_instances si ON si.faculty_calendar_id = ?
-        LEFT JOIN student_evaluations se ON se.session_instance_id = si.id AND se.student_id = s.id
-        LEFT JOIN student_attentiveness sa ON se.attentiveness_id = sa.id
-        WHERE sm.section_id = ?
-          AND sm.academic_year = ?
-        ORDER BY s.roll
-      `, [facultyCalendarId, session.section_id, academicYear]);
+      // Existing behaviour for non-marks sessions: use batches/section
 
-      students = sectionStudents;
+      // Get batches for this session
+      const [batches] = await db.execute(`
+        SELECT batch_id FROM session_batches WHERE faculty_calendar_id = ?
+      `, [facultyCalendarId]);
+
+      if (batches.length > 0) {
+        const batchIds = batches.map(b => b.batch_id);
+        const placeholders = batchIds.map(() => '?').join(',');
+
+        // Get students assigned to these batches
+        const [batchStudents] = await db.execute(`
+          SELECT DISTINCT
+            s.id,
+            s.name,
+            s.roll,
+            s.photo_url,
+            sba.batch_id,
+            sb.batch_name,
+            se.marks_obtained,
+            se.attentiveness_id,
+            se.malpractice_flag,
+            se.remarks,
+            sa.attentiveness
+          FROM students s
+          INNER JOIN student_batch_assignments sba ON s.id = sba.student_id
+          INNER JOIN section_batches sb ON sba.batch_id = sb.id
+          LEFT JOIN session_instances si ON si.faculty_calendar_id = ?
+          LEFT JOIN student_evaluations se ON se.session_instance_id = si.id AND se.student_id = s.id
+          LEFT JOIN student_attentiveness sa ON se.attentiveness_id = sa.id
+          WHERE sba.batch_id IN (${placeholders})
+            AND sba.academic_year = ?
+          ORDER BY s.roll
+        `, [facultyCalendarId, ...batchIds, academicYear]);
+
+        students = batchStudents;
+      } else {
+        // If no batches, get all students from the section
+        const [sectionStudents] = await db.execute(`
+          SELECT DISTINCT
+            s.id,
+            s.name,
+            s.roll,
+            s.photo_url,
+            se.marks_obtained,
+            se.attentiveness_id,
+            se.malpractice_flag,
+            se.remarks,
+            sa.attentiveness
+          FROM students s
+          INNER JOIN student_mappings sm ON s.id = sm.student_id
+          LEFT JOIN session_instances si ON si.faculty_calendar_id = ?
+          LEFT JOIN student_evaluations se ON se.session_instance_id = si.id AND se.student_id = s.id
+          LEFT JOIN student_attentiveness sa ON se.attentiveness_id = sa.id
+          WHERE sm.section_id = ?
+            AND sm.academic_year = ?
+          ORDER BY s.roll
+        `, [facultyCalendarId, session.section_id, academicYear]);
+
+        students = sectionStudents;
+      }
     }
 
     // Get attentiveness options
