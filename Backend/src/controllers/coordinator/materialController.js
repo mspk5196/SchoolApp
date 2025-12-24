@@ -1,6 +1,35 @@
 const db = require('../../config/db');
 const ExcelJS = require('exceljs');
 
+// Helper: resolve faculty_id for the currently logged-in user (by phone)
+const resolveFacultyIdForUser = async (user) => {
+  try {
+    if (!user || !user.phone) return null;
+    const [rows] = await db.query(
+      'SELECT id FROM faculty WHERE phone = ? LIMIT 1',
+      [user.phone]
+    );
+    return rows.length > 0 ? rows[0].id : null;
+  } catch (e) {
+    console.error('Error resolving faculty id for user:', e);
+    return null;
+  }
+};
+
+// Helper: parse roles from JWT payload (comma-separated string)
+const getUserRoles = (user) => {
+  if (!user || !user.role) return [];
+  return user.role
+    .split(',')
+    .map(r => r.trim())
+    .filter(r => r.length > 0);
+};
+
+const userHasRole = (user, roleName) => {
+  const roles = getUserRoles(user);
+  return roles.includes(roleName);
+};
+
 // ==================== BATCH MANAGEMENT ====================
 
 /**
@@ -1761,6 +1790,587 @@ const getBatchExpectedDates = async (req, res) => {
   }
 };
 
+// ==================== QUESTION PAPERS ====================
+
+/**
+ * NOTE: Backend logic assumes a table `question_papers` with at least:
+ *   id (PK), academic_year_id, topic_id, title, description, total_marks,
+ *   duration_minutes, exam_date, paper_url, created_by_faculty_id,
+ *   approved_by_faculty_id, is_approved, is_active, created_at, updated_at.
+ * The topic_id links into topic_hierarchy, which is already bound to
+ * grade/section/subject/context via context_activities.
+ */
+
+// List question papers for a section/subject (optional topic filter)
+const getQuestionPapers = async (req, res) => {
+  try {
+    const { sectionId, subjectId, topicId, onlyApproved } = req.body;
+
+    if (!sectionId || !subjectId) {
+      return res.status(400).json({
+        success: false,
+        message: 'sectionId and subjectId are required'
+      });
+    }
+
+    const params = [sectionId, subjectId];
+    let whereExtra = '';
+
+    if (topicId) {
+      whereExtra += ' AND th.id = ?';
+      params.push(topicId);
+    }
+    if (onlyApproved) {
+      whereExtra += ' AND qp.is_approved = 1';
+    }
+
+    const [rows] = await db.query(
+      `SELECT 
+         qp.id,
+         qp.academic_year_id,
+         qp.topic_id,
+         qp.title,
+         qp.description,
+         qp.total_marks,
+         qp.duration_minutes,
+         qp.exam_date,
+         qp.paper_url,
+         qp.is_approved,
+         qp.approved_by_faculty_id,
+         qp.created_by_faculty_id,
+         qp.created_at,
+         qp.updated_at,
+         th.topic_name,
+         th.topic_code,
+         ca.id AS context_activity_id,
+         act.name AS activity_name,
+         sec.id AS section_id,
+         sec.section_name,
+         g.id AS grade_id,
+         g.grade_name,
+         sub.id AS subject_id,
+         sub.subject_name,
+         f_created.name AS created_by_name,
+         f_approved.name AS approved_by_name
+       FROM question_papers qp
+       JOIN topic_hierarchy th ON qp.topic_id = th.id
+       JOIN context_activities ca ON th.context_activity_id = ca.id
+       JOIN activities act ON ca.activity_id = act.id
+       JOIN sections sec ON ca.section_id = sec.id
+       JOIN grades g ON sec.grade_id = g.id
+       JOIN subjects sub ON ca.subject_id = sub.id
+       LEFT JOIN faculty f_created ON qp.created_by_faculty_id = f_created.id
+       LEFT JOIN faculty f_approved ON qp.approved_by_faculty_id = f_approved.id
+       WHERE ca.section_id = ? AND ca.subject_id = ? ${whereExtra}
+       ORDER BY qp.exam_date DESC, th.topic_code, qp.id DESC`,
+      params
+    );
+
+    res.json({ success: true, questionPapers: rows });
+  } catch (error) {
+    console.error('Error fetching question papers:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch question papers', error: error.message });
+  }
+};
+
+// Helper: resolve topic_id from section + subject + topicCode
+const resolveTopicIdForSectionSubjectAndCode = async (sectionId, subjectId, topicCode) => {
+  const [rows] = await db.query(
+    `SELECT th.id AS topic_id
+       FROM topic_hierarchy th
+       JOIN context_activities ca ON th.context_activity_id = ca.id
+      WHERE ca.section_id = ? AND ca.subject_id = ? AND th.topic_code = ?
+      LIMIT 1`,
+    [sectionId, subjectId, topicCode]
+  );
+  if (!rows || rows.length === 0) return null;
+  return rows[0].topic_id;
+};
+
+// Create question paper (manual UI/API)
+const addQuestionPaper = async (req, res) => {
+  try {
+    const {
+      sectionId,
+      subjectId,
+      topicCode,
+      title,
+      description,
+      totalMarks,
+      durationMinutes,
+      examDate,
+      paperUrl
+    } = req.body;
+
+    if (!sectionId || !subjectId || !topicCode || !title || !totalMarks || !examDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'sectionId, subjectId, topicCode, title, totalMarks and examDate are required'
+      });
+    }
+
+    const topicId = await resolveTopicIdForSectionSubjectAndCode(sectionId, subjectId, topicCode);
+    if (!topicId) {
+      return res.status(400).json({
+        success: false,
+        message: `No topic found for the given section/subject with code "${topicCode}"`
+      });
+    }
+
+    const facultyId = await resolveFacultyIdForUser(req.user);
+    const isCoordinator = userHasRole(req.user, 'Coordinator');
+
+    const isApproved = isCoordinator ? 1 : 0;
+    const approvedByFacultyId = isCoordinator ? facultyId : null;
+
+    const academicYearId = req.activeAcademicYearId || null;
+
+    const [result] = await db.query(
+      `INSERT INTO question_papers
+         (academic_year_id, topic_id, title, description, total_marks,
+          duration_minutes, exam_date, paper_url,
+          created_by_faculty_id, approved_by_faculty_id, is_approved,
+          is_active, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+      [
+        academicYearId,
+        topicId,
+        title,
+        description || null,
+        totalMarks,
+        durationMinutes || null,
+        examDate,
+        paperUrl || null,
+        facultyId,
+        approvedByFacultyId,
+        isApproved,
+        1
+      ]
+    );
+
+    res.json({ success: true, message: 'Question paper created successfully', id: result.insertId });
+  } catch (error) {
+    console.error('Error creating question paper:', error);
+    res.status(500).json({ success: false, message: 'Failed to create question paper', error: error.message });
+  }
+};
+
+// Update question paper (title/marks/date/url/description/topic)
+const updateQuestionPaper = async (req, res) => {
+  try {
+    const {
+      id,
+      sectionId,
+      subjectId,
+      topicCode,
+      title,
+      description,
+      totalMarks,
+      durationMinutes,
+      examDate,
+      paperUrl,
+      isApproved
+    } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'id is required' });
+    }
+
+    const updates = [];
+    const values = [];
+
+    if (sectionId && subjectId && topicCode) {
+      const topicId = await resolveTopicIdForSectionSubjectAndCode(sectionId, subjectId, topicCode);
+      if (!topicId) {
+        return res.status(400).json({
+          success: false,
+          message: `No topic found for the given section/subject with code "${topicCode}"`
+        });
+      }
+      updates.push('topic_id = ?');
+      values.push(topicId);
+    }
+    if (title !== undefined) {
+      updates.push('title = ?');
+      values.push(title);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description || null);
+    }
+    if (totalMarks !== undefined) {
+      updates.push('total_marks = ?');
+      values.push(totalMarks);
+    }
+    if (durationMinutes !== undefined) {
+      updates.push('duration_minutes = ?');
+      values.push(durationMinutes || null);
+    }
+    if (examDate !== undefined) {
+      updates.push('exam_date = ?');
+      values.push(examDate || null);
+    }
+    if (paperUrl !== undefined) {
+      updates.push('paper_url = ?');
+      values.push(paperUrl || null);
+    }
+
+    // Optional: allow coordinator to approve via update
+    if (isApproved !== undefined) {
+      const isCoordinator = userHasRole(req.user, 'Coordinator');
+      if (!isCoordinator) {
+        return res.status(403).json({ success: false, message: 'Only coordinators can change approval status' });
+      }
+      const facultyId = await resolveFacultyIdForUser(req.user);
+      updates.push('is_approved = ?');
+      values.push(isApproved ? 1 : 0);
+      if (isApproved) {
+        updates.push('approved_by_faculty_id = ?');
+        values.push(facultyId || null);
+      }
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+
+    updates.push('updated_at = NOW()');
+    values.push(id);
+
+    await db.query(
+      `UPDATE question_papers SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+
+    res.json({ success: true, message: 'Question paper updated successfully' });
+  } catch (error) {
+    console.error('Error updating question paper:', error);
+    res.status(500).json({ success: false, message: 'Failed to update question paper', error: error.message });
+  }
+};
+
+// Soft delete (mark inactive)
+const deleteQuestionPaper = async (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'id is required' });
+    }
+
+    await db.query(
+      `UPDATE question_papers SET is_active = 0, updated_at = NOW() WHERE id = ?`,
+      [id]
+    );
+
+    res.json({ success: true, message: 'Question paper deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting question paper:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete question paper', error: error.message });
+  }
+};
+
+// Explicit approve endpoint (Coordinator only)
+const approveQuestionPaper = async (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'id is required' });
+    }
+
+    const isCoordinator = userHasRole(req.user, 'Coordinator');
+    if (!isCoordinator) {
+      return res.status(403).json({ success: false, message: 'Only coordinators can approve question papers' });
+    }
+
+    const facultyId = await resolveFacultyIdForUser(req.user);
+
+    await db.query(
+      `UPDATE question_papers
+         SET is_approved = 1,
+             approved_by_faculty_id = ?,
+             updated_at = NOW()
+       WHERE id = ?`,
+      [facultyId || null, id]
+    );
+
+    res.json({ success: true, message: 'Question paper approved successfully' });
+  } catch (error) {
+    console.error('Error approving question paper:', error);
+    res.status(500).json({ success: false, message: 'Failed to approve question paper', error: error.message });
+  }
+};
+
+// Generate Excel template for question papers (single sheet with dropdowns)
+const generateQuestionPaperTemplate = async (req, res) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('QuestionPapers');
+
+    sheet.columns = [
+      { header: 'Grade (dropdown)', width: 18 },
+      { header: 'Section (dropdown)', width: 18 },
+      { header: 'Subject (dropdown)', width: 24 },
+      { header: 'TopicCode (dropdown)', width: 18 },
+      { header: 'QuestionPaperTitle', width: 32 },
+      { header: 'TotalMarks', width: 12 },
+      { header: 'DurationMinutes', width: 16 },
+      { header: 'ExamDate (YYYY-MM-DD)', width: 22 },
+      { header: 'Description (optional)', width: 32 },
+      { header: 'PaperURL (optional)', width: 40 }
+    ];
+    sheet.getRow(1).font = { bold: true };
+
+    // Lookup sheets
+    const gradesSheet = workbook.addWorksheet('Grades');
+    gradesSheet.state = 'hidden';
+    gradesSheet.addRow(['Grade']);
+    // Flat section list (kept for convenience / backward compatibility)
+    const sectionsSheet = workbook.addWorksheet('Sections');
+    sectionsSheet.state = 'hidden';
+    sectionsSheet.addRow(['Section']);
+    // Grade -> Section mapping sheet for dependent dropdowns
+    const gradeSectionsSheet = workbook.addWorksheet('GradeSections');
+    gradeSectionsSheet.state = 'hidden';
+    gradeSectionsSheet.addRow(['Grade', 'Section']);
+
+    const subjectsSheet = workbook.addWorksheet('Subjects');
+    subjectsSheet.state = 'hidden';
+    subjectsSheet.addRow(['Subject']);
+    const topicsSheet = workbook.addWorksheet('Topics');
+    topicsSheet.state = 'hidden';
+    topicsSheet.addRow(['TopicCode']);
+
+    const [grades] = await db.query('SELECT id, grade_name FROM grades ORDER BY id');
+    const [sections] = await db.query(
+      'SELECT s.id, s.section_name, g.grade_name FROM sections s JOIN grades g ON s.grade_id = g.id WHERE s.is_active = 1 ORDER BY g.grade_name, s.section_name'
+    );
+    const [subjects] = await db.query('SELECT id, subject_name FROM subjects ORDER BY subject_name');
+    const [topicRows] = await db.query(
+      `SELECT DISTINCT th.topic_code
+         FROM topic_hierarchy th
+         WHERE th.topic_code IS NOT NULL AND th.topic_code <> ''
+         ORDER BY th.topic_code`
+    );
+
+    const gradeValues = [];
+    grades.forEach(g => { gradesSheet.addRow([g.grade_name]); gradeValues.push(g.grade_name); });
+    const sectionValues = [];
+    sections.forEach(s => {
+      sectionsSheet.addRow([s.section_name]);
+      gradeSectionsSheet.addRow([s.grade_name, s.section_name]);
+      sectionValues.push(s.section_name);
+    });
+    const subjectValues = [];
+    subjects.forEach(su => { subjectsSheet.addRow([su.subject_name]); subjectValues.push(su.subject_name); });
+    const topicCodes = [];
+    topicRows.forEach(t => { topicsSheet.addRow([t.topic_code]); topicCodes.push(t.topic_code); });
+
+    // Sample row
+    sheet.addRow([
+      gradeValues[0] || 'Grade 1',
+      sectionValues[0] || 'A',
+      subjectValues[0] || 'Maths',
+      topicCodes[0] || 'T001',
+      'Sample Question Paper',
+      50,
+      60,
+      '2025-01-15',
+      'Sample description',
+      'https://example.com/question-paper.pdf'
+    ]);
+
+    // Data validation
+    const lastGrade = gradeValues.length + 1;
+    const lastSec = sectionValues.length + 1;
+    const lastSub = subjectValues.length + 1;
+    const lastTopic = topicCodes.length + 1;
+
+    if (gradeValues.length > 0) {
+      sheet.getColumn(1).eachCell({ includeEmpty: true }, (cell, row) => {
+        if (row === 1) return;
+        cell.dataValidation = { type: 'list', allowBlank: true, formulae: [`'Grades'!$A$2:$A$${lastGrade}`] };
+      });
+    }
+    if (sectionValues.length > 0) {
+      const lastGradeSectionRow = sections.length + 1; // header + one row per section
+      sheet.getColumn(2).eachCell({ includeEmpty: true }, (cell, row) => {
+        if (row === 1) return;
+        // Dependent dropdown: filter sections based on selected Grade in column A of the same row
+        const formula = `OFFSET(GradeSections!$B$2, MATCH($A${row}, GradeSections!$A$2:$A$${lastGradeSectionRow}, 0)-1, 0, COUNTIF(GradeSections!$A$2:$A$${lastGradeSectionRow}, $A${row}), 1)`;
+        cell.dataValidation = { type: 'list', allowBlank: true, formulae: [formula] };
+      });
+    }
+    if (subjectValues.length > 0) {
+      sheet.getColumn(3).eachCell({ includeEmpty: true }, (cell, row) => {
+        if (row === 1) return;
+        cell.dataValidation = { type: 'list', allowBlank: true, formulae: [`'Subjects'!$A$2:$A$${lastSub}`] };
+      });
+    }
+    if (topicCodes.length > 0) {
+      sheet.getColumn(4).eachCell({ includeEmpty: true }, (cell, row) => {
+        if (row === 1) return;
+        cell.dataValidation = { type: 'list', allowBlank: true, formulae: [`'Topics'!$A$2:$A$${lastTopic}`] };
+      });
+    }
+
+    sheet.getColumn(8).eachCell({ includeEmpty: true }, (cell, row) => {
+      if (row === 1) return;
+      cell.numFmt = 'yyyy-mm-dd';
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=question_papers_template.xlsx');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Error generating question paper template:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate question paper template', error: error.message });
+  }
+};
+
+// Upload question papers from Excel template
+const uploadQuestionPapersFromExcel = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const facultyId = await resolveFacultyIdForUser(req.user);
+    const isCoordinator = userHasRole(req.user, 'Coordinator');
+    const isApprovedDefault = isCoordinator ? 1 : 0;
+    const approvedByDefault = isCoordinator ? facultyId : null;
+    const academicYearId = req.activeAcademicYearId || null;
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+    const sheet = workbook.getWorksheet('QuestionPapers') || workbook.worksheets[0];
+    if (!sheet) {
+      return res.status(400).json({ success: false, message: 'Missing QuestionPapers sheet' });
+    }
+
+    const errors = [];
+    let createdCount = 0;
+
+    await connection.beginTransaction();
+
+    sheet.eachRow(async (row, rowNumber) => {
+      if (rowNumber === 1) return;
+
+      const gradeName = (row.getCell(1).value || '').toString().trim();
+      const sectionName = (row.getCell(2).value || '').toString().trim();
+      const subjectName = (row.getCell(3).value || '').toString().trim();
+      const topicCode = (row.getCell(4).value || '').toString().trim();
+      const title = (row.getCell(5).value || '').toString().trim();
+      const totalMarksRaw = row.getCell(6).value;
+      const durationRaw = row.getCell(7).value;
+      const examDateRaw = row.getCell(8).value;
+      const description = (row.getCell(9).value || '').toString().trim();
+      const paperUrl = (row.getCell(10).value || '').toString().trim();
+
+      if (!gradeName && !sectionName && !subjectName && !topicCode && !title) {
+        return; // skip completely empty row
+      }
+
+      if (!gradeName || !sectionName || !subjectName || !topicCode || !title || !totalMarksRaw || !examDateRaw) {
+        errors.push(`Row ${rowNumber}: Missing required fields`);
+        return;
+      }
+
+      const totalMarks = parseInt(totalMarksRaw, 10);
+      const durationMinutes = durationRaw ? parseInt(durationRaw, 10) : null;
+
+      let examDate = null;
+      if (examDateRaw instanceof Date) {
+        examDate = examDateRaw.toISOString().slice(0, 10);
+      } else if (typeof examDateRaw === 'string') {
+        const d = new Date(examDateRaw);
+        if (!isNaN(d.getTime())) examDate = d.toISOString().slice(0, 10);
+      } else if (typeof examDateRaw === 'number') {
+        const d = new Date(Math.round((examDateRaw - 25569) * 86400 * 1000));
+        examDate = d.toISOString().slice(0, 10);
+      }
+
+      if (!examDate) {
+        errors.push(`Row ${rowNumber}: Invalid exam date`);
+        return;
+      }
+
+      // Resolve grade, section, subject
+      const [sectionRows] = await connection.query(
+        `SELECT s.id, g.id AS grade_id
+           FROM sections s JOIN grades g ON s.grade_id = g.id
+          WHERE s.section_name = ? AND g.grade_name = ? LIMIT 1`,
+        [sectionName, gradeName]
+      );
+      if (!sectionRows || sectionRows.length === 0) {
+        errors.push(`Row ${rowNumber}: No section found for Grade "${gradeName}" and Section "${sectionName}"`);
+        return;
+      }
+      const sectionId = sectionRows[0].id;
+
+      const [subjectRows] = await connection.query(
+        'SELECT id FROM subjects WHERE subject_name = ? LIMIT 1',
+        [subjectName]
+      );
+      if (!subjectRows || subjectRows.length === 0) {
+        errors.push(`Row ${rowNumber}: No subject found with name "${subjectName}"`);
+        return;
+      }
+      const subjectId = subjectRows[0].id;
+
+      const topicId = await resolveTopicIdForSectionSubjectAndCode(sectionId, subjectId, topicCode);
+      if (!topicId) {
+        errors.push(`Row ${rowNumber}: No topic found for section/subject with code "${topicCode}"`);
+        return;
+      }
+
+      try {
+        await connection.query(
+          `INSERT INTO question_papers
+             (academic_year_id, topic_id, title, description, total_marks,
+              duration_minutes, exam_date, paper_url,
+              created_by_faculty_id, approved_by_faculty_id, is_approved,
+              is_active, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+          [
+            academicYearId,
+            topicId,
+            title,
+            description || null,
+            totalMarks,
+            durationMinutes || null,
+            examDate,
+            paperUrl || null,
+            facultyId,
+            approvedByDefault,
+            isApprovedDefault,
+            1
+          ]
+        );
+        createdCount += 1;
+      } catch (e) {
+        console.error('Error inserting question paper from Excel:', e);
+        errors.push(`Row ${rowNumber}: ${e.message}`);
+      }
+    });
+
+    if (errors.length > 0) {
+      await connection.rollback();
+      return res.status(400).json({ success: false, message: 'Import encountered errors', errors, created: createdCount });
+    }
+
+    await connection.commit();
+    res.json({ success: true, message: 'Question papers uploaded successfully', created: createdCount });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error uploading question papers:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to upload question papers', error: error.message });
+  } finally {
+    connection.release();
+  }
+};
+
 // ==================== EXCEL UPLOAD ====================
 
 /**
@@ -2712,6 +3322,15 @@ module.exports = {
   updateTopicMaterial,
   deleteTopicMaterial,
   setExpectedCompletionDate,
+
+  // Question papers
+  getQuestionPapers,
+  addQuestionPaper,
+  updateQuestionPaper,
+  deleteQuestionPaper,
+  approveQuestionPaper,
+  generateQuestionPaperTemplate,
+  uploadQuestionPapersFromExcel,
 
   // Excel upload
   generateBatchTemplate,

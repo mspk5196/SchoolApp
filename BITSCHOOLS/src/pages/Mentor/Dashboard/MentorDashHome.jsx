@@ -1,5 +1,5 @@
-import React, { useEffect, useReducer, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
+import React, { useCallback, useEffect, useReducer, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { Header } from '../../../components';
@@ -7,6 +7,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import ApiService from '../../../utils/ApiService';
 import Nodata from '../../../components/General/Nodata';
 import { StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 const MentorDashHome = ({ navigation, route }) => {
     const { userData } = route.params;
@@ -15,6 +16,7 @@ const MentorDashHome = ({ navigation, route }) => {
     const [schedule, setSchedule] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCalendarModal, setShowCalendarModal] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     // Function to parse date in dd/mm/yy format to a Date object
     const parseDate = (dateString) => {
@@ -95,9 +97,11 @@ const MentorDashHome = ({ navigation, route }) => {
     };
 
     // Fetch schedule for selected date
-    const fetchSchedule = async (date) => {
+    const fetchSchedule = async (date, showMainLoader = true) => {
         try {
-            setLoading(true);
+            if (showMainLoader) {
+                setLoading(true);
+            }
             const data = await ApiService.post('/mentor/getMentorSchedule', {
                 date: date,
                 facultyId: userData.id
@@ -113,12 +117,27 @@ const MentorDashHome = ({ navigation, route }) => {
             Alert.alert('Error', 'Failed to fetch schedule');
             setSchedule([]);
         } finally {
-            setLoading(false);
+            if (showMainLoader) {
+                setLoading(false);
+            }
         }
     };
 
     useEffect(() => {
         fetchSchedule(formattedDate);
+    }, [formattedDate]);
+
+    // Auto-refresh when coming back to this screen
+    useFocusEffect(
+        useCallback(() => {
+            fetchSchedule(formattedDate, false);
+        }, [formattedDate])
+    );
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchSchedule(formattedDate, false);
+        setRefreshing(false);
     }, [formattedDate]);
 
     // Handle date selection from calendar
@@ -205,7 +224,17 @@ const MentorDashHome = ({ navigation, route }) => {
                 </View>
             </View>
 
-            <ScrollView style={styles.scheduleContainer}>
+            <ScrollView
+                style={styles.scheduleContainer}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={["#3B82F6"]}
+                        tintColor="#3B82F6"
+                    />
+                }
+            >
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color="#3B82F6" />

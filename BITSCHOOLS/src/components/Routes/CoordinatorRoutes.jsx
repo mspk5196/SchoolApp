@@ -19,7 +19,7 @@ import BatchManagementHome from '../../pages/Coordinator/Materials/BatchManageme
 import BatchDetails from '../../pages/Coordinator/Materials/BatchManagement/BatchDetails';
 import TopicHierarchyManagement from '../../pages/Coordinator/Materials/TopicHierarchy/TopicHierarchyManagement';
 import TopicMaterials from '../../pages/Coordinator/Materials/TopicHierarchy/TopicMaterials';
-
+import QuestionPaperManagement from '../../pages/Coordinator/Materials/QuestionPapers/QuestionPaperManagement';
 import CoordinatorScheduleHome from '../../pages/Coordinator/Schedule/ScheduleHome/CoordinatorScheduleHome';
 import FacultyScheduleUpload from '../../pages/Coordinator/Schedule/FacultySchedule/FacultyScheduleUpload';
 import AcademicCalendar from '../../pages/Coordinator/Schedule/AcademicCalendar/AcademicCalendar';
@@ -62,6 +62,7 @@ const CoordinatorRoutes = () => {
       <Stack.Screen name="BatchDetails" component={BatchDetails} />
       <Stack.Screen name="TopicHierarchyManagement" component={TopicHierarchyManagement} />
       <Stack.Screen name="TopicMaterials" component={TopicMaterials} />
+      <Stack.Screen name="QuestionPaperManagement" component={QuestionPaperManagement} />
 
       {/* Schedule */}
       <Stack.Screen name="CoordinatorScheduleHome" component={CoordinatorScheduleHome} />

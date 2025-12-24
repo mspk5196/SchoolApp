@@ -658,7 +658,7 @@ exports.uploadMentorSchedule = async (req, res) => {
 
     // Pre-fetch session types with their evaluation modes (active)
     const [sessionTypes] = await conn.query(
-      `SELECT st.id, st.name, st.is_student_facing, em.name AS eval_name,
+      `SELECT st.id, st.name, st.is_student_facing, st.evaluation_mode, em.name AS eval_name,
               em.requires_marks, em.requires_attentiveness
        FROM session_types st
        LEFT JOIN evaluation_modes em ON em.id = st.evaluation_mode
@@ -832,13 +832,6 @@ exports.uploadMentorSchedule = async (req, res) => {
         }
         const sessionType = String(sessionTypeRow.name).toLowerCase();
         const sessionTypeId = sessionTypeRow.id;
-        // Determine evaluation mode for student schedules based on evaluation_modes flags
-        let evaluationMode = 'none';
-        if (sessionTypeRow.requires_marks) {
-          evaluationMode = 'marks';
-        } else if (sessionTypeRow.requires_attentiveness) {
-          evaluationMode = 'attentiveness';
-        }
         const totalMarks = totalMarksCell ? parseInt(totalMarksCell, 10) : null;
 
         // Resolve faculty by rollno
@@ -1018,7 +1011,7 @@ exports.uploadMentorSchedule = async (req, res) => {
             venue_id, grade_id, section_id, subject_id,
             context_activity_id, section_activity_topic_id, session_type_id,
             topic_id, task_description, assessment_cycle_id, total_marks, status, is_rescheduled)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 'scheduled', 0)` ,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', 0)` ,
           [
             facultyId,
             actingRole,
@@ -1031,6 +1024,7 @@ exports.uploadMentorSchedule = async (req, res) => {
             sectionRow.id,
             subjectRow.id,
             contextActivityId || null,
+            null, // section_activity_topic_id
             sessionTypeId,
             topicId || null,
             taskDescription || null,
@@ -1102,10 +1096,10 @@ exports.uploadMentorSchedule = async (req, res) => {
           for (const s of students) {
             await conn.query(
               `INSERT INTO student_schedule_calendar
-						 (student_id, grade_id, section_id, subject_id, mentor_id, context_activity_id, section_activity_topic_id,
-							 task_description, date, start_time, end_time, venue_id, schedule_type, status, attendance, remarks,
-							 created_at, faculty_calendar_id, evaluation_mode, total_marks)
-						 VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 'scheduled', 'present', '', NOW(), ?, ?, ?)`,
+					 (student_id, grade_id, section_id, subject_id, mentor_id, context_activity_id, section_activity_topic_id,
+						 task_description, date, start_time, end_time, venue_id, faculty_calendar_id, session_type_id, total_marks,
+						 schedule_type, status, attendance, remarks, created_at)
+					 VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', 'present', '', NOW())`,
               [
                 s.student_id,
                 gradeRow.id,
@@ -1118,10 +1112,10 @@ exports.uploadMentorSchedule = async (req, res) => {
                 startTimeStr,
                 endTimeStr,
                 venueRow.id,
-                scheduleType,
                 facultyCalendarId,
-                evaluationMode,
+                sessionTypeId,
                 totalMarks || null,
+                scheduleType,
               ]
             );
           }
@@ -1688,7 +1682,6 @@ exports.createStudentSchedule = async (req, res) => {
       startTime,
       endTime,
       venueId,
-      evaluationMode,
       totalMarks,
       scheduleType,
       status
@@ -1718,8 +1711,8 @@ exports.createStudentSchedule = async (req, res) => {
         `INSERT INTO student_schedule_calendar 
          (student_id, grade_id, section_id, subject_id, mentor_id, context_activity_id, 
           section_activity_topic_id, task_description, date, start_time, end_time, venue_id,
-          evaluation_mode, total_marks, schedule_type, status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          total_marks, schedule_type, status, attendance, remarks, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'present', '', NOW())`,
         [
           studentId,
           gradeId,
@@ -1733,7 +1726,6 @@ exports.createStudentSchedule = async (req, res) => {
           startTime,
           endTime,
           venueId || null,
-          evaluationMode || 'none',
           totalMarks || null,
           scheduleType || 'class_session',
           status || 'scheduled'
@@ -1776,7 +1768,6 @@ exports.updateStudentSchedule = async (req, res) => {
       startTime,
       endTime,
       venueId,
-      evaluationMode,
       totalMarks,
       scheduleType,
       status,
@@ -1828,10 +1819,6 @@ exports.updateStudentSchedule = async (req, res) => {
     if (venueId !== undefined) {
       updates.push('venue_id = ?');
       params.push(venueId);
-    }
-    if (evaluationMode !== undefined) {
-      updates.push('evaluation_mode = ?');
-      params.push(evaluationMode);
     }
     if (totalMarks !== undefined) {
       updates.push('total_marks = ?');
@@ -2052,12 +2039,45 @@ exports.createFacultySchedule = async (req, res) => {
       if (conn) conn.release();
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
+    // Wrap faculty + student schedule creation in a single transaction
+    await conn.beginTransaction();
 
-    await conn.query(
+    // 1) Insert faculty schedule (including evaluation_mode ID from session type)
+    // Resolve evaluation_mode from session type first so we can store it on faculty & student schedules
+    const [stRows] = await conn.query(
+      `SELECT st.id, st.name, st.is_student_facing, st.evaluation_mode,
+              em.requires_marks, em.requires_attentiveness
+       FROM session_types st
+       LEFT JOIN evaluation_modes em ON em.id = st.evaluation_mode
+       WHERE st.id = ?`,
+      [sessionTypeId]
+    );
+
+    let scheduleType = 'class_session';
+    let isStudentFacing = false;
+
+    if (stRows && stRows.length) {
+      const st = stRows[0];
+      isStudentFacing = !!st.is_student_facing;
+
+      const scheduleTypeMap = {
+        class: 'class_session',
+        lab: 'class_session',
+        assessment: 'exam',
+        exam: 'exam',
+        homework_eval: 'homework',
+        admin_task: 'class_session',
+        other: 'class_session',
+      };
+      const stNameLower = String(st.name || '').toLowerCase();
+      scheduleType = scheduleTypeMap[stNameLower] || 'class_session';
+    }
+
+    const [fcResult] = await conn.query(
       `INSERT INTO faculty_calendar
        (faculty_id, acting_role, academic_year, date, start_time, end_time, venue_id, grade_id, section_id, subject_id,
         session_type_id, task_description, total_marks, assessment_cycle_id, context_activity_id, topic_id, status, created_at)
-         VALUES (?, 'mentor', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       VALUES (?, 'mentor', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         facultyId,
         academicYear,
@@ -2074,15 +2094,72 @@ exports.createFacultySchedule = async (req, res) => {
         assessmentCycleId || null,
         contextActivityId || null,
         topicId || null,
-        status || 'scheduled'
+        status || 'scheduled',
       ]
     );
+
+    const facultyCalendarId = fcResult.insertId;
+
+    // 2) Determine students for this session (all students in section for current AY)
+    const [students] = await conn.query(
+      `SELECT sm.student_id
+       FROM student_mappings sm
+       WHERE sm.academic_year = ? AND sm.section_id = ?`,
+      [academicYear, sectionId]
+    );
+
+    if (isStudentFacing && students && students.length) {
+      // Resolve mentor id from faculty
+      const mentorRow = await fetchSingle(
+        conn,
+        'SELECT id FROM mentors WHERE faculty_id = ?',
+        [facultyId]
+      );
+      const mentorIdForStudents = mentorRow ? mentorRow.id : null;
+
+      for (const s of students) {
+        await conn.query(
+          `INSERT INTO student_schedule_calendar
+           (student_id, grade_id, section_id, subject_id, mentor_id, context_activity_id, section_activity_topic_id,
+            task_description, date, start_time, end_time, venue_id, faculty_calendar_id,
+            session_type_id, total_marks, schedule_type, status, attendance, remarks, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', 'present', '', NOW())`,
+          [
+            s.student_id,
+            gradeId,
+            sectionId,
+            subjectId,
+            mentorIdForStudents,
+            contextActivityId || null,
+            topicId || null,
+            taskDescription || null,
+            date,
+            startTime,
+            endTime,
+            venueId || null,
+            facultyCalendarId,
+            sessionTypeId,
+            totalMarks || null,
+            scheduleType,
+          ]
+        );
+      }
+    }
+
+    await conn.commit();
 
     if (conn) conn.release();
     return res.json({ success: true, message: 'Schedule created successfully' });
   } catch (error) {
     console.error('Error creating faculty schedule:', error);
-    if (conn) conn.release();
+    if (conn) {
+      try {
+        await conn.rollback();
+      } catch (e) {
+        // ignore rollback errors
+      }
+      conn.release();
+    }
     return res.status(500).json({ success: false, message: 'Failed to create schedule', error: error.message });
   }
 };
@@ -2139,6 +2216,14 @@ exports.updateFacultySchedule = async (req, res) => {
 
     params.push(scheduleId);
     await conn.query(`UPDATE faculty_calendar SET ${updates.join(', ')} WHERE id = ?`, params);
+
+    // If status was updated, keep student_schedule_calendar in sync
+    if (status !== undefined) {
+      await conn.query(
+        'UPDATE student_schedule_calendar SET status = ? WHERE faculty_calendar_id = ?',
+        [status, scheduleId]
+      );
+    }
 
     if (conn) conn.release();
     return res.json({ success: true, message: 'Schedule updated successfully' });

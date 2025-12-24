@@ -444,6 +444,20 @@ const CoordinatorMaterialHome = ({ navigation, route }) => {
               >
                 <Text style={[styles.managementButtonText, { color: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}>👥 Batches</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.managementButton, { borderColor: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}
+                onPress={() => navigation.navigate('QuestionPaperManagement', {
+                  userData,
+                  grades,
+                  selectedGrade,
+                  selectedSubjectId: item.subject_id,
+                  selectedSubjectName: item.subject_name,
+                  selectedSectionId: selectedSection,
+                })}
+              >
+                <Text style={[styles.managementButtonText, { color: (item.subject_id % 2) ? '#0FBEB3' : '#65558F' }]}>📄 Question Papers</Text>
+              </TouchableOpacity>
             </View>
           </Pressable>
         </View>

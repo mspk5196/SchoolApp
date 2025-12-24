@@ -12,7 +12,6 @@ import {
   Image,
   Linking,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../../../components';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -37,6 +36,7 @@ const MentorPeriodDetails = ({ route, navigation }) => {
   const [isFinishedNotCompleted, setIsFinishedNotCompleted] = useState(false);
   const [canStartSession, setCanStartSession] = useState(false);
   const [isStudentFacing, setIsStudentFacing] = useState(true);
+  const [showStudents, setShowStudents] = useState(false);
   const [facultyNotes, setFacultyNotes] = useState('');
   const [assessmentCycleName, setAssessmentCycleName] = useState(null);
   const [requiresMarks, setRequiresMarks] = useState(false);
@@ -51,25 +51,20 @@ const MentorPeriodDetails = ({ route, navigation }) => {
   const [bulkEvaluation, setBulkEvaluation] = useState({});
   const [showBulkPanel, setShowBulkPanel] = useState(false);
 
-  // Homework states
-  const [showHomeworkModal, setShowHomeworkModal] = useState(false);
-  const [homeworkTitle, setHomeworkTitle] = useState('');
-  const [homeworkDescription, setHomeworkDescription] = useState('');
-  const [availableActivities, setAvailableActivities] = useState([]);
-  const [selectedActivityId, setSelectedActivityId] = useState(null);
-  const [availableTopics, setAvailableTopics] = useState([]);
-  const [selectedTopicId, setSelectedTopicId] = useState(null);
-
   // Evaluation states
   const [showEndSessionModal, setShowEndSessionModal] = useState(false);
-  const [showEarlyCompletionModal, setShowEarlyCompletionModal] = useState(false);
-  const [earlyCompletionReason, setEarlyCompletionReason] = useState('');
   const [studentEvaluations, setStudentEvaluations] = useState({});
 
   useEffect(() => {
     fetchSessionDetails();
-    fetchStudents();
+    // fetchStudents();
   }, []);
+
+  useEffect(() => {
+    if (sessionDetails && (sessionDetails.is_student_facing === 1 || sessionDetails.is_show_students === 1)) {
+      fetchStudents();
+    }
+  }, [sessionDetails]);
 
   // Timer effect for running session
   useEffect(() => {
@@ -110,7 +105,7 @@ const MentorPeriodDetails = ({ route, navigation }) => {
       const data = await ApiService.post('/mentor/getSessionDetails', {
         facultyCalendarId: facultyCalendarId
       });
-      console.log(data);
+      // console.log(data);
       
       if (data.success) {
         setSessionDetails(data.sessionDetails);
@@ -118,9 +113,12 @@ const MentorPeriodDetails = ({ route, navigation }) => {
         setTopicMaterials(data.topicMaterials || []);
         setActivityHierarchy(data.activityHierarchy || []);
         setIsStudentFacing(data.sessionDetails.is_student_facing === 1);
+        setShowStudents(data.sessionDetails.is_show_students === 1);
         setRequiresMarks(data.sessionDetails.requires_marks === 1);
         setAssessmentCycleName(data.sessionDetails.assessment_cycle_name || null);
 
+        // console.log(data.sessionDetails.assessment_cycle_id);
+        
         // Check if session can be started
         checkSessionStartTime(data.sessionDetails);
 
@@ -159,12 +157,13 @@ const MentorPeriodDetails = ({ route, navigation }) => {
       if (data.success) {
         setStudents(data.students);
         setAttentivenessOptions(data.attentivenessOptions || []);
-
+        console.log(data.students);
+        
         // Initialize student evaluations with existing data
         const initialEvaluations = {};
         data.students.forEach(student => {
-          initialEvaluations[student.id] = {
-            studentId: student.id,
+          initialEvaluations[student.student_id] = {
+            studentId: student.student_id,
             marksObtained: student.marks_obtained || null,
             attentivenessId: student.attentiveness_id || null,
             malpracticeFlag: student.malpractice_flag || 0,
@@ -209,74 +208,11 @@ const MentorPeriodDetails = ({ route, navigation }) => {
   };
 
   const handleEndSession = async () => {
-    // If session is already finished but not completed, save any evaluation changes first
-    if (isFinishedNotCompleted) {
-      try {
-        setLoading(true);
-        
-        let requestData = {
-          facultyCalendarId: facultyCalendarId,
-          facultyId: facultyId,
-        };
-
-        // Handle different session types
-        if (isStudentFacing) {
-          // Student-facing session: send updated student evaluations
-          const evaluations = Object.keys(studentEvaluations)
-            .filter(studentId => studentEvaluations[studentId]?.isPresent !== undefined)
-            .map(studentId => {
-              const evalu = studentEvaluations[studentId];
-              return {
-                studentId: parseInt(studentId),
-                isPresent: evalu.isPresent === true,
-                marksObtained: (sessionDetails.requires_marks && evalu.isPresent) 
-                  ? (evalu.marksObtained ? parseInt(evalu.marksObtained) : null) 
-                  : null,
-                attentivenessId: (sessionDetails.requires_attentiveness && evalu.isPresent) 
-                  ? (evalu.attentivenessId ? parseInt(evalu.attentivenessId) : null) 
-                  : null,
-                malpracticeFlag: (sessionDetails.allows_malpractice && evalu.isPresent) 
-                  ? (evalu.malpracticeFlag ? 1 : 0) 
-                  : 0,
-                remarks: evalu.remarks ? String(evalu.remarks) : null,
-              };
-            });
-          requestData.studentEvaluations = evaluations;
-        } else {
-          // Faculty-facing session: send updated faculty notes
-          requestData.facultyNotes = facultyNotes ? String(facultyNotes) : '';
-        }
-
-        // Update evaluations using finishSession endpoint (will update existing evaluations)
-        await ApiService.post('/mentor/updateFinishedSessionEvaluations', requestData);
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error updating evaluations:', error);
-        setLoading(false);
-        // Continue to end session flow even if update fails
-      }
-    }
-    
-    // For student-facing sessions:
-    // - If requires_marks is true (marks-based evaluation), skip homework and end directly
-    // - Otherwise, show homework modal
-    if (isStudentFacing) {
-      if (requiresMarks) {
-        // Marks-based evaluation - end session directly without homework
-        setShowEndSessionModal(true);
-      } else {
-        // Regular session - show homework modal
-        setShowHomeworkModal(true);
-        fetchActivitiesForHomework();
-      }
-    } else {
-      // Faculty-facing session - end directly
-      setShowEndSessionModal(true);
-    }
+    // End session: just confirm and then save evaluations/notes
+    setShowEndSessionModal(true);
   };
 
-  const confirmEndSession = async (homework = null) => {
+  const confirmEndSession = async () => {
     try {
       setLoading(true);
 
@@ -285,19 +221,38 @@ const MentorPeriodDetails = ({ route, navigation }) => {
         facultyId: facultyId
       };
 
-      // Add homework if provided (for student-facing sessions)
-      if (homework) {
-        requestData.homework = {
-          title: String(homework.title),
-          description: homework.description ? String(homework.description) : null,
-          contextActivityId: parseInt(homework.contextActivityId),
-          topicId: homework.topicId ? parseInt(homework.topicId) : null
-        };
+      // Determine if we should send per-student evaluations:
+      // - always for student-facing sessions
+      // - also for non-student-facing sessions that require marks and show students
+      const shouldSendStudentEvaluations =
+        isStudentFacing || (!isStudentFacing && showStudents && requiresMarks);
+
+      // Attach evaluations/details when ending the session
+      if (shouldSendStudentEvaluations) {
+        const evaluations = Object.keys(studentEvaluations)
+          .filter(studentId => studentEvaluations[studentId]?.isPresent !== undefined)
+          .map(studentId => {
+            const evalu = studentEvaluations[studentId];
+            return {
+              studentId: parseInt(studentId, 10),
+              isPresent: evalu.isPresent === true,
+              marksObtained: (sessionDetails.requires_marks && evalu.isPresent)
+                ? (evalu.marksObtained ? parseInt(evalu.marksObtained, 10) : null)
+                : null,
+              attentivenessId: (sessionDetails.requires_attentiveness && evalu.isPresent)
+                ? (evalu.attentivenessId ? parseInt(evalu.attentivenessId, 10) : null)
+                : null,
+              malpracticeFlag: (sessionDetails.allows_malpractice && evalu.isPresent)
+                ? (evalu.malpracticeFlag ? 1 : 0)
+                : 0,
+              remarks: evalu.remarks ? String(evalu.remarks) : null,
+            };
+          });
+        requestData.studentEvaluations = evaluations;
       }
 
-      // Add early completion reason if provided
-      if (earlyCompletionReason) {
-        requestData.earlyCompletionReason = String(earlyCompletionReason);
+      if (!isStudentFacing) {
+        requestData.facultyNotes = facultyNotes ? String(facultyNotes) : '';
       }
 
       const data = await ApiService.post('/mentor/endSession', requestData);
@@ -316,106 +271,64 @@ const MentorPeriodDetails = ({ route, navigation }) => {
     } finally {
       setLoading(false);
       setShowEndSessionModal(false);
-      setShowHomeworkModal(false);
     }
   };
 
-  const handleFinishSession = async () => {
-    if (!isStudentFacing) {
-      // For faculty sessions, go directly to end
-      handleEndSession();
-      return;
-    }
-    // Check if all students are marked
-    const unmarkedStudents = students.filter(student =>
-      studentEvaluations[student.id]?.isPresent === undefined
+  const handleFinishSession = () => {
+    Alert.alert(
+      'Finish Session',
+      'Are you sure you want to finish this session now? You can still enter or edit evaluations before ending the session.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Finish', onPress: () => finishSession() },
+      ]
     );
-
-    if (unmarkedStudents.length > 0) {
-      Alert.alert(
-        'Incomplete Evaluation',
-        `${unmarkedStudents.length} student(s) are not marked. Please mark all students or they will be marked as absent.`,
-        [
-          {
-            text: 'Continue Marking',
-            style: 'cancel'
-          },
-          {
-            text: 'Mark Remaining as Absent',
-            onPress: () => {
-              unmarkedStudents.forEach(student => {
-                updateStudentEvaluation(student.id, 'isPresent', false);
-              });
-              setTimeout(() => finishSession(), 500);
-            }
-          }
-        ]
-      );
-    } else {
-      // All students marked, proceed to finish
-      await finishSession();
-    }
   };
 
   const finishSession = async () => {
     try {
       setLoading(true);
 
-      // Check if session finished before scheduled end time and ensure reason is provided
-      const now = new Date();
-      const sessionDate = new Date(sessionDetails.date);
-      const [hours, minutes] = sessionDetails.end_time.split(':');
-      const endTime = new Date(sessionDate);
-      endTime.setHours(parseInt(hours), parseInt(minutes), 0);
-
-      if (now < endTime && !earlyCompletionReason) {
-        setShowEarlyCompletionModal(true);
-        setLoading(false);
-        return;
-      }
-
-      let requestData = {
+      const payload = {
         facultyCalendarId: facultyCalendarId,
         facultyId: facultyId,
-        // Only send early completion reason if it was provided
-        earlyCompletionReason: earlyCompletionReason ? String(earlyCompletionReason) : null,
       };
 
-      // Handle different session types
       if (isStudentFacing) {
-        // Student-facing session: send student evaluations
         const evaluations = Object.keys(studentEvaluations)
           .filter(studentId => studentEvaluations[studentId]?.isPresent !== undefined)
           .map(studentId => {
             const evalu = studentEvaluations[studentId];
             return {
-              studentId: parseInt(studentId),
+              studentId: parseInt(studentId, 10),
               isPresent: evalu.isPresent === true,
-              marksObtained: (sessionDetails.requires_marks && evalu.isPresent) 
-                ? (evalu.marksObtained ? parseInt(evalu.marksObtained) : null) 
+              marksObtained: (sessionDetails.requires_marks && evalu.isPresent)
+                ? (evalu.marksObtained ? parseInt(evalu.marksObtained, 10) : null)
                 : null,
-              attentivenessId: (sessionDetails.requires_attentiveness && evalu.isPresent) 
-                ? (evalu.attentivenessId ? parseInt(evalu.attentivenessId) : null) 
+              attentivenessId: (sessionDetails.requires_attentiveness && evalu.isPresent)
+                ? (evalu.attentivenessId ? parseInt(evalu.attentivenessId, 10) : null)
                 : null,
-              malpracticeFlag: (sessionDetails.allows_malpractice && evalu.isPresent) 
-                ? (evalu.malpracticeFlag ? 1 : 0) 
+              malpracticeFlag: (sessionDetails.allows_malpractice && evalu.isPresent)
+                ? (evalu.malpracticeFlag ? 1 : 0)
                 : 0,
               remarks: evalu.remarks ? String(evalu.remarks) : null,
             };
           });
-        requestData.studentEvaluations = evaluations;
-      } else {
-        // Faculty-facing session: send faculty notes
-        requestData.facultyNotes = facultyNotes ? String(facultyNotes) : '';
+        payload.studentEvaluations = evaluations;
       }
 
-      const data = await ApiService.post('/mentor/finishSession', requestData);
+      const data = await ApiService.post('/mentor/finishSession', payload);
 
       if (data.success) {
-        // Mark session as finished but not completed locally
-        setSessionDetails(prev => prev ? { ...prev, session_status: 'finished_not_completed' } : prev);
+        setSessionDetails(prev =>
+          prev ? { ...prev, session_status: 'finished_not_completed' } : prev
+        );
         setIsFinishedNotCompleted(true);
-        Alert.alert('Success', 'Session marked as finished. You can update evaluations and end the session when ready.');
+        setSessionStarted(false);
+        Alert.alert(
+          'Success',
+          'Session marked as finished. You can now enter evaluations and end the session when ready.'
+        );
       }
     } catch (error) {
       console.error('Error finishing session:', error);
@@ -423,77 +336,6 @@ const MentorPeriodDetails = ({ route, navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchActivitiesForHomework = async () => {
-    try {
-      const response = await ApiService.post('/mentor/getActivitiesForHomework', {
-        gradeId: sessionDetails.grade_id,
-        subjectId: sessionDetails.subject_id
-      });
-
-      if (response.success) {
-        setAvailableActivities(response.activities || []);
-      }
-    } catch (error) {
-      console.error('Error fetching activities:', error);
-    }
-  };
-
-  const fetchTopicsForActivity = async (activityId) => {
-    try {
-      const response = await ApiService.post('/mentor/getTopicsForHomework', {
-        contextActivityId: activityId,
-        subjectId: sessionDetails.subject_id
-      });
-
-      if (response.success) {
-        setAvailableTopics(response.topics || []);
-      }
-    } catch (error) {
-      console.error('Error fetching topics:', error);
-    }
-  };
-
-  const handleActivityChange = (activityId) => {
-    setSelectedActivityId(activityId);
-    setSelectedTopicId(null);
-    setAvailableTopics([]);
-    if (activityId) {
-      fetchTopicsForActivity(activityId);
-    }
-  };
-
-  const handleSubmitHomework = () => {
-    if (!homeworkTitle.trim()) {
-      Alert.alert('Error', 'Please enter homework title');
-      return;
-    }
-
-    if (!selectedActivityId) {
-      Alert.alert('Error', 'Please select an activity');
-      return;
-    }
-
-    const homework = {
-      title: homeworkTitle,
-      description: homeworkDescription,
-      contextActivityId: selectedActivityId,
-      topicId: selectedTopicId
-    };
-
-    confirmEndSession(homework);
-  };
-
-  const handleSkipHomework = () => {
-    Alert.alert(
-      'Skip Homework',
-      'Are you sure you want to skip homework assignment?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Skip', onPress: () => confirmEndSession(null) }
-      ]
-    );
   };
 
   const updateStudentEvaluation = (studentId, field, value) => {
@@ -520,7 +362,7 @@ const MentorPeriodDetails = ({ route, navigation }) => {
     if (selectedStudents.length === students.length) {
       setSelectedStudents([]);
     } else {
-      setSelectedStudents(students.map(s => s.id));
+      setSelectedStudents(students.map(s => s.student_id));
     }
   };
 
@@ -774,8 +616,8 @@ const MentorPeriodDetails = ({ route, navigation }) => {
               <Text style={styles.progressText}>{Math.round(progressPercentage)}% Complete</Text>
             </View>
 
-            {isStudentFacing ? (
-              /* Student-facing session: Show students list with evaluation */
+            {(isStudentFacing || showStudents) ? (
+              /* Session configured to show students: Show students list with evaluation */
               <>
                 {/* Bulk Selection Panel */}
                 <View style={styles.bulkActionsCard}>
@@ -882,17 +724,17 @@ const MentorPeriodDetails = ({ route, navigation }) => {
                   <Text style={styles.sectionTitle}>Students ({students.length})</Text>
 
                   {students.map((student, index) => (
-                    <View key={student.id} style={styles.studentCard}>
+                    <View key={student.student_id} style={styles.studentCard}>
                       <View style={styles.studentHeader}>
                         {/* Bulk Selection Checkbox */}
                         <TouchableOpacity 
                           style={styles.selectionCheckbox}
-                          onPress={() => toggleStudentSelection(student.id)}
+                          onPress={() => toggleStudentSelection(student.student_id)}
                         >
                           <MaterialCommunityIcons
-                            name={selectedStudents.includes(student.id) ? "checkbox-marked" : "checkbox-blank-outline"}
+                            name={selectedStudents.includes(student.student_id) ? "checkbox-marked" : "checkbox-blank-outline"}
                             size={24}
-                            color={selectedStudents.includes(student.id) ? "#3B82F6" : "#94A3B8"}
+                            color={selectedStudents.includes(student.student_id) ? "#3B82F6" : "#94A3B8"}
                           />
                         </TouchableOpacity>
                         <Image
@@ -909,31 +751,31 @@ const MentorPeriodDetails = ({ route, navigation }) => {
                       <TouchableOpacity
                         style={[
                           styles.presenceButton,
-                          !studentEvaluations[student.id]?.isPresent && styles.absentButton,
+                          !studentEvaluations[student.student_id]?.isPresent && styles.absentButton,
                         ]}
                         onPress={() =>
                           updateStudentEvaluation(
-                            student.id,
+                            student.student_id,
                             'isPresent',
-                            !studentEvaluations[student.id]?.isPresent
+                            !studentEvaluations[student.student_id]?.isPresent
                           )
                         }
                       >
                         <MaterialCommunityIcons
                           name={
-                            studentEvaluations[student.id]?.isPresent
+                            studentEvaluations[student.student_id]?.isPresent
                               ? 'check-circle'
                               : 'close-circle'
                           }
                           size={24}
                           color={
-                            studentEvaluations[student.id]?.isPresent ? '#10B981' : '#EF4444'
+                            studentEvaluations[student.student_id]?.isPresent ? '#10B981' : '#EF4444'
                           }
                         />
                       </TouchableOpacity>
                     </View>
 
-                    {studentEvaluations[student.id]?.isPresent && (
+                    {studentEvaluations[student.student_id]?.isPresent && (
                       <View style={styles.evaluationInputs}>
                         {/* Marks Input - Only if requires_marks = 1 */}
                         {sessionDetails.requires_marks === 1 && (
@@ -946,10 +788,10 @@ const MentorPeriodDetails = ({ route, navigation }) => {
                               placeholder="Enter marks"
                               keyboardType="numeric"
                               value={
-                                studentEvaluations[student.id]?.marksObtained?.toString() || ''
+                                studentEvaluations[student.student_id]?.marksObtained?.toString() || ''
                               }
                               onChangeText={(text) =>
-                                updateStudentEvaluation(student.id, 'marksObtained', parseInt(text) || null)
+                                updateStudentEvaluation(student.student_id, 'marksObtained', parseInt(text) || null)
                               }
                             />
                           </View>
@@ -965,17 +807,17 @@ const MentorPeriodDetails = ({ route, navigation }) => {
                                   key={option.id}
                                   style={[
                                     styles.attentivenessButton,
-                                    studentEvaluations[student.id]?.attentivenessId === option.id &&
+                                    studentEvaluations[student.student_id]?.attentivenessId === option.id &&
                                     styles.attentivenessButtonActive,
                                   ]}
                                   onPress={() =>
-                                    updateStudentEvaluation(student.id, 'attentivenessId', option.id)
+                                    updateStudentEvaluation(student.student_id, 'attentivenessId', option.id)
                                   }
                                 >
                                   <Text
                                     style={[
                                       styles.attentivenessButtonText,
-                                      studentEvaluations[student.id]?.attentivenessId === option.id &&
+                                      studentEvaluations[student.student_id]?.attentivenessId === option.id &&
                                       styles.attentivenessButtonTextActive,
                                     ]}
                                   >
@@ -994,9 +836,9 @@ const MentorPeriodDetails = ({ route, navigation }) => {
                             <TextInput
                               style={styles.textInput}
                               placeholder="Enter document URL"
-                              value={studentEvaluations[student.id]?.docsLink || ''}
+                              value={studentEvaluations[student.student_id]?.docsLink || ''}
                               onChangeText={(text) =>
-                                updateStudentEvaluation(student.id, 'docsLink', text)
+                                updateStudentEvaluation(student.student_id, 'docsLink', text)
                               }
                             />
                           </View>
@@ -1009,21 +851,21 @@ const MentorPeriodDetails = ({ route, navigation }) => {
                               style={styles.checkboxRow}
                               onPress={() =>
                                 updateStudentEvaluation(
-                                  student.id,
+                                  student.student_id,
                                   'malpracticeFlag',
-                                  studentEvaluations[student.id]?.malpracticeFlag ? 0 : 1
+                                  studentEvaluations[student.student_id]?.malpracticeFlag ? 0 : 1
                                 )
                               }
                             >
                               <MaterialCommunityIcons
                                 name={
-                                  studentEvaluations[student.id]?.malpracticeFlag
+                                  studentEvaluations[student.student_id]?.malpracticeFlag
                                     ? 'checkbox-marked'
                                     : 'checkbox-blank-outline'
                                 }
                                 size={24}
                                 color={
-                                  studentEvaluations[student.id]?.malpracticeFlag
+                                  studentEvaluations[student.student_id]?.malpracticeFlag
                                     ? '#EF4444'
                                     : '#64748B'
                                 }
@@ -1041,9 +883,9 @@ const MentorPeriodDetails = ({ route, navigation }) => {
                             placeholder="Add remarks..."
                             multiline
                             numberOfLines={2}
-                            value={studentEvaluations[student.id]?.remarks || ''}
+                              value={studentEvaluations[student.student_id]?.remarks || ''}
                             onChangeText={(text) =>
-                              updateStudentEvaluation(student.id, 'remarks', text)
+                              updateStudentEvaluation(student.student_id, 'remarks', text)
                             }
                           />
                         </View>
@@ -1071,11 +913,18 @@ const MentorPeriodDetails = ({ route, navigation }) => {
               </View>
             )}
 
-            {sessionDetails.session_status !== 'finished_not_completed' ? (
-              <TouchableOpacity style={styles.finishButton} onPress={handleFinishSession}>
-                <MaterialCommunityIcons name="check-circle" size={24} color="#FFFFFF" />
-                <Text style={styles.finishButtonText}>Finish Session</Text>
-              </TouchableOpacity>
+            {isStudentFacing ? (
+              sessionDetails.session_status !== 'finished_not_completed' ? (
+                <TouchableOpacity style={styles.finishButton} onPress={handleFinishSession}>
+                  <MaterialCommunityIcons name="check-circle" size={24} color="#FFFFFF" />
+                  <Text style={styles.finishButtonText}>Finish Session</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.endButton} onPress={handleEndSession}>
+                  <MaterialCommunityIcons name="check-circle-outline" size={24} color="#FFFFFF" />
+                  <Text style={styles.endButtonText}>End Session</Text>
+                </TouchableOpacity>
+              )
             ) : (
               <TouchableOpacity style={styles.endButton} onPress={handleEndSession}>
                 <MaterialCommunityIcons name="check-circle-outline" size={24} color="#FFFFFF" />
@@ -1085,156 +934,6 @@ const MentorPeriodDetails = ({ route, navigation }) => {
           </>
         )}
       </ScrollView>
-
-      {/* Early Completion Modal */}
-      <Modal
-        visible={showEarlyCompletionModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowEarlyCompletionModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Early Completion</Text>
-            <Text style={styles.modalText}>
-              Session is finishing before scheduled time. Please provide a reason:
-            </Text>
-            <TextInput
-              style={[styles.textInput, styles.textArea, styles.modalInput]}
-              placeholder="Enter reason for early completion..."
-              multiline
-              numberOfLines={4}
-              value={earlyCompletionReason}
-              onChangeText={setEarlyCompletionReason}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowEarlyCompletionModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={() => {
-                  setShowEarlyCompletionModal(false);
-                  // Early completion reason is only used for Finish Session flow
-                  finishSession();
-                }}
-              >
-                <Text style={styles.confirmButtonText}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Homework Assignment Modal */}
-      <Modal
-        visible={showHomeworkModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowHomeworkModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, styles.homeworkModal]}>
-            <ScrollView
-              style={styles.homeworkScrollView}
-              contentContainerStyle={styles.homeworkScrollContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator
-            >
-              <Text style={styles.modalTitle}>Assign Homework</Text>
-              <Text style={styles.modalText}>
-                Add homework for this session (optional)
-              </Text>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Homework Title *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter homework title"
-                  value={homeworkTitle}
-                  onChangeText={setHomeworkTitle}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Description</Text>
-                <TextInput
-                  style={[styles.textInput, styles.textArea]}
-                  placeholder="Enter homework description"
-                  multiline
-                  numberOfLines={4}
-                  value={homeworkDescription}
-                  onChangeText={setHomeworkDescription}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Select Activity *</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={selectedActivityId}
-                    onValueChange={(value) => {
-                      if (value) {
-                        handleActivityChange(value);
-                      }
-                    }}
-                  >
-                    <Picker.Item label="Select activity" value={null} />
-                    {availableActivities.map((activity) => (
-                      <Picker.Item
-                        key={activity.id}
-                        label={activity.hierarchy}
-                        value={activity.id}
-                      />
-                    ))}
-                  </Picker>
-                </View>
-              </View>
-
-              {availableTopics.length > 0 && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Select Topic (Optional)</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={selectedTopicId}
-                      onValueChange={(value) => {
-                        setSelectedTopicId(value || null);
-                      }}
-                    >
-                      <Picker.Item label="Select topic (optional)" value={null} />
-                      {availableTopics.map((topic) => (
-                        <Picker.Item
-                          key={topic.id}
-                          label={topic.hierarchy}
-                          value={topic.id}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
-                </View>
-              )}
-
-            </ScrollView>
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={handleSkipHomework}
-                >
-                  <Text style={styles.cancelButtonText}>Skip Homework</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.confirmButton]}
-                  onPress={handleSubmitHomework}
-                >
-                  <Text style={styles.confirmButtonText}>Submit</Text>
-                </TouchableOpacity>
-              </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* End Session Confirmation Modal */}
       <Modal

@@ -39,6 +39,7 @@ const getMentorSchedule = async (req, res) => {
         v.name as venue_name,
         st.name as session_type,
         st.is_student_facing,
+        st.is_show_students,
         st.evaluation_mode,
         em.name as evaluation_mode_name,
         em.requires_marks,
@@ -70,7 +71,7 @@ const getMentorSchedule = async (req, res) => {
         AND fc.academic_year = ?
         AND fc.acting_role = 'mentor'
       GROUP BY fc.id, g.grade_name, s.section_name, sub.subject_name, v.name,
-               st.name, st.is_student_facing, st.evaluation_mode, em.name, em.requires_marks,
+           st.name, st.is_student_facing, st.is_show_students, st.evaluation_mode, em.name, em.requires_marks,
                em.requires_attentiveness, em.requires_docs, em.allows_malpractice,
                th.topic_name, a.name
       ORDER BY fc.start_time
@@ -95,12 +96,12 @@ const getMentorSchedule = async (req, res) => {
 // Get students for a session (for marking attendance/evaluation)
 const getStudentsForSession = async (req, res) => {
   try {
-    const { facultyCalendarId, assessment_cycle_id } = req.body;
+    const { facultyCalendarId } = req.body;
     const academicYear = req.activeAcademicYearId;
 
     // First get the session details
     const [sessionDetails] = await db.execute(`
-      SELECT fc.*, st.evaluation_mode, st.is_student_facing,
+      SELECT fc.*, st.evaluation_mode, st.is_student_facing, st.is_show_students,
         em.requires_marks, em.requires_attentiveness, em.allows_malpractice,
         ac.name as assessment_cycle_name
       FROM faculty_calendar fc
@@ -119,32 +120,69 @@ const getStudentsForSession = async (req, res) => {
 
     const session = sessionDetails[0];
 
+    // If the session is neither student-facing nor configured to show students,
+    // simply return an empty students list.
+    if (session.is_student_facing !== 1 && session.is_show_students !== 1) {
+      const [attentivenessOptions] = await db.execute(`
+        SELECT id, attentiveness FROM student_attentiveness ORDER BY id
+      `);
+
+      return res.json({
+        success: true,
+        students: [],
+        sessionDetails: session,
+        attentivenessOptions
+      });
+    }
+
     let students = [];
 
     // If this is a marks-based assessment session tied to an assessment cycle,
-    // fetch students from student_schedule_calendar using this faculty_calendar_id.
+    // fetch students from student_schedule_calendar using the assessment_cycle_id.
     if (session.requires_marks === 1 && session.assessment_cycle_id) {
+      const assessmentCycleId = session.assessment_cycle_id;
+
+      // Ensure there is at least one previous session in this assessment cycle
+      // that has been completed (e.g., the main exam) before allowing evaluation.
+      const [completedPrereqSessions] = await db.execute(
+        `SELECT id
+         FROM faculty_calendar
+         WHERE assessment_cycle_id = ?
+           AND id != ?
+           AND status = 'completed'
+         LIMIT 1`,
+        [assessmentCycleId, facultyCalendarId]
+      );
+
+      if (completedPrereqSessions.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot evaluate marks before the main assessment session for this cycle is completed.'
+        });
+      }
+
       const [assessmentStudents] = await db.execute(`
         SELECT DISTINCT
-          s.id,
+          s.id AS student_id,
           s.name,
           s.roll,
           s.photo_url,
           se.marks_obtained,
           se.attentiveness_id,
           se.malpractice_flag,
-          se.remarks,
-          sa.attentiveness
-        FROM student_schedule_calendar ssc
-        INNER JOIN students s ON ssc.student_id = s.id
-        LEFT JOIN session_instances si ON si.faculty_calendar_id = ?
+          se.remarks
+        FROM faculty_calendar fc
+        LEFT JOIN student_schedule_calendar ssc ON ssc.faculty_calendar_id = fc.id
+        LEFT JOIN students s ON s.id = ssc.student_id
+        LEFT JOIN session_instances si ON si.faculty_calendar_id = fc.id
         LEFT JOIN student_evaluations se ON se.session_instance_id = si.id AND se.student_id = s.id
-        LEFT JOIN student_attentiveness sa ON se.attentiveness_id = sa.id
-        WHERE ssc.faculty_calendar_id = ?
-        ORDER BY s.roll
-      `, [facultyCalendarId, facultyCalendarId, academicYear]);
+        WHERE fc.assessment_cycle_id = ?
+          AND fc.id != ?
+      `, [assessmentCycleId, facultyCalendarId]);
 
       students = assessmentStudents;
+      console.log(assessmentStudents);
+      
     } else {
       // Existing behaviour for non-marks sessions: use batches/section
 
@@ -160,7 +198,7 @@ const getStudentsForSession = async (req, res) => {
         // Get students assigned to these batches
         const [batchStudents] = await db.execute(`
           SELECT DISTINCT
-            s.id,
+            s.id AS student_id,
             s.name,
             s.roll,
             s.photo_url,
@@ -187,7 +225,7 @@ const getStudentsForSession = async (req, res) => {
         // If no batches, get all students from the section
         const [sectionStudents] = await db.execute(`
           SELECT DISTINCT
-            s.id,
+            s.id AS student_id,
             s.name,
             s.roll,
             s.photo_url,
@@ -291,6 +329,19 @@ const startSession = async (req, res) => {
       VALUES (?, ?, NOW(), 'running', NOW())
     `, [facultyCalendarId, facultyId]);
 
+    // Reflect running status on faculty_calendar and linked student schedules
+    await db.execute(`
+      UPDATE faculty_calendar
+      SET status = 'running'
+      WHERE id = ?
+    `, [facultyCalendarId]);
+
+    await db.execute(`
+      UPDATE student_schedule_calendar
+      SET status = 'running'
+      WHERE faculty_calendar_id = ?
+    `, [facultyCalendarId]);
+
     res.json({
       success: true,
       message: 'Session started successfully',
@@ -306,22 +357,19 @@ const startSession = async (req, res) => {
   }
 };
 
-// Finish a session (mark as finished with evaluations, before ending)
+// Finish a session: save current evaluations (if any) and stop the running session
 const finishSession = async (req, res) => {
   try {
     const { 
-      facultyCalendarId, 
+      facultyCalendarId,
       studentEvaluations,
       facultyNotes,
-      earlyCompletionReason,
       facultyId
     } = req.body;
-    
 
-    // Get session instance with session type info
+    // Get running session instance with session type info
     const [sessionInstance] = await db.execute(`
-      SELECT si.id, fc.end_time, fc.date, fc.section_id, fc.grade_id, fc.subject_id,
-        st.evaluation_mode, st.is_student_facing
+      SELECT si.id, st.evaluation_mode, st.is_student_facing
       FROM session_instances si
       INNER JOIN faculty_calendar fc ON si.faculty_calendar_id = fc.id
       LEFT JOIN session_types st ON fc.session_type_id = st.id
@@ -339,9 +387,124 @@ const finishSession = async (req, res) => {
     const evaluationModeId = sessionInstance[0].evaluation_mode;
     const isStudentFacing = sessionInstance[0].is_student_facing;
 
-    // Handle evaluations based on session type
-    if (isStudentFacing === 1) {
-      // Student-facing session: Insert student evaluations
+    // Finish is only meaningful for student-facing sessions; for
+    // non-student-facing sessions, mentors should use End Session
+    // directly so that evaluations are saved once.
+    if (isStudentFacing !== 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Finish session is only applicable for student-facing sessions. Please use End Session.'
+      });
+    }
+
+    // Save draft student evaluations
+    if (studentEvaluations && studentEvaluations.length > 0) {
+      for (const evaluation of studentEvaluations) {
+        if (evaluation.isPresent !== undefined) {
+          await db.execute(`
+            INSERT INTO student_evaluations 
+            (session_instance_id, student_id, evaluation_type_id, marks_obtained, 
+             attentiveness_id, malpractice_flag, remarks, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+              marks_obtained = VALUES(marks_obtained),
+              attentiveness_id = VALUES(attentiveness_id),
+              malpractice_flag = VALUES(malpractice_flag),
+              remarks = VALUES(remarks)
+          `, [
+            sessionInstanceId,
+            evaluation.studentId,
+            evaluationModeId,
+            evaluation.isPresent ? (evaluation.marksObtained || null) : null,
+            evaluation.isPresent ? (evaluation.attentivenessId || null) : null,
+            evaluation.isPresent ? (evaluation.malpracticeFlag || 0) : 0,
+            evaluation.remarks || null
+          ]);
+        }
+      }
+    }
+
+    // Update session instance with finished_at and status
+    await db.execute(`
+      UPDATE session_instances 
+      SET finished_at = NOW(), status = 'finished_not_completed'
+      WHERE id = ?
+    `, [sessionInstanceId]);
+
+    res.json({
+      success: true,
+      message: 'Session finished successfully'
+    });
+  } catch (error) {
+    console.error('Error finishing session:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to finish session',
+      error: error.message
+    });
+  }
+};
+
+// End a session with evaluations
+const endSession = async (req, res) => {
+  try {
+    const { 
+      facultyCalendarId,
+      homework,
+      facultyId,
+      earlyCompletionReason,
+      studentEvaluations,
+      facultyNotes
+    } = req.body;
+   
+
+    // Get session instance with session info and evaluation requirements
+    const [sessionInstance] = await db.execute(`
+      SELECT 
+        si.id,
+        si.status AS instance_status,
+        fc.section_id,
+        fc.grade_id,
+        fc.subject_id,
+        fc.date,
+        st.is_student_facing,
+        st.evaluation_mode,
+        em.requires_marks
+      FROM session_instances si
+      INNER JOIN faculty_calendar fc ON si.faculty_calendar_id = fc.id
+      LEFT JOIN session_types st ON fc.session_type_id = st.id
+      LEFT JOIN evaluation_modes em ON st.evaluation_mode = em.id
+      WHERE si.faculty_calendar_id = ?
+    `, [facultyCalendarId]);
+
+    if (sessionInstance.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No finished session found to end'
+      });
+    }
+
+    const sessionInstanceId = sessionInstance[0].id;
+    const isStudentFacing = sessionInstance[0].is_student_facing;
+    const evaluationModeId = sessionInstance[0].evaluation_mode;
+    const requiresMarks = sessionInstance[0].requires_marks === 1;
+    const instanceStatus = sessionInstance[0].instance_status;
+
+    // For student-facing sessions, mentor should have used Finish first
+    if (isStudentFacing === 1 && instanceStatus !== 'finished_not_completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Session must be finished before ending.'
+      });
+    }
+
+    // Save final student evaluations when:
+    // - session is student-facing, OR
+    // - session is not student-facing but requires marks (hybrid case)
+    const shouldSaveStudentEvaluations =
+      isStudentFacing === 1 || (isStudentFacing !== 1 && requiresMarks);
+
+    if (shouldSaveStudentEvaluations) {
       if (studentEvaluations && studentEvaluations.length > 0) {
         for (const evaluation of studentEvaluations) {
           // Only insert if student is marked (present or absent)
@@ -368,8 +531,10 @@ const finishSession = async (req, res) => {
           }
         }
       }
-    } else {
-      // Faculty-facing session: Insert faculty evaluation
+    }
+
+    // Always maintain a single faculty_evaluations row for non-student-facing sessions
+    if (isStudentFacing !== 1) {
       await db.execute(`
         INSERT INTO faculty_evaluations 
         (session_instance_id, evaluation_mode_id, faculty_id, is_completed, notes, created_at)
@@ -380,67 +545,6 @@ const finishSession = async (req, res) => {
           updated_at = NOW()
       `, [sessionInstanceId, evaluationModeId, facultyId, facultyNotes || '']);
     }
-
-    // Update session instance with finished_at and status
-    await db.execute(`
-      UPDATE session_instances 
-      SET finished_at = NOW(), status = 'finished_not_completed'
-      WHERE id = ?
-    `, [sessionInstanceId]);
-
-    // If early completion, log the reason
-    if (earlyCompletionReason) {
-      await db.execute(`
-        UPDATE session_instances 
-        SET early_completion_reason = ?
-        WHERE id = ?
-      `, [earlyCompletionReason, sessionInstanceId]);
-    }
-
-    res.json({
-      success: true,
-      message: 'Session finished successfully'
-    });
-  } catch (error) {
-    console.error('Error finishing session:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to finish session',
-      error: error.message
-    });
-  }
-};
-
-// End a session with evaluations
-const endSession = async (req, res) => {
-  try {
-    const { 
-      facultyCalendarId,
-      homework,
-      facultyId,
-      earlyCompletionReason
-    } = req.body;
-   
-
-    // Get session instance with session info
-    const [sessionInstance] = await db.execute(`
-      SELECT si.id, fc.section_id, fc.grade_id, fc.subject_id, fc.date,
-        st.is_student_facing
-      FROM session_instances si
-      INNER JOIN faculty_calendar fc ON si.faculty_calendar_id = fc.id
-      LEFT JOIN session_types st ON fc.session_type_id = st.id
-      WHERE si.faculty_calendar_id = ? AND si.status = 'finished_not_completed'
-    `, [facultyCalendarId]);
-
-    if (sessionInstance.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'No finished session found to end'
-      });
-    }
-
-    const sessionInstanceId = sessionInstance[0].id;
-    const isStudentFacing = sessionInstance[0].is_student_facing;
 
     // Handle homework assignment if provided (for student-facing sessions)
     if (isStudentFacing === 1 && homework && homework.title) {
@@ -492,6 +596,13 @@ const endSession = async (req, res) => {
       UPDATE faculty_calendar 
       SET status = 'completed'
       WHERE id = ?
+    `, [facultyCalendarId]);
+
+    // Also update linked student schedule entries
+    await db.execute(`
+      UPDATE student_schedule_calendar
+      SET status = 'completed'
+      WHERE faculty_calendar_id = ?
     `, [facultyCalendarId]);
 
     res.json({
@@ -575,6 +686,7 @@ const getSessionDetails = async (req, res) => {
         v.name as venue_name,
         st.name as session_type,
         st.is_student_facing,
+        st.is_show_students,
         st.evaluation_mode,
         em.name as evaluation_mode_name,
         em.requires_marks,
@@ -604,7 +716,7 @@ const getSessionDetails = async (req, res) => {
       LEFT JOIN session_instances si ON fc.id = si.faculty_calendar_id
       WHERE fc.id = ?
       GROUP BY fc.id, g.grade_name, s.section_name, sub.subject_name, v.name,
-               st.name, st.is_student_facing, st.evaluation_mode, em.name, em.requires_marks,
+           st.name, st.is_student_facing, st.is_show_students, st.evaluation_mode, em.name, em.requires_marks,
                em.requires_attentiveness, em.requires_docs, em.allows_malpractice,
                th.topic_name, th.id, a.name
     `, [facultyCalendarId]);

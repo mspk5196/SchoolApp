@@ -116,6 +116,17 @@ router.post('/material/deleteTopicMaterial',  materialController.deleteTopicMate
 router.post('/material/setExpectedCompletionDate',  materialController.setExpectedCompletionDate);
 router.post('/material/getBatchExpectedDates',  materialController.getBatchExpectedDates);
 
+// Question paper routes
+router.post('/material/getQuestionPapers', materialController.getQuestionPapers);
+router.post('/material/addQuestionPaper', materialController.addQuestionPaper);
+router.post('/material/updateQuestionPaper', materialController.updateQuestionPaper);
+router.post('/material/deleteQuestionPaper', materialController.deleteQuestionPaper);
+router.post('/material/approveQuestionPaper', materialController.approveQuestionPaper);
+
+// Question paper Excel routes
+router.get('/material/question-papers/generate-template', materialController.generateQuestionPaperTemplate);
+router.post('/material/question-papers/upload', upload.single('file'), materialController.uploadQuestionPapersFromExcel);
+
 // Excel upload routes
 router.get('/batch/generate-batch-template',  materialController.generateBatchTemplate);
 router.post('/batch/upload-batches',  upload.single('file'), materialController.uploadBatchesFromExcel);

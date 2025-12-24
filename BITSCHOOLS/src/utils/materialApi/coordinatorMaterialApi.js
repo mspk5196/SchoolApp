@@ -226,6 +226,68 @@ export const getBatchExpectedDates = async (topicId) => {
   return response.json();
 };
 
+// ==================== QUESTION PAPERS ====================
+
+export const getQuestionPapers = async (sectionId, subjectId, topicId = null, onlyApproved = false) => {
+  const response = await ApiService.makeRequest('/coordinator/material/getQuestionPapers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sectionId, subjectId, topicId, onlyApproved }),
+  });
+  return response.json();
+};
+
+export const addQuestionPaper = async (payload) => {
+  const response = await ApiService.makeRequest('/coordinator/material/addQuestionPaper', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return response.json();
+};
+
+export const updateQuestionPaper = async (payload) => {
+  const response = await ApiService.makeRequest('/coordinator/material/updateQuestionPaper', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return response.json();
+};
+
+export const deleteQuestionPaper = async (id) => {
+  const response = await ApiService.makeRequest('/coordinator/material/deleteQuestionPaper', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  return response.json();
+};
+
+export const approveQuestionPaper = async (id) => {
+  const response = await ApiService.makeRequest('/coordinator/material/approveQuestionPaper', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  return response.json();
+};
+
+export const downloadQuestionPaperTemplate = async () => {
+  return await ApiService.downloadFile(
+    '/coordinator/material/question-papers/generate-template',
+    'question_papers_template.xlsx'
+  );
+};
+
+export const uploadQuestionPapersExcel = async (file) => {
+  return await ApiService.uploadFile(
+    '/coordinator/material/question-papers/upload',
+    file,
+    'file'
+  );
+};
+
 // Excel Upload/Download for Materials
 // export const downloadMaterialsTemplate = async () => {
 //   return await ApiService.downloadFile(
