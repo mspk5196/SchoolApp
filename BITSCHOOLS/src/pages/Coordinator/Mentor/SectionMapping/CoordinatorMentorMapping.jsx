@@ -183,7 +183,7 @@ const CoordinatorMentorMapping = ({ navigation, route }) => {
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
       const normalizedPath = profilePath.replace(/\\/g, '/');
-      const uri = `${API_URL}/${normalizedPath}`;
+      const uri = `${normalizedPath}`;
       return { uri };
     }
     return staff;

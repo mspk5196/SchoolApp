@@ -292,12 +292,12 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
       const getProfileImageSource = (profilePath) => {
         // console.log(authTokenRef.current);
         
-        // console.log('Profile Path:', profilePath);
+        console.log('Profile Path:', profilePath);
         if (profilePath) {
           // 1. Replace backslashes with forward slashes
           const normalizedPath = profilePath.replace(/\\/g, '/');
           // 2. Construct the full URL
-          const uri = `${API_URL}/${normalizedPath}`;
+          const uri = `${normalizedPath}`;
           // return { uri: fullImageUrl };
           if (authTokenRef.current) {
             return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
@@ -383,8 +383,8 @@ const CoordinatorSubjectMentor = ({ navigation, route }) => {
         renderItem={({ item }) => (
           <View style={styles.card}>
             {/* <Image source={staff} style={styles.avatar} /> */}
-            {item.file_path ? (
-              <Image source={getProfileImageSource(item.file_path)} style={styles.avatar} />
+            {item.profile_photo ? (
+              <Image source={getProfileImageSource(item.profile_photo)} style={styles.avatar} />
             ) : (
               <Image source={staff} style={styles.avatar} />
             )}

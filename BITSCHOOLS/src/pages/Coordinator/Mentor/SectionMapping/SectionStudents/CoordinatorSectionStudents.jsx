@@ -58,7 +58,7 @@ const CoordinatorSectionStudents = ({ navigation, route }) => {
   const getProfileImageSource = (photoUrl) => {
     if (photoUrl) {
       const normalizedPath = photoUrl.replace(/\\/g, '/');
-      const uri = `${API_URL}/${normalizedPath}`;
+      const uri = `${normalizedPath}`;
       return { uri };
     }
     return staff;

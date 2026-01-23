@@ -452,7 +452,7 @@ const StudentScheduleView = ({ navigation, route }) => {
         <View style={styles.formGroup}>
           <Text style={styles.formLabel}>Select Students *</Text>
           <ScrollView style={styles.studentList} nestedScrollEnabled>
-            {students.map((student) => (
+            {students?.map((student) => (
               <TouchableOpacity
                 key={student.id}
                 style={[
@@ -561,7 +561,7 @@ const StudentScheduleView = ({ navigation, route }) => {
             onValueChange={(value) => setFormData({ ...formData, venueId: value })}
           >
             <Picker.Item label="Select Venue" value="" />
-            {venues.map((venue) => (
+            {venues?.map((venue) => (
               <Picker.Item key={venue.id} label={venue.name} value={venue.id} />
             ))}
           </Picker>
@@ -731,7 +731,7 @@ const StudentScheduleView = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-      <Header title="Student Schedule" navigation={navigation}/>
+      <Header title="Student Schedule" navigation={navigation} />
 
       <View style={styles.controls}>
         <View style={styles.viewModeContainer}>

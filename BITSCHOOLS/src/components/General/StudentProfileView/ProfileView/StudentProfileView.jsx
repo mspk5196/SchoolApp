@@ -148,7 +148,8 @@ const StudentProfileView = ({
     const getProfileImageSource = (profilePath) => {
         if (profilePath) {
             const normalizedPath = profilePath.replace(/\\/g, '/');
-            const uri = `${API_URL}/${normalizedPath}`;
+            const uri = `${normalizedPath}`;
+            // const uri = `${API_URL}/${normalizedPath}`;
 
             if (authTokenRef.current) {
                 return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };

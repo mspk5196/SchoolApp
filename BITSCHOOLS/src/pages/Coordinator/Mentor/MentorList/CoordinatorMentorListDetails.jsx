@@ -317,7 +317,7 @@ const CoordinatorMentorListDetails = ({ route, navigation }) => {
   const getProfileImageSource = (profilePath) => {
     if (profilePath) {
       const normalizedPath = profilePath.replace(/\\/g, '/');
-      const uri = `${API_URL}/${normalizedPath}`;
+      const uri = `${normalizedPath}`;
       if (authTokenRef.current) {
         return { uri, headers: { Authorization: `Bearer ${authTokenRef.current}` } };
       }
